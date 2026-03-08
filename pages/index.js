@@ -520,6 +520,7 @@ function GardenView() {
             <div><label style={labelStyle}>Postcode</label>
               <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
               <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveLocation} disabled={saving || !newLocation.name}
                 style={{ flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
