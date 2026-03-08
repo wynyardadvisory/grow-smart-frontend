@@ -232,12 +232,12 @@ function Dashboard() {
         <>
           <SectionLabel>Harvest Forecast</SectionLabel>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {data.harvest_forecast.map(h => (
-              <div key={h.crop} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px" }}>
+            {data.harvest_forecast.map((h, i) => (
+              <div key={i} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px" }}>
                 <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{h.crop}</div>
                 {h.variety && <div style={{ fontSize: 11, color: C.stone }}>{varietyName(h.variety)}</div>}
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>
-                  {new Date(h.window_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} — {new Date(h.window_end).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  {new Date(h.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(h.window_end).toLocaleDateString("en-GB", { month: "short" })}
                 </div>
               </div>
             ))}
@@ -329,7 +329,32 @@ function GardenView() {
     setSaving(false);
   };
 
-  // Group crops by area_id for fast lookup
+  const [editingArea,  setEditingArea]  = useState(null);
+  const [editAreaForm, setEditAreaForm] = useState({ name: "", type: "" });
+  const [confirmArea,  setConfirmArea]  = useState(null);
+
+  const saveEditArea = async (areaId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/areas/${areaId}`, {
+        method: "PUT",
+        body: JSON.stringify(editAreaForm),
+      });
+      setEditingArea(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const deleteArea = async (areaId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/areas/${areaId}`, { method: "DELETE" });
+      setConfirmArea(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
   const cropsByArea = crops.reduce((acc, c) => {
     if (!acc[c.area_id]) acc[c.area_id] = [];
     acc[c.area_id].push(c);
@@ -426,23 +451,84 @@ function GardenView() {
             const areaCrops = cropsByArea[area.id] || [];
             return (
               <div key={area.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: areaCrops.length > 0 ? 10 : 0 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
-                    <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{area.type.replace(/_/g, " ")}</div>
+
+                {/* Confirm delete */}
+                {confirmArea === area.id && (
+                  <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => deleteArea(area.id)} disabled={saving}
+                        style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        {saving ? "Removing…" : "Yes, remove"}
+                      </button>
+                      <button onClick={() => setConfirmArea(null)}
+                        style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <span style={{ background: C.offwhite, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600 }}>
-                    {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                {areaCrops.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {areaCrops.map(c => (
-                      <span key={c.id} style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>
-                        {c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
-                      </span>
-                    ))}
+                )}
+
+                {editingArea === area.id ? (
+                  /* Edit form */
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>Edit area</div>
+                    <div>
+                      <label style={labelStyle}>Name</label>
+                      <input value={editAreaForm.name} onChange={e => setEditAreaForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Type</label>
+                      <select value={editAreaForm.type} onChange={e => setEditAreaForm(f => ({ ...f, type: e.target.value }))} style={inputStyle}>
+                        <option value="raised_bed">Raised bed</option>
+                        <option value="open_ground">Open ground</option>
+                        <option value="greenhouse">Greenhouse</option>
+                        <option value="polytunnel">Polytunnel</option>
+                        <option value="container">Container / pots</option>
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => saveEditArea(area.id)} disabled={saving || !editAreaForm.name}
+                        style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                        {saving ? "Saving…" : "Save"}
+                      </button>
+                      <button onClick={() => setEditingArea(null)}
+                        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: areaCrops.length > 0 ? 10 : 0 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{area.type.replace(/_/g, " ")}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ background: C.offwhite, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600 }}>
+                          {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
+                        </span>
+                        <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type }); }}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          Edit
+                        </button>
+                        <button onClick={() => setConfirmArea(area.id)}
+                          style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.red, cursor: "pointer" }}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    {areaCrops.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {areaCrops.map(c => (
+                          <span key={c.id} style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>
+                            {c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );
@@ -455,16 +541,61 @@ function GardenView() {
 
 // ── Crops list ────────────────────────────────────────────────────────────────
 function CropList() {
-  const [crops, setCrops]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [crops,    setCrops]   = useState([]);
+  const [loading,  setLoading] = useState(true);
+  const [error,    setError]   = useState(null);
+  const [editing,  setEditing] = useState(null); // crop id being edited
+  const [editForm, setEditForm] = useState({});
+  const [areas,    setAreas]   = useState([]);
+  const [saving,   setSaving]  = useState(false);
+  const [confirm,  setConfirm] = useState(null); // crop id pending delete
 
-  useEffect(() => {
-    apiFetch("/crops")
-      .then(setCrops)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const [cropsData, areasData] = await Promise.all([
+        apiFetch("/crops"),
+        apiFetch("/areas"),
+      ]);
+      setCrops(cropsData);
+      setAreas(areasData);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const startEdit = (crop) => {
+    setEditing(crop.id);
+    setEditForm({
+      variety:     varietyName(crop.variety) || "",
+      sown_date:   crop.sown_date || "",
+      area_id:     crop.area_id || "",
+      notes:       crop.notes || "",
+    });
+  };
+
+  const saveEdit = async (cropId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/crops/${cropId}`, {
+        method: "PUT",
+        body: JSON.stringify(editForm),
+      });
+      setEditing(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const deleteCrop = async (cropId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/crops/${cropId}`, { method: "DELETE" });
+      setConfirm(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
 
   const STAGE_COLOR = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone };
 
@@ -482,20 +613,86 @@ function CropList() {
       )}
       {crops.map(crop => (
         <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
-              <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{varietyName(crop.variety) || "Variety unknown"}</div>
+
+          {/* Confirm delete overlay */}
+          {confirm === crop.id && (
+            <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 10 }}>Remove {crop.name}? This cannot be undone.</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => deleteCrop(crop.id)} disabled={saving}
+                  style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  {saving ? "Removing…" : "Yes, remove"}
+                </button>
+                <button onClick={() => setConfirm(null)}
+                  style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
+                  Cancel
+                </button>
+              </div>
             </div>
-            <span style={{ background: (STAGE_COLOR[crop.stage] || C.stone) + "22", borderRadius: 8, padding: "3px 10px", fontSize: 11, color: STAGE_COLOR[crop.stage] || C.stone, fontWeight: 600, textTransform: "capitalize", border: `1px solid ${(STAGE_COLOR[crop.stage] || C.stone) + "55"}` }}>
-              {crop.stage}
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
-            {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
-            {!crop.variety_id && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>No variety set</span>}
-          </div>
+          )}
+
+          {editing === crop.id ? (
+            /* Edit form */
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Edit {crop.name}</div>
+              <div>
+                <label style={labelStyle}>Variety</label>
+                <input value={editForm.variety} onChange={e => setEditForm(f => ({ ...f, variety: e.target.value }))} style={inputStyle} placeholder="e.g. Gardener's Delight" />
+              </div>
+              <div>
+                <label style={labelStyle}>Sow date</label>
+                <input type="date" value={editForm.sown_date} onChange={e => setEditForm(f => ({ ...f, sown_date: e.target.value }))} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Growing area</label>
+                <select value={editForm.area_id} onChange={e => setEditForm(f => ({ ...f, area_id: e.target.value }))} style={inputStyle}>
+                  <option value="">Select area</option>
+                  {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Notes</label>
+                <input value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle} placeholder="Optional notes" />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => saveEdit(crop.id)} disabled={saving}
+                  style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+                <button onClick={() => setEditing(null)}
+                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 16px", color: C.stone, cursor: "pointer" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Normal view */
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                  <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{varietyName(crop.variety) || "No variety set"}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ background: (STAGE_COLOR[crop.stage] || C.stone) + "22", borderRadius: 8, padding: "3px 10px", fontSize: 11, color: STAGE_COLOR[crop.stage] || C.stone, fontWeight: 600, textTransform: "capitalize", border: `1px solid ${(STAGE_COLOR[crop.stage] || C.stone) + "55"}` }}>
+                    {crop.stage || "seed"}
+                  </span>
+                  <button onClick={() => startEdit(crop)}
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                    Edit
+                  </button>
+                  <button onClick={() => setConfirm(crop.id)}
+                    style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.red, cursor: "pointer" }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
+                {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+              </div>
+            </>
+          )}
         </div>
       ))}
     </div>
