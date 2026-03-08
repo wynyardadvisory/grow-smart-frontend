@@ -149,10 +149,12 @@ function AuthScreen({ onAuth }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard() {
-  const [data, setData]           = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [data,      setData]      = useState(null);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(null);
   const [completed, setCompleted] = useState(new Set());
+  const [undoQueue, setUndoQueue] = useState({}); // taskId -> timeout id
+  const [recentlyDone, setRecentlyDone] = useState([]); // tasks completed this session
 
   const load = useCallback(async () => {
     try {
@@ -164,20 +166,51 @@ function Dashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  const completeTask = async (id) => {
-    setCompleted(prev => new Set([...prev, id]));
-    try { await apiFetch(`/tasks/${id}/complete`, { method: "POST" }); }
-    catch { setCompleted(prev => { const s = new Set(prev); s.delete(id); return s; }); }
+  const completeTask = async (task) => {
+    // Optimistically mark done
+    setCompleted(prev => new Set([...prev, task.id]));
+    setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
+
+    try {
+      await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
+    } catch {
+      // Revert on error
+      setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
+      setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
+      return;
+    }
+
+    // Set undo window — 10 seconds
+    const timeout = setTimeout(() => {
+      setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
+    }, 10000);
+    setUndoQueue(prev => ({ ...prev, [task.id]: timeout }));
+  };
+
+  const undoComplete = async (task) => {
+    // Cancel the undo timeout
+    clearTimeout(undoQueue[task.id]);
+    setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
+
+    // Optimistically revert
+    setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
+    setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
+
+    try {
+      await apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" });
+    } catch (e) {
+      // Re-complete on error
+      setCompleted(prev => new Set([...prev, task.id]));
+    }
   };
 
   if (loading) return <Spinner />;
   if (error)   return <ErrorMsg msg={error} />;
   if (!data)   return null;
 
-  const today   = todayISO();
-  const weekEnd = weekEndISO();
-  const allTasks = [...(data.tasks.today || []), ...(data.tasks.this_week || []), ...(data.tasks.coming_up || [])];
-  const doneToday = (data.tasks.today || []).filter(t => completed.has(t.id)).length;
+  const allTasks   = [...(data.tasks.today || []), ...(data.tasks.this_week || []), ...(data.tasks.coming_up || [])];
+  const activeTasks = allTasks.filter(t => !completed.has(t.id));
+  const doneToday  = (data.tasks.today || []).filter(t => completed.has(t.id)).length;
   const totalToday = (data.tasks.today || []).length;
   const h = new Date().getHours();
   const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -215,17 +248,37 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Tasks */}
+      {/* Active tasks */}
       {[
-        { label: "Today", items: data.tasks.today },
-        { label: "This Week", items: data.tasks.this_week },
-        { label: "Coming Up", items: data.tasks.coming_up },
+        { label: "Today",     items: (data.tasks.today     || []).filter(t => !completed.has(t.id)) },
+        { label: "This Week", items: (data.tasks.this_week || []).filter(t => !completed.has(t.id)) },
+        { label: "Coming Up", items: (data.tasks.coming_up || []).filter(t => !completed.has(t.id)) },
       ].map(({ label, items }) => items?.length > 0 && (
         <div key={label}>
           <SectionLabel>{label}</SectionLabel>
-          {items.map(t => <TaskCard key={t.id} task={t} completed={completed.has(t.id)} onComplete={completeTask} />)}
+          {items.map(t => (
+            <TaskCard key={t.id} task={t} completed={false}
+              onComplete={() => completeTask(t)}
+              showUndo={!!undoQueue[t.id]}
+              onUndo={() => undoComplete(t)}
+            />
+          ))}
         </div>
       ))}
+
+      {/* Recently completed this session */}
+      {recentlyDone.length > 0 && (
+        <div>
+          <SectionLabel>Done today</SectionLabel>
+          {recentlyDone.map(t => (
+            <TaskCard key={t.id} task={t} completed={true}
+              onComplete={() => {}}
+              showUndo={!!undoQueue[t.id]}
+              onUndo={() => undoComplete(t)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Harvest forecast */}
       {data.harvest_forecast?.length > 0 && (
@@ -245,7 +298,7 @@ function Dashboard() {
         </>
       )}
 
-      {allTasks.length === 0 && (
+      {activeTasks.length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🌿</div>
           <div style={{ fontSize: 14 }}>No tasks right now. Add crops to get started.</div>
@@ -255,19 +308,25 @@ function Dashboard() {
   );
 }
 
-function TaskCard({ task, completed, onComplete }) {
+function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
   const urgencyColor = task.urgency === "high" ? C.red : task.urgency === "medium" ? C.amber : C.leaf;
   const isEstimated  = task.date_confidence === "estimated";
   return (
-    <div onClick={() => !completed && onComplete(task.id)} style={{ background: completed ? "#f0f4f2" : C.cardBg, border: `1px solid ${completed ? C.border : urgencyColor + "44"}`, borderLeft: `3px solid ${completed ? C.sage : urgencyColor}`, borderRadius: 10, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: completed ? "default" : "pointer", opacity: completed ? 0.55 : 1, transition: "opacity 0.2s" }}>
+    <div onClick={() => !completed && onComplete(task)} style={{ background: completed ? "#f0f4f2" : C.cardBg, border: `1px solid ${completed ? C.border : urgencyColor + "44"}`, borderLeft: `3px solid ${completed ? C.sage : urgencyColor}`, borderRadius: 10, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: completed ? "default" : "pointer", opacity: completed ? 0.55 : 1, transition: "opacity 0.2s" }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: "serif" }}>
           {task.crop?.name || "General"}
         </div>
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{task.action}</div>
-        <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
           {task.area?.name && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{task.area.name}</span>}
           {isEstimated     && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>~estimated</span>}
+          {showUndo && onUndo && (
+            <button onClick={e => { e.stopPropagation(); onUndo(task); }}
+              style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, fontSize: 11, padding: "2px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+              Undo
+            </button>
+          )}
         </div>
       </div>
       <div style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${completed ? C.leaf : C.border}`, background: completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
