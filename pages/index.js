@@ -719,8 +719,8 @@ function CropList() {
       sown_date:   crop.sown_date || "",
       area_id:     crop.area_id || "",
       notes:       crop.notes || "",
+      status:      crop.status || "growing",
     });
-    // Load varieties for this crop's crop_def
     if (crop.crop_def_id) {
       try {
         const vars = await apiFetch(`/varieties?crop_def_id=${crop.crop_def_id}`);
@@ -739,8 +739,10 @@ function CropList() {
         method: "PUT",
         body: JSON.stringify({
           ...editForm,
+          sown_date:  editForm.sown_date || null,   // never send empty string
           variety_id: isOther ? null : (editForm.variety_id || null),
           variety:    isOther ? (editForm.variety || null) : (editVarieties.find(v => v.id === editForm.variety_id)?.name || editForm.variety || null),
+          status:     editForm.status || "growing",
         }),
       });
       setEditing(null);
@@ -824,6 +826,17 @@ function CropList() {
                     autoFocus
                   />
                 )}
+              </div>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
+                  <option value="planned">🗓 Planned</option>
+                  <option value="sown_indoors">🪟 Sowing indoors</option>
+                  <option value="sown_outdoors">🌱 Sowing outdoors</option>
+                  <option value="transplanted">🪴 Transplanted</option>
+                  <option value="growing">✅ Growing</option>
+                  <option value="harvested">🧺 Harvested</option>
+                </select>
               </div>
               <div>
                 <label style={labelStyle}>Sow date</label>
