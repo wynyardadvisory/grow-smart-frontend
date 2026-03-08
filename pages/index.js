@@ -625,11 +625,12 @@ function CropList() {
   const [crops,    setCrops]   = useState([]);
   const [loading,  setLoading] = useState(true);
   const [error,    setError]   = useState(null);
-  const [editing,  setEditing] = useState(null); // crop id being edited
-  const [editForm, setEditForm] = useState({});
-  const [areas,    setAreas]   = useState([]);
-  const [saving,   setSaving]  = useState(false);
-  const [confirm,  setConfirm] = useState(null); // crop id pending delete
+  const [editing,       setEditing]      = useState(null);
+  const [editForm,      setEditForm]      = useState({});
+  const [editVarieties, setEditVarieties] = useState([]);
+  const [areas,         setAreas]         = useState([]);
+  const [saving,        setSaving]        = useState(false);
+  const [confirm,       setConfirm]       = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -645,22 +646,37 @@ function CropList() {
 
   useEffect(() => { load(); }, [load]);
 
-  const startEdit = (crop) => {
+  const startEdit = async (crop) => {
     setEditing(crop.id);
     setEditForm({
+      variety_id:  crop.variety_id || "",
       variety:     varietyName(crop.variety) || "",
       sown_date:   crop.sown_date || "",
       area_id:     crop.area_id || "",
       notes:       crop.notes || "",
     });
+    // Load varieties for this crop's crop_def
+    if (crop.crop_def_id) {
+      try {
+        const vars = await apiFetch(`/varieties?crop_def_id=${crop.crop_def_id}`);
+        setEditVarieties(vars);
+      } catch { setEditVarieties([]); }
+    } else {
+      setEditVarieties([]);
+    }
   };
 
   const saveEdit = async (cropId) => {
     setSaving(true);
     try {
+      const isOther = editForm.variety_id === "__other__";
       await apiFetch(`/crops/${cropId}`, {
         method: "PUT",
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          ...editForm,
+          variety_id: isOther ? null : (editForm.variety_id || null),
+          variety:    isOther ? (editForm.variety || null) : (editVarieties.find(v => v.id === editForm.variety_id)?.name || editForm.variety || null),
+        }),
       });
       setEditing(null);
       await load();
@@ -718,7 +734,31 @@ function CropList() {
               <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Edit {crop.name}</div>
               <div>
                 <label style={labelStyle}>Variety</label>
-                <input value={editForm.variety} onChange={e => setEditForm(f => ({ ...f, variety: e.target.value }))} style={inputStyle} placeholder="e.g. Gardener's Delight" />
+                <select
+                  value={editForm.variety_id === "__other__" ? "__other__" : (editForm.variety_id || "")}
+                  onChange={e => {
+                    if (e.target.value === "__other__") {
+                      setEditForm(f => ({ ...f, variety_id: "__other__", variety: "" }));
+                    } else {
+                      const matched = editVarieties.find(v => v.id === e.target.value);
+                      setEditForm(f => ({ ...f, variety_id: e.target.value, variety: matched?.name || "" }));
+                    }
+                  }}
+                  style={inputStyle}
+                >
+                  <option value="">Unknown / not sure</option>
+                  {editVarieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
+                  <option value="__other__">Other — type my own</option>
+                </select>
+                {(editForm.variety_id === "__other__" || (!editForm.variety_id && editForm.variety)) && (
+                  <input
+                    value={editForm.variety}
+                    onChange={e => setEditForm(f => ({ ...f, variety: e.target.value }))}
+                    style={{ ...inputStyle, marginTop: 8 }}
+                    placeholder="Type your variety name"
+                    autoFocus
+                  />
+                )}
               </div>
               <div>
                 <label style={labelStyle}>Sow date</label>
@@ -816,14 +856,21 @@ function AddCrop() {
     if (!form.crop_def_id || !form.area_id) return;
     setSaving(true); setError(null);
     try {
-      const confidence = dateKnown === "yes" ? "exact" : dateKnown === "approx" ? "estimated" : "unknown";
+      const confidence  = dateKnown === "yes" ? "exact" : dateKnown === "approx" ? "estimated" : "unknown";
+      const isOther     = form.variety_id === "__other__";
+      const realVarietyId = isOther ? null : (form.variety_id || null);
+      // If a known variety was selected from dropdown, use its name; if Other, use free text; otherwise null
+      const realVariety = isOther
+        ? (form.variety || null)
+        : (varieties.find(v => v.id === form.variety_id)?.name || null);
+
       await apiFetch("/crops", {
         method: "POST",
         body: JSON.stringify({
           name:                  selectedCrop?.name,
           crop_def_id:           form.crop_def_id,
-          variety_id:            form.variety_id || null,
-          variety:               form.variety || varieties.find(v => v.id === form.variety_id)?.name || null,
+          variety_id:            realVarietyId,
+          variety:               realVariety,
           area_id:               form.area_id,
           sown_date:             dateKnown !== "no" ? form.sown_date || null : null,
           establishment_method:  form.establishment_method || selectedCrop?.default_establishment || null,
@@ -856,13 +903,33 @@ function AddCrop() {
 
         <div>
           <label style={labelStyle}>Variety</label>
-          {varieties.length > 0 ? (
-            <select value={form.variety_id} onChange={e => set("variety_id", e.target.value)} style={inputStyle} disabled={!form.crop_def_id}>
-              <option value="">Unknown / not sure</option>
-              {varieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
-            </select>
-          ) : (
-            <input type="text" value={form.variety} onChange={e => set("variety", e.target.value)} style={inputStyle} placeholder="Type variety or leave blank" disabled={!form.crop_def_id} />
+          <select
+            value={form.variety_id === "__other__" ? "__other__" : (form.variety_id || "")}
+            onChange={e => {
+              if (e.target.value === "__other__") {
+                set("variety_id", "__other__");
+                set("variety", "");
+              } else {
+                set("variety_id", e.target.value);
+                set("variety", "");
+              }
+            }}
+            style={inputStyle}
+            disabled={!form.crop_def_id}
+          >
+            <option value="">Unknown / not sure</option>
+            {varieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
+            <option value="__other__">Other — type my own</option>
+          </select>
+          {form.variety_id === "__other__" && (
+            <input
+              type="text"
+              value={form.variety}
+              onChange={e => set("variety", e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }}
+              placeholder="Type your variety name"
+              autoFocus
+            />
           )}
           <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Not required — tasks still work without a variety.</div>
         </div>
