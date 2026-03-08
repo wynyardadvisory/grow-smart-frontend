@@ -655,12 +655,23 @@ function GardenView() {
                     </div>
                     {areaCrops.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {areaCrops.map(c => (
-                          <span key={c.id} style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>
-                            {c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
-                          </span>
-                        ))}
+                        {areaCrops.map(c => {
+                          const isPlanned  = c.status === "planned";
+                          const isIndoors  = c.status === "sown_indoors";
+                          const chipBg     = isPlanned ? "#fff8ed" : isIndoors ? "#f0f4ff" : C.offwhite;
+                          const chipBorder = isPlanned ? C.amber : isIndoors ? "#7b9ef7" : C.border;
+                          const chipColor  = isPlanned ? C.amber  : isIndoors ? "#2d4fc0" : "#1a1a1a";
+                          const statusIcon = isPlanned ? "🗓 " : isIndoors ? "🪟 " : "";
+                          return (
+                            <span key={c.id} style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: chipColor }}>
+                              {statusIcon}{c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
+                            </span>
+                          );
+                        })}
                       </div>
+                    )}
+                    {areaCrops.length === 0 && (
+                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty — add crops via the Add tab</div>
                     )}
                   </>
                 )}
@@ -864,6 +875,8 @@ function CropList() {
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                 <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
                 {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>🗓 Planned</span>}
+                {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
                 {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
               </div>
             </>
@@ -876,18 +889,17 @@ function CropList() {
 
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop() {
-  const [cropDefs, setCropDefs]     = useState([]);
-  const [varieties, setVarieties]   = useState([]);
-  const [areas, setAreas]           = useState([]);
-  const [form, setForm]             = useState({
+  const [cropDefs,  setCropDefs]  = useState([]);
+  const [varieties, setVarieties] = useState([]);
+  const [areas,     setAreas]     = useState([]);
+  const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    sown_date: "", establishment_method: "", start_date_confidence: "exact", notes: "",
+    status: "", sown_date: "", transplant_date: "", notes: "",
   });
-  const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(false);
-  const [enriching, setEnriching] = useState(false); // AI enrichment in progress
-  const [error,    setError]    = useState(null);
-  const [dateKnown, setDateKnown] = useState("yes");
+  const [saving,    setSaving]    = useState(false);
+  const [saved,     setSaved]     = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [error,     setError]     = useState(null);
 
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
@@ -898,23 +910,36 @@ function AddCrop() {
   useEffect(() => {
     if (!form.crop_def_id || form.crop_def_id === "__other__") { setVarieties([]); return; }
     apiFetch(`/varieties?crop_def_id=${form.crop_def_id}`)
-      .then(setVarieties)
-      .catch(() => setVarieties([]));
+      .then(setVarieties).catch(() => setVarieties([]));
     setForm(f => ({ ...f, variety_id: "", variety: "" }));
   }, [form.crop_def_id]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
-
   const isOtherCrop    = form.crop_def_id === "__other__";
   const isOtherVariety = form.variety_id  === "__other__";
   const selectedCrop   = cropDefs.find(d => d.id === form.crop_def_id);
 
+  // Status options with descriptions
+  const STATUS_OPTIONS = [
+    { value: "planned",       label: "🗓 Planned",             hint: "I plan to grow this — not started yet" },
+    { value: "sown_indoors",  label: "🪟 Sowing indoors",      hint: "Starting on windowsill, greenhouse or cold frame" },
+    { value: "sown_outdoors", label: "🌱 Sowing outdoors",     hint: "Direct sowing outside in final position" },
+    { value: "transplanted",  label: "🪴 Transplanted",        hint: "Moved outside from indoors / greenhouse" },
+    { value: "growing",       label: "✅ Already growing",     hint: "Established and growing — add sow date below" },
+  ];
+
+  // What date fields to show based on status
+  const showSowDate        = ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
+  const showTransplantDate = form.status === "transplanted";
+  const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
+                           : form.status === "sown_outdoors" ? "Date sown outdoors"
+                           : "Sow date";
+
   const handleSave = async () => {
     const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
-    if ((!form.crop_def_id && !isOtherCrop) || !form.area_id || !cropName) return;
+    if ((!form.crop_def_id && !isOtherCrop) || !form.area_id || !cropName || !form.status) return;
     setSaving(true); setError(null);
     try {
-      const confidence    = dateKnown === "yes" ? "exact" : dateKnown === "approx" ? "estimated" : "unknown";
       const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
       const realVariety   = isOtherVariety
         ? (form.variety || null)
@@ -923,37 +948,41 @@ function AddCrop() {
       const result = await apiFetch("/crops", {
         method: "POST",
         body: JSON.stringify({
-          name:                  cropName,
-          crop_def_id:           isOtherCrop ? null : (form.crop_def_id || null),
-          variety_id:            realVarietyId,
-          variety:               realVariety,
-          area_id:               form.area_id,
-          sown_date:             dateKnown !== "no" ? form.sown_date || null : null,
-          establishment_method:  form.establishment_method || selectedCrop?.default_establishment || null,
-          start_date_confidence: confidence,
-          notes:                 form.notes || null,
-          is_other_crop:         isOtherCrop,
-          is_other_variety:      isOtherVariety,
+          name:             cropName,
+          crop_def_id:      isOtherCrop ? null : (form.crop_def_id || null),
+          variety_id:       realVarietyId,
+          variety:          realVariety,
+          area_id:          form.area_id,
+          status:           form.status,
+          sown_date:        showSowDate ? (form.sown_date || null) : null,
+          transplant_date:  showTransplantDate ? (form.transplant_date || null) : null,
+          start_date_confidence: form.sown_date ? "exact" : "unknown",
+          notes:            form.notes || null,
+          is_other_crop:    isOtherCrop,
+          is_other_variety: isOtherVariety,
         }),
       });
 
       if (result.enriching) setEnriching(true);
       setSaved(true);
-      setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", sown_date: "", establishment_method: "", start_date_confidence: "exact", notes: "" });
-      setDateKnown("yes");
+      setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
       setTimeout(() => { setSaved(false); setEnriching(false); }, 8000);
     } catch (e) { setError(e.message); }
     setSaving(false);
   };
 
+  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
+
   return (
     <div>
       <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 24, color: "#1a1a1a" }}>Add Crop</div>
       {saved && !enriching && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Crop added — tasks will be generated</div>}
-      {saved && enriching  && <div style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d4fc0", fontWeight: 600, fontSize: 13 }}>✓ Crop added — identifying and enriching data in the background 🔍</div>}
+      {saved && enriching  && <div style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d4fc0", fontWeight: 600, fontSize: 13 }}>✓ Crop added — identifying and enriching data 🔍</div>}
       {error && <ErrorMsg msg={error} />}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+        {/* Crop */}
         <div>
           <label style={labelStyle}>Crop</label>
           <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
@@ -962,49 +991,33 @@ function AddCrop() {
             <option value="__other__">Other — type my own</option>
           </select>
           {isOtherCrop && (
-            <input
-              type="text"
-              value={form.crop_other}
-              onChange={e => set("crop_other", e.target.value)}
-              style={{ ...inputStyle, marginTop: 8 }}
-              placeholder="e.g. Tomatillo, Okra, Pak Choi…"
-              autoFocus
-            />
+            <input type="text" value={form.crop_other} onChange={e => set("crop_other", e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }} placeholder="e.g. Tomatillo, Okra, Pak Choi…" autoFocus />
           )}
         </div>
 
+        {/* Variety */}
         <div>
           <label style={labelStyle}>Variety</label>
           <select
             value={form.variety_id === "__other__" ? "__other__" : (form.variety_id || "")}
             onChange={e => {
-              if (e.target.value === "__other__") {
-                set("variety_id", "__other__");
-                set("variety", "");
-              } else {
-                set("variety_id", e.target.value);
-                set("variety", "");
-              }
+              if (e.target.value === "__other__") { set("variety_id", "__other__"); set("variety", ""); }
+              else { set("variety_id", e.target.value); set("variety", ""); }
             }}
-            style={inputStyle}
-            disabled={!form.crop_def_id}
-          >
+            style={inputStyle} disabled={!form.crop_def_id}>
             <option value="">Unknown / not sure</option>
             {varieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
             <option value="__other__">Other — type my own</option>
           </select>
           {(isOtherVariety || isOtherCrop) && (
-            <input
-              type="text"
-              value={form.variety}
-              onChange={e => set("variety", e.target.value)}
-              style={{ ...inputStyle, marginTop: 8 }}
-              placeholder="Type your variety name"
-            />
+            <input type="text" value={form.variety} onChange={e => set("variety", e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }} placeholder="Type your variety name" />
           )}
-          <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Not required — tasks still work without a variety.</div>
+          <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Optional — tasks work without a variety.</div>
         </div>
 
+        {/* Area */}
         <div>
           <label style={labelStyle}>Growing Area</label>
           <select value={form.area_id} onChange={e => set("area_id", e.target.value)} style={inputStyle}>
@@ -1013,39 +1026,52 @@ function AddCrop() {
           </select>
         </div>
 
+        {/* Status — the key new field */}
         <div>
-          <label style={labelStyle}>How was it started?</label>
-          <select value={form.establishment_method} onChange={e => set("establishment_method", e.target.value)} style={inputStyle}>
-            <option value="">Not sure / use crop default</option>
-            <option value="indoors">Started indoors</option>
-            <option value="direct_sow">Direct sown outside</option>
-            <option value="transplanted">Transplanted from elsewhere</option>
-            <option value="planted_out">Already planted out</option>
-          </select>
+          <label style={labelStyle}>What stage is this crop at?</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {STATUS_OPTIONS.map(opt => (
+              <div key={opt.value}
+                onClick={() => set("status", opt.value)}
+                style={{
+                  border: `2px solid ${form.status === opt.value ? C.forest : C.border}`,
+                  borderRadius: 10, padding: "10px 14px", cursor: "pointer",
+                  background: form.status === opt.value ? "#f0f5f3" : C.cardBg,
+                  transition: "all 0.15s",
+                }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: form.status === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div>
-          <label style={labelStyle}>Do you know when it was sown?</label>
-          <select value={dateKnown} onChange={e => setDateKnown(e.target.value)} style={inputStyle}>
-            <option value="yes">Yes — I know the date</option>
-            <option value="approx">Roughly — approximate date</option>
-            <option value="no">No — not sure</option>
-          </select>
-        </div>
-
-        {dateKnown !== "no" && (
+        {/* Sow date — only shown when relevant */}
+        {showSowDate && (
           <div>
-            <label style={labelStyle}>{dateKnown === "approx" ? "Approximate Sow Date" : "Sow Date"}</label>
+            <label style={labelStyle}>{sowDateLabel} <span style={{ color: C.stone, fontWeight: 400 }}>(optional)</span></label>
             <input type="date" value={form.sown_date} onChange={e => set("sown_date", e.target.value)} style={inputStyle} />
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Helps generate accurate feeding and harvest tasks</div>
           </div>
         )}
 
+        {/* Transplant date — only if transplanted */}
+        {showTransplantDate && (
+          <div>
+            <label style={labelStyle}>Date transplanted outdoors <span style={{ color: C.stone, fontWeight: 400 }}>(optional)</span></label>
+            <input type="date" value={form.transplant_date} onChange={e => set("transplant_date", e.target.value)} style={inputStyle} />
+          </div>
+        )}
+
+        {/* Notes */}
         <div>
           <label style={labelStyle}>Notes (optional)</label>
-          <textarea value={form.notes} onChange={e => set("notes", e.target.value)} style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
+          <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
+            style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
         </div>
 
-        <button onClick={handleSave} disabled={saving || !form.crop_def_id || !form.area_id} style={{ background: (!form.crop_def_id || !form.area_id) ? C.border : C.forest, color: (!form.crop_def_id || !form.area_id) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: (!form.crop_def_id || !form.area_id) ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
+        <button onClick={handleSave} disabled={saving || !canSave}
+          style={{ background: !canSave ? C.border : C.forest, color: !canSave ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: !canSave ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
           {saving ? "Saving…" : "Save Crop"}
         </button>
       </div>
