@@ -239,11 +239,63 @@ function Dashboard() {
 
   return (
     <div>
-      {/* Weather / greeting */}
-      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 20 }}>
+      {/* Header */}
+      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12 }}>
         <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 2, letterSpacing: 1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
         <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif" }}>Grow Smart 🌱</div>
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+      </div>
+
+      {/* Weather + traffic lights strip */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+        {/* Weather */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+          {data.weather?.icon_code && (
+            <img
+              src={`https://openweathermap.org/img/wn/${data.weather.icon_code}.png`}
+              alt={data.weather.condition}
+              style={{ width: 36, height: 36 }}
+            />
+          )}
+          {data.weather ? (
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: C.forest, fontFamily: "serif", lineHeight: 1 }}>{data.weather.temp_c}°C</div>
+              <div style={{ fontSize: 11, color: C.stone, textTransform: "capitalize", marginTop: 1 }}>{data.weather.condition}</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: C.stone }}>No weather data — set postcode in profile</div>
+          )}
+        </div>
+
+        {/* Traffic lights */}
+        <div style={{ display: "flex", gap: 10 }}>
+          {/* Frost risk */}
+          {(() => {
+            const risk   = data.frost_risk || "low";
+            const colour = risk === "high" ? "#e74c3c" : risk === "medium" ? "#f39c12" : "#27ae60";
+            const label  = risk === "high" ? "Frost risk" : risk === "medium" ? "Near frost" : "No frost";
+            return (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <div style={{ width: 14, height: 14, borderRadius: "50%", background: colour, boxShadow: `0 0 6px ${colour}88` }} />
+                <div style={{ fontSize: 9, color: C.stone, textAlign: "center", lineHeight: 1.2 }}>❄️ {label}</div>
+              </div>
+            );
+          })()}
+
+          {/* Pest risk */}
+          {(() => {
+            const risk   = data.pest_risk || "low";
+            const colour = risk === "high" ? "#e74c3c" : risk === "medium" ? "#f39c12" : "#27ae60";
+            const label  = risk === "high" ? "High pest" : risk === "medium" ? "Pest alert" : "Low pest";
+            const tip    = data.pest_crops?.length > 0 ? data.pest_crops.slice(0, 2).join(", ") : null;
+            return (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <div style={{ width: 14, height: 14, borderRadius: "50%", background: colour, boxShadow: `0 0 6px ${colour}88` }} />
+                <div style={{ fontSize: 9, color: C.stone, textAlign: "center", lineHeight: 1.2 }}>🐛 {tip || label}</div>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Missing data prompt */}
@@ -811,6 +863,7 @@ function CropList() {
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                 <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
                 {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
               </div>
             </>
           )}
@@ -826,12 +879,13 @@ function AddCrop() {
   const [varieties, setVarieties]   = useState([]);
   const [areas, setAreas]           = useState([]);
   const [form, setForm]             = useState({
-    crop_def_id: "", variety_id: "", variety: "", area_id: "",
+    crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
     sown_date: "", establishment_method: "", start_date_confidence: "exact", notes: "",
   });
-  const [saving, setSaving]   = useState(false);
-  const [saved, setSaved]     = useState(false);
-  const [error, setError]     = useState(null);
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [enriching, setEnriching] = useState(false); // AI enrichment in progress
+  const [error,    setError]    = useState(null);
   const [dateKnown, setDateKnown] = useState("yes");
 
   useEffect(() => {
@@ -841,7 +895,7 @@ function AddCrop() {
   }, []);
 
   useEffect(() => {
-    if (!form.crop_def_id) { setVarieties([]); return; }
+    if (!form.crop_def_id || form.crop_def_id === "__other__") { setVarieties([]); return; }
     apiFetch(`/varieties?crop_def_id=${form.crop_def_id}`)
       .then(setVarieties)
       .catch(() => setVarieties([]));
@@ -850,25 +904,26 @@ function AddCrop() {
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
-  const selectedCrop = cropDefs.find(d => d.id === form.crop_def_id);
+  const isOtherCrop    = form.crop_def_id === "__other__";
+  const isOtherVariety = form.variety_id  === "__other__";
+  const selectedCrop   = cropDefs.find(d => d.id === form.crop_def_id);
 
   const handleSave = async () => {
-    if (!form.crop_def_id || !form.area_id) return;
+    const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
+    if ((!form.crop_def_id && !isOtherCrop) || !form.area_id || !cropName) return;
     setSaving(true); setError(null);
     try {
-      const confidence  = dateKnown === "yes" ? "exact" : dateKnown === "approx" ? "estimated" : "unknown";
-      const isOther     = form.variety_id === "__other__";
-      const realVarietyId = isOther ? null : (form.variety_id || null);
-      // If a known variety was selected from dropdown, use its name; if Other, use free text; otherwise null
-      const realVariety = isOther
+      const confidence    = dateKnown === "yes" ? "exact" : dateKnown === "approx" ? "estimated" : "unknown";
+      const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
+      const realVariety   = isOtherVariety
         ? (form.variety || null)
         : (varieties.find(v => v.id === form.variety_id)?.name || null);
 
-      await apiFetch("/crops", {
+      const result = await apiFetch("/crops", {
         method: "POST",
         body: JSON.stringify({
-          name:                  selectedCrop?.name,
-          crop_def_id:           form.crop_def_id,
+          name:                  cropName,
+          crop_def_id:           isOtherCrop ? null : (form.crop_def_id || null),
           variety_id:            realVarietyId,
           variety:               realVariety,
           area_id:               form.area_id,
@@ -876,12 +931,16 @@ function AddCrop() {
           establishment_method:  form.establishment_method || selectedCrop?.default_establishment || null,
           start_date_confidence: confidence,
           notes:                 form.notes || null,
+          is_other_crop:         isOtherCrop,
+          is_other_variety:      isOtherVariety,
         }),
       });
+
+      if (result.enriching) setEnriching(true);
       setSaved(true);
-      setForm({ crop_def_id: "", variety_id: "", variety: "", area_id: "", sown_date: "", establishment_method: "", start_date_confidence: "exact", notes: "" });
+      setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", sown_date: "", establishment_method: "", start_date_confidence: "exact", notes: "" });
       setDateKnown("yes");
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => { setSaved(false); setEnriching(false); }, 8000);
     } catch (e) { setError(e.message); }
     setSaving(false);
   };
@@ -889,8 +948,9 @@ function AddCrop() {
   return (
     <div>
       <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 24, color: "#1a1a1a" }}>Add Crop</div>
-      {saved  && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Crop added — tasks will be generated</div>}
-      {error  && <ErrorMsg msg={error} />}
+      {saved && !enriching && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Crop added — tasks will be generated</div>}
+      {saved && enriching  && <div style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d4fc0", fontWeight: 600, fontSize: 13 }}>✓ Crop added — identifying and enriching data in the background 🔍</div>}
+      {error && <ErrorMsg msg={error} />}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
@@ -898,7 +958,18 @@ function AddCrop() {
           <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
             <option value="">Select crop…</option>
             {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            <option value="__other__">Other — type my own</option>
           </select>
+          {isOtherCrop && (
+            <input
+              type="text"
+              value={form.crop_other}
+              onChange={e => set("crop_other", e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }}
+              placeholder="e.g. Tomatillo, Okra, Pak Choi…"
+              autoFocus
+            />
+          )}
         </div>
 
         <div>
@@ -921,14 +992,13 @@ function AddCrop() {
             {varieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
             <option value="__other__">Other — type my own</option>
           </select>
-          {form.variety_id === "__other__" && (
+          {(isOtherVariety || isOtherCrop) && (
             <input
               type="text"
               value={form.variety}
               onChange={e => set("variety", e.target.value)}
               style={{ ...inputStyle, marginTop: 8 }}
               placeholder="Type your variety name"
-              autoFocus
             />
           )}
           <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Not required — tasks still work without a variety.</div>
