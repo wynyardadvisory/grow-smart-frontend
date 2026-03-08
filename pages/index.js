@@ -518,7 +518,8 @@ function GardenView() {
             <div><label style={labelStyle}>Name</label>
               <input value={newLocation.name} onChange={e => setNewLocation(l => ({ ...l, name: e.target.value }))} style={inputStyle} placeholder="e.g. Allotment plot 7" /></div>
             <div><label style={labelStyle}>Postcode</label>
-              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. EX4 3PJ" /></div>
+              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveLocation} disabled={saving || !newLocation.name}
                 style={{ flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -1125,8 +1126,8 @@ function ProfileScreen({ session }) {
           </div>
           <div>
             <label style={labelStyle}>Postcode</label>
-            <input value={form.postcode} onChange={e => setForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS24 0AA" />
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used for local weather and frost forecasts</div>
+            <input value={form.postcode} onChange={e => setForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Enter the first part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
           </div>
           <button onClick={saveProfile} disabled={saving} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Saving…" : "Save Changes"}
@@ -1259,7 +1260,8 @@ function OnboardingScreen({ onComplete }) {
           </div>
           <div>
             <label style={labelStyle}>Your postcode</label>
-            <input value={profile.postcode} onChange={e => setP("postcode", e.target.value.toUpperCase())} style={inputStyle} placeholder="e.g. SW1A 1AA" />
+            <input value={profile.postcode} onChange={e => setP("postcode", e.target.value.toUpperCase())} style={inputStyle} placeholder="e.g. TS22" />
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
             <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used for weather and frost alerts</div>
           </div>
         </>}
@@ -1271,8 +1273,8 @@ function OnboardingScreen({ onComplete }) {
           </div>
           <div>
             <label style={labelStyle}>Postcode</label>
-            <input value={location.postcode} onChange={e => setL("postcode", e.target.value.toUpperCase())} style={inputStyle} placeholder="e.g. SW1A 1AA" />
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Can be different from your home postcode</div>
+            <input value={location.postcode} onChange={e => setL("postcode", e.target.value.toUpperCase())} style={inputStyle} placeholder="e.g. TS22" />
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
           </div>
 
           {/* What counts as a location */}
