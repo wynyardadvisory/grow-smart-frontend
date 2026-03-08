@@ -1056,12 +1056,123 @@ function AddCrop() {
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function weekEndISO() { return new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]; }
 
+// ── Profile Screen ────────────────────────────────────────────────────────────
+function ProfileScreen({ session }) {
+  const [form,    setForm]    = useState({ name: "", postcode: "" });
+  const [pwForm,  setPwForm]  = useState({ current: "", next: "", confirm: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [error,   setError]   = useState(null);
+  const [pwError, setPwError] = useState(null);
+
+  useEffect(() => {
+    apiFetch("/auth/profile")
+      .then(p => { setForm({ name: p.name || "", postcode: p.postcode || "" }); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const saveProfile = async () => {
+    if (!form.name.trim() || !form.postcode.trim()) return;
+    setSaving(true); setError(null);
+    try {
+      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify(form) });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const changePassword = async () => {
+    setPwError(null);
+    if (!pwForm.next.trim()) return;
+    if (pwForm.next !== pwForm.confirm) { setPwError("Passwords don't match"); return; }
+    if (pwForm.next.length < 8) { setPwError("Password must be at least 8 characters"); return; }
+    setPwSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwForm.next });
+      if (error) throw new Error(error.message);
+      setPwSaved(true);
+      setPwForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => setPwSaved(false), 3000);
+    } catch (e) { setPwError(e.message); }
+    setPwSaving(false);
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 24, color: "#1a1a1a" }}>Profile</div>
+
+      {/* Account info */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>Signed in as</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{session?.user?.email}</div>
+      </div>
+
+      {/* Edit name + postcode */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16, marginTop: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 16 }}>Your Details</div>
+        {saved  && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Saved</div>}
+        {error  && <ErrorMsg msg={error} />}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Your name</label>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} placeholder="e.g. Mark" />
+          </div>
+          <div>
+            <label style={labelStyle}>Postcode</label>
+            <input value={form.postcode} onChange={e => setForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS24 0AA" />
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used for local weather and frost forecasts</div>
+          </div>
+          <button onClick={saveProfile} disabled={saving} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+
+      {/* Change password */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 16 }}>Change Password</div>
+        {pwSaved  && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Password updated</div>}
+        {pwError  && <ErrorMsg msg={pwError} />}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={labelStyle}>New password</label>
+            <input type="password" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} style={inputStyle} placeholder="At least 8 characters" />
+          </div>
+          <div>
+            <label style={labelStyle}>Confirm new password</label>
+            <input type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} style={inputStyle} placeholder="Repeat new password" />
+          </div>
+          <button onClick={changePassword} disabled={pwSaving} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: pwSaving ? 0.6 : 1 }}>
+            {pwSaving ? "Updating…" : "Update Password"}
+          </button>
+        </div>
+      </div>
+
+      {/* Sign out */}
+      <button
+        onClick={() => supabase.auth.signOut()}
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8 }}>
+        Sign Out
+      </button>
+
+      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>Grow Smart — version 1.0</div>
+    </div>
+  );
+}
+
 // ── Navigation tabs ───────────────────────────────────────────────────────────
 const TABS = [
   { id: "dashboard", label: "Today",  icon: "◈" },
-  { id: "garden",    label: "Garden", icon: "⬡" },
-  { id: "crops",     label: "Crops",  icon: "◉" },
-  { id: "add",       label: "Add",    icon: "+" },
+  { id: "garden",    label: "Garden",  icon: "⬡" },
+  { id: "crops",     label: "Crops",   icon: "◉" },
+  { id: "add",       label: "Add",     icon: "+" },
+  { id: "profile",   label: "Profile", icon: "👤" },
 ];
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
@@ -1249,7 +1360,6 @@ export default function GrowSmart() {
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Grow Smart 🌱</div>
-          <button onClick={() => supabase.auth.signOut()} style={{ background: "none", border: "none", fontSize: 11, color: C.stone, cursor: "pointer", textDecoration: "underline" }}>Sign out</button>
         </div>
       </div>
 
@@ -1259,6 +1369,7 @@ export default function GrowSmart() {
         {tab === "garden"    && <GardenView />}
         {tab === "crops"     && <CropList />}
         {tab === "add"       && <AddCrop />}
+        {tab === "profile"   && <ProfileScreen session={session} />}
       </div>
 
       {/* Bottom nav */}
