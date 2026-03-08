@@ -149,12 +149,13 @@ function AuthScreen({ onAuth }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard() {
-  const [data,      setData]      = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState(null);
-  const [completed, setCompleted] = useState(new Set());
-  const [undoQueue, setUndoQueue] = useState({}); // taskId -> timeout id
-  const [recentlyDone, setRecentlyDone] = useState([]); // tasks completed this session
+  const [data,         setData]        = useState(null);
+  const [loading,      setLoading]     = useState(true);
+  const [error,        setError]       = useState(null);
+  const [completed,    setCompleted]   = useState(new Set());  // completed this session
+  const [undoQueue,    setUndoQueue]   = useState({});         // taskId -> timeout
+  const [recentlyDone, setRecentlyDone] = useState([]);        // task objects completed this session
+  const [undone,       setUndone]      = useState([]);         // task objects un-completed this session
 
   const load = useCallback(async () => {
     try {
@@ -167,20 +168,19 @@ function Dashboard() {
   useEffect(() => { load(); }, [load]);
 
   const completeTask = async (task) => {
-    // Optimistically mark done
     setCompleted(prev => new Set([...prev, task.id]));
     setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
+    setUndone(prev => prev.filter(t => t.id !== task.id));
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
     } catch {
-      // Revert on error
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
       setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
       return;
     }
 
-    // Set undo window — 10 seconds
+    // Undo window — 10 seconds
     const timeout = setTimeout(() => {
       setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
     }, 10000);
@@ -188,19 +188,22 @@ function Dashboard() {
   };
 
   const undoComplete = async (task) => {
-    // Cancel the undo timeout
     clearTimeout(undoQueue[task.id]);
     setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
 
-    // Optimistically revert
+    // Remove from completed — this makes it active again
     setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
     setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
+    // Add to undone so it appears in active list even if not in data.tasks
+    setUndone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
 
     try {
       await apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" });
-    } catch (e) {
-      // Re-complete on error
+    } catch {
+      // Revert — mark as completed again
       setCompleted(prev => new Set([...prev, task.id]));
+      setUndone(prev => prev.filter(t => t.id !== task.id));
+      setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     }
   };
 
@@ -208,10 +211,29 @@ function Dashboard() {
   if (error)   return <ErrorMsg msg={error} />;
   if (!data)   return null;
 
-  const allTasks   = [...(data.tasks.today || []), ...(data.tasks.this_week || []), ...(data.tasks.coming_up || [])];
-  const activeTasks = allTasks.filter(t => !completed.has(t.id));
-  const doneToday  = (data.tasks.today || []).filter(t => completed.has(t.id)).length;
-  const totalToday = (data.tasks.today || []).length;
+  const today   = todayISO();
+  const weekEnd = weekEndISO();
+
+  // Merge server tasks with any tasks un-completed this session
+  const serverTasks = [
+    ...(data.tasks.today     || []),
+    ...(data.tasks.this_week || []),
+    ...(data.tasks.coming_up || []),
+  ];
+  const allTaskIds = new Set(serverTasks.map(t => t.id));
+  const extraTasks = undone.filter(t => !allTaskIds.has(t.id)); // undone tasks not yet in server data
+  const allTasks   = [...serverTasks, ...extraTasks];
+
+  // Re-group with undone tasks included
+  const grouped = {
+    today:     allTasks.filter(t => t.due_date === today),
+    this_week: allTasks.filter(t => t.due_date > today && t.due_date <= weekEnd),
+    coming_up: allTasks.filter(t => t.due_date > weekEnd),
+  };
+
+  const activeTodayCount = grouped.today.filter(t => !completed.has(t.id)).length;
+  const totalToday       = grouped.today.length;
+  const doneToday        = totalToday - activeTodayCount;
   const h = new Date().getHours();
   const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 
@@ -241,7 +263,7 @@ function Dashboard() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 6 }}>Today&apos;s tasks</div>
             <div style={{ height: 6, background: C.border, borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(doneToday / totalToday) * 100}%`, background: C.leaf, borderRadius: 10, transition: "width 0.4s ease" }} />
+              <div style={{ height: "100%", width: `${totalToday > 0 ? (doneToday / totalToday) * 100 : 0}%`, background: C.leaf, borderRadius: 10, transition: "width 0.4s ease" }} />
             </div>
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, fontFamily: "serif" }}>{doneToday}/{totalToday}</div>
@@ -250,23 +272,23 @@ function Dashboard() {
 
       {/* Active tasks */}
       {[
-        { label: "Today",     items: (data.tasks.today     || []).filter(t => !completed.has(t.id)) },
-        { label: "This Week", items: (data.tasks.this_week || []).filter(t => !completed.has(t.id)) },
-        { label: "Coming Up", items: (data.tasks.coming_up || []).filter(t => !completed.has(t.id)) },
+        { label: "Today",     items: grouped.today.filter(t     => !completed.has(t.id)) },
+        { label: "This Week", items: grouped.this_week.filter(t => !completed.has(t.id)) },
+        { label: "Coming Up", items: grouped.coming_up.filter(t => !completed.has(t.id)) },
       ].map(({ label, items }) => items?.length > 0 && (
         <div key={label}>
           <SectionLabel>{label}</SectionLabel>
           {items.map(t => (
             <TaskCard key={t.id} task={t} completed={false}
               onComplete={() => completeTask(t)}
-              showUndo={!!undoQueue[t.id]}
-              onUndo={() => undoComplete(t)}
+              showUndo={false}
+              onUndo={null}
             />
           ))}
         </div>
       ))}
 
-      {/* Recently completed this session */}
+      {/* Recently completed — stays visible with undo option */}
       {recentlyDone.length > 0 && (
         <div>
           <SectionLabel>Done today</SectionLabel>
@@ -298,7 +320,7 @@ function Dashboard() {
         </>
       )}
 
-      {activeTasks.length === 0 && recentlyDone.length === 0 && (
+      {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🌿</div>
           <div style={{ fontSize: 14 }}>No tasks right now. Add crops to get started.</div>
