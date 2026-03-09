@@ -161,10 +161,10 @@ function ProfilePhotoGreeting({ photoUrl, onUploaded }) {
       const bitmap = await createImageBitmap(file);
       const dim    = Math.min(bitmap.width, bitmap.height);
       const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = Math.min(dim, 600);
+      canvas.width = canvas.height = Math.min(dim, 400); // max 400px, stay under Vercel limit
       const ctx = canvas.getContext("2d");
       ctx.drawImage(bitmap, (bitmap.width - dim) / 2, (bitmap.height - dim) / 2, dim, dim, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+      const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1]; // 70% quality
       const result = await apiFetch("/photos/profile", { method: "POST", body: JSON.stringify({ base64, mime_type: "image/jpeg" }) });
       setUrl(result.photo_url);
       onUploaded(result.photo_url);
@@ -194,17 +194,17 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
     if (!file) return;
     setUploading(true);
     try {
-      // Crop to square using canvas before upload
+      // Crop to square + compress aggressively to stay under Vercel 4.5mb body limit
       const bitmap = await createImageBitmap(file);
       const dim    = Math.min(bitmap.width, bitmap.height);
       const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = Math.min(dim, 800);
+      canvas.width = canvas.height = Math.min(dim, 400); // max 400px
       const ctx = canvas.getContext("2d");
       ctx.drawImage(bitmap,
         (bitmap.width  - dim) / 2, (bitmap.height - dim) / 2, dim, dim,
         0, 0, canvas.width, canvas.height
       );
-      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+      const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1]; // 70% quality
       const result = await apiFetch(endpoint, {
         method: "POST",
         body: JSON.stringify({ base64, mime_type: "image/jpeg" }),
