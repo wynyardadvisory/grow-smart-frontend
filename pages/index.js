@@ -1209,33 +1209,101 @@ function ProfileScreen({ session }) {
 
 // ── My Feeds ──────────────────────────────────────────────────────────────────
 
+const KNOWN_BRANDS = [
+  "Chempak","Westland","Miracle-Gro","Vitax","Yara","Maxicrop","Levington","Phostrogen","RHS","Other"
+];
+
 function FeedsScreen() {
-  const [feeds,   setFeeds]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState(null);
-  const [form,    setForm]    = useState({ brand: "", product_name: "" });
-  const [added,   setAdded]   = useState(false);
+  const [feeds,    setFeeds]    = useState([]);
+  const [catalog,  setCatalog]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState(null);
+  const [added,    setAdded]    = useState(false);
+  const [brand,    setBrand]    = useState("");
+  const [otherBrand, setOtherBrand] = useState("");
+  const [isLiquid, setIsLiquid] = useState(null);
+  const [product,  setProduct]  = useState("");
+  const [otherProduct, setOtherProduct] = useState("");
 
   const load = async () => {
     try {
-      const data = await apiFetch("/feeds");
-      setFeeds(data);
+      const [feedData, catalogData] = await Promise.all([
+        apiFetch("/feeds"),
+        apiFetch("/feed-catalog"),
+      ]);
+      setFeeds(feedData);
+      setCatalog(catalogData);
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
+  // Derive effective brand/form for filtering
+  const effectiveBrand = brand === "Other" ? null : brand;
+  const effectiveForm  = isLiquid === true ? "liquid" : isLiquid === false ? ["granular","powder","pellet"] : null;
+
+  // Filter catalog to matching products
+  const filteredProducts = catalog.filter(c => {
+    if (effectiveBrand && c.brand !== effectiveBrand) return false;
+    if (isLiquid === true  && c.form !== "liquid") return false;
+    if (isLiquid === false && c.form === "liquid") return false;
+    return true;
+  });
+
+  const productOptions = [...new Set(filteredProducts.map(c => c.product_name)), "Other"];
+
+  // Find the matched catalog entry for the selected product
+  const matchedCatalog = catalog.find(c =>
+    c.brand === effectiveBrand && c.product_name === product && product !== "Other"
+  );
+
+  const canAdd = brand && isLiquid !== null && (
+    (product && product !== "Other") ||
+    (product === "Other" && otherProduct.trim())
+  ) || (brand === "Other" && otherBrand.trim() && isLiquid !== null && otherProduct.trim());
+
   const addFeed = async () => {
-    if (!form.product_name.trim()) return;
+    if (!canAdd) return;
     setSaving(true);
     try {
-      await apiFetch("/feeds", {
-        method: "POST",
-        body: JSON.stringify({ brand: form.brand.trim() || null, product_name: form.product_name.trim() }),
-      });
-      setForm({ brand: "", product_name: "" });
+      const finalBrand   = brand === "Other" ? otherBrand.trim() : brand;
+      const finalProduct = product === "Other" ? otherProduct.trim() : product;
+
+      if (matchedCatalog) {
+        // Known product — save directly with all data, no enrichment needed
+        await apiFetch("/feeds", {
+          method: "POST",
+          body: JSON.stringify({
+            brand:                 matchedCatalog.brand,
+            product_name:          matchedCatalog.product_name,
+            form:                  matchedCatalog.form,
+            feed_type:             matchedCatalog.feed_type,
+            npk:                   matchedCatalog.npk,
+            dilution_ml_per_litre: matchedCatalog.dilution_ml_per_litre,
+            frequency_days:        matchedCatalog.frequency_days,
+            suitable_crop_types:   matchedCatalog.suitable_crop_types,
+            application_method:    matchedCatalog.application_method,
+            notes:                 matchedCatalog.notes,
+            pre_enriched:          true,
+          }),
+        });
+      } else {
+        // Unknown product — send for enrichment
+        await apiFetch("/feeds", {
+          method: "POST",
+          body: JSON.stringify({
+            brand:        finalBrand || null,
+            product_name: finalProduct,
+            form:         isLiquid ? "liquid" : "granular",
+          }),
+        });
+      }
+
+      // Reset form
+      setBrand(""); setOtherBrand(""); setIsLiquid(null);
+      setProduct(""); setOtherProduct("");
       setAdded(true);
       setTimeout(() => setAdded(false), 4000);
       await load();
@@ -1273,20 +1341,85 @@ function FeedsScreen() {
       {/* Add feed form */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
         <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 14 }}>Add a Feed</div>
-        {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Feed added — identifying and enriching data 🔍</div>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Brand */}
           <div>
-            <label style={labelStyle}>Brand (optional)</label>
-            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
-              style={inputStyle} placeholder="e.g. Chempak, Growmore, Miracle-Gro" />
+            <label style={labelStyle}>Brand</label>
+            <select value={brand} onChange={e => { setBrand(e.target.value); setProduct(""); setOtherProduct(""); }} style={inputStyle}>
+              <option value="">Select brand…</option>
+              {KNOWN_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
           </div>
-          <div>
-            <label style={labelStyle}>Product name</label>
-            <input value={form.product_name} onChange={e => setForm(f => ({ ...f, product_name: e.target.value }))}
-              style={inputStyle} placeholder="e.g. Tomorite, Fish Blood & Bone" />
-          </div>
-          <button onClick={addFeed} disabled={saving || !form.product_name.trim()}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (saving || !form.product_name.trim()) ? 0.6 : 1, fontFamily: "serif" }}>
+          {brand === "Other" && (
+            <div>
+              <label style={labelStyle}>Brand name</label>
+              <input value={otherBrand} onChange={e => setOtherBrand(e.target.value)} style={inputStyle} placeholder="Enter brand name" />
+            </div>
+          )}
+
+          {/* Liquid or not */}
+          {brand && (
+            <div>
+              <label style={labelStyle}>Is it a liquid feed?</label>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[{ label: "Yes — liquid", val: true }, { label: "No — granular / powder", val: false }].map(opt => (
+                  <button key={String(opt.val)} onClick={() => { setIsLiquid(opt.val); setProduct(""); setOtherProduct(""); }}
+                    style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${isLiquid === opt.val ? C.forest : C.border}`, background: isLiquid === opt.val ? C.forest : C.cardBg, color: isLiquid === opt.val ? "#fff" : "#1a1a1a", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Product */}
+          {brand && isLiquid !== null && (
+            <div>
+              <label style={labelStyle}>Product</label>
+              {productOptions.length > 1 ? (
+                <select value={product} onChange={e => setProduct(e.target.value)} style={inputStyle}>
+                  <option value="">Select product…</option>
+                  {productOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : (
+                <select value="Other" onChange={() => setProduct("Other")} style={inputStyle}>
+                  <option value="Other">Other (not listed)</option>
+                </select>
+              )}
+            </div>
+          )}
+          {product === "Other" && (
+            <div>
+              <label style={labelStyle}>Product name</label>
+              <input value={otherProduct} onChange={e => setOtherProduct(e.target.value)} style={inputStyle} placeholder="Enter product name" />
+            </div>
+          )}
+
+          {/* Preview for known products */}
+          {matchedCatalog && (
+            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, marginBottom: 6 }}>✓ Product identified</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <span style={{ fontSize: 11, background: "#e8f0fe", color: "#3a5fc8", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(matchedCatalog.feed_type)}</span>
+                <span style={{ fontSize: 11, background: C.offWhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.form}</span>
+                {matchedCatalog.npk && <span style={{ fontSize: 11, background: C.offWhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>NPK {matchedCatalog.npk}</span>}
+                {matchedCatalog.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offWhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.dilution_ml_per_litre}ml/L</span>}
+                {matchedCatalog.frequency_days && <span style={{ fontSize: 11, background: C.offWhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>Every {matchedCatalog.frequency_days} days</span>}
+              </div>
+              {matchedCatalog.notes && <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>{matchedCatalog.notes}</div>}
+            </div>
+          )}
+          {product === "Other" && otherProduct.trim() && (
+            <div style={{ background: "#fdf8ec", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "10px 14px", fontSize: 12, color: C.stone }}>
+              🔍 We'll look this one up and fill in the details automatically
+            </div>
+          )}
+
+          <button onClick={addFeed} disabled={saving || !canAdd}
+            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1, fontFamily: "serif" }}>
             {saving ? "Adding…" : "Add Feed"}
           </button>
         </div>
