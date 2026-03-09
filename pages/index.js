@@ -147,15 +147,229 @@ function AuthScreen({ onAuth }) {
   );
 }
 
+// ── Harvest Forecast Card ─────────────────────────────────────────────────────
+
+function HarvestForecastCard({ item, onHarvest }) {
+  const [sliding, setSliding] = useState(false);
+  const [done,    setDone]    = useState(false);
+
+  const handleToggle = () => {
+    if (done) return;
+    setSliding(true);
+    setTimeout(() => { setDone(true); setTimeout(onHarvest, 300); }, 400);
+  };
+
+  const borderColor = done ? C.leaf : sliding ? C.amber : C.red;
+  const bgColor     = done ? "#edf7ec" : sliding ? "#fff8ed" : C.cardBg;
+
+  return (
+    <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 10, padding: "12px 14px", transition: "all 0.3s" }}>
+      <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
+      {item.variety && <div style={{ fontSize: 11, color: C.stone }}>{item.variety}</div>}
+      <div style={{ fontSize: 11, color: C.stone, marginTop: 2, marginBottom: 10 }}>
+        {new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(item.window_end).toLocaleDateString("en-GB", { month: "short" })}
+      </div>
+      <button onClick={handleToggle} disabled={done}
+        style={{ width: "100%", padding: "7px", borderRadius: 8, border: `1px solid ${borderColor}`, background: done ? C.leaf : "transparent", color: done ? "#fff" : borderColor, fontWeight: 700, fontSize: 11, cursor: done ? "default" : "pointer", transition: "all 0.3s" }}>
+        {done ? "✓ Harvested" : sliding ? "Harvesting…" : "Mark Harvested"}
+      </button>
+    </div>
+  );
+}
+
+// ── Harvest Modal ─────────────────────────────────────────────────────────────
+
+function HarvestModal({ item, onClose, onSaved }) {
+  const [yieldScore,   setYieldScore]   = useState(5);
+  const [qualScore,    setQualScore]    = useState(5);
+  const [quantity,     setQuantity]     = useState("");
+  const [unit,         setUnit]         = useState("kg");
+  const [notes,        setNotes]        = useState("");
+  const [photo,        setPhoto]        = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(null); // harvest log entry id
+  const [undone,       setUndone]       = useState(false);
+
+  const trafficColor = (val) => {
+    if (val <= 3) return C.red;
+    if (val <= 6) return C.amber;
+    return C.leaf;
+  };
+
+  const handlePhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhoto(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const uploadPhoto = async (entryId) => {
+    if (!photo) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(photo);
+    reader.onload = async () => {
+      const base64 = reader.result.split(",")[1];
+      await apiFetch(`/harvest-log/${entryId}/photo`, {
+        method: "POST",
+        body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type }),
+      });
+    };
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const entry = await apiFetch("/harvest-log", {
+        method: "POST",
+        body: JSON.stringify({
+          crop_instance_id: item.crop_instance_id || null,
+          crop_name:        item.crop,
+          variety:          item.variety || null,
+          yield_score:      yieldScore,
+          quality_score:    qualScore,
+          quantity_value:   quantity ? parseFloat(quantity) : null,
+          quantity_unit:    quantity ? unit : null,
+          notes:            notes.trim() || null,
+        }),
+      });
+      setSaved(entry.id);
+      if (photo) await uploadPhoto(entry.id);
+      onSaved(item.crop_instance_id);
+    } catch (e) {
+      console.error(e);
+    }
+    setSaving(false);
+  };
+
+  const undo = async () => {
+    if (!saved) return;
+    try {
+      await apiFetch(`/harvest-log/${saved}`, { method: "DELETE" });
+      setUndone(true);
+      setTimeout(onClose, 1500);
+    } catch (e) { console.error(e); }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget && !saved) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+
+        {undone ? (
+          <div style={{ textAlign: "center", padding: "20px 0", color: C.stone }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>↩️</div>
+            <div style={{ fontWeight: 700, fontFamily: "serif" }}>Harvest undone</div>
+          </div>
+        ) : saved ? (
+          <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Harvest logged!</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={undo} style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Undo</button>
+              <button onClick={onClose} style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Done</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+
+            {/* Yield score */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Yield Volume</label>
+                <span style={{ fontSize: 18, fontWeight: 800, color: trafficColor(yieldScore) }}>{yieldScore}</span>
+              </div>
+              <input type="range" min="1" max="10" value={yieldScore} onChange={e => setYieldScore(Number(e.target.value))}
+                style={{ width: "100%", accentColor: trafficColor(yieldScore) }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.stone, marginTop: 2 }}>
+                <span>Poor</span><span>Excellent</span>
+              </div>
+            </div>
+
+            {/* Quality score */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Quality</label>
+                <span style={{ fontSize: 18, fontWeight: 800, color: trafficColor(qualScore) }}>{qualScore}</span>
+              </div>
+              <input type="range" min="1" max="10" value={qualScore} onChange={e => setQualScore(Number(e.target.value))}
+                style={{ width: "100%", accentColor: trafficColor(qualScore) }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.stone, marginTop: 2 }}>
+                <span>Poor</span><span>Excellent</span>
+              </div>
+            </div>
+
+            {/* Quantity */}
+            <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
+              <div style={{ flex: 2 }}>
+                <label style={labelStyle}>Quantity (optional)</label>
+                <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} style={inputStyle} placeholder="e.g. 2.5" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Unit</label>
+                <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="number">number</option>
+                  <option value="bunch">bunch</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Notes (optional)</label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                style={{ ...inputStyle, height: 64, resize: "none" }} placeholder="Any notes about this harvest…" />
+            </div>
+
+            {/* Photo */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Photo (optional)</label>
+              {photoPreview ? (
+                <div style={{ position: "relative" }}>
+                  <img src={photoPreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 160, objectFit: "cover" }} />
+                  <button onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                    style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.5)", border: "none", borderRadius: "50%", color: "#fff", width: 24, height: 24, cursor: "pointer", fontSize: 14 }}>×</button>
+                </div>
+              ) : (
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: 10, padding: "14px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
+                  📷 Add a photo
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} />
+                </label>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
+              <button onClick={save} disabled={saving}
+                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+                {saving ? "Saving…" : "Save Harvest"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard() {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
   const [error,        setError]       = useState(null);
-  const [completed,    setCompleted]   = useState(new Set());  // completed this session
-  const [undoQueue,    setUndoQueue]   = useState({});         // taskId -> timeout
-  const [recentlyDone, setRecentlyDone] = useState([]);        // task objects completed this session
-  const [undone,       setUndone]      = useState([]);         // task objects un-completed this session
+  const [completed,      setCompleted]      = useState(new Set());
+  const [undoQueue,      setUndoQueue]      = useState({});
+  const [recentlyDone,   setRecentlyDone]   = useState([]);
+  const [undone,         setUndone]         = useState([]);
+  const [harvestedIds,   setHarvestedIds]   = useState(new Set());
+  const [pendingHarvest, setPendingHarvest] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -354,21 +568,22 @@ function Dashboard() {
       )}
 
       {/* Harvest forecast */}
-      {data.harvest_forecast?.length > 0 && (
+      {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
         <>
           <SectionLabel>Harvest Forecast</SectionLabel>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {data.harvest_forecast.map((h, i) => (
-              <div key={i} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{h.crop}</div>
-                {h.variety && <div style={{ fontSize: 11, color: C.stone }}>{varietyName(h.variety)}</div>}
-                <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>
-                  {new Date(h.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(h.window_end).toLocaleDateString("en-GB", { month: "short" })}
-                </div>
-              </div>
+            {data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id)).map((h, i) => (
+              <HarvestForecastCard key={i} item={h} onHarvest={() => setPendingHarvest(h)} />
             ))}
           </div>
         </>
+      )}
+      {pendingHarvest && (
+        <HarvestModal
+          item={pendingHarvest}
+          onClose={() => setPendingHarvest(null)}
+          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); setPendingHarvest(null); }}
+        />
       )}
 
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
@@ -1098,21 +1313,38 @@ function weekEndISO() { return new Date(Date.now() + 7 * 86400000).toISOString()
 
 // ── Profile Screen ────────────────────────────────────────────────────────────
 function ProfileScreen({ session }) {
-  const [form,    setForm]    = useState({ name: "", postcode: "" });
-  const [pwForm,  setPwForm]  = useState({ current: "", next: "", confirm: "" });
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [pwSaving, setPwSaving] = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const [pwSaved, setPwSaved] = useState(false);
-  const [error,   setError]   = useState(null);
-  const [pwError, setPwError] = useState(null);
+  const [form,       setForm]      = useState({ name: "", postcode: "" });
+  const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
+  const [loading,    setLoading]   = useState(true);
+  const [saving,     setSaving]    = useState(false);
+  const [pwSaving,   setPwSaving]  = useState(false);
+  const [saved,      setSaved]     = useState(false);
+  const [pwSaved,    setPwSaved]   = useState(false);
+  const [error,      setError]     = useState(null);
+  const [pwError,    setPwError]   = useState(null);
+  const [harvests,   setHarvests]  = useState([]);
+  const [logYear,    setLogYear]   = useState(new Date().getFullYear());
+  const [logOpen,    setLogOpen]   = useState(false);
+  const [logLoading, setLogLoading] = useState(false);
+
+  const loadHarvests = async (year) => {
+    setLogLoading(true);
+    try {
+      const data = await apiFetch("/harvest-log?year=" + year);
+      setHarvests(data);
+    } catch (e) { console.error(e); }
+    setLogLoading(false);
+  };
 
   useEffect(() => {
     apiFetch("/auth/profile")
       .then(p => { setForm({ name: p.name || "", postcode: p.postcode || "" }); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (logOpen) loadHarvests(logYear);
+  }, [logOpen, logYear]);
 
   const saveProfile = async () => {
     if (!form.name.trim() || !form.postcode.trim()) return;
@@ -1192,6 +1424,49 @@ function ProfileScreen({ session }) {
             {pwSaving ? "Updating…" : "Update Password"}
           </button>
         </div>
+      </div>
+
+      {/* Harvest Log */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
+        <button onClick={() => setLogOpen(o => !o)}
+          style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>🌾 My Harvest Log</div>
+          <span style={{ color: C.stone, fontSize: 18 }}>{logOpen ? "▲" : "▼"}</span>
+        </button>
+        {logOpen && (
+          <div style={{ padding: "0 16px 16px" }}>
+            {/* Year selector */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => (
+                <button key={y} onClick={() => setLogYear(y)}
+                  style={{ padding: "6px 16px", borderRadius: 20, border: `1px solid ${logYear === y ? C.forest : C.border}`, background: logYear === y ? C.forest : "none", color: logYear === y ? "#fff" : C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                  {y}
+                </button>
+              ))}
+            </div>
+            {logLoading ? <Spinner /> : harvests.length === 0 ? (
+              <div style={{ fontSize: 13, color: C.stone, textAlign: "center", padding: "16px 0" }}>No harvests logged for {logYear}</div>
+            ) : (
+              harvests.map(h => (
+                <div key={h.id} style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 12, marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{h.crop_name}{h.variety ? ` — ${h.variety}` : ""}</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{new Date(h.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {h.yield_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: h.yield_score >= 7 ? C.leaf : h.yield_score >= 4 ? C.amber : C.red }}>{h.yield_score}</div><div style={{ fontSize: 9, color: C.stone }}>Yield</div></div>}
+                      {h.quality_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: h.quality_score >= 7 ? C.leaf : h.quality_score >= 4 ? C.amber : C.red }}>{h.quality_score}</div><div style={{ fontSize: 9, color: C.stone }}>Quality</div></div>}
+                    </div>
+                  </div>
+                  {h.quantity_value && <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{h.quantity_value} {h.quantity_unit}</div>}
+                  {h.notes && <div style={{ fontSize: 12, color: C.stone, marginTop: 4, fontStyle: "italic" }}>{h.notes}</div>}
+                  {h.photo_url && <img src={h.photo_url} alt="harvest" style={{ width: "100%", borderRadius: 8, marginTop: 8, maxHeight: 160, objectFit: "cover" }} />}
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Sign out */}
