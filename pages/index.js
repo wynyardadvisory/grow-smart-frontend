@@ -21,16 +21,33 @@ const supabase = createClient(
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
+// Seasonal palette — subtle shifts by time of year
+const SEASON = (() => {
+  const m = new Date().getMonth(); // 0-11
+  if (m >= 2  && m <= 4)  return "spring";
+  if (m >= 5  && m <= 7)  return "summer";
+  if (m >= 8  && m <= 10) return "autumn";
+  return "winter";
+})();
+
+const SEASON_ACCENT = {
+  spring: { bg: "#F4F8F2", accent: "#7FB069", border: "#D4E8CE" },
+  summer: { bg: "#FDF8F0", accent: "#D9A441", border: "#EDE0C8" },
+  autumn: { bg: "#F8F4EE", accent: "#C8844C", border: "#E8D8C4" },
+  winter: { bg: "#F2F4F6", accent: "#5B8FA8", border: "#D4DDE4" },
+}[SEASON];
+
 const C = {
   forest:    "#2F5D50",
   sage:      "#A8C1B5",
-  offwhite:  "#F7F6F2",
+  offwhite:  SEASON_ACCENT.bg,
   stone:     "#6E6E6E",
   leaf:      "#6FAF63",
   amber:     "#D9A441",
   red:       "#C65A5A",
-  border:    "#E2E0DA",
+  border:    SEASON_ACCENT.border,
   cardBg:    "#FFFFFF",
+  accent:    SEASON_ACCENT.accent,
 };
 
 // ── API helper ────────────────────────────────────────────────────────────────
@@ -380,6 +397,43 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
   );
 }
 
+
+// ── Crop emoji map ────────────────────────────────────────────────────────────
+const CROP_EMOJI = {
+  tomato: "🍅", tomatoes: "🍅",
+  carrot: "🥕", carrots: "🥕",
+  potato: "🥔", potatoes: "🥔",
+  lettuce: "🥬", spinach: "🥬", kale: "🥬", chard: "🥬",
+  courgette: "🥒", zucchini: "🥒", cucumber: "🥒",
+  pea: "🫛", peas: "🫛", "mange tout": "🫛", mangetout: "🫛",
+  bean: "🫘", beans: "🫘", "french bean": "🫘", "runner bean": "🫘",
+  onion: "🧅", onions: "🧅", shallot: "🧅", leek: "🧅",
+  garlic: "🧄",
+  strawberry: "🍓", strawberries: "🍓",
+  apple: "🍎", apples: "🍎",
+  pear: "🍐", pears: "🍐",
+  blueberry: "🫐", blueberries: "🫐",
+  pumpkin: "🎃", squash: "🎃",
+  corn: "🌽", sweetcorn: "🌽", "sweet corn": "🌽",
+  pepper: "🫑", peppers: "🫑", chilli: "🌶️", chili: "🌶️",
+  broccoli: "🥦", cauliflower: "🥦", cabbage: "🥦",
+  "brussels sprout": "🥦", "brussels sprouts": "🥦",
+  aubergine: "🍆", eggplant: "🍆",
+  radish: "🌸", turnip: "🌸", swede: "🌸",
+  beetroot: "🔴", beet: "🔴",
+  herb: "🌿", basil: "🌿", parsley: "🌿", mint: "🌿", thyme: "🌿",
+  rosemary: "🌿", chive: "🌿", chives: "🌿", coriander: "🌿",
+};
+
+function getCropEmoji(name) {
+  if (!name) return "🌱";
+  const lower = name.toLowerCase();
+  for (const [key, emoji] of Object.entries(CROP_EMOJI)) {
+    if (lower.includes(key)) return emoji;
+  }
+  return "🌱";
+}
+
 // ── Harvest Forecast Card ─────────────────────────────────────────────────────
 
 function HarvestForecastCard({ item, onHarvest, pending }) {
@@ -677,8 +731,8 @@ function Dashboard() {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* Header — seasonal tint on border */}
+      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid " + C.accent }}>
         <div>
           <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 2, letterSpacing: 1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
@@ -830,7 +884,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
     <div onClick={() => !completed && onComplete(task)} style={{ background: completed ? "#f0f4f2" : C.cardBg, border: `1px solid ${completed ? C.border : urgencyColor + "44"}`, borderLeft: `3px solid ${completed ? C.sage : urgencyColor}`, borderRadius: 10, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: completed ? "default" : "pointer", opacity: completed ? 0.55 : 1, transition: "opacity 0.2s" }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: "serif" }}>
-          {task.crop?.name || "General"}
+          {task.crop?.name ? getCropEmoji(task.crop.name) + " " + task.crop.name : "General"}
         </div>
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{task.action}</div>
         <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -1330,14 +1384,14 @@ function CropList() {
             /* Normal view */
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
-                  <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{varietyName(crop.variety) || "No variety set"}</div>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1 }}>
+                  <div style={{ fontSize: 28, lineHeight: 1, marginTop: 2 }}>{getCropEmoji(crop.name)}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                    <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
+                  </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ background: (STAGE_COLOR[crop.stage] || C.stone) + "22", borderRadius: 8, padding: "3px 10px", fontSize: 11, color: STAGE_COLOR[crop.stage] || C.stone, fontWeight: 600, textTransform: "capitalize", border: `1px solid ${(STAGE_COLOR[crop.stage] || C.stone) + "55"}` }}>
-                    {crop.stage || "seed"}
-                  </span>
                   <button onClick={() => startEdit(crop)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
                     Edit
@@ -1348,6 +1402,30 @@ function CropList() {
                   </button>
                 </div>
               </div>
+
+              {/* Progress bar */}
+              {(() => {
+                const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
+                const idx = STAGES.indexOf(crop.stage || "seed");
+                const pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
+                const stageColor = STAGE_COLOR[crop.stage] || C.stone;
+                const harvestWeeks = crop.crop_def?.days_to_maturity_max
+                  ? Math.round((crop.crop_def.days_to_maturity_max - (crop.sown_date ? Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) : 0)) / 7)
+                  : null;
+                return (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage || "seed"}</span>
+                      {harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
+                      {harvestWeeks <= 0 && crop.sown_date && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
+                    </div>
+                    <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99, transition: "width 0.5s ease" }} />
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                 <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
                 {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
