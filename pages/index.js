@@ -236,6 +236,150 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
   );
 }
 
+// ── Planting Suggestions Sheet ────────────────────────────────────────────────
+
+function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
+  const [state,       setState]       = useState("loading"); // loading | generating | ready | error
+  const [suggestions, setSuggestions] = useState([]);
+  const [selected,    setSelected]    = useState(null);
+  const [confirming,  setConfirming]  = useState(false);
+  const [adding,      setAdding]      = useState(false);
+  const [generatedAt, setGeneratedAt] = useState(null);
+
+  useEffect(() => {
+    loadOrGenerate();
+  }, []);
+
+  const loadOrGenerate = async () => {
+    setState("loading");
+    try {
+      const existing = await apiFetch("/areas/" + area.id + "/suggestions");
+      if (existing?.suggestions?.length) {
+        setSuggestions(existing.suggestions);
+        setGeneratedAt(existing.generated_at);
+        setState("ready");
+      } else {
+        generate();
+      }
+    } catch (e) { setState("error"); }
+  };
+
+  const generate = async () => {
+    setState("generating");
+    try {
+      const result = await apiFetch("/areas/" + area.id + "/suggestions/generate", { method: "POST" });
+      setSuggestions(result.suggestions);
+      setGeneratedAt(result.generated_at);
+      setState("ready");
+    } catch (e) {
+      console.error(e);
+      setState("error");
+    }
+  };
+
+  const confirmAdd = async () => {
+    if (!selected) return;
+    setAdding(true);
+    try {
+      await apiFetch("/crops", {
+        method: "POST",
+        body: JSON.stringify({
+          name:    selected.crop,
+          status:  "planned",
+          area_id: area.id,
+        }),
+      });
+      onAddCrop();
+      onClose();
+    } catch (e) { console.error(e); }
+    setAdding(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "85vh", overflowY: "auto" }}>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>What to plant?</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{area.name}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
+        </div>
+
+        {state === "loading" && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>
+        )}
+
+        {state === "generating" && (
+          <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Thinking about your bed…</div>
+            <div style={{ fontSize: 12 }}>Checking rotation, season, and your garden</div>
+          </div>
+        )}
+
+        {state === "error" && (
+          <div style={{ textAlign: "center", padding: "32px 20px" }}>
+            <div style={{ fontSize: 13, color: C.red, marginBottom: 12 }}>Something went wrong generating suggestions.</div>
+            <button onClick={generate} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>Try again</button>
+          </div>
+        )}
+
+        {state === "ready" && !confirming && (
+          <>
+            {generatedAt && (
+              <div style={{ fontSize: 11, color: C.stone, marginBottom: 16, marginTop: 4 }}>
+                Based on your garden in {new Date(generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+              {suggestions.map((s, i) => (
+                <div key={i} onClick={() => setSelected(s)}
+                  style={{ background: selected === s ? "#f0f7f4" : C.cardBg, border: `1px solid ${selected === s ? C.forest : C.border}`, borderLeft: `3px solid ${selected === s ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "all 0.15s" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>{s.crop}</div>
+                  <div style={{ fontSize: 13, color: C.stone, marginBottom: s.rotation_note || s.companion_note ? 8 : 0 }}>{s.reason}</div>
+                  {s.sow_note && <div style={{ fontSize: 12, color: C.forest, marginBottom: 4 }}>🗓 {s.sow_note}</div>}
+                  {s.rotation_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>↻ {s.rotation_note}</div>}
+                  {s.companion_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>🤝 {s.companion_note}</div>}
+                </div>
+              ))}
+            </div>
+            <button onClick={() => selected && setConfirming(true)} disabled={!selected}
+              style={{ width: "100%", padding: "13px", borderRadius: 10, border: "none", background: selected ? C.forest : C.border, color: selected ? "#fff" : C.stone, fontWeight: 700, fontSize: 15, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
+              {selected ? `Plant ${selected.crop} here` : "Select a crop above"}
+            </button>
+          </>
+        )}
+
+        {state === "ready" && confirming && selected && (
+          <div style={{ paddingTop: 8 }}>
+            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>{selected.crop}</div>
+              <div style={{ fontSize: 13, color: C.stone, marginBottom: 8 }}>{selected.reason}</div>
+              {selected.sow_note && <div style={{ fontSize: 12, color: C.forest }}>🗓 {selected.sow_note}</div>}
+            </div>
+            <div style={{ fontSize: 13, color: "#1a1a1a", marginBottom: 20 }}>
+              This will add <strong>{selected.crop}</strong> to <strong>{area.name}</strong> as a planned crop. You can add variety and dates from the Crops tab.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirming(false)}
+                style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                Back
+              </button>
+              <button onClick={confirmAdd} disabled={adding}
+                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: adding ? 0.6 : 1 }}>
+                {adding ? "Adding…" : "Confirm & Add Crop"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Harvest Forecast Card ─────────────────────────────────────────────────────
 
 function HarvestForecastCard({ item, onHarvest, pending }) {
@@ -759,9 +903,10 @@ function GardenView() {
     setSaving(false);
   };
 
-  const [editingArea,  setEditingArea]  = useState(null);
-  const [editAreaForm, setEditAreaForm] = useState({ name: "", type: "" });
-  const [confirmArea,  setConfirmArea]  = useState(null);
+  const [editingArea,    setEditingArea]    = useState(null);
+  const [editAreaForm,   setEditAreaForm]   = useState({ name: "", type: "" });
+  const [confirmArea,    setConfirmArea]    = useState(null);
+  const [suggestArea,    setSuggestArea]    = useState(null);
 
   const saveEditArea = async (areaId) => {
     setSaving(true);
@@ -836,6 +981,14 @@ function GardenView() {
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>
           No locations yet. Use the + Location button above.
         </div>
+      )}
+
+      {suggestArea && (
+        <PlantingSuggestionsSheet
+          area={suggestArea}
+          onClose={() => setSuggestArea(null)}
+          onAddCrop={() => { setSuggestArea(null); load(); }}
+        />
       )}
 
       {locations.map(loc => (
@@ -977,7 +1130,11 @@ function GardenView() {
                       </div>
                     )}
                     {areaCrops.length === 0 && (
-                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty — add crops via the Add tab</div>
+                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
+                      <button onClick={() => setSuggestArea(area)}
+                        style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        🌱 What should I plant here?
+                      </button>
                     )}
                   </>
                 )}
