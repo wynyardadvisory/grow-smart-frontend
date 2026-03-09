@@ -149,18 +149,9 @@ function AuthScreen({ onAuth }) {
 
 // ── Harvest Forecast Card ─────────────────────────────────────────────────────
 
-function HarvestForecastCard({ item, onHarvest }) {
-  const [sliding, setSliding] = useState(false);
-  const [done,    setDone]    = useState(false);
-
-  const handleToggle = () => {
-    if (done) return;
-    setSliding(true);
-    setTimeout(() => { setDone(true); setTimeout(onHarvest, 300); }, 400);
-  };
-
-  const borderColor = done ? C.leaf : sliding ? C.amber : C.red;
-  const bgColor     = done ? "#edf7ec" : sliding ? "#fff8ed" : C.cardBg;
+function HarvestForecastCard({ item, onHarvest, pending }) {
+  const borderColor = pending ? C.amber : C.red;
+  const bgColor     = pending ? "#fff8ed" : C.cardBg;
 
   return (
     <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 10, padding: "12px 14px", transition: "all 0.3s" }}>
@@ -169,9 +160,9 @@ function HarvestForecastCard({ item, onHarvest }) {
       <div style={{ fontSize: 11, color: C.stone, marginTop: 2, marginBottom: 10 }}>
         {new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(item.window_end).toLocaleDateString("en-GB", { month: "short" })}
       </div>
-      <button onClick={handleToggle} disabled={done}
-        style={{ width: "100%", padding: "7px", borderRadius: 8, border: `1px solid ${borderColor}`, background: done ? C.leaf : "transparent", color: done ? "#fff" : borderColor, fontWeight: 700, fontSize: 11, cursor: done ? "default" : "pointer", transition: "all 0.3s" }}>
-        {done ? "✓ Harvested" : sliding ? "Harvesting…" : "Mark Harvested"}
+      <button onClick={() => !pending && onHarvest()}
+        style={{ width: "100%", padding: "7px", borderRadius: 8, border: `1px solid ${borderColor}`, background: pending ? C.amber : "transparent", color: pending ? "#fff" : borderColor, fontWeight: 700, fontSize: 11, cursor: pending ? "default" : "pointer", transition: "all 0.3s" }}>
+        {pending ? "Logging…" : "Mark Harvested"}
       </button>
     </div>
   );
@@ -573,7 +564,7 @@ function Dashboard() {
           <SectionLabel>Harvest Forecast</SectionLabel>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             {data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id)).map((h, i) => (
-              <HarvestForecastCard key={i} item={h} onHarvest={() => setPendingHarvest(h)} />
+              <HarvestForecastCard key={i} item={h} pending={pendingHarvest?.crop_instance_id === h.crop_instance_id} onHarvest={() => setPendingHarvest(h)} />
             ))}
           </div>
         </>
