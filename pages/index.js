@@ -9,7 +9,7 @@
  * All API calls send the Supabase JWT as Bearer token.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ── Supabase client (frontend) ────────────────────────────────────────────────
@@ -143,6 +143,95 @@ function AuthScreen({ onAuth }) {
           {isSignUp ? "Already have an account? Sign in" : "No account? Sign up"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Profile Photo Greeting ───────────────────────────────────────────────────
+// Small profile photo circle shown in the greeting block on Dashboard.
+
+function ProfilePhotoGreeting({ photoUrl, onUploaded }) {
+  const [url, setUrl] = useState(photoUrl);
+  const inputRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const dim    = Math.min(bitmap.width, bitmap.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = Math.min(dim, 600);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, (bitmap.width - dim) / 2, (bitmap.height - dim) / 2, dim, dim, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+      const result = await apiFetch("/photos/profile", { method: "POST", body: JSON.stringify({ base64, mime_type: "image/jpeg" }) });
+      setUrl(result.photo_url);
+      onUploaded(result.photo_url);
+    } catch (err) { console.error(err); }
+  };
+
+  return (
+    <div onClick={() => inputRef.current?.click()} style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid rgba(255,255,255,0.4)", cursor: "pointer", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {url
+        ? <img src={url} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : <span style={{ fontSize: 20, opacity: 0.7 }}>👤</span>
+      }
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: "none" }} />
+    </div>
+  );
+}
+
+// ── Photo Circle ─────────────────────────────────────────────────────────────
+// Tappable circular photo. Shows placeholder if no photo. Uploads on tap.
+
+function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷" }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      // Crop to square using canvas before upload
+      const bitmap = await createImageBitmap(file);
+      const dim    = Math.min(bitmap.width, bitmap.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = Math.min(dim, 800);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap,
+        (bitmap.width  - dim) / 2, (bitmap.height - dim) / 2, dim, dim,
+        0, 0, canvas.width, canvas.height
+      );
+      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+      const result = await apiFetch(endpoint, {
+        method: "POST",
+        body: JSON.stringify({ base64, mime_type: "image/jpeg" }),
+      });
+      onUploaded(result.photo_url);
+    } catch (err) { console.error("Photo upload failed:", err); }
+    setUploading(false);
+  };
+
+  return (
+    <div onClick={() => !uploading && inputRef.current?.click()}
+      style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+               background: photoUrl ? "transparent" : "#e8efe9",
+               border: `2px solid ${photoUrl ? C.sage : C.border}`,
+               display: "flex", alignItems: "center", justifyContent: "center",
+               cursor: "pointer", position: "relative" }}>
+      {photoUrl
+        ? <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : <span style={{ fontSize: size * 0.35, opacity: 0.5 }}>{uploading ? "⏳" : placeholder}</span>
+      }
+      {!uploading && (
+        <div style={{ position: "absolute", bottom: 0, right: 0, width: size * 0.32, height: size * 0.32,
+                      background: C.forest, borderRadius: "50%", display: "flex", alignItems: "center",
+                      justifyContent: "center", fontSize: size * 0.15, color: "#fff" }}>+</div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" capture="environment"
+        onChange={handleFile} style={{ display: "none" }} />
     </div>
   );
 }
@@ -445,9 +534,12 @@ function Dashboard() {
   return (
     <div>
       {/* Header */}
-      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12 }}>
-        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 2, letterSpacing: 1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
-        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 2, letterSpacing: 1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+        </div>
+        <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
       </div>
 
       {/* Weather + traffic lights strip */}
@@ -750,7 +842,11 @@ function GardenView() {
         <div key={loc.id} style={{ marginBottom: 28 }}>
           {/* Location header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
+                onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
+            </div>
             <button onClick={() => { setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
               style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
               + Add area
@@ -841,9 +937,13 @@ function GardenView() {
                 ) : (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: areaCrops.length > 0 ? 10 : 0 }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
-                        <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{area.type.replace(/_/g, " ")}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id}
+                          onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
+                          <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{area.type.replace(/_/g, " ")}</div>
+                        </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ background: C.offwhite, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600 }}>
@@ -1329,7 +1429,7 @@ function ProfileScreen({ session }) {
 
   useEffect(() => {
     apiFetch("/auth/profile")
-      .then(p => { setForm({ name: p.name || "", postcode: p.postcode || "" }); setLoading(false); })
+      .then(p => { setForm({ name: p.name || "", postcode: p.postcode || "", photo_url: p.photo_url || null }); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
@@ -1369,6 +1469,12 @@ function ProfileScreen({ session }) {
   return (
     <div>
       <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 24, color: "#1a1a1a" }}>Profile</div>
+
+      {/* Profile photo */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+        <PhotoCircle photoUrl={form.photo_url} size={80} endpoint="/photos/profile"
+          onUploaded={url => setForm(f => ({ ...f, photo_url: url }))} placeholder="👤" />
+      </div>
 
       {/* Account info */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
