@@ -129,7 +129,7 @@ function AuthScreen({ onAuth }) {
     <div style={{ padding: "40px 24px", maxWidth: 400, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontSize: 36 }}>🌱</div>
-        <div style={{ fontFamily: "serif", fontSize: 26, fontWeight: 700, color: C.forest, marginTop: 8 }}>Grow Smart</div>
+        <div style={{ fontFamily: "serif", fontSize: 26, fontWeight: 700, color: C.forest, marginTop: 8 }}>VerCro</div>
         <div style={{ color: C.stone, fontSize: 13, marginTop: 4 }}>{isSignUp ? "Create your account" : "Sign in to your garden"}</div>
       </div>
       {error && <ErrorMsg msg={error} />}
@@ -242,7 +242,7 @@ function Dashboard() {
       {/* Header */}
       <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12 }}>
         <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 2, letterSpacing: 1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif" }}>Grow Smart 🌱</div>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif" }}>VerCro 🌱</div>
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
       </div>
 
@@ -1202,7 +1202,7 @@ function ProfileScreen({ session }) {
         Sign Out
       </button>
 
-      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>Grow Smart — version 1.0</div>
+      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>VerCro — version 1.0</div>
     </div>
   );
 }
@@ -1401,7 +1401,7 @@ export default function GrowSmart() {
       {/* Header */}
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Grow Smart 🌱</div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>VerCro 🌱</div>
         </div>
       </div>
 
@@ -1425,4 +1425,4 @@ export default function GrowSmart() {
       </div>
     </div>
   );
-}// Sun  8 Mar 2026 23:43:20 GMT
+}
