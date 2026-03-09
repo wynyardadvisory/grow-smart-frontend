@@ -564,7 +564,7 @@ function Dashboard() {
           <SectionLabel>Harvest Forecast</SectionLabel>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             {data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id)).map((h, i) => (
-              <HarvestForecastCard key={i} item={h} pending={pendingHarvest?.crop_instance_id === h.crop_instance_id} onHarvest={() => setPendingHarvest(h)} />
+              <HarvestForecastCard key={i} item={h} pending={!!pendingHarvest && pendingHarvest === h} onHarvest={() => setPendingHarvest(h)} />
             ))}
           </div>
         </>
