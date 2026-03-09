@@ -177,7 +177,7 @@ function ProfilePhotoGreeting({ photoUrl, onUploaded }) {
         ? <img src={url} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         : <span style={{ fontSize: 20, opacity: 0.7 }}>👤</span>
       }
-      <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: "none" }} />
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
     </div>
   );
 }
@@ -230,7 +230,7 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
                       background: C.forest, borderRadius: "50%", display: "flex", alignItems: "center",
                       justifyContent: "center", fontSize: size * 0.15, color: "#fff" }}>+</div>
       )}
-      <input ref={inputRef} type="file" accept="image/*" capture="environment"
+      <input ref={inputRef} type="file" accept="image/*"
         onChange={handleFile} style={{ display: "none" }} />
     </div>
   );
@@ -564,7 +564,7 @@ function HarvestModal({ item, onClose, onSaved }) {
               ) : (
                 <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: 10, padding: "14px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
                   📷 Add a photo
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} />
+                  <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                 </label>
               )}
             </div>
