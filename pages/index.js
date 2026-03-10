@@ -3453,12 +3453,16 @@ export default function GrowSmart() {
   const [showFeedback, setShowFeedback] = useState(false);
 
   // iOS install prompt — show if on iOS Safari and not installed as PWA
-  const isIOS        = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isInStandalone = window.navigator.standalone === true;
-  const isSafari     = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const [showIOSBanner, setShowIOSBanner] = useState(
-    isIOS && isSafari && !isInStandalone && !sessionStorage.getItem("ios-banner-dismissed")
-  );
+  const isIOS        = typeof window !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = typeof window !== "undefined" && window.navigator.standalone === true;
+  const isSafari     = typeof window !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const [showIOSBanner, setShowIOSBanner] = useState(false);
+
+  useEffect(() => {
+    if (isIOS && isSafari && !isInStandalone && !sessionStorage.getItem("ios-banner-dismissed")) {
+      setShowIOSBanner(true);
+    }
+  }, []);
 
   const dismissIOSBanner = () => {
     sessionStorage.setItem("ios-banner-dismissed", "1");
