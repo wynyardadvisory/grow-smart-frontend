@@ -2781,9 +2781,15 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
     setLoading(true);
 
     try {
-      // Compress image before sending
-      const compressed = await compressImage(file, 800, 0.8);
-      const base64 = compressed.split(",")[1];
+      // Compress image inline — max 800px, 70% quality, stay under 4.5mb body limit
+      const bitmap = await createImageBitmap(file);
+      const maxDim = 800;
+      const scale  = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(bitmap.width  * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
 
       const data = await apiFetch("/barcode/scan-image", {
         method: "POST",
