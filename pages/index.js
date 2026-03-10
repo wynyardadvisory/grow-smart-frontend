@@ -2506,7 +2506,7 @@ function FeedsScreen() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); loadAllHarvestsForShare(); }, []);
+  useEffect(() => { load(); }, []);
 
   // Derive effective brand/form for filtering
   const effectiveBrand = brand === "Other" ? null : brand;
