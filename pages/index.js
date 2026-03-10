@@ -1705,14 +1705,16 @@ function CropList() {
       ]);
       setCrops(cropsData);
       setAreas(areasData);
-      // Load latest photo for each crop (for thumbnail)
+      // Load latest photo for each crop (for thumbnail) — fail silently if table missing
       const photoMap = {};
-      await Promise.all(cropsData.map(async crop => {
-        try {
-          const photos = await apiFetch(`/crops/${crop.id}/photos`);
-          if (photos.length > 0) photoMap[crop.id] = photos[0].photo_url;
-        } catch {}
-      }));
+      try {
+        await Promise.allSettled(cropsData.map(async crop => {
+          try {
+            const photos = await apiFetch(`/crops/${crop.id}/photos`);
+            if (Array.isArray(photos) && photos.length > 0) photoMap[crop.id] = photos[0].photo_url;
+          } catch {}
+        }));
+      } catch {}
       setCropPhotos(photoMap);
     } catch (e) { setError(e.message); }
     setLoading(false);
