@@ -966,6 +966,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         )}
       </div>
     </div>
+    </>
   );
 }
 
