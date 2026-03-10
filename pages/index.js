@@ -3265,13 +3265,38 @@ function AdminFeedbackList() {
   );
 }
 
+// ── Metric helpers ────────────────────────────────────────────────────────────
+function MetricSection({ title, children }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>{title}</div>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MetricRow({ label, val, sub, highlight }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 14px", borderBottom: `1px solid ${C.border}` }}>
+      <div>
+        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{label}</div>
+        {sub && <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{sub}</div>}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: highlight ? C.forest : "#1a1a1a", fontFamily: "serif" }}>{val ?? "—"}</div>
+    </div>
+  );
+}
+
 // ── Admin Screen ─────────────────────────────────────────────────────────────
 // Only visible to mark@wynyardadvisory.co.uk
 
 function AdminScreen() {
-  const [tab,       setAdminTab] = useState("crops");
+  const [tab,       setAdminTab] = useState("metrics");
   const [crops,     setCrops]    = useState([]);
   const [users,     setUsers]    = useState([]);
+  const [metrics,   setMetrics]  = useState(null);
   const [loading,   setLoading]  = useState(true);
   const [error,     setError]    = useState(null);
   const [acting,    setActing]   = useState(null); // id of crop being approved/rejected
@@ -3287,6 +3312,9 @@ function AdminScreen() {
       } else if (tab === "users") {
         const data = await apiFetch("/admin/users");
         setUsers(data);
+      } else if (tab === "metrics") {
+        const data = await apiFetch("/admin/metrics");
+        setMetrics(data);
       }
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -3316,14 +3344,15 @@ function AdminScreen() {
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>Internal tools — only visible to you</div>
 
       {/* Sub tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
         {[
-          { id: "crops", label: "🌱 Crop queue" },
-          { id: "users", label: "👤 Users" },
+          { id: "metrics",  label: "📊 Metrics" },
+          { id: "crops",    label: "🌱 Crop queue" },
+          { id: "users",    label: "👤 Users" },
           { id: "feedback", label: "💬 Feedback" },
         ].map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
-            style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             {t.label}
           </button>
         ))}
@@ -3331,6 +3360,88 @@ function AdminScreen() {
 
       {error && <ErrorMsg msg={error} />}
       {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
+
+      {/* ── Metrics dashboard ── */}
+      {!loading && tab === "metrics" && metrics && (
+        <div>
+          {/* Hero — 5 key numbers */}
+          <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "20px", marginBottom: 16, color: "#fff" }}>
+            <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Founder Dashboard</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              {[
+                { label: "Users",     val: metrics.totalUsers,          sub: `+${metrics.newUsersWeek} this week` },
+                { label: "WAU",       val: metrics.wau,                 sub: `${metrics.dau} today` },
+                { label: "Crops",     val: metrics.totalCrops,          sub: `${metrics.avgCropsPerUser} avg/user` },
+                { label: "Tasks done",val: metrics.tasksCompleted,      sub: `${metrics.taskCompletionRate}% rate` },
+                { label: "Harvests",  val: metrics.harvestLogs,         sub: "logged" },
+                { label: "Activation",val: `${metrics.activationRate}%`,sub: `${metrics.activatedCount} users` },
+              ].map(s => (
+                <div key={s.label}>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{s.val}</div>
+                  <div style={{ fontSize: 10, opacity: 0.85, fontWeight: 700, marginTop: 1 }}>{s.label}</div>
+                  <div style={{ fontSize: 10, opacity: 0.55, marginTop: 1 }}>{s.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* User growth */}
+          <MetricSection title="📈 User Growth">
+            <MetricRow label="Total users"         val={metrics.totalUsers} />
+            <MetricRow label="New this week"        val={metrics.newUsersWeek} />
+            <MetricRow label="Week-on-week growth"  val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} highlight={metrics.wowGrowth > 0} />
+            <MetricRow label="Activation rate"      val={`${metrics.activationRate}%`} sub="users who added a crop" highlight={metrics.activationRate >= 70} />
+          </MetricSection>
+
+          {/* Engagement */}
+          <MetricSection title="🔥 Engagement">
+            <MetricRow label="Weekly active users (WAU)" val={metrics.wau} sub={`${metrics.totalUsers > 0 ? Math.round(metrics.wau/metrics.totalUsers*100) : 0}% of all users`} />
+            <MetricRow label="Daily active users (DAU)"  val={metrics.dau} />
+            <MetricRow label="DAU / WAU ratio"           val={metrics.dauWauRatio || "—"} sub="target: 0.3–0.5" highlight={parseFloat(metrics.dauWauRatio) >= 0.3} />
+          </MetricSection>
+
+          {/* Garden usage */}
+          <MetricSection title="🌱 Garden Usage">
+            <MetricRow label="Gardens created"     val={metrics.totalLocations} />
+            <MetricRow label="Growing areas"       val={metrics.totalAreas} />
+            <MetricRow label="Crops logged"        val={metrics.totalCrops} />
+            <MetricRow label="Avg crops per user"  val={metrics.avgCropsPerUser} sub="target: 5–15" highlight={parseFloat(metrics.avgCropsPerUser) >= 5} />
+            <MetricRow label="Crops sown"          val={metrics.cropsSown} />
+            <MetricRow label="Crops harvested"     val={metrics.cropsHarvested} />
+            <MetricRow label="Harvest logs"        val={metrics.harvestLogs} />
+          </MetricSection>
+
+          {/* Task engine */}
+          <MetricSection title="✅ Task Engine">
+            <MetricRow label="Tasks generated"     val={metrics.tasksGenerated} />
+            <MetricRow label="Tasks completed"     val={metrics.tasksCompleted} />
+            <MetricRow label="Completion rate"     val={`${metrics.taskCompletionRate}%`} sub="target: 40–60%" highlight={metrics.taskCompletionRate >= 40} />
+          </MetricSection>
+
+          {/* Retention */}
+          <MetricSection title="📅 Retention">
+            <MetricRow label="Week 1 retention"   val={metrics.week1Retention !== null ? `${metrics.week1Retention}%` : "—"} sub="target: 60%+" highlight={metrics.week1Retention >= 60} />
+            <MetricRow label="Week 4 retention"   val={metrics.week4Retention !== null ? `${metrics.week4Retention}%` : "—"} sub="target: 35–50%" highlight={metrics.week4Retention >= 35} />
+          </MetricSection>
+
+          {/* Feeds & photos */}
+          <MetricSection title="📷 Feeds & Photos">
+            <MetricRow label="Feeds logged"        val={metrics.totalFeeds} />
+            <MetricRow label="Avg feeds per user"  val={metrics.avgFeedsPerUser} />
+            <MetricRow label="Growth diary photos" val={metrics.totalPhotos} />
+          </MetricSection>
+
+          {/* Dataset moat */}
+          <MetricSection title="🧬 Dataset">
+            <MetricRow label="Crop varieties tracked" val={metrics.totalVarieties} />
+            <MetricRow label="Yield data points"      val={metrics.yieldDataPoints} />
+          </MetricSection>
+
+          <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+            Live data — refreshes on load
+          </div>
+        </div>
+      )}
 
       {/* ── Crop queue ── */}
       {!loading && tab === "crops" && (
