@@ -1566,6 +1566,124 @@ function GardenView() {
 }
 
 // ── Crops list ────────────────────────────────────────────────────────────────
+// ── Crop Growth Diary ────────────────────────────────────────────────────────
+
+function CropGrowthDiary({ crop, onClose }) {
+  const [photos,   setPhotos]   = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [uploading,setUploading]= useState(false);
+  const [caption,  setCaption]  = useState("");
+  const [lightbox, setLightbox] = useState(null); // photo url to show full screen
+
+  useEffect(() => { loadPhotos(); }, []);
+
+  const loadPhotos = async () => {
+    try {
+      const data = await apiFetch(`/crops/${crop.id}/photos`);
+      setPhotos(data);
+    } catch (e) {}
+    setLoading(false);
+  };
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const bitmap = await createImageBitmap(file);
+      const maxDim = 1200;
+      const scale  = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(bitmap.width  * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+      await apiFetch(`/crops/${crop.id}/photos`, {
+        method: "POST",
+        body: JSON.stringify({ base64, caption: caption.trim() || null }),
+      });
+      setCaption("");
+      await loadPhotos();
+    } catch (e) { console.error(e); }
+    setUploading(false);
+  };
+
+  const deletePhoto = async (photoId) => {
+    if (!confirm("Remove this photo?")) return;
+    try {
+      await apiFetch(`/crops/${crop.id}/photos/${photoId}`, { method: "DELETE" });
+      setPhotos(p => p.filter(x => x.id !== photoId));
+    } catch (e) {}
+  };
+
+  return (
+    <>
+    {/* Lightbox */}
+    {lightbox && (
+      <div onClick={() => setLightbox(null)}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <img src={lightbox} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 8, objectFit: "contain" }} />
+        <button onClick={() => setLightbox(null)}
+          style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", fontSize: 24, width: 40, height: 40, borderRadius: "50%", cursor: "pointer" }}>×</button>
+      </div>
+    )}
+
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+              {getCropEmoji(crop.name)} {crop.name} — Growth Diary
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{photos.length} photo{photos.length !== 1 ? "s" : ""}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
+        </div>
+
+        {/* Add photo */}
+        <div style={{ marginBottom: 20 }}>
+          <input value={caption} onChange={e => setCaption(e.target.value)}
+            placeholder="Add a caption (optional)" style={{ ...inputStyle, marginBottom: 8 }} />
+          <label htmlFor="crop-diary-photo"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: "serif" }}>
+            {uploading ? "Uploading…" : "📷 Add photo"}
+          </label>
+          <input id="crop-diary-photo" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
+        </div>
+
+        {/* Photos grid */}
+        {loading ? <Spinner /> : photos.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "32px 0", color: C.stone }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>📷</div>
+            <div style={{ fontSize: 14 }}>No photos yet — document your crop's progress!</div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {photos.map(p => (
+              <div key={p.id} style={{ position: "relative" }}>
+                <img src={p.photo_url} alt={p.caption || ""} onClick={() => setLightbox(p.photo_url)}
+                  style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, cursor: "pointer", display: "block" }} />
+                <button onClick={() => deletePhoto(p.id)}
+                  style={{ position: "absolute", top: 5, right: 5, background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: 22, height: 22, borderRadius: "50%", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                {p.caption && (
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4, lineHeight: 1.3 }}>{p.caption}</div>
+                )}
+                <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>
+                  {new Date(p.taken_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+    </>
+  );
+}
+
 function CropList() {
   const [crops,    setCrops]   = useState([]);
   const [loading,  setLoading] = useState(true);
@@ -1576,6 +1694,8 @@ function CropList() {
   const [areas,         setAreas]         = useState([]);
   const [saving,        setSaving]        = useState(false);
   const [confirm,       setConfirm]       = useState(null);
+  const [diary,         setDiary]         = useState(null);  // crop to show diary for
+  const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
 
   const load = useCallback(async () => {
     try {
@@ -1585,6 +1705,15 @@ function CropList() {
       ]);
       setCrops(cropsData);
       setAreas(areasData);
+      // Load latest photo for each crop (for thumbnail)
+      const photoMap = {};
+      await Promise.all(cropsData.map(async crop => {
+        try {
+          const photos = await apiFetch(`/crops/${crop.id}/photos`);
+          if (photos.length > 0) photoMap[crop.id] = photos[0].photo_url;
+        } catch {}
+      }));
+      setCropPhotos(photoMap);
     } catch (e) { setError(e.message); }
     setLoading(false);
   }, []);
@@ -1648,6 +1777,7 @@ function CropList() {
 
   return (
     <div>
+      {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} growing</div>
@@ -1749,13 +1879,27 @@ function CropList() {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1 }}>
-                  <div style={{ fontSize: 28, lineHeight: 1, marginTop: 2 }}>{getCropEmoji(crop.name)}</div>
+                  {/* Thumbnail or emoji */}
+                  <div onClick={() => setDiary(crop)} style={{ cursor: "pointer", flexShrink: 0 }}>
+                    {cropPhotos[crop.id] ? (
+                      <img src={cropPhotos[crop.id]} alt={crop.name}
+                        style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover", display: "block" }} />
+                    ) : (
+                      <div style={{ width: 48, height: 48, borderRadius: 10, background: C.offwhite, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                        {getCropEmoji(crop.name)}
+                      </div>
+                    )}
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
                     <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => setDiary(crop)}
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                    📷
+                  </button>
                   <button onClick={() => startEdit(crop)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
                     Edit
