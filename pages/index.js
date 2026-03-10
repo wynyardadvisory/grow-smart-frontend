@@ -2756,295 +2756,216 @@ function FeedsScreen() {
 
 // ── Navigation tabs ───────────────────────────────────────────────────────────
 // ── Barcode Scanner ───────────────────────────────────────────────────────────
-// Uses ZXing via CDN for in-browser barcode scanning. No native app needed.
-// Falls back to manual entry if camera unavailable.
+// Uses native <input type="file" capture="environment" accept="image/*"> for iOS
+// compatibility — no library needed, works in all browsers including iOS Safari PWA.
+// Photo is sent to the API which uses Claude Vision to read the barcode/product.
 
 function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
-  const videoRef   = useRef(null);
-  const [status,   setStatus]   = useState("starting"); // starting | scanning | found | error | notfound
-  const [barcode,  setBarcode]  = useState(null);
-  const [result,   setResult]   = useState(null);
-  const [loading,  setLoading]  = useState(false);
+  const [status,     setStatus]     = useState("idle"); // idle | scanning | found | error
+  const [result,     setResult]     = useState(null);
+  const [loading,    setLoading]    = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [showManual, setShowManual] = useState(false);
-  const readerRef  = useRef(null);
-  const streamRef  = useRef(null);
+  const [preview,    setPreview]    = useState(null);
+  const fileRef = useRef(null);
 
-  useEffect(() => {
-    startScanner();
-    return () => stopScanner();
-  }, []);
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const stopScanner = () => {
-    if (readerRef.current) {
-      try { readerRef.current.stop(); } catch(e) {}
-      try { readerRef.current.clear(); } catch(e) {}
-    }
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); }
-  };
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = ev => setPreview(ev.target.result);
+    reader.readAsDataURL(file);
 
-  const startScanner = async () => {
-    setStatus("starting");
-    try {
-      // Load html5-qrcode — better iOS Safari support than ZXing
-      if (!window.Html5Qrcode) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement("script");
-          s.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
-          s.onload = resolve;
-          s.onerror = () => reject(new Error("Failed to load scanner library"));
-          document.head.appendChild(s);
-        });
-      }
-
-      const scannerId = "vercro-barcode-scanner";
-      // Ensure container exists
-      let container = document.getElementById(scannerId);
-      if (!container) {
-        container = document.createElement("div");
-        container.id = scannerId;
-        container.style.display = "none";
-        document.body.appendChild(container);
-      }
-
-      const scanner = new window.Html5Qrcode(scannerId);
-      readerRef.current = scanner;
-      setStatus("scanning");
-
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 260, height: 160 }, aspectRatio: 1.0 },
-        async (decodedText) => {
-          stopScanner();
-          setBarcode(decodedText);
-          setStatus("found");
-          await lookupBarcode(decodedText);
-        },
-        (errorMsg) => { /* scan attempts — ignore */ }
-      );
-
-      // Pipe the video into our visible video element
-      setTimeout(() => {
-        const internalVideo = document.querySelector("#vercro-barcode-scanner video");
-        if (internalVideo && videoRef.current) {
-          const stream = internalVideo.srcObject;
-          if (stream) {
-            streamRef.current = stream;
-            videoRef.current.srcObject = stream;
-          }
-        }
-      }, 800);
-
-    } catch (e) {
-      console.error("Scanner error:", e.message);
-      setStatus("error");
-    }
-  };
-
-  const lookupBarcode = async (code) => {
+    setStatus("scanning");
     setLoading(true);
+
     try {
-      const data = await apiFetch(`/barcode/${encodeURIComponent(code)}?mode=${mode}`);
+      // Compress image before sending
+      const compressed = await compressImage(file, 800, 0.8);
+      const base64 = compressed.split(",")[1];
+
+      const data = await apiFetch("/barcode/scan-image", {
+        method: "POST",
+        body: JSON.stringify({ image: base64, mode }),
+      });
+
       setResult(data);
+      setStatus("found");
     } catch (e) {
-      setResult({ found: false, barcode: code });
+      console.error("Scan error:", e);
+      setStatus("error");
     }
     setLoading(false);
   };
 
   const handleManual = async () => {
     if (!manualCode.trim()) return;
-    setBarcode(manualCode.trim());
-    setStatus("found");
+    setLoading(true);
     setShowManual(false);
-    await lookupBarcode(manualCode.trim());
+    setStatus("scanning");
+    try {
+      const data = await apiFetch(`/barcode/${encodeURIComponent(manualCode.trim())}?mode=${mode}`);
+      setResult(data);
+      setStatus("found");
+    } catch (e) {
+      setStatus("error");
+    }
+    setLoading(false);
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 2000, display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.7)", zIndex: 10 }}>
-        <div style={{ color: "#fff", fontWeight: 700, fontFamily: "serif", fontSize: 16 }}>
-          Scan {mode === "crop" ? "seed packet" : "feed product"}
-        </div>
-        <button onClick={() => { stopScanner(); onClose(); }}
-          style={{ background: "none", border: "none", color: "#fff", fontSize: 24, cursor: "pointer" }}>×</button>
-      </div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
 
-      {/* Camera view */}
-      {(status === "starting" || status === "scanning") && (
-        <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          {/* Scanning overlay */}
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 260, height: 160, border: "2px solid rgba(255,255,255,0.8)", borderRadius: 12, position: "relative" }}>
-              <div style={{ position: "absolute", top: -1, left: -1, width: 30, height: 30, borderTop: "3px solid #7FB069", borderLeft: "3px solid #7FB069", borderRadius: "12px 0 0 0" }} />
-              <div style={{ position: "absolute", top: -1, right: -1, width: 30, height: 30, borderTop: "3px solid #7FB069", borderRight: "3px solid #7FB069", borderRadius: "0 12px 0 0" }} />
-              <div style={{ position: "absolute", bottom: -1, left: -1, width: 30, height: 30, borderBottom: "3px solid #7FB069", borderLeft: "3px solid #7FB069", borderRadius: "0 0 0 12px" }} />
-              <div style={{ position: "absolute", bottom: -1, right: -1, width: 30, height: 30, borderBottom: "3px solid #7FB069", borderRight: "3px solid #7FB069", borderRadius: "0 0 12px 0" }} />
-              <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 2, background: "rgba(127,176,105,0.7)", animation: "none" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+              Scan {mode === "crop" ? "seed packet" : "product"} 📷
             </div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Take a photo of the barcode</div>
           </div>
-          <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, textAlign: "center" }}>
-            <div style={{ color: "#fff", fontSize: 13, opacity: 0.8, marginBottom: 12 }}>
-              {status === "starting" ? "Starting camera…" : "Point at barcode on packet"}
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
+        </div>
+
+        {/* Idle — show scan button */}
+        {status === "idle" && (
+          <>
+            <div style={{ background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}
+              onClick={() => fileRef.current?.click()}>
+              <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
+              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+                Take a photo of the barcode
+              </div>
+              <div style={{ fontSize: 13, color: C.stone }}>Point your camera at the barcode on the packet</div>
             </div>
-            <button onClick={() => setShowManual(true)}
-              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", borderRadius: 20, padding: "8px 20px", fontSize: 12, cursor: "pointer" }}>
-              Enter code manually
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhoto}
+              style={{ display: "none" }}
+            />
+            <button onClick={() => fileRef.current?.click()}
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Open camera
             </button>
+            <button onClick={() => setShowManual(true)}
+              style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Enter barcode number manually
+            </button>
+          </>
+        )}
+
+        {/* Scanning / loading */}
+        {status === "scanning" && (
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 200, objectFit: "cover" }} />}
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
+            <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 4 }}>Identifying product…</div>
+            <div style={{ fontSize: 13, color: C.stone }}>Searching product databases</div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Manual entry overlay */}
-      {showManual && (
-        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%" }}>
-            <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
-            <input value={manualCode} onChange={e => setManualCode(e.target.value)}
-              placeholder="e.g. 5000174002017" autoFocus
-              style={{ ...inputStyle, marginBottom: 12 }}
-              onKeyDown={e => e.key === "Enter" && handleManual()} />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowManual(false)}
-                style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
-              <button onClick={handleManual}
-                style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Look up</button>
+        {/* Found */}
+        {status === "found" && result?.found && (
+          <>
+            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <div style={{ fontSize: 36 }}>{getCropEmoji(result.name || "")}</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 18, fontFamily: "serif", color: "#1a1a1a" }}>{result.name}</div>
+                {result.brand && <div style={{ fontSize: 13, color: C.stone }}>{result.brand}</div>}
+                <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Product identified</div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {status === "error" && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📷</div>
-          <div style={{ color: "#fff", fontWeight: 700, fontSize: 16, fontFamily: "serif", marginBottom: 8, textAlign: "center" }}>Camera not available</div>
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 24, textAlign: "center" }}>Try entering the barcode number manually instead.</div>
-          <button onClick={() => setShowManual(true)}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-            Enter code manually
-          </button>
-        </div>
-      )}
-
-      {/* Found — loading or result */}
-      {status === "found" && (
-        <div style={{ flex: 1, background: "#fff", borderRadius: "16px 16px 0 0", marginTop: "auto", padding: "24px 20px 44px", overflowY: "auto" }}>
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-              <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 4 }}>Looking up barcode…</div>
-              <div style={{ fontSize: 13, color: C.stone }}>Searching product databases</div>
-            </div>
-          ) : result?.found ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{ fontSize: 36 }}>{getCropEmoji(result.name)}</div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 18, fontFamily: "serif", color: "#1a1a1a" }}>{result.name}</div>
-                  {result.brand && <div style={{ fontSize: 13, color: C.stone }}>{result.brand}</div>}
-                  <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Product identified</div>
+            {result.description && (
+              <div style={{ fontSize: 13, color: C.stone, marginBottom: 14, lineHeight: 1.5 }}>{result.description}</div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+              {[
+                result.variety    && { label: "Variety",     val: result.variety },
+                result.sow_window && { label: "Sow window",  val: result.sow_window },
+                result.npk        && { label: "NPK",          val: result.npk },
+                result.form       && { label: "Form",         val: result.form },
+              ].filter(Boolean).map(r => (
+                <div key={r.label} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{r.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginTop: 2 }}>{r.val}</div>
                 </div>
-              </div>
-              {result.description && (
-                <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>{result.description}</div>
-              )}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
-                {[
-                  result.variety   && { label: "Variety",    val: result.variety },
-                  result.brand     && { label: "Brand",      val: result.brand },
-                  result.sow_window && { label: "Sow window", val: result.sow_window },
-                  result.npk       && { label: "NPK",         val: result.npk },
-                  result.form      && { label: "Form",        val: result.form },
-                ].filter(Boolean).map(r => (
-                  <div key={r.label} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
-                    <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{r.label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginTop: 2 }}>{r.val}</div>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => { stopScanner(); onResult(result); }}
-                style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif" }}>
-                Add {result.name} →
+              ))}
+            </div>
+            <button onClick={() => { onResult(result); }}
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif" }}>
+              Add {result.name} →
+            </button>
+          </>
+        )}
+
+        {/* Not found */}
+        {status === "found" && !result?.found && (
+          <>
+            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
+              <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>We don't recognise this one yet</div>
+              <div style={{ fontSize: 13, color: C.stone }}>Use the dropdowns to tell us what it is and we'll look up all the growing details automatically.</div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { onResult({ found: false }); }}
+                style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+                Continue →
               </button>
-            </>
-          ) : (
-            <>
-              <div style={{ textAlign: "center", marginBottom: 20 }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
-                <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>We don't recognise this one yet</div>
-                <div style={{ fontSize: 13, color: C.stone, marginBottom: 8 }}>That's fine — use the dropdowns to tell us what it is, and we'll look up all the growing details automatically.</div>
-                <div style={{ background: C.offwhite, borderRadius: 8, padding: "8px 12px", display: "inline-block" }}>
-                  <span style={{ fontSize: 11, color: C.stone, fontFamily: "monospace" }}>{barcode}</span>
-                </div>
+              <button onClick={() => { setStatus("idle"); setPreview(null); setResult(null); }}
+                style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                Retry
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Error */}
+        {status === "error" && (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>Try again or enter the barcode manually.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { setStatus("idle"); setPreview(null); }}
+                style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Try again</button>
+              <button onClick={() => setShowManual(true)}
+                style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Manual entry</button>
+            </div>
+          </div>
+        )}
+
+        {/* Manual entry overlay */}
+        {showManual && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 24, borderRadius: "16px 16px 0 0" }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%" }}>
+              <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
+              <input value={manualCode} onChange={e => setManualCode(e.target.value)}
+                placeholder="e.g. 5000174002017" autoFocus
+                style={{ ...inputStyle, marginBottom: 12 }}
+                onKeyDown={e => e.key === "Enter" && handleManual()} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowManual(false)}
+                  style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleManual}
+                  style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Look up</button>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => { stopScanner(); onResult({ found: false, barcode }); }}
-                  style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
-                  Continue →
-                </button>
-                <button onClick={() => { setStatus("scanning"); setBarcode(null); setResult(null); startScanner(); }}
-                  style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
-                  Retry
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
 
-// ── iOS Install Banner ────────────────────────────────────────────────────────
-// Shown to iPhone/iPad users who are in Safari but haven't installed the PWA.
-// Dismissed state persisted in sessionStorage so it doesn't re-appear mid-session.
-
-function IOSInstallBanner({ onDismiss }) {
-  return (
-    <div style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 3000,
-      background: "#fff", borderTop: `3px solid ${C.forest}`,
-      padding: "16px 20px 32px", maxWidth: 440, margin: "0 auto",
-      boxShadow: "0 -4px 24px rgba(0,0,0,0.12)"
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 28 }}>🌱</div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>Add Vercro to your home screen</div>
-            <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>For the full experience including camera scanning</div>
-          </div>
-        </div>
-        <button onClick={onDismiss}
-          style={{ background: "none", border: "none", fontSize: 20, color: C.stone, cursor: "pointer", padding: "0 0 0 8px", flexShrink: 0 }}>×</button>
-      </div>
-
-      <div style={{ background: C.offwhite, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
-        <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.6 }}>
-          <div style={{ marginBottom: 6 }}>
-            <span style={{ fontWeight: 700 }}>1.</span> Tap the share button{" "}
-            <span style={{ display: "inline-block", background: "#e8e8e8", borderRadius: 6, padding: "1px 7px", fontSize: 15 }}>⎋</span>
-            {" "}at the bottom of Safari
-          </div>
-          <div style={{ marginBottom: 6 }}>
-            <span style={{ fontWeight: 700 }}>2.</span> Scroll down and tap{" "}
-            <span style={{ fontWeight: 700, color: C.forest }}>"Add to Home Screen"</span>
-          </div>
-          <div>
-            <span style={{ fontWeight: 700 }}>3.</span> Tap <span style={{ fontWeight: 700, color: C.forest }}>"Add"</span> — then open Vercro from your home screen
-          </div>
-        </div>
-      </div>
-
-      <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
-        You only need to do this once. It works like a normal app — no App Store needed.
-      </div>
-    </div>
-  );
-}
 
 // ── Feedback Sheet ────────────────────────────────────────────────────────────
 
