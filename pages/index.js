@@ -1263,7 +1263,6 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
         {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
       </div>
     </div>
-    </>
   );
 }
 
