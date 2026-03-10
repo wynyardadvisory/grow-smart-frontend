@@ -1227,11 +1227,13 @@ function GardenView() {
                       </div>
                     )}
                     {areaCrops.length === 0 && (
-                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
-                      <button onClick={() => setSuggestArea(area)}
-                        style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                        🌱 What should I plant here?
-                      </button>
+                      <>
+                        <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
+                        <button onClick={() => setSuggestArea(area)}
+                          style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                          🌱 What should I plant here?
+                        </button>
+                      </>
                     )}
                   </>
                 )}
@@ -1493,10 +1495,12 @@ function AddCrop() {
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
     status: "", sown_date: "", transplant_date: "", notes: "",
   });
-  const [saving,    setSaving]    = useState(false);
-  const [saved,     setSaved]     = useState(false);
-  const [enriching, setEnriching] = useState(false);
-  const [error,     setError]     = useState(null);
+  const [saving,      setSaving]      = useState(false);
+  const [saved,       setSaved]       = useState(false);
+  const [enriching,   setEnriching]   = useState(false);
+  const [error,       setError]       = useState(null);
+  const [step,        setStep]        = useState("form");   // "form" | "previewing" | "loading_preview" | "done"
+  const [cropProfile, setCropProfile] = useState(null);     // enriched profile to show in confirmation
 
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
@@ -1516,7 +1520,6 @@ function AddCrop() {
   const isOtherVariety = form.variety_id  === "__other__";
   const selectedCrop   = cropDefs.find(d => d.id === form.crop_def_id);
 
-  // Status options with descriptions
   const STATUS_OPTIONS = [
     { value: "planned",       label: "🗓 Planned",             hint: "I plan to grow this — not started yet" },
     { value: "sown_indoors",  label: "🪟 Sowing indoors",      hint: "Starting on windowsill, greenhouse or cold frame" },
@@ -1525,16 +1528,63 @@ function AddCrop() {
     { value: "growing",       label: "✅ Already growing",     hint: "Established and growing — add sow date below" },
   ];
 
-  // What date fields to show based on status
   const showSowDate        = ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
   const showTransplantDate = form.status === "transplanted";
   const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
                            : form.status === "sown_outdoors" ? "Date sown outdoors"
                            : "Sow date";
+  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
 
+  // ── Step 1: user hits "Review & Add" → fetch profile or generate for unknown ──
+  const handleReview = async () => {
+    setError(null);
+    const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
+    if (!cropName || !form.area_id || !form.status) return;
+
+    if (isOtherCrop) {
+      // Unknown crop — ask Claude to build a profile
+      setStep("loading_preview");
+      try {
+        const profile = await apiFetch("/crops/preview", {
+          method: "POST",
+          body: JSON.stringify({ name: cropName, variety: form.variety || null }),
+        });
+        setCropProfile(profile);
+        setStep("previewing");
+      } catch (e) {
+        setError("Could not identify crop — " + e.message);
+        setStep("form");
+      }
+    } else {
+      // Known crop — show enrichment data from crop_def
+      const def = selectedCrop;
+      const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      setCropProfile({
+        name:        def.name,
+        known:       true,
+        description: def.description || null,
+        sow_window:  def.sow_window_start && def.sow_window_end
+          ? `${monthNames[def.sow_window_start - 1]} – ${monthNames[def.sow_window_end - 1]}`
+          : null,
+        harvest_window: def.harvest_window_start && def.harvest_window_end
+          ? `${monthNames[def.harvest_window_start - 1]} – ${monthNames[def.harvest_window_end - 1]}`
+          : null,
+        spacing_cm:  def.spacing_cm || null,
+        days_to_maturity: def.days_to_maturity_min && def.days_to_maturity_max
+          ? `${def.days_to_maturity_min}–${def.days_to_maturity_max} days`
+          : null,
+        feeding_notes:    def.feeding_notes    || null,
+        companion_plants: def.companion_plants || null,
+        common_issues:    def.common_issues    || null,
+        sow_method:       def.sow_method       || null,
+      });
+      setStep("previewing");
+    }
+  };
+
+  // ── Step 2: user confirms → actually save ─────────────────────────────────
   const handleSave = async () => {
     const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
-    if ((!form.crop_def_id && !isOtherCrop) || !form.area_id || !cropName || !form.status) return;
     setSaving(true); setError(null);
     try {
       const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
@@ -1557,31 +1607,169 @@ function AddCrop() {
           notes:            form.notes || null,
           is_other_crop:    isOtherCrop,
           is_other_variety: isOtherVariety,
+          preview_profile:  cropProfile || null,
         }),
       });
 
       if (result.enriching) setEnriching(true);
-      setSaved(true);
-      setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
-      setTimeout(() => { setSaved(false); setEnriching(false); }, 8000);
-    } catch (e) { setError(e.message); }
+      setStep("done");
+      setTimeout(() => {
+        setStep("form");
+        setSaved(false); setEnriching(false); setCropProfile(null);
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+      }, 5000);
+    } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
   };
 
-  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
+  // ── Done state ────────────────────────────────────────────────────────────
+  if (step === "done") {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 24px" }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>{getCropEmoji(cropProfile?.name || "")}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>{cropProfile?.name} added!</div>
+        <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
+          {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
+        </div>
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" }); }}
+          style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+          Add Another Crop
+        </button>
+      </div>
+    );
+  }
 
+  // ── Loading preview state ─────────────────────────────────────────────────
+  if (step === "loading_preview") {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 24px" }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
+        <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {form.crop_other}</div>
+      </div>
+    );
+  }
+
+  // ── Confirmation / preview state ──────────────────────────────────────────
+  if (step === "previewing" && cropProfile) {
+    const area = areas.find(a => a.id === form.area_id);
+    const statusLabel = STATUS_OPTIONS.find(o => o.value === form.status)?.label || form.status;
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <button onClick={() => setStep("form")}
+            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 13, color: C.stone, cursor: "pointer" }}>
+            ← Back
+          </button>
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Confirm crop</div>
+        </div>
+
+        {error && <ErrorMsg msg={error} />}
+
+        {/* Crop profile card */}
+        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "20px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{ fontSize: 40 }}>{getCropEmoji(cropProfile.name)}</div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{cropProfile.name}</div>
+              {(form.variety || varieties.find(v => v.id === form.variety_id)?.name) && (
+                <div style={{ fontSize: 13, color: C.stone }}>
+                  {form.variety || varieties.find(v => v.id === form.variety_id)?.name}
+                </div>
+              )}
+              {cropProfile.known && <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Known crop</div>}
+              {!cropProfile.known && <div style={{ fontSize: 11, color: "#7b9ef7", fontWeight: 600, marginTop: 2 }}>🔍 AI identified</div>}
+            </div>
+          </div>
+
+          {cropProfile.description && (
+            <div style={{ fontSize: 13, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.5 }}>{cropProfile.description}</div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {cropProfile.sow_window && (
+              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Sow window</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.sow_window}</div>
+              </div>
+            )}
+            {cropProfile.harvest_window && (
+              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Harvest</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.harvest_window}</div>
+              </div>
+            )}
+            {cropProfile.spacing_cm && (
+              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Spacing</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.spacing_cm}cm</div>
+              </div>
+            )}
+            {cropProfile.days_to_maturity && (
+              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Matures in</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.days_to_maturity}</div>
+              </div>
+            )}
+          </div>
+
+          {cropProfile.feeding_notes && (
+            <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Feeding</div>
+              <div style={{ fontSize: 12, color: "#1a1a1a", lineHeight: 1.5 }}>{cropProfile.feeding_notes}</div>
+            </div>
+          )}
+          {cropProfile.companion_plants && (
+            <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Companion plants</div>
+              <div style={{ fontSize: 12, color: "#1a1a1a", lineHeight: 1.5 }}>{cropProfile.companion_plants}</div>
+            </div>
+          )}
+          {cropProfile.common_issues && (
+            <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 10, color: C.amber, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Watch out for</div>
+              <div style={{ fontSize: 12, color: "#1a1a1a", lineHeight: 1.5 }}>{cropProfile.common_issues}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Planting summary */}
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Your planting details</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 13, color: "#1a1a1a" }}>📍 {area?.name || "Unknown area"}</div>
+            <div style={{ fontSize: 13, color: "#1a1a1a" }}>{statusLabel}</div>
+            {form.sown_date && <div style={{ fontSize: 13, color: "#1a1a1a" }}>📅 Sown {new Date(form.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}</div>}
+            {form.notes && <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic" }}>"{form.notes}"</div>}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => setStep("form")}
+            style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+            Edit details
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Adding…" : "Add to my garden 🌱"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main form ─────────────────────────────────────────────────────────────
   return (
     <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 24, color: "#1a1a1a" }}>Add Crop</div>
-      {saved && !enriching && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Crop added — tasks will be generated</div>}
-      {saved && enriching  && <div style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, color: "#2d4fc0", fontWeight: 600, fontSize: 13 }}>✓ Crop added — identifying and enriching data 🔍</div>}
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 6, color: "#1a1a1a" }}>Add Crop</div>
+      <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>Tell us what you're growing and we'll build a task schedule for you.</div>
       {error && <ErrorMsg msg={error} />}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
         {/* Crop */}
         <div>
-          <label style={labelStyle}>Crop</label>
+          <label style={labelStyle}>What are you growing?</label>
           <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
             <option value="">Select crop…</option>
             {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -1616,26 +1804,20 @@ function AddCrop() {
 
         {/* Area */}
         <div>
-          <label style={labelStyle}>Growing Area</label>
+          <label style={labelStyle}>Where are you growing it?</label>
           <select value={form.area_id} onChange={e => set("area_id", e.target.value)} style={inputStyle}>
             <option value="">Select area…</option>
             {areas.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type?.replace("_"," ")})</option>)}
           </select>
         </div>
 
-        {/* Status — the key new field */}
+        {/* Status */}
         <div>
           <label style={labelStyle}>What stage is this crop at?</label>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {STATUS_OPTIONS.map(opt => (
-              <div key={opt.value}
-                onClick={() => set("status", opt.value)}
-                style={{
-                  border: `2px solid ${form.status === opt.value ? C.forest : C.border}`,
-                  borderRadius: 10, padding: "10px 14px", cursor: "pointer",
-                  background: form.status === opt.value ? "#f0f5f3" : C.cardBg,
-                  transition: "all 0.15s",
-                }}>
+              <div key={opt.value} onClick={() => set("status", opt.value)}
+                style={{ border: `2px solid ${form.status === opt.value ? C.forest : C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", background: form.status === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: form.status === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
               </div>
@@ -1643,7 +1825,7 @@ function AddCrop() {
           </div>
         </div>
 
-        {/* Sow date — only shown when relevant */}
+        {/* Sow date */}
         {showSowDate && (
           <div>
             <label style={labelStyle}>{sowDateLabel} <span style={{ color: C.stone, fontWeight: 400 }}>(optional)</span></label>
@@ -1652,7 +1834,7 @@ function AddCrop() {
           </div>
         )}
 
-        {/* Transplant date — only if transplanted */}
+        {/* Transplant date */}
         {showTransplantDate && (
           <div>
             <label style={labelStyle}>Date transplanted outdoors <span style={{ color: C.stone, fontWeight: 400 }}>(optional)</span></label>
@@ -1667,9 +1849,9 @@ function AddCrop() {
             style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
         </div>
 
-        <button onClick={handleSave} disabled={saving || !canSave}
+        <button onClick={handleReview} disabled={!canSave}
           style={{ background: !canSave ? C.border : C.forest, color: !canSave ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: !canSave ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
-          {saving ? "Saving…" : "Save Crop"}
+          Review & Add →
         </button>
       </div>
     </div>
