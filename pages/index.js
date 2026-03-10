@@ -2767,7 +2767,6 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
   const [manualCode, setManualCode] = useState("");
   const [showManual, setShowManual] = useState(false);
   const [preview,    setPreview]    = useState(null);
-  const fileRef = useRef(null);
 
   const handlePhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -2833,26 +2832,25 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {/* Idle — show scan button */}
         {status === "idle" && (
           <>
-            <div style={{ background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}
-              onClick={() => fileRef.current?.click()}>
+            <label htmlFor="barcode-photo-input" style={{ display: "block", background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
               <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
                 Take a photo of the barcode
               </div>
               <div style={{ fontSize: 13, color: C.stone }}>Point your camera at the barcode on the packet</div>
-            </div>
+            </label>
             <input
-              ref={fileRef}
+              id="barcode-photo-input"
               type="file"
               accept="image/*"
               capture="environment"
               onChange={handlePhoto}
               style={{ display: "none" }}
             />
-            <button onClick={() => fileRef.current?.click()}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+            <label htmlFor="barcode-photo-input"
+              style={{ display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
               Open camera
-            </button>
+            </label>
             <button onClick={() => setShowManual(true)}
               style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               Enter barcode number manually
