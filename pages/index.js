@@ -3748,6 +3748,22 @@ function OnboardingScreen({ onComplete }) {
 }
 
 // ── Root app ──────────────────────────────────────────────────────────────────
+// ── iOS Install Banner ────────────────────────────────────────────────────────
+function IOSInstallBanner({ onDismiss }) {
+  return (
+    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 408, background: "#1a2e28", borderRadius: 16, padding: "16px 18px", zIndex: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.25)", display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div style={{ fontSize: 28, flexShrink: 0 }}>🌱</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Add Vercro to your home screen</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+          Tap <strong style={{ color: "rgba(255,255,255,0.85)" }}>Share ⎋</strong> then <strong style={{ color: "rgba(255,255,255,0.85)" }}>"Add to Home Screen"</strong> for the full experience including camera features.
+        </div>
+      </div>
+      <button onClick={onDismiss} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 20, cursor: "pointer", flexShrink: 0, padding: 0, lineHeight: 1 }}>×</button>
+    </div>
+  );
+}
+
 export default function GrowSmart() {
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
