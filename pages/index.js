@@ -3304,6 +3304,12 @@ function OnboardingScreen({ onComplete }) {
   // Saved IDs — needed to link area → location
   const [locationId, setLocationId] = useState(null);
 
+  // iOS detection — safe (runs client-side only inside component)
+  const isIOSSafari = typeof window !== "undefined"
+    && /iphone|ipad|ipod/i.test(navigator.userAgent)
+    && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    && !window.navigator.standalone;
+
   const current = ONBOARDING_STEPS[step];
   const isLast  = step === ONBOARDING_STEPS.length - 1;
 
@@ -3326,6 +3332,9 @@ function OnboardingScreen({ onComplete }) {
         setStep(2);
       } else if (step === 2) {
         await apiFetch("/areas", { method: "POST", body: JSON.stringify({ location_id: locationId, name: area.name, type: area.type }) });
+        // Show iOS install prompt before completing, if on iOS Safari
+        if (isIOSSafari) { setStep(3); } else { onComplete(); }
+      } else if (step === 3) {
         onComplete();
       }
     } catch (e) { setError(e.message); }
@@ -3339,6 +3348,49 @@ function OnboardingScreen({ onComplete }) {
   return (
     <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto", padding: "0 0 40px" }}>
 
+      {/* iOS install step — full screen, no progress bar */}
+      {step === 3 && (
+        <div style={{ padding: "48px 28px 40px", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+          <div style={{ fontSize: 52, marginBottom: 20, textAlign: "center" }}>🌱</div>
+          <div style={{ fontSize: 26, fontWeight: 700, fontFamily: "serif", color: C.forest, marginBottom: 8, textAlign: "center" }}>
+            One last thing
+          </div>
+          <div style={{ fontSize: 15, color: C.stone, marginBottom: 32, textAlign: "center", lineHeight: 1.6 }}>
+            Add Vercro to your home screen to get the full experience — including taking photos of seed packets to identify crops instantly.
+          </div>
+
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", marginBottom: 28 }}>
+            <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: 10 }}>
+                <span style={{ fontWeight: 700, color: C.forest }}>1.</span> Tap the share button{" "}
+                <span style={{ display: "inline-block", background: "#e8e8e8", borderRadius: 6, padding: "1px 8px", fontSize: 16 }}>⎋</span>
+                {" "}at the bottom of Safari
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <span style={{ fontWeight: 700, color: C.forest }}>2.</span> Scroll down and tap <span style={{ fontWeight: 700 }}>"Add to Home Screen"</span>
+              </div>
+              <div>
+                <span style={{ fontWeight: 700, color: C.forest }}>3.</span> Tap <span style={{ fontWeight: 700 }}>"Add"</span> — then open Vercro from your home screen
+              </div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 12, color: C.stone, textAlign: "center", marginBottom: 28 }}>
+            No App Store needed. Works like a normal app once installed.
+          </div>
+
+          <button onClick={handleNext}
+            style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: "serif", marginBottom: 12 }}>
+            Got it — take me to my garden →
+          </button>
+          <button onClick={onComplete}
+            style={{ width: "100%", padding: "12px", borderRadius: 14, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            Skip for now
+          </button>
+        </div>
+      )}
+
+      {step < 3 && <>
       {/* Progress bar */}
       <div style={{ height: 3, background: C.border }}>
         <div style={{ height: "100%", width: `${((step + 1) / ONBOARDING_STEPS.length) * 100}%`, background: C.forest, transition: "width 0.4s ease" }} />
@@ -3431,6 +3483,7 @@ function OnboardingScreen({ onComplete }) {
           </button>
         )}
       </div>
+      </>}
     </div>
   );
 }
