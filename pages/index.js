@@ -2776,52 +2776,67 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
   }, []);
 
   const stopScanner = () => {
-    if (readerRef.current) { try { readerRef.current.reset(); } catch(e) {} }
+    if (readerRef.current) {
+      try { readerRef.current.stop(); } catch(e) {}
+      try { readerRef.current.clear(); } catch(e) {}
+    }
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); }
   };
 
   const startScanner = async () => {
     setStatus("starting");
     try {
-      // Dynamically load ZXing
-      if (!window.ZXing) {
+      // Load html5-qrcode — better iOS Safari support than ZXing
+      if (!window.Html5Qrcode) {
         await new Promise((resolve, reject) => {
           const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.19.2/umd/index.min.js";
-          s.onload = resolve; s.onerror = reject;
+          s.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+          s.onload = resolve;
+          s.onerror = () => reject(new Error("Failed to load scanner library"));
           document.head.appendChild(s);
         });
       }
-      const hints = new Map();
-      const formats = [
-        window.ZXing.BarcodeFormat.EAN_13,
-        window.ZXing.BarcodeFormat.EAN_8,
-        window.ZXing.BarcodeFormat.UPC_A,
-        window.ZXing.BarcodeFormat.UPC_E,
-        window.ZXing.BarcodeFormat.CODE_128,
-        window.ZXing.BarcodeFormat.CODE_39,
-        window.ZXing.BarcodeFormat.QR_CODE,
-      ];
-      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-      const reader = new window.ZXing.BrowserMultiFormatReader(hints);
-      readerRef.current = reader;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      const scannerId = "vercro-barcode-scanner";
+      // Ensure container exists
+      let container = document.getElementById(scannerId);
+      if (!container) {
+        container = document.createElement("div");
+        container.id = scannerId;
+        container.style.display = "none";
+        document.body.appendChild(container);
+      }
+
+      const scanner = new window.Html5Qrcode(scannerId);
+      readerRef.current = scanner;
       setStatus("scanning");
 
-      reader.decodeFromStream(stream, videoRef.current, async (result, err) => {
-        if (result) {
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 260, height: 160 }, aspectRatio: 1.0 },
+        async (decodedText) => {
           stopScanner();
-          const code = result.getText();
-          setBarcode(code);
+          setBarcode(decodedText);
           setStatus("found");
-          await lookupBarcode(code);
+          await lookupBarcode(decodedText);
+        },
+        (errorMsg) => { /* scan attempts — ignore */ }
+      );
+
+      // Pipe the video into our visible video element
+      setTimeout(() => {
+        const internalVideo = document.querySelector("#vercro-barcode-scanner video");
+        if (internalVideo && videoRef.current) {
+          const stream = internalVideo.srcObject;
+          if (stream) {
+            streamRef.current = stream;
+            videoRef.current.srcObject = stream;
+          }
         }
-      });
+      }, 800);
+
     } catch (e) {
-      console.error("Scanner error:", e);
+      console.error("Scanner error:", e.message);
       setStatus("error");
     }
   };
