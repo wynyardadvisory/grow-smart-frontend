@@ -2704,6 +2704,155 @@ function FeedsScreen() {
 }
 
 // ── Navigation tabs ───────────────────────────────────────────────────────────
+// ── Feedback Sheet ────────────────────────────────────────────────────────────
+
+const FEEDBACK_CATEGORIES = [
+  { id: "feature", label: "💡 Feature idea",   hint: "Something you'd love to see" },
+  { id: "bug",     label: "🐛 Bug report",      hint: "Something isn't working right" },
+  { id: "general", label: "💬 General thought", hint: "Anything on your mind" },
+  { id: "praise",  label: "🌟 Positive feedback", hint: "Something you love" },
+];
+
+function FeedbackSheet({ onClose }) {
+  const [category, setCategory] = useState("");
+  const [message,  setMessage]  = useState("");
+  const [rating,   setRating]   = useState(0);
+  const [saving,   setSaving]   = useState(false);
+  const [done,     setDone]     = useState(false);
+  const [error,    setError]    = useState(null);
+
+  const canSubmit = category && message.trim().length > 3;
+
+  const submit = async () => {
+    setSaving(true); setError(null);
+    try {
+      await apiFetch("/feedback", {
+        method: "POST",
+        body: JSON.stringify({ category, message, rating: rating || null }),
+      });
+      setDone(true);
+      setTimeout(onClose, 2500);
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
+
+        {done ? (
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🙏</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Thanks for your feedback!</div>
+            <div style={{ fontSize: 13, color: C.stone }}>It really helps shape Vercro.</div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Share your thoughts 💬</div>
+                <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Helps us build the right things</div>
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
+            </div>
+
+            {error && <ErrorMsg msg={error} />}
+
+            {/* Category */}
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What kind of feedback?</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {FEEDBACK_CATEGORIES.map(c => (
+                  <div key={c.id} onClick={() => setCategory(c.id)}
+                    style={{ border: `2px solid ${category === c.id ? C.forest : C.border}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", background: category === c.id ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: category === c.id ? C.forest : "#1a1a1a" }}>{c.label}</div>
+                    <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{c.hint}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Message */}
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Your feedback</div>
+              <textarea
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                placeholder="Tell us what you think, what's missing, or what could be better…"
+                style={{ ...inputStyle, height: 100, resize: "vertical", fontSize: 13 }}
+                autoFocus={!!category}
+              />
+            </div>
+
+            {/* Star rating — optional */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                Overall rating <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => setRating(rating === n ? 0 : n)}
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${rating >= n ? C.amber : C.border}`, background: rating >= n ? "#fff8ed" : "transparent", fontSize: 20, cursor: "pointer", transition: "all 0.15s" }}>
+                    {rating >= n ? "⭐" : "☆"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={submit} disabled={!canSubmit || saving}
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontWeight: 700, fontSize: 15, cursor: canSubmit ? "pointer" : "default", fontFamily: "serif", transition: "background 0.2s" }}>
+              {saving ? "Sending…" : "Send feedback"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminFeedbackList() {
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/admin/feedback")
+      .then(d => { setItems(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const CATEGORY_LABEL = { bug: "🐛 Bug", feature: "💡 Feature", general: "💬 General", praise: "🌟 Praise" };
+
+  if (loading) return <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>;
+
+  if (items.length === 0) return (
+    <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>No feedback yet</div>
+      <div style={{ fontSize: 13 }}>Submissions will appear here once users send feedback.</div>
+    </div>
+  );
+
+  return (
+    <>
+      <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{items.length} submission{items.length !== 1 ? "s" : ""}</div>
+      {items.map(item => (
+        <div key={item.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.forest }}>{CATEGORY_LABEL[item.category] || item.category}</span>
+            <span style={{ fontSize: 11, color: C.stone }}>{new Date(item.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+          </div>
+          <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 8 }}>{item.message}</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || item.profiles?.email || "Unknown user"}</span>
+            {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 // ── Admin Screen ─────────────────────────────────────────────────────────────
 // Only visible to mark@wynyardadvisory.co.uk
 
@@ -2848,13 +2997,9 @@ function AdminScreen() {
         </>
       )}
 
-      {/* ── Feedback — placeholder ── */}
+      {/* ── Feedback ── */}
       {!loading && tab === "feedback" && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Feedback coming soon</div>
-          <div style={{ fontSize: 13 }}>Once the in-app feedback feature is built, submissions will appear here.</div>
-        </div>
+        <AdminFeedbackList />
       )}
     </div>
   );
@@ -3044,6 +3189,7 @@ export default function GrowSmart() {
   }, [session]);
 
   const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
+  const [showFeedback, setShowFeedback] = useState(false);
 
   if (session === undefined || (session && onboarding === null)) {
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: C.stone, fontSize: 14 }}>Loading…</div>;
@@ -3070,6 +3216,17 @@ export default function GrowSmart() {
         {tab === "profile"   && <ProfileScreen session={session} />}
         {tab === "admin"     && isAdmin && <AdminScreen />}
       </div>
+
+      {/* Floating feedback button */}
+      {!showFeedback && tab !== "admin" && (
+        <button onClick={() => setShowFeedback(true)}
+          style={{ position: "fixed", bottom: 90, right: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+          💬
+        </button>
+      )}
+      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} />}
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
