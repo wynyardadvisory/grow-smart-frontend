@@ -1927,6 +1927,7 @@ function AddCrop() {
           is_other_crop:    isOtherCrop,
           is_other_variety: isOtherVariety,
           preview_profile:  cropProfile || null,
+          barcode:          form.barcode || null,
         }),
       });
 
@@ -2087,12 +2088,12 @@ function AddCrop() {
           onResult={r => {
             setShowScanner(false);
             if (r.found) {
-              // Pre-fill form with scanned result
               if (r.crop_def_id) set("crop_def_id", r.crop_def_id);
               else { set("crop_def_id", "__other__"); set("crop_other", r.name); }
               if (r.variety) set("variety", r.variety);
+              if (r.barcode) set("barcode", r.barcode);
             }
-            // If not found, just let user fill in manually — form is already visible
+            // Not found — user fills in manually, Claude will enrich as usual
           }}
         />
       )}
@@ -2488,6 +2489,7 @@ function FeedsScreen() {
   const [brand,    setBrand]    = useState("");
   const [otherBrand, setOtherBrand] = useState("");
   const [showFeedScanner, setShowFeedScanner] = useState(false);
+  const [scannedBarcode,  setScannedBarcode]  = useState(null);
   const [isLiquid, setIsLiquid] = useState(null);
   const [product,  setProduct]  = useState("");
   const [otherProduct, setOtherProduct] = useState("");
@@ -2553,6 +2555,7 @@ function FeedsScreen() {
             application_method:    matchedCatalog.application_method,
             notes:                 matchedCatalog.notes,
             pre_enriched:          true,
+            barcode:               scannedBarcode || null,
           }),
         });
       } else {
@@ -2616,6 +2619,7 @@ function FeedsScreen() {
               setIsLiquid(r.form === "liquid");
               setProduct(r.product_name || "Other");
               setOtherProduct(r.product_name ? "" : r.name);
+              setScannedBarcode(r.barcode || null);
             }
           }}
         />
@@ -2955,14 +2959,16 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             <>
               <div style={{ textAlign: "center", marginBottom: 20 }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
-                <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Product not found</div>
-                <div style={{ fontSize: 13, color: C.stone }}>Barcode: {barcode}</div>
-                <div style={{ fontSize: 13, color: C.stone, marginTop: 4 }}>Not in our database yet — add it manually below.</div>
+                <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>We don't recognise this one yet</div>
+                <div style={{ fontSize: 13, color: C.stone, marginBottom: 8 }}>That's fine — use the dropdowns to tell us what it is, and we'll look up all the growing details automatically.</div>
+                <div style={{ background: C.offwhite, borderRadius: 8, padding: "8px 12px", display: "inline-block" }}>
+                  <span style={{ fontSize: 11, color: C.stone, fontFamily: "monospace" }}>{barcode}</span>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => { stopScanner(); onResult({ found: false, barcode }); }}
-                  style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                  Add manually
+                  style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+                  Continue →
                 </button>
                 <button onClick={() => { setStatus("scanning"); setBarcode(null); setResult(null); startScanner(); }}
                   style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
