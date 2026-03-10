@@ -2828,9 +2828,9 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
-              Scan {mode === "crop" ? "seed packet" : "product"} 📷
+              Identify {mode === "crop" ? "seed packet" : "product"} 📷
             </div>
-            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Take a photo of the barcode</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Take a photo of the front of the packet</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
         </div>
@@ -2841,9 +2841,9 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             <label htmlFor="barcode-photo-input" style={{ display: "block", background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
               <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
-                Take a photo of the barcode
+                Take a photo of the front of the packet
               </div>
-              <div style={{ fontSize: 13, color: C.stone }}>Point your camera at the barcode on the packet</div>
+              <div style={{ fontSize: 13, color: C.stone }}>Show the name and variety clearly — no barcode needed</div>
             </label>
             <input
               id="barcode-photo-input"
@@ -2855,7 +2855,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             />
             <label htmlFor="barcode-photo-input"
               style={{ display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
-              Open camera
+              Take photo of packet
             </label>
             <button onClick={() => setShowManual(true)}
               style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
