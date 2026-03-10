@@ -3369,12 +3369,12 @@ function AdminScreen() {
             <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Founder Dashboard</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {[
-                { label: "Users",     val: metrics.totalUsers,          sub: `+${metrics.newUsersWeek} this week` },
-                { label: "WAU",       val: metrics.wau,                 sub: `${metrics.dau} today` },
-                { label: "Crops",     val: metrics.totalCrops,          sub: `${metrics.avgCropsPerUser} avg/user` },
-                { label: "Tasks done",val: metrics.tasksCompleted,      sub: `${metrics.taskCompletionRate}% rate` },
-                { label: "Harvests",  val: metrics.harvestLogs,         sub: "logged" },
-                { label: "Activation",val: `${metrics.activationRate}%`,sub: `${metrics.activatedCount} users` },
+                { label: "Signups",    val: metrics.totalSignups,       sub: `+${metrics.newSignupsWeek} this week` },
+                { label: "Activated",  val: metrics.totalActivated,     sub: `${metrics.activationRate}% rate` },
+                { label: "WAU",        val: metrics.wau,                sub: `${metrics.dau} today` },
+                { label: "Crops",      val: metrics.totalCrops,         sub: `${metrics.avgCropsPerUser} avg/user` },
+                { label: "Tasks done", val: metrics.tasksCompleted,     sub: `${metrics.taskCompletionRate}% rate` },
+                { label: "Harvests",   val: metrics.harvestLogs,        sub: "logged" },
               ].map(s => (
                 <div key={s.label}>
                   <div style={{ fontSize: 22, fontWeight: 800 }}>{s.val}</div>
@@ -3387,10 +3387,11 @@ function AdminScreen() {
 
           {/* User growth */}
           <MetricSection title="📈 User Growth">
-            <MetricRow label="Total users"         val={metrics.totalUsers} />
-            <MetricRow label="New this week"        val={metrics.newUsersWeek} />
+            <MetricRow label="Total signups"        val={metrics.totalSignups} sub="everyone who registered" />
+            <MetricRow label="Activated users"      val={metrics.totalActivated} sub="completed onboarding" />
+            <MetricRow label="Activation rate"      val={`${metrics.activationRate}%`} sub="signups → completed onboarding" highlight={metrics.activationRate >= 70} />
+            <MetricRow label="New signups this week" val={metrics.newSignupsWeek} />
             <MetricRow label="Week-on-week growth"  val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} highlight={metrics.wowGrowth > 0} />
-            <MetricRow label="Activation rate"      val={`${metrics.activationRate}%`} sub="users who added a crop" highlight={metrics.activationRate >= 70} />
           </MetricSection>
 
           {/* Engagement */}
