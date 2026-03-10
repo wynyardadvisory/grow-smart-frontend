@@ -95,8 +95,9 @@ const labelStyle = {
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: C.stone, textTransform: "uppercase", marginBottom: 12, marginTop: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
-      {children}
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, marginTop: 8 }}>
+      <div style={{ height: 2, width: 14, background: C.accent, borderRadius: 99 }} />
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.stone, textTransform: "uppercase" }}>{children}</div>
     </div>
   );
 }
@@ -440,13 +441,36 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
   const borderColor = pending ? C.amber : C.red;
   const bgColor     = pending ? "#fff8ed" : C.cardBg;
 
+  // Progress toward harvest window
+  const now    = Date.now();
+  const start  = new Date(item.window_start).getTime();
+  const end    = new Date(item.window_end).getTime();
+  const pct    = Math.min(100, Math.max(0, Math.round(((now - (start - 30*24*60*60*1000)) / (end - (start - 30*24*60*60*1000))) * 100)));
+  const weeksLeft = Math.max(0, Math.round((start - now) / (7*24*60*60*1000)));
+
   return (
-    <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 10, padding: "12px 14px", transition: "all 0.3s" }}>
-      <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
-      {item.variety && <div style={{ fontSize: 11, color: C.stone }}>{item.variety}</div>}
-      <div style={{ fontSize: 11, color: C.stone, marginTop: 2, marginBottom: 10 }}>
-        {new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(item.window_end).toLocaleDateString("en-GB", { month: "short" })}
+    <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.3s" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+        <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
+        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
       </div>
+      {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
+
+      {/* Progress bar */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+          <span style={{ fontSize: 10, color: C.stone }}>
+            {new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(item.window_end).toLocaleDateString("en-GB", { month: "short" })}
+          </span>
+          <span style={{ fontSize: 10, color: weeksLeft === 0 ? C.red : C.stone, fontWeight: weeksLeft === 0 ? 700 : 400 }}>
+            {weeksLeft === 0 ? "Ready now" : `~${weeksLeft}w`}
+          </span>
+        </div>
+        <div style={{ height: 5, background: C.border, borderRadius: 99, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: pct + "%", background: weeksLeft === 0 ? C.red : C.amber, borderRadius: 99, transition: "width 0.5s" }} />
+        </div>
+      </div>
+
       <button onClick={() => !pending && onHarvest()}
         style={{ width: "100%", padding: "7px", borderRadius: 8, border: `1px solid ${borderColor}`, background: pending ? C.amber : "transparent", color: pending ? "#fff" : borderColor, fontWeight: 700, fontSize: 11, cursor: pending ? "default" : "pointer", transition: "all 0.3s" }}>
         {pending ? "Logging…" : "Mark Harvested"}
@@ -731,13 +755,19 @@ function Dashboard() {
 
   return (
     <div>
-      {/* Header — seasonal tint on border */}
-      <div style={{ background: C.forest, color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid " + C.accent }}>
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 2, letterSpacing: 1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+      {/* Hero header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden", borderBottom: "3px solid " + C.accent }}>
+        {/* Subtle seasonal circle decoration */}
+        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: C.accent, opacity: 0.08 }} />
+        <div style={{ position: "absolute", bottom: -30, right: 40, width: 70, height: 70, borderRadius: "50%", background: C.accent, opacity: 0.06 }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", lineHeight: 1.1, marginBottom: 2 }}>Today in your garden</div>
+            <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{greeting}{data.user ? `, ${data.user}` : ""} 👋</div>
+          </div>
+          <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
         </div>
-        <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
       </div>
 
       {/* Weather + traffic lights strip */}
@@ -868,9 +898,10 @@ function Dashboard() {
       )}
 
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
-        <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🌿</div>
-          <div style={{ fontSize: 14 }}>No tasks right now. Add crops to get started.</div>
+        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Your garden is all set</div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No tasks right now. Add crops to start getting personalised recommendations.</div>
         </div>
       )}
     </div>
@@ -878,10 +909,22 @@ function Dashboard() {
 }
 
 function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
+  const [animating, setAnimating] = useState(false);
   const urgencyColor = task.urgency === "high" ? C.red : task.urgency === "medium" ? C.amber : C.leaf;
   const isEstimated  = task.date_confidence === "estimated";
+
+  const handleComplete = () => {
+    if (completed || animating) return;
+    setAnimating(true);
+    setTimeout(() => { setAnimating(false); onComplete(task); }, 350);
+  };
+
   return (
-    <div onClick={() => !completed && onComplete(task)} style={{ background: completed ? "#f0f4f2" : C.cardBg, border: `1px solid ${completed ? C.border : urgencyColor + "44"}`, borderLeft: `3px solid ${completed ? C.sage : urgencyColor}`, borderRadius: 10, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: completed ? "default" : "pointer", opacity: completed ? 0.55 : 1, transition: "opacity 0.2s" }}>
+    <div onClick={handleComplete}
+      style={{ background: completed ? "#f0f4f2" : C.cardBg, border: `1px solid ${completed ? C.border : urgencyColor + "44"}`, borderLeft: `3px solid ${completed ? C.sage : urgencyColor}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: completed ? "default" : "pointer",
+        opacity: animating ? 0 : completed ? 0.55 : 1,
+        transform: animating ? "translateX(30px)" : "translateX(0)",
+        transition: "opacity 0.35s ease, transform 0.35s ease" }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: "serif" }}>
           {task.crop?.name ? getCropEmoji(task.crop.name) + " " + task.crop.name : "General"}
@@ -898,8 +941,8 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
           )}
         </div>
       </div>
-      <div style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${completed ? C.leaf : C.border}`, background: completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
-        {completed && <span style={{ color: "#fff", fontSize: 12 }}>✓</span>}
+      <div style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${animating || completed ? C.leaf : C.border}`, background: animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
+        {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
       </div>
     </div>
   );
@@ -2268,7 +2311,7 @@ export default function GrowSmart() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "20px 20px 100px" }}>
+      <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "garden"    && <GardenView />}
         {tab === "crops"     && <CropList />}
