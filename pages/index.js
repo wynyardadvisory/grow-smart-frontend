@@ -2294,6 +2294,162 @@ function FeedsScreen() {
 }
 
 // ── Navigation tabs ───────────────────────────────────────────────────────────
+// ── Admin Screen ─────────────────────────────────────────────────────────────
+// Only visible to mark@wynyardadvisory.co.uk
+
+function AdminScreen() {
+  const [tab,       setAdminTab] = useState("crops");
+  const [crops,     setCrops]    = useState([]);
+  const [users,     setUsers]    = useState([]);
+  const [loading,   setLoading]  = useState(true);
+  const [error,     setError]    = useState(null);
+  const [acting,    setActing]   = useState(null); // id of crop being approved/rejected
+
+  useEffect(() => { loadAll(); }, [tab]);
+
+  const loadAll = async () => {
+    setLoading(true); setError(null);
+    try {
+      if (tab === "crops") {
+        const data = await apiFetch("/admin/crop-queue");
+        setCrops(data);
+      } else if (tab === "users") {
+        const data = await apiFetch("/admin/users");
+        setUsers(data);
+      }
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  const approve = async (id) => {
+    setActing(id);
+    try {
+      await apiFetch(`/admin/crop-queue/${id}/approve`, { method: "POST" });
+      setCrops(cs => cs.filter(c => c.id !== id));
+    } catch (e) { setError(e.message); }
+    setActing(null);
+  };
+
+  const reject = async (id) => {
+    setActing(id);
+    try {
+      await apiFetch(`/admin/crop-queue/${id}/reject`, { method: "POST" });
+      setCrops(cs => cs.filter(c => c.id !== id));
+    } catch (e) { setError(e.message); }
+    setActing(null);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 4, color: "#1a1a1a" }}>Admin</div>
+      <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>Internal tools — only visible to you</div>
+
+      {/* Sub tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {[
+          { id: "crops", label: "🌱 Crop queue" },
+          { id: "users", label: "👤 Users" },
+          { id: "feedback", label: "💬 Feedback" },
+        ].map(t => (
+          <button key={t.id} onClick={() => setAdminTab(t.id)}
+            style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {error && <ErrorMsg msg={error} />}
+      {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
+
+      {/* ── Crop queue ── */}
+      {!loading && tab === "crops" && (
+        <>
+          {crops.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Queue is clear</div>
+              <div style={{ fontSize: 13 }}>No AI-added crops awaiting review</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} awaiting review</div>
+              {crops.map(crop => (
+                <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                    <div style={{ fontSize: 28 }}>{getCropEmoji(crop.name)}</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>Added by {crop.added_by_email || "unknown"} · {new Date(crop.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                    {[
+                      { label: "Sow window",   val: crop.sow_window_start ? `Month ${crop.sow_window_start}–${crop.sow_window_end}` : null },
+                      { label: "Harvest",      val: crop.harvest_window_start ? `Month ${crop.harvest_window_start}–${crop.harvest_window_end}` : null },
+                      { label: "Spacing",      val: crop.spacing_cm ? `${crop.spacing_cm}cm` : null },
+                      { label: "Maturity",     val: crop.days_to_maturity_min ? `${crop.days_to_maturity_min}–${crop.days_to_maturity_max} days` : null },
+                      { label: "Sow method",   val: crop.sow_method || null },
+                      { label: "Crop type",    val: crop.crop_type || null },
+                    ].filter(r => r.val).map(r => (
+                      <div key={r.label} style={{ background: C.offwhite, borderRadius: 8, padding: "8px 10px" }}>
+                        <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{r.label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginTop: 1 }}>{r.val}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {crop.description && (
+                    <div style={{ fontSize: 12, color: C.stone, marginBottom: 12, lineHeight: 1.5, fontStyle: "italic" }}>{crop.description}</div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => approve(crop.id)} disabled={acting === crop.id}
+                      style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      ✓ Approve
+                    </button>
+                    <button onClick={() => reject(crop.id)} disabled={acting === crop.id}
+                      style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      ✕ Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Users ── */}
+      {!loading && tab === "users" && (
+        <>
+          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{users.length} user{users.length !== 1 ? "s" : ""} signed up</div>
+          {users.map(u => (
+            <div key={u.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 2 }}>{u.name || "No name set"}</div>
+              <div style={{ fontSize: 12, color: C.stone }}>{u.email}</div>
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <span style={{ fontSize: 11, color: C.stone }}>Joined {new Date(u.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                {u.crop_count > 0 && <span style={{ fontSize: 11, color: C.forest, fontWeight: 600 }}>🌱 {u.crop_count} crops</span>}
+                {u.last_seen && <span style={{ fontSize: 11, color: C.stone }}>Last seen {new Date(u.last_seen).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* ── Feedback — placeholder ── */}
+      {!loading && tab === "feedback" && (
+        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Feedback coming soon</div>
+          <div style={{ fontSize: 13 }}>Once the in-app feedback feature is built, submissions will appear here.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS = [
   { id: "dashboard", label: "Today",  icon: "◈" },
   { id: "garden",    label: "Garden",  icon: "⬡" },
@@ -2477,6 +2633,8 @@ export default function GrowSmart() {
       .catch(() => setOnboarding(false)); // if check fails, don't block the app
   }, [session]);
 
+  const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
+
   if (session === undefined || (session && onboarding === null)) {
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: C.stone, fontSize: 14 }}>Loading…</div>;
   }
@@ -2500,11 +2658,12 @@ export default function GrowSmart() {
         {tab === "add"       && <AddCrop />}
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} />}
+        {tab === "admin"     && isAdmin && <AdminScreen />}
       </div>
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
-        {TABS.map(t => (
+        {[...TABS, ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
