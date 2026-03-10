@@ -1817,7 +1817,8 @@ function AddCrop() {
   const [saved,       setSaved]       = useState(false);
   const [enriching,   setEnriching]   = useState(false);
   const [error,       setError]       = useState(null);
-  const [step,        setStep]        = useState("form");   // "form" | "previewing" | "loading_preview" | "done"
+  const [step,        setStep]        = useState("form");
+  const [showScanner, setShowScanner] = useState(false);   // "form" | "previewing" | "loading_preview" | "done"
   const [cropProfile, setCropProfile] = useState(null);     // enriched profile to show in confirmation
 
   useEffect(() => {
@@ -2079,6 +2080,22 @@ function AddCrop() {
   // ── Main form ─────────────────────────────────────────────────────────────
   return (
     <div>
+      {showScanner && (
+        <BarcodeScanner
+          mode="crop"
+          onClose={() => setShowScanner(false)}
+          onResult={r => {
+            setShowScanner(false);
+            if (r.found) {
+              // Pre-fill form with scanned result
+              if (r.crop_def_id) set("crop_def_id", r.crop_def_id);
+              else { set("crop_def_id", "__other__"); set("crop_other", r.name); }
+              if (r.variety) set("variety", r.variety);
+            }
+            // If not found, just let user fill in manually — form is already visible
+          }}
+        />
+      )}
       <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 6, color: "#1a1a1a" }}>Add Crop</div>
       <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>Tell us what you're growing and we'll build a task schedule for you.</div>
       {error && <ErrorMsg msg={error} />}
@@ -2087,7 +2104,13 @@ function AddCrop() {
 
         {/* Crop */}
         <div>
-          <label style={labelStyle}>What are you growing?</label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <label style={{ ...labelStyle, marginBottom: 0 }}>What are you growing?</label>
+            <button type="button" onClick={() => setShowScanner(true)}
+              style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              📷 Scan packet
+            </button>
+          </div>
           <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
             <option value="">Select crop…</option>
             {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -2464,6 +2487,7 @@ function FeedsScreen() {
   const [added,    setAdded]    = useState(false);
   const [brand,    setBrand]    = useState("");
   const [otherBrand, setOtherBrand] = useState("");
+  const [showFeedScanner, setShowFeedScanner] = useState(false);
   const [isLiquid, setIsLiquid] = useState(null);
   const [product,  setProduct]  = useState("");
   const [otherProduct, setOtherProduct] = useState("");
@@ -2580,9 +2604,32 @@ function FeedsScreen() {
 
       {error && <ErrorMsg msg={error} />}
 
+      {showFeedScanner && (
+        <BarcodeScanner
+          mode="feed"
+          onClose={() => setShowFeedScanner(false)}
+          onResult={r => {
+            setShowFeedScanner(false);
+            if (r.found) {
+              setBrand(r.brand || "Other");
+              setOtherBrand(r.brand || "");
+              setIsLiquid(r.form === "liquid");
+              setProduct(r.product_name || "Other");
+              setOtherProduct(r.product_name ? "" : r.name);
+            }
+          }}
+        />
+      )}
+
       {/* Add feed form */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 14 }}>Add a Feed</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Add a Feed</div>
+          <button onClick={() => setShowFeedScanner(true)}
+            style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            📷 Scan product
+          </button>
+        </div>
         {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -2704,6 +2751,232 @@ function FeedsScreen() {
 }
 
 // ── Navigation tabs ───────────────────────────────────────────────────────────
+// ── Barcode Scanner ───────────────────────────────────────────────────────────
+// Uses ZXing via CDN for in-browser barcode scanning. No native app needed.
+// Falls back to manual entry if camera unavailable.
+
+function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
+  const videoRef   = useRef(null);
+  const [status,   setStatus]   = useState("starting"); // starting | scanning | found | error | notfound
+  const [barcode,  setBarcode]  = useState(null);
+  const [result,   setResult]   = useState(null);
+  const [loading,  setLoading]  = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const [showManual, setShowManual] = useState(false);
+  const readerRef  = useRef(null);
+  const streamRef  = useRef(null);
+
+  useEffect(() => {
+    startScanner();
+    return () => stopScanner();
+  }, []);
+
+  const stopScanner = () => {
+    if (readerRef.current) { try { readerRef.current.reset(); } catch(e) {} }
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); }
+  };
+
+  const startScanner = async () => {
+    setStatus("starting");
+    try {
+      // Dynamically load ZXing
+      if (!window.ZXing) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.19.2/umd/index.min.js";
+          s.onload = resolve; s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+      const hints = new Map();
+      const formats = [
+        window.ZXing.BarcodeFormat.EAN_13,
+        window.ZXing.BarcodeFormat.EAN_8,
+        window.ZXing.BarcodeFormat.UPC_A,
+        window.ZXing.BarcodeFormat.UPC_E,
+        window.ZXing.BarcodeFormat.CODE_128,
+        window.ZXing.BarcodeFormat.CODE_39,
+        window.ZXing.BarcodeFormat.QR_CODE,
+      ];
+      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+      const reader = new window.ZXing.BrowserMultiFormatReader(hints);
+      readerRef.current = reader;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setStatus("scanning");
+
+      reader.decodeFromStream(stream, videoRef.current, async (result, err) => {
+        if (result) {
+          stopScanner();
+          const code = result.getText();
+          setBarcode(code);
+          setStatus("found");
+          await lookupBarcode(code);
+        }
+      });
+    } catch (e) {
+      console.error("Scanner error:", e);
+      setStatus("error");
+    }
+  };
+
+  const lookupBarcode = async (code) => {
+    setLoading(true);
+    try {
+      const data = await apiFetch(`/barcode/${encodeURIComponent(code)}?mode=${mode}`);
+      setResult(data);
+    } catch (e) {
+      setResult({ found: false, barcode: code });
+    }
+    setLoading(false);
+  };
+
+  const handleManual = async () => {
+    if (!manualCode.trim()) return;
+    setBarcode(manualCode.trim());
+    setStatus("found");
+    setShowManual(false);
+    await lookupBarcode(manualCode.trim());
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 2000, display: "flex", flexDirection: "column" }}>
+      {/* Header */}
+      <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.7)", zIndex: 10 }}>
+        <div style={{ color: "#fff", fontWeight: 700, fontFamily: "serif", fontSize: 16 }}>
+          Scan {mode === "crop" ? "seed packet" : "feed product"}
+        </div>
+        <button onClick={() => { stopScanner(); onClose(); }}
+          style={{ background: "none", border: "none", color: "#fff", fontSize: 24, cursor: "pointer" }}>×</button>
+      </div>
+
+      {/* Camera view */}
+      {(status === "starting" || status === "scanning") && (
+        <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          {/* Scanning overlay */}
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 260, height: 160, border: "2px solid rgba(255,255,255,0.8)", borderRadius: 12, position: "relative" }}>
+              <div style={{ position: "absolute", top: -1, left: -1, width: 30, height: 30, borderTop: "3px solid #7FB069", borderLeft: "3px solid #7FB069", borderRadius: "12px 0 0 0" }} />
+              <div style={{ position: "absolute", top: -1, right: -1, width: 30, height: 30, borderTop: "3px solid #7FB069", borderRight: "3px solid #7FB069", borderRadius: "0 12px 0 0" }} />
+              <div style={{ position: "absolute", bottom: -1, left: -1, width: 30, height: 30, borderBottom: "3px solid #7FB069", borderLeft: "3px solid #7FB069", borderRadius: "0 0 0 12px" }} />
+              <div style={{ position: "absolute", bottom: -1, right: -1, width: 30, height: 30, borderBottom: "3px solid #7FB069", borderRight: "3px solid #7FB069", borderRadius: "0 0 12px 0" }} />
+              <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 2, background: "rgba(127,176,105,0.7)", animation: "none" }} />
+            </div>
+          </div>
+          <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, textAlign: "center" }}>
+            <div style={{ color: "#fff", fontSize: 13, opacity: 0.8, marginBottom: 12 }}>
+              {status === "starting" ? "Starting camera…" : "Point at barcode on packet"}
+            </div>
+            <button onClick={() => setShowManual(true)}
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", borderRadius: 20, padding: "8px 20px", fontSize: 12, cursor: "pointer" }}>
+              Enter code manually
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Manual entry overlay */}
+      {showManual && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%" }}>
+            <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
+            <input value={manualCode} onChange={e => setManualCode(e.target.value)}
+              placeholder="e.g. 5000174002017" autoFocus
+              style={{ ...inputStyle, marginBottom: 12 }}
+              onKeyDown={e => e.key === "Enter" && handleManual()} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setShowManual(false)}
+                style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+              <button onClick={handleManual}
+                style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Look up</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {status === "error" && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📷</div>
+          <div style={{ color: "#fff", fontWeight: 700, fontSize: 16, fontFamily: "serif", marginBottom: 8, textAlign: "center" }}>Camera not available</div>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 24, textAlign: "center" }}>Try entering the barcode number manually instead.</div>
+          <button onClick={() => setShowManual(true)}
+            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+            Enter code manually
+          </button>
+        </div>
+      )}
+
+      {/* Found — loading or result */}
+      {status === "found" && (
+        <div style={{ flex: 1, background: "#fff", borderRadius: "16px 16px 0 0", marginTop: "auto", padding: "24px 20px 44px", overflowY: "auto" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+              <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 4 }}>Looking up barcode…</div>
+              <div style={{ fontSize: 13, color: C.stone }}>Searching product databases</div>
+            </div>
+          ) : result?.found ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ fontSize: 36 }}>{getCropEmoji(result.name)}</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 18, fontFamily: "serif", color: "#1a1a1a" }}>{result.name}</div>
+                  {result.brand && <div style={{ fontSize: 13, color: C.stone }}>{result.brand}</div>}
+                  <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Product identified</div>
+                </div>
+              </div>
+              {result.description && (
+                <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>{result.description}</div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+                {[
+                  result.variety   && { label: "Variety",    val: result.variety },
+                  result.brand     && { label: "Brand",      val: result.brand },
+                  result.sow_window && { label: "Sow window", val: result.sow_window },
+                  result.npk       && { label: "NPK",         val: result.npk },
+                  result.form      && { label: "Form",        val: result.form },
+                ].filter(Boolean).map(r => (
+                  <div key={r.label} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{r.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginTop: 2 }}>{r.val}</div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => { stopScanner(); onResult(result); }}
+                style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif" }}>
+                Add {result.name} →
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ textAlign: "center", marginBottom: 20 }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
+                <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Product not found</div>
+                <div style={{ fontSize: 13, color: C.stone }}>Barcode: {barcode}</div>
+                <div style={{ fontSize: 13, color: C.stone, marginTop: 4 }}>Not in our database yet — add it manually below.</div>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => { stopScanner(); onResult({ found: false, barcode }); }}
+                  style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                  Add manually
+                </button>
+                <button onClick={() => { setStatus("scanning"); setBarcode(null); setResult(null); startScanner(); }}
+                  style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                  Retry
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Feedback Sheet ────────────────────────────────────────────────────────────
 
 const FEEDBACK_CATEGORIES = [
