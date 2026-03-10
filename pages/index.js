@@ -1877,6 +1877,7 @@ function ProfileScreen({ session }) {
   const [logYear,    setLogYear]   = useState(new Date().getFullYear());
   const [logOpen,    setLogOpen]   = useState(false);
   const [logLoading, setLogLoading] = useState(false);
+  const [allHarvests, setAllHarvests] = useState([]);
 
   const loadHarvests = async (year) => {
     setLogLoading(true);
@@ -1887,10 +1888,18 @@ function ProfileScreen({ session }) {
     setLogLoading(false);
   };
 
+  const loadAllHarvests = async () => {
+    try {
+      const data = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
+      setAllHarvests(data);
+    } catch (e) { console.error(e); }
+  };
+
   useEffect(() => {
     apiFetch("/auth/profile")
       .then(p => { setForm({ name: p.name || "", postcode: p.postcode || "", photo_url: p.photo_url || null }); setLoading(false); })
       .catch(() => setLoading(false));
+    loadAllHarvests();
   }, []);
 
   useEffect(() => {
@@ -1982,6 +1991,89 @@ function ProfileScreen({ session }) {
           </button>
         </div>
       </div>
+
+      {/* Yield Summary */}
+      {allHarvests.length > 0 && (() => {
+        const year = new Date().getFullYear();
+        const total = allHarvests.length;
+
+        // Best crop by average yield score
+        const byName = {};
+        allHarvests.forEach(h => {
+          if (!byName[h.crop_name]) byName[h.crop_name] = { name: h.crop_name, yield: [], quality: [] };
+          if (h.yield_score)   byName[h.crop_name].yield.push(h.yield_score);
+          if (h.quality_score) byName[h.crop_name].quality.push(h.quality_score);
+        });
+        const crops = Object.values(byName).map(c => ({
+          name:    c.name,
+          avgYield:   c.yield.length   ? Math.round(c.yield.reduce((a,b) => a+b,0)   / c.yield.length * 10) / 10   : null,
+          avgQuality: c.quality.length ? Math.round(c.quality.reduce((a,b) => a+b,0) / c.quality.length * 10) / 10 : null,
+        }));
+        const best = crops.sort((a,b) => (b.avgYield||0) - (a.avgYield||0))[0];
+
+        // Overall averages
+        const allYields   = allHarvests.filter(h => h.yield_score).map(h => h.yield_score);
+        const allQualities = allHarvests.filter(h => h.quality_score).map(h => h.quality_score);
+        const avgYield   = allYields.length   ? Math.round(allYields.reduce((a,b) => a+b,0)   / allYields.length * 10) / 10   : null;
+        const avgQuality = allQualities.length ? Math.round(allQualities.reduce((a,b) => a+b,0) / allQualities.length * 10) / 10 : null;
+
+        const scoreColor = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;
+
+        return (
+          <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 14, padding: "20px", marginBottom: 16, color: "#fff", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: "50%", background: C.accent, opacity: 0.1 }} />
+            <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{year} Season</div>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", marginBottom: 16 }}>Your Harvest Summary</div>
+
+            {/* Stats row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{total}</div>
+                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Harvests</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: avgYield ? scoreColor(avgYield) : "#fff" }}>{avgYield || "—"}</div>
+                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Avg Yield</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: avgQuality ? scoreColor(avgQuality) : "#fff" }}>{avgQuality || "—"}</div>
+                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Avg Quality</div>
+              </div>
+            </div>
+
+            {/* Best crop */}
+            {best && (
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ fontSize: 28 }}>{getCropEmoji(best.name)}</div>
+                <div>
+                  <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{best.name}</div>
+                  <div style={{ fontSize: 11, opacity: 0.75 }}>
+                    Yield {best.avgYield || "—"} · Quality {best.avgQuality || "—"} out of 10
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quality vs Yield bars */}
+            {(avgYield || avgQuality) && (
+              <div style={{ marginTop: 14 }}>
+                {[{ label: "Yield", val: avgYield }, { label: "Quality", val: avgQuality }].filter(r => r.val).map(r => (
+                  <div key={r.label} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 11, opacity: 0.75 }}>{r.label}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700 }}>{r.val}/10</span>
+                    </div>
+                    <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: 99 }}>
+                      <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: 99, transition: "width 0.6s ease" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Harvest Log */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
