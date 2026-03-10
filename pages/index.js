@@ -435,6 +435,288 @@ function getCropEmoji(name) {
   return "🌱";
 }
 
+// ── Share Harvest Card ────────────────────────────────────────────────────────
+// Generates a 1080x1080 canvas image for sharing to WhatsApp, Instagram etc.
+
+function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
+  const [mode,       setMode]       = useState("single"); // "single" | "season"
+  const [generating, setGenerating] = useState(false);
+  const canvasRef = useRef(null);
+
+  const scoreColor = (v) => v >= 8 ? "#6FAF63" : v >= 5 ? "#D9A441" : "#C65A5A";
+
+  const generateCard = async () => {
+    setGenerating(true);
+    const canvas = document.createElement("canvas");
+    canvas.width  = 1080;
+    canvas.height = 1080;
+    const ctx = canvas.getContext("2d");
+
+    if (mode === "single") {
+      await drawSingleCard(ctx, canvas);
+    } else {
+      await drawSeasonCard(ctx, canvas);
+    }
+
+    // Download
+    const link = document.createElement("a");
+    link.download = mode === "single"
+      ? `vercro-harvest-${item.crop.toLowerCase().replace(/\s+/g,"-")}.png`
+      : `vercro-season-${new Date().getFullYear()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    setGenerating(false);
+  };
+
+  const drawSingleCard = async (ctx, canvas) => {
+    const W = 1080, H = 1080;
+
+    // Background — forest green gradient
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, "#2F5D50");
+    bg.addColorStop(1, "#1e3d33");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative circles
+    ctx.beginPath(); ctx.arc(W + 80, -80, 300, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,255,255,0.04)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(-60, H + 60, 250, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,255,255,0.03)"; ctx.fill();
+
+    // Crop photo (if available)
+    if (harvestData?.photo_url) {
+      try {
+        const img = await loadImage(harvestData.photo_url);
+        const size = 320;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(W/2, 320, size/2, 0, Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(img, W/2 - size/2, 320 - size/2, size, size);
+        ctx.restore();
+        // Ring around photo
+        ctx.beginPath(); ctx.arc(W/2, 320, size/2 + 4, 0, Math.PI*2);
+        ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 6; ctx.stroke();
+      } catch(e) {}
+    }
+
+    const hasPhoto = !!harvestData?.photo_url;
+    const yStart   = hasPhoto ? 520 : 280;
+
+    // Emoji
+    ctx.font = hasPhoto ? "80px serif" : "120px serif";
+    ctx.textAlign = "center";
+    ctx.fillText(getCropEmoji(item.crop), W/2, yStart);
+
+    // Crop name
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 72px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText(item.crop, W/2, yStart + (hasPhoto ? 90 : 120));
+
+    // Variety
+    if (item.variety) {
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "42px Georgia, serif";
+      ctx.fillText(item.variety, W/2, yStart + (hasPhoto ? 145 : 178));
+    }
+
+    // Divider
+    const divY = yStart + (item.variety ? (hasPhoto ? 175 : 215) : (hasPhoto ? 120 : 155));
+    ctx.beginPath();
+    ctx.moveTo(W/2 - 120, divY); ctx.lineTo(W/2 + 120, divY);
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2; ctx.stroke();
+
+    // Stats row
+    const statsY = divY + 60;
+    const stats  = [
+      harvestData?.quantity_value ? `${harvestData.quantity_value}${harvestData.quantity_unit}` : null,
+      harvestData?.yield_score    ? `Yield ${harvestData.yield_score}/10`    : null,
+      harvestData?.quality_score  ? `Quality ${harvestData.quality_score}/10` : null,
+    ].filter(Boolean);
+
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "38px DM Sans, sans-serif";
+    ctx.textAlign = "center";
+    const statsStr = stats.join("  ·  ");
+    ctx.fillText(statsStr, W/2, statsY);
+
+    // Date
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = "34px DM Sans, sans-serif";
+    const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    ctx.fillText(`Harvested ${dateStr}`, W/2, statsY + 55);
+
+    // Area / location
+    if (item.area_name) {
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.font = "30px DM Sans, sans-serif";
+      ctx.fillText(item.area_name, W/2, statsY + 105);
+    }
+
+    // Vercro branding
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "bold 36px Georgia, serif";
+    ctx.fillText("🌱 Grown with Vercro", W/2, H - 60);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "26px DM Sans, sans-serif";
+    ctx.fillText("vercro.com", W/2, H - 20);
+  };
+
+  const drawSeasonCard = async (ctx, canvas) => {
+    const W = 1080, H = 1080;
+    const year = new Date().getFullYear();
+
+    // Background
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, "#2F5D50");
+    bg.addColorStop(1, "#1e3d33");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative circles
+    ctx.beginPath(); ctx.arc(W + 80, -80, 300, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,255,255,0.04)"; ctx.fill();
+
+    // Title
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "36px DM Sans, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${year} Garden Harvest`, W/2, 100);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 80px Georgia, serif";
+    ctx.fillText("Season Summary", W/2, 190);
+
+    // Build crop totals
+    const byName = {};
+    allHarvests.forEach(h => {
+      if (!byName[h.crop_name]) byName[h.crop_name] = { name: h.crop_name, total: 0, unit: h.quantity_unit, count: 0 };
+      if (h.quantity_value) byName[h.crop_name].total += parseFloat(h.quantity_value);
+      byName[h.crop_name].count++;
+    });
+    const crops = Object.values(byName).sort((a,b) => b.total - a.total).slice(0, 6);
+
+    // Crop rows
+    let rowY = 280;
+    crops.forEach((c, i) => {
+      const rowBg = ctx.createLinearGradient(80, rowY-50, W-80, rowY+10);
+      rowBg.addColorStop(0, "rgba(255,255,255,0.08)");
+      rowBg.addColorStop(1, "rgba(255,255,255,0.04)");
+      ctx.fillStyle = rowBg;
+      ctx.beginPath();
+      ctx.roundRect(80, rowY - 50, W - 160, 80, 16);
+      ctx.fill();
+
+      ctx.font = "48px serif";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(getCropEmoji(c.name), 110, rowY + 8);
+
+      ctx.font = "bold 40px Georgia, serif";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(c.name, 180, rowY + 8);
+
+      if (c.total > 0) {
+        ctx.font = "36px DM Sans, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.textAlign = "right";
+        ctx.fillText(`${c.total}${c.unit || ""}`, W - 110, rowY + 8);
+      }
+      ctx.textAlign = "left";
+      rowY += 110;
+    });
+
+    // Total
+    const totalY = rowY + 20;
+    ctx.beginPath();
+    ctx.moveTo(80, totalY - 20); ctx.lineTo(W - 80, totalY - 20);
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 44px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${allHarvests.length} total harvests this season`, W/2, totalY + 40);
+
+    // Vercro branding
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "bold 36px Georgia, serif";
+    ctx.fillText("🌱 Grown with Vercro", W/2, H - 60);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "26px DM Sans, sans-serif";
+    ctx.fillText("vercro.com", W/2, H - 20);
+  };
+
+  const loadImage = (url) => new Promise((resolve, reject) => {
+    const img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Share your harvest 🌱</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {[
+            { id: "single", label: `${getCropEmoji(item.crop)} This harvest` },
+            { id: "season", label: "📊 Season summary" },
+          ].map(m => (
+            <button key={m.id} onClick={() => setMode(m.id)}
+              style={{ flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === m.id ? C.forest : C.border}`, background: mode === m.id ? "#f0f5f3" : "transparent", color: mode === m.id ? C.forest : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Preview */}
+        <div style={{ background: `linear-gradient(135deg, #2F5D50, #1e3d33)`, borderRadius: 14, padding: "24px 20px", marginBottom: 20, color: "#fff", textAlign: "center" }}>
+          {mode === "single" ? (
+            <>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.crop)}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", marginBottom: 4 }}>{item.crop}</div>
+              {item.variety && <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{item.variety}</div>}
+              <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
+                {[harvestData?.quantity_value ? `${harvestData.quantity_value}${harvestData.quantity_unit}` : null, harvestData?.yield_score ? `Yield ${harvestData.yield_score}/10` : null].filter(Boolean).join(" · ")}
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 8 }}>🌱 Grown with Vercro · vercro.com</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", marginBottom: 12 }}>{new Date().getFullYear()} Season Summary</div>
+              {Object.entries(allHarvests.reduce((acc, h) => { acc[h.crop_name] = (acc[h.crop_name] || 0) + 1; return acc; }, {})).slice(0,4).map(([name, count]) => (
+                <div key={name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, opacity: 0.9 }}>
+                  <span>{getCropEmoji(name)} {name}</span>
+                  <span>{count} harvest{count !== 1 ? "s" : ""}</span>
+                </div>
+              ))}
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 12 }}>🌱 Grown with Vercro · vercro.com</div>
+            </>
+          )}
+        </div>
+
+        <button onClick={generateCard} disabled={generating}
+          style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", opacity: generating ? 0.7 : 1 }}>
+          {generating ? "Generating…" : "⬇ Save image to share"}
+        </button>
+
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 10 }}>
+          Saves as 1080×1080px — perfect for Instagram, WhatsApp and Facebook
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Harvest Forecast Card ─────────────────────────────────────────────────────
 
 function HarvestForecastCard({ item, onHarvest, pending }) {
@@ -481,7 +763,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
 
 // ── Harvest Modal ─────────────────────────────────────────────────────────────
 
-function HarvestModal({ item, onClose, onSaved }) {
+function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [yieldScore,   setYieldScore]   = useState(5);
   const [qualScore,    setQualScore]    = useState(5);
   const [quantity,     setQuantity]     = useState("");
@@ -492,6 +774,8 @@ function HarvestModal({ item, onClose, onSaved }) {
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(null); // harvest log entry id
   const [undone,       setUndone]       = useState(false);
+  const [showShare,    setShowShare]    = useState(false);
+  const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
 
   const trafficColor = (val) => {
     if (val <= 3) return C.red;
@@ -538,6 +822,7 @@ function HarvestModal({ item, onClose, onSaved }) {
         }),
       });
       setSaved(entry.id);
+      setSavedEntry({ ...entry, photo_url: photoPreview || null });
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id);
     } catch (e) {
@@ -556,6 +841,15 @@ function HarvestModal({ item, onClose, onSaved }) {
   };
 
   return (
+    <>
+    {showShare && (
+      <ShareHarvestSheet
+        item={item}
+        harvestData={savedEntry}
+        allHarvests={allHarvests}
+        onClose={() => { setShowShare(false); onClose(); }}
+      />
+    )}
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget && !saved) onClose(); }}>
       <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
@@ -570,10 +864,24 @@ function HarvestModal({ item, onClose, onSaved }) {
             <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Harvest logged!</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={undo} style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Undo</button>
-              <button onClick={onClose} style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Done</button>
+            {/* Share prompt */}
+            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px", marginBottom: 16, textAlign: "left" }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>Share your harvest? 🌱</div>
+              <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Save a card to share with your allotment group or on social media.</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowShare(true)}
+                  style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  Share harvest card
+                </button>
+                <button onClick={onClose}
+                  style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                  Skip
+                </button>
+              </div>
             </div>
+            <button onClick={undo} style={{ width: "100%", padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+              Undo harvest
+            </button>
           </div>
         ) : (
           <>
@@ -668,10 +976,18 @@ function Dashboard() {
   const [error,        setError]       = useState(null);
   const [completed,      setCompleted]      = useState(new Set());
   const [undoQueue,      setUndoQueue]      = useState({});
-  const [recentlyDone,   setRecentlyDone]   = useState([]);
-  const [undone,         setUndone]         = useState([]);
-  const [harvestedIds,   setHarvestedIds]   = useState(new Set());
-  const [pendingHarvest, setPendingHarvest] = useState(null);
+  const [recentlyDone,        setRecentlyDone]        = useState([]);
+  const [undone,              setUndone]              = useState([]);
+  const [harvestedIds,        setHarvestedIds]        = useState(new Set());
+  const [pendingHarvest,      setPendingHarvest]      = useState(null);
+  const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
+
+  const loadAllHarvestsForShare = async () => {
+    try {
+      const d = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
+      setAllHarvestsForShare(d);
+    } catch(e) {}
+  };
 
   const load = useCallback(async () => {
     try {
@@ -893,7 +1209,8 @@ function Dashboard() {
         <HarvestModal
           item={pendingHarvest}
           onClose={() => setPendingHarvest(null)}
-          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); setPendingHarvest(null); }}
+          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); setPendingHarvest(null); loadAllHarvestsForShare(); }}
+          allHarvests={allHarvestsForShare}
         />
       )}
 
@@ -945,6 +1262,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
         {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
       </div>
     </div>
+    </>
   );
 }
 
@@ -2162,7 +2480,7 @@ function FeedsScreen() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadAllHarvestsForShare(); }, []);
 
   // Derive effective brand/form for filtering
   const effectiveBrand = brand === "Other" ? null : brand;
