@@ -2983,6 +2983,54 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
   );
 }
 
+// ── iOS Install Banner ────────────────────────────────────────────────────────
+// Shown to iPhone/iPad users who are in Safari but haven't installed the PWA.
+// Dismissed state persisted in sessionStorage so it doesn't re-appear mid-session.
+
+function IOSInstallBanner({ onDismiss }) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 3000,
+      background: "#fff", borderTop: `3px solid ${C.forest}`,
+      padding: "16px 20px 32px", maxWidth: 440, margin: "0 auto",
+      boxShadow: "0 -4px 24px rgba(0,0,0,0.12)"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 28 }}>🌱</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>Add Vercro to your home screen</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>For the full experience including camera scanning</div>
+          </div>
+        </div>
+        <button onClick={onDismiss}
+          style={{ background: "none", border: "none", fontSize: 20, color: C.stone, cursor: "pointer", padding: "0 0 0 8px", flexShrink: 0 }}>×</button>
+      </div>
+
+      <div style={{ background: C.offwhite, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.6 }}>
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ fontWeight: 700 }}>1.</span> Tap the share button{" "}
+            <span style={{ display: "inline-block", background: "#e8e8e8", borderRadius: 6, padding: "1px 7px", fontSize: 15 }}>⎋</span>
+            {" "}at the bottom of Safari
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ fontWeight: 700 }}>2.</span> Scroll down and tap{" "}
+            <span style={{ fontWeight: 700, color: C.forest }}>"Add to Home Screen"</span>
+          </div>
+          <div>
+            <span style={{ fontWeight: 700 }}>3.</span> Tap <span style={{ fontWeight: 700, color: C.forest }}>"Add"</span> — then open Vercro from your home screen
+          </div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
+        You only need to do this once. It works like a normal app — no App Store needed.
+      </div>
+    </div>
+  );
+}
+
 // ── Feedback Sheet ────────────────────────────────────────────────────────────
 
 const FEEDBACK_CATEGORIES = [
@@ -3470,6 +3518,19 @@ export default function GrowSmart() {
   const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
   const [showFeedback, setShowFeedback] = useState(false);
 
+  // iOS install prompt — show if on iOS Safari and not installed as PWA
+  const isIOS        = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.navigator.standalone === true;
+  const isSafari     = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const [showIOSBanner, setShowIOSBanner] = useState(
+    isIOS && isSafari && !isInStandalone && !sessionStorage.getItem("ios-banner-dismissed")
+  );
+
+  const dismissIOSBanner = () => {
+    sessionStorage.setItem("ios-banner-dismissed", "1");
+    setShowIOSBanner(false);
+  };
+
   if (session === undefined || (session && onboarding === null)) {
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: C.stone, fontSize: 14 }}>Loading…</div>;
   }
@@ -3496,8 +3557,11 @@ export default function GrowSmart() {
         {tab === "admin"     && isAdmin && <AdminScreen />}
       </div>
 
+      {/* iOS install banner */}
+      {showIOSBanner && <IOSInstallBanner onDismiss={dismissIOSBanner} />}
+
       {/* Floating feedback button */}
-      {!showFeedback && tab !== "admin" && (
+      {!showFeedback && tab !== "admin" && !showIOSBanner && (
         <button onClick={() => setShowFeedback(true)}
           style={{ position: "fixed", bottom: 90, right: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
