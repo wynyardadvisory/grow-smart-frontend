@@ -1960,15 +1960,15 @@ function CropList() {
                 const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
                 const pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
                 const stageColor = STAGE_COLOR[crop.stage] || C.stone;
-                const harvestWeeks = crop.crop_def?.days_to_maturity_max
-                  ? Math.round((crop.crop_def.days_to_maturity_max - (crop.sown_date ? Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) : 0)) / 7)
+                const harvestWeeks = crop.crop_def?.days_to_maturity_max && crop.sown_date
+                  ? Math.round((crop.crop_def.days_to_maturity_max - Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000)) / 7)
                   : null;
                 return (
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage && crop.stage !== "seed" ? crop.stage : (crop.grown_from || "seed")}</span>
-                      {harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
-                      {harvestWeeks <= 0 && crop.sown_date && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
+                      {harvestWeeks !== null && harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
+                      {harvestWeeks !== null && harvestWeeks <= 0 && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
                     </div>
                     <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99, transition: "width 0.5s ease" }} />
