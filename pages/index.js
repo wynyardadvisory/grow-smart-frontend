@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Head from "next/head";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -3949,6 +3950,19 @@ export default function GrowSmart() {
   if (onboarding) return <OnboardingScreen onComplete={() => setOnboarding(false)} />;
 
   return (
+    <>
+      <Head>
+        <title>Vercro</title>
+        <meta name="description" content="Your personal crop planner" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="theme-color" content="#2F5D50" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Vercro" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+      </Head>
     <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 10 }}>
@@ -3993,5 +4007,6 @@ export default function GrowSmart() {
       </div>
       <Analytics />
     </div>
+    </>
   );
 }
