@@ -2430,6 +2430,65 @@ function todayISO() { return new Date().toISOString().split("T")[0]; }
 function weekEndISO() { return new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]; }
 
 // ── Profile Screen ────────────────────────────────────────────────────────────
+
+// ── FAQ ───────────────────────────────────────────────────────────────────────
+const FAQ_ITEMS = [
+  {
+    q: "Why does the app recommend sowing indoors?",
+    a: "Starting seeds indoors gives them a protected start — warmth, no slugs, no late frosts. It typically means stronger plants, earlier harvests, and better yields. Once seedlings are big enough and frost risk has passed, you transplant them outside. If you don't have space indoors, tap 'Prefer to sow outdoors?' on any sow task and we'll adjust your timing accordingly.",
+  },
+  {
+    q: "Why add multiple instances of the same crop?",
+    a: "Each instance represents a real batch of plants — sown at a different time, in a different bed, or from a different variety. Adding a second Carrot in June means the app tracks its own separate sow date, harvest window, and tasks. This is how succession sowing works: stagger your sowings 3–4 weeks apart and you get a continuous harvest instead of a glut.",
+  },
+  {
+    q: "What is succession sowing?",
+    a: "Sowing the same crop in batches every few weeks so harvests spread over a longer period. Great for lettuce, radish, carrots, and spinach. Instead of 30 lettuces all ready at once, you get 10 every 3 weeks. When the app suggests adding another instance, that's the prompt to start your next succession batch.",
+  },
+  {
+    q: "How does the app work out when to harvest?",
+    a: "Each crop has a days-to-maturity range based on the variety. We count forward from your sow date and flag when you're entering the harvest window. The app also knows which months each crop typically matures — so if the calendar and the sow date agree, you get a high-confidence forecast. If no sow date is set, we use seasonal averages.",
+  },
+  {
+    q: "What do the urgency colours mean?",
+    a: "Red border = do this today or you risk missing the window. Amber = this week. Green = coming up, no rush yet. Tasks go red when the due date passes or when weather conditions (like a frost window closing) make timing critical.",
+  },
+  {
+    q: "Why is my task showing as 'estimated'?",
+    a: "It means we calculated the date from your sow date plus average days-to-maturity, rather than knowing the exact date. If you set a precise sow date the estimate tightens up. The ~estimated badge is just a heads-up that the timing is approximate — it's still a useful guide.",
+  },
+  {
+    q: "What are first earlies, second earlies, and maincrop potatoes?",
+    a: "These describe how long a potato variety takes to mature. First earlies (e.g. Rocket) are ready in 10–12 weeks — plant March/April, harvest June/July. Second earlies take 13–15 weeks. Maincrop (e.g. Maris Piper) take 15–20 weeks — plant April/May, harvest August–October. The app detects which type you have and sets plant-out timing accordingly.",
+  },
+  {
+    q: "How does weather affect my tasks?",
+    a: "We check your local 7-day forecast using your postcode. If a frost is forecast and you have a frost-sensitive crop ready to sow outdoors, we'll hold the task until conditions improve. Once the frost risk clears, the task reappears. Indoor sowing tasks are never blocked by frost.",
+  },
+];
+
+function FaqSection() {
+  const [open, setOpen] = useState(null);
+  return (
+    <div style={{ marginTop: 32, marginBottom: 16 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>How it works</div>
+      <div style={{ fontSize: 13, color: C.stone, marginBottom: 14 }}>Common questions about Vercro</div>
+      {FAQ_ITEMS.map((item, i) => (
+        <div key={i} style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 0 }}>
+          <button onClick={() => setOpen(open === i ? null : i)}
+            style={{ width: "100%", background: "none", border: "none", padding: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", textAlign: "left", gap: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#222", lineHeight: 1.4 }}>{item.q}</span>
+            <span style={{ color: C.stone, fontSize: 16, flexShrink: 0 }}>{open === i ? "−" : "+"}</span>
+          </button>
+          {open === i && (
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, paddingBottom: 14 }}>{item.a}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProfileScreen({ session }) {
   const [form,       setForm]      = useState({ name: "", postcode: "" });
   const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
@@ -2684,6 +2743,8 @@ function ProfileScreen({ session }) {
           </div>
         )}
       </div>
+
+      <FaqSection />
 
       {/* Sign out */}
       <button
