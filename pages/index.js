@@ -10,7 +10,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Head from "next/head";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -258,17 +257,13 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
 
 // ── Planting Suggestions Sheet ────────────────────────────────────────────────
 
+// ── Planting Suggestions Sheet ────────────────────────────────────────────────
 function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
   const [state,       setState]       = useState("loading"); // loading | generating | ready | error
   const [suggestions, setSuggestions] = useState([]);
-  const [selected,    setSelected]    = useState(null);
-  const [confirming,  setConfirming]  = useState(false);
-  const [adding,      setAdding]      = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
 
-  useEffect(() => {
-    loadOrGenerate();
-  }, []);
+  useEffect(() => { loadOrGenerate(); }, []);
 
   const loadOrGenerate = async () => {
     setState("loading");
@@ -297,22 +292,13 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
     }
   };
 
-  const confirmAdd = async () => {
-    if (!selected) return;
-    setAdding(true);
-    try {
-      await apiFetch("/crops", {
-        method: "POST",
-        body: JSON.stringify({
-          name:    selected.crop,
-          status:  "planned",
-          area_id: area.id,
-        }),
-      });
-      onAddCrop();
-      onClose();
-    } catch (e) { console.error(e); }
-    setAdding(false);
+  // Split suggestions into crops and prep
+  const cropSuggestions = suggestions.filter(s => s.type === "crop");
+  const prepSuggestion  = suggestions.find(s => s.type === "prep");
+
+  // Tapping a crop card closes the sheet and pre-fills the Add Crop form
+  const handleCropTap = (s) => {
+    onClose({ prefill: { name: s.crop, variety: s.variety } });
   };
 
   return (
@@ -335,7 +321,7 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
         {state === "generating" && (
           <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Thinking about your bed…</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Thinking about your bed...</div>
             <div style={{ fontSize: 12 }}>Checking rotation, season, and your garden</div>
           </div>
         )}
@@ -347,54 +333,70 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
           </div>
         )}
 
-        {state === "ready" && !confirming && (
+        {state === "ready" && (
           <>
             {generatedAt && (
               <div style={{ fontSize: 11, color: C.stone, marginBottom: 16, marginTop: 4 }}>
                 Based on your garden in {new Date(generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-              {suggestions.map((s, i) => (
-                <div key={i} onClick={() => setSelected(s)}
-                  style={{ background: selected === s ? "#f0f7f4" : C.cardBg, border: `1px solid ${selected === s ? C.forest : C.border}`, borderLeft: `3px solid ${selected === s ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "all 0.15s" }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>{s.crop}</div>
-                  <div style={{ fontSize: 13, color: C.stone, marginBottom: s.rotation_note || s.companion_note ? 8 : 0 }}>{s.reason}</div>
-                  {s.sow_note && <div style={{ fontSize: 12, color: C.forest, marginBottom: 4 }}>🗓 {s.sow_note}</div>}
-                  {s.rotation_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>↻ {s.rotation_note}</div>}
-                  {s.companion_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>🤝 {s.companion_note}</div>}
+
+            {/* Crop suggestions — tappable, go to Add Crop pre-filled */}
+            {cropSuggestions.length > 0 && (
+              <>
+                <SectionLabel>Crops to plant</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+                  {cropSuggestions.map((s, i) => (
+                    <div key={i} onClick={() => handleCropTap(s)}
+                      style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.forest}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#f0f7f4"}
+                      onMouseLeave={e => e.currentTarget.style.background = C.cardBg}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 22 }}>{getCropEmoji(s.crop)}</span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{s.crop}</div>
+                            {s.variety && (
+                              <div style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginTop: 1 }}>{s.variety}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ background: C.forest, color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>
+                          Add →
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 13, color: C.stone, marginBottom: s.sow_note || s.companion_note ? 8 : 0, lineHeight: 1.4 }}>{s.reason}</div>
+                      {s.sow_note && <div style={{ fontSize: 12, color: C.forest, marginBottom: 4 }}>🗓 {s.sow_note}</div>}
+                      {s.companion_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>🤝 {s.companion_note}</div>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button onClick={() => selected && setConfirming(true)} disabled={!selected}
-              style={{ width: "100%", padding: "13px", borderRadius: 10, border: "none", background: selected ? C.forest : C.border, color: selected ? "#fff" : C.stone, fontWeight: 700, fontSize: 15, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
-              {selected ? `Plant ${selected.crop} here` : "Select a crop above"}
-            </button>
+              </>
+            )}
+
+            {/* Prep / companion suggestion — info only */}
+            {prepSuggestion && (
+              <>
+                <SectionLabel>Bed prep</SectionLabel>
+                <div style={{ background: "#fdf8ec", border: `1px solid ${C.amber}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+                    🌿 {prepSuggestion.title}
+                  </div>
+                  <div style={{ fontSize: 13, color: C.stone, marginBottom: prepSuggestion.timing_note ? 8 : 0, lineHeight: 1.4 }}>
+                    {prepSuggestion.reason}
+                  </div>
+                  {prepSuggestion.timing_note && (
+                    <div style={{ fontSize: 12, color: C.amber, fontWeight: 600 }}>⏱ {prepSuggestion.timing_note}</div>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic", marginBottom: 4 }}>
+                  Tap a crop card above to add it to your garden.
+                </div>
+              </>
+            )}
           </>
         )}
 
-        {state === "ready" && confirming && selected && (
-          <div style={{ paddingTop: 8 }}>
-            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>{selected.crop}</div>
-              <div style={{ fontSize: 13, color: C.stone, marginBottom: 8 }}>{selected.reason}</div>
-              {selected.sow_note && <div style={{ fontSize: 12, color: C.forest }}>🗓 {selected.sow_note}</div>}
-            </div>
-            <div style={{ fontSize: 13, color: "#1a1a1a", marginBottom: 20 }}>
-              This will add <strong>{selected.crop}</strong> to <strong>{area.name}</strong> as a planned crop. You can add variety and dates from the Crops tab.
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirming(false)}
-                style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
-                Back
-              </button>
-              <button onClick={confirmAdd} disabled={adding}
-                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: adding ? 0.6 : 1 }}>
-                {adding ? "Adding…" : "Confirm & Add Crop"}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -738,8 +740,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
         <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
         <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
       </div>
-      {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>{item.variety}</div>}
-      {item.area_name && <div style={{ fontSize: 11, color: C.forest, marginBottom: 4 }}>📍 {item.area_name}{item.sown_date ? ` · Sown ${new Date(item.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}</div>}
+      {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
 
       {/* Progress bar */}
       <div style={{ marginBottom: 8 }}>
@@ -797,38 +798,25 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
 
   const uploadPhoto = async (entryId) => {
     if (!photo) return;
-    // Wrap FileReader in a Promise so save() actually waits for upload to complete
-    await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(photo);
-      reader.onload = async () => {
-        try {
-          const base64 = reader.result.split(",")[1];
-          await apiFetch(`/harvest-log/${entryId}/photo`, {
-            method: "POST",
-            body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type }),
-          });
-          resolve();
-        } catch (e) {
-          console.error("Photo upload failed:", e);
-          resolve(); // resolve anyway so save() completes even if photo fails
-        }
-      };
-      reader.onerror = () => resolve(); // don't block save on read error
-    });
+    const reader = new FileReader();
+    reader.readAsDataURL(photo);
+    reader.onload = async () => {
+      const base64 = reader.result.split(",")[1];
+      await apiFetch(`/harvest-log/${entryId}/photo`, {
+        method: "POST",
+        body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type }),
+      });
+    };
   };
-
-  const [saveError, setSaveError] = useState(null);
 
   const save = async () => {
     setSaving(true);
-    setSaveError(null);
     try {
       const entry = await apiFetch("/harvest-log", {
         method: "POST",
         body: JSON.stringify({
           crop_instance_id: item.crop_instance_id || null,
-          crop_name:        item.crop || item.name || "Unknown",
+          crop_name:        item.crop,
           variety:          item.variety || null,
           yield_score:      yieldScore,
           quality_score:    qualScore,
@@ -842,8 +830,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id);
     } catch (e) {
-      console.error("Harvest save error:", e);
-      setSaveError(e.message || "Something went wrong. Please try again.");
+      console.error(e);
     }
     setSaving(false);
   };
@@ -903,12 +890,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         ) : (
           <>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              {item.area_name && <span style={{ fontSize: 12, color: C.forest, background: "#f0f7f4", borderRadius: 20, padding: "2px 10px" }}>📍 {item.area_name}</span>}
-              {item.sown_date && <span style={{ fontSize: 12, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 10px" }}>Sown {new Date(item.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
-              {!item.area_name && !item.sown_date && <span style={{ fontSize: 12, color: C.stone }}> </span>}
-            </div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
 
             {/* Yield score */}
             <div style={{ marginBottom: 20 }}>
@@ -977,11 +959,6 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               )}
             </div>
 
-            {saveError && (
-              <div style={{ background: "#fff0f0", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.red, marginBottom: 10 }}>
-                ⚠️ {saveError}
-              </div>
-            )}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
               <button onClick={save} disabled={saving}
@@ -1237,7 +1214,7 @@ function Dashboard() {
         <HarvestModal
           item={pendingHarvest}
           onClose={() => setPendingHarvest(null)}
-          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); setPendingHarvest(null); loadAllHarvestsForShare(); load(); }}
+          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); setPendingHarvest(null); loadAllHarvestsForShare(); }}
           allHarvests={allHarvestsForShare}
         />
       )}
@@ -1277,7 +1254,6 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{task.action}</div>
         <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
           {task.area?.name && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{task.area.name}</span>}
-          {task.crop?.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(task.crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
           {isEstimated     && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>~estimated</span>}
           {showUndo && onUndo && (
             <button onClick={e => { e.stopPropagation(); onUndo(task); }}
@@ -1295,7 +1271,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
 }
 
 // ── Garden view ───────────────────────────────────────────────────────────────
-function GardenView() {
+function GardenView({ onNavigateAdd }) {
   const [locations, setLocations] = useState([]);
   const [crops,     setCrops]     = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -1429,7 +1405,15 @@ function GardenView() {
       {suggestArea && (
         <PlantingSuggestionsSheet
           area={suggestArea}
-          onClose={() => setSuggestArea(null)}
+          onClose={(result) => {
+            setSuggestArea(null);
+            if (result?.prefill && onNavigateAdd) {
+              // User tapped a crop card — navigate to Add Crop pre-filled
+              onNavigateAdd({ ...result.prefill, area_id: suggestArea.id });
+            } else {
+              load();
+            }
+          }}
           onAddCrop={() => { setSuggestArea(null); load(); }}
         />
       )}
@@ -1723,8 +1707,6 @@ function CropList() {
   const [confirm,       setConfirm]       = useState(null);
   const [diary,         setDiary]         = useState(null);  // crop to show diary for
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
-  const [filterArea,    setFilterArea]    = useState("all");
-  const [filterStatus,  setFilterStatus]  = useState("all");
 
   const load = useCallback(async () => {
     try {
@@ -1810,47 +1792,14 @@ function CropList() {
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
-        <div style={{ fontSize: 13, color: C.stone, marginTop: 2, marginBottom: 14 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} growing</div>
-
-        {/* Filter bar */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select value={filterArea} onChange={e => setFilterArea(e.target.value)}
-            style={{ fontSize: 12, padding: "6px 10px", borderRadius: 20, border: `1px solid ${C.border}`, background: filterArea !== "all" ? C.forest : C.offwhite, color: filterArea !== "all" ? "#fff" : C.stone, cursor: "pointer" }}>
-            <option value="all">All areas</option>
-            {[...new Set(crops.map(c => c.area?.name).filter(Boolean))].sort().map(a => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            style={{ fontSize: 12, padding: "6px 10px", borderRadius: 20, border: `1px solid ${C.border}`, background: filterStatus !== "all" ? C.forest : C.offwhite, color: filterStatus !== "all" ? "#fff" : C.stone, cursor: "pointer" }}>
-            <option value="all">All stages</option>
-            <option value="planned">🗓 Planned</option>
-            <option value="growing">🌱 Growing</option>
-            <option value="sown_indoors">🪟 Sown indoors</option>
-            <option value="sown_outdoors">🌿 Sown outdoors</option>
-            <option value="transplanted">🪴 Transplanted</option>
-          </select>
-          {(filterArea !== "all" || filterStatus !== "all") && (
-            <button onClick={() => { setFilterArea("all"); setFilterStatus("all"); }}
-              style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.border}`, background: "none", color: C.stone, cursor: "pointer" }}>
-              Clear
-            </button>
-          )}
-        </div>
+        <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} growing</div>
       </div>
-
-      {(() => {
-        const filtered = crops.filter(c => {
-          if (filterArea !== "all" && c.area?.name !== filterArea) return false;
-          if (filterStatus !== "all" && (c.status || "growing") !== filterStatus) return false;
-          return true;
-        });
-        if (filtered.length === 0) return (
-          <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops match your filters.</div>
-        );
-        return filtered.map(crop => (
+      {crops.length === 0 && (
+        <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
+      )}
+      {crops.map(crop => (
         <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
 
           {/* Confirm delete overlay */}
@@ -1997,15 +1946,15 @@ function CropList() {
                 const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
                 const pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
                 const stageColor = STAGE_COLOR[crop.stage] || C.stone;
-                const harvestWeeks = crop.crop_def?.days_to_maturity_max && crop.sown_date
-                  ? Math.round((crop.crop_def.days_to_maturity_max - Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000)) / 7)
+                const harvestWeeks = crop.crop_def?.days_to_maturity_max
+                  ? Math.round((crop.crop_def.days_to_maturity_max - (crop.sown_date ? Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) : 0)) / 7)
                   : null;
                 return (
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage && crop.stage !== "seed" ? crop.stage : (crop.grown_from || "seed")}</span>
-                      {harvestWeeks !== null && harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
-                      {harvestWeeks !== null && harvestWeeks <= 0 && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
+                      {harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
+                      {harvestWeeks <= 0 && crop.sown_date && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
                     </div>
                     <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99, transition: "width 0.5s ease" }} />
@@ -2024,14 +1973,13 @@ function CropList() {
             </>
           )}
         </div>
-        ));
-      })()}
+      ))}
     </div>
   );
 }
 
 // ── Add crop ──────────────────────────────────────────────────────────────────
-function AddCrop() {
+function AddCrop({ prefill, onPrefillConsumed }) {
   const [cropDefs,  setCropDefs]  = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [areas,     setAreas]     = useState([]);
@@ -2044,12 +1992,28 @@ function AddCrop() {
   const [enriching,   setEnriching]   = useState(false);
   const [error,       setError]       = useState(null);
   const [step,        setStep]        = useState("form");
-  const [showScanner, setShowScanner] = useState(false);   // "form" | "previewing" | "loading_preview" | "done"
-  const [cropProfile, setCropProfile] = useState(null);     // enriched profile to show in confirmation
+  const [showScanner, setShowScanner] = useState(false);
+  const [cropProfile, setCropProfile] = useState(null);
 
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
-      .then(([defs, areasData]) => { setCropDefs(defs); setAreas(areasData); })
+      .then(([defs, areasData]) => {
+        setCropDefs(defs);
+        setAreas(areasData);
+        // Apply prefill from planting suggestions if present
+        if (prefill) {
+          const matched = defs.find(d => d.name.toLowerCase() === prefill.name?.toLowerCase());
+          setForm(f => ({
+            ...f,
+            crop_def_id: matched ? matched.id : "__other__",
+            crop_other:  matched ? "" : (prefill.name || ""),
+            variety:     prefill.variety || "",
+            variety_id:  prefill.variety ? "__other__" : "",
+            area_id:     prefill.area_id || "",
+          }));
+          if (onPrefillConsumed) onPrefillConsumed();
+        }
+      })
       .catch(e => setError(e.message));
   }, []);
 
@@ -2431,65 +2395,6 @@ function todayISO() { return new Date().toISOString().split("T")[0]; }
 function weekEndISO() { return new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]; }
 
 // ── Profile Screen ────────────────────────────────────────────────────────────
-
-// ── FAQ ───────────────────────────────────────────────────────────────────────
-const FAQ_ITEMS = [
-  {
-    q: "Why does the app recommend sowing indoors?",
-    a: "Starting seeds indoors gives them a protected start — warmth, no slugs, no late frosts. It typically means stronger plants, earlier harvests, and better yields. Once seedlings are big enough and frost risk has passed, you transplant them outside. If you don't have space indoors, tap 'Prefer to sow outdoors?' on any sow task and we'll adjust your timing accordingly.",
-  },
-  {
-    q: "Why add multiple instances of the same crop?",
-    a: "Each instance represents a real batch of plants — sown at a different time, in a different bed, or from a different variety. Adding a second Carrot in June means the app tracks its own separate sow date, harvest window, and tasks. This is how succession sowing works: stagger your sowings 3–4 weeks apart and you get a continuous harvest instead of a glut.",
-  },
-  {
-    q: "What is succession sowing?",
-    a: "Sowing the same crop in batches every few weeks so harvests spread over a longer period. Great for lettuce, radish, carrots, and spinach. Instead of 30 lettuces all ready at once, you get 10 every 3 weeks. When the app suggests adding another instance, that's the prompt to start your next succession batch.",
-  },
-  {
-    q: "How does the app work out when to harvest?",
-    a: "Each crop has a days-to-maturity range based on the variety. We count forward from your sow date and flag when you're entering the harvest window. The app also knows which months each crop typically matures — so if the calendar and the sow date agree, you get a high-confidence forecast. If no sow date is set, we use seasonal averages.",
-  },
-  {
-    q: "What do the urgency colours mean?",
-    a: "Red border = do this today or you risk missing the window. Amber = this week. Green = coming up, no rush yet. Tasks go red when the due date passes or when weather conditions (like a frost window closing) make timing critical.",
-  },
-  {
-    q: "Why is my task showing as 'estimated'?",
-    a: "It means we calculated the date from your sow date plus average days-to-maturity, rather than knowing the exact date. If you set a precise sow date the estimate tightens up. The ~estimated badge is just a heads-up that the timing is approximate — it's still a useful guide.",
-  },
-  {
-    q: "What are first earlies, second earlies, and maincrop potatoes?",
-    a: "These describe how long a potato variety takes to mature. First earlies (e.g. Rocket) are ready in 10–12 weeks — plant March/April, harvest June/July. Second earlies take 13–15 weeks. Maincrop (e.g. Maris Piper) take 15–20 weeks — plant April/May, harvest August–October. The app detects which type you have and sets plant-out timing accordingly.",
-  },
-  {
-    q: "How does weather affect my tasks?",
-    a: "We check your local 7-day forecast using your postcode. If a frost is forecast and you have a frost-sensitive crop ready to sow outdoors, we'll hold the task until conditions improve. Once the frost risk clears, the task reappears. Indoor sowing tasks are never blocked by frost.",
-  },
-];
-
-function FaqSection() {
-  const [open, setOpen] = useState(null);
-  return (
-    <div style={{ marginTop: 32, marginBottom: 16 }}>
-      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>How it works</div>
-      <div style={{ fontSize: 13, color: C.stone, marginBottom: 14 }}>Common questions about Vercro</div>
-      {FAQ_ITEMS.map((item, i) => (
-        <div key={i} style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 0 }}>
-          <button onClick={() => setOpen(open === i ? null : i)}
-            style={{ width: "100%", background: "none", border: "none", padding: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", textAlign: "left", gap: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#222", lineHeight: 1.4 }}>{item.q}</span>
-            <span style={{ color: C.stone, fontSize: 16, flexShrink: 0 }}>{open === i ? "−" : "+"}</span>
-          </button>
-          {open === i && (
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, paddingBottom: 14 }}>{item.a}</div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ProfileScreen({ session }) {
   const [form,       setForm]      = useState({ name: "", postcode: "" });
   const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
@@ -2744,8 +2649,6 @@ function ProfileScreen({ session }) {
           </div>
         )}
       </div>
-
-      <FaqSection />
 
       {/* Sign out */}
       <button
@@ -3398,7 +3301,7 @@ function AdminFeedbackList() {
           </div>
           <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 8 }}>{item.message}</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: C.stone }}>{item.user_name || item.user_email || "Unknown user"}</span>
+            <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || item.profiles?.email || "Unknown user"}</span>
             {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
           </div>
         </div>
@@ -3908,6 +3811,7 @@ export default function GrowSmart() {
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
   const [tab,         setTab]         = useState("dashboard");
+  const [addPrefill,  setAddPrefill]  = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -3950,19 +3854,6 @@ export default function GrowSmart() {
   if (onboarding) return <OnboardingScreen onComplete={() => setOnboarding(false)} />;
 
   return (
-    <>
-      <Head>
-        <title>Vercro</title>
-        <meta name="description" content="Your personal crop planner" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#2F5D50" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Vercro" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
-      </Head>
     <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 10 }}>
@@ -3974,9 +3865,9 @@ export default function GrowSmart() {
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard />}
-        {tab === "garden"    && <GardenView />}
+        {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setAddPrefill(prefill); setTab("add"); }} />}
         {tab === "crops"     && <CropList />}
-        {tab === "add"       && <AddCrop />}
+        {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} />}
         {tab === "admin"     && isAdmin && <AdminScreen />}
@@ -4007,6 +3898,5 @@ export default function GrowSmart() {
       </div>
       <Analytics />
     </div>
-    </>
   );
 }
