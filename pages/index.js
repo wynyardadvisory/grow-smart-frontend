@@ -1731,6 +1731,7 @@ function CropList() {
       area_id:     crop.area_id || "",
       notes:       crop.notes || "",
       status:      crop.status || "growing",
+      grown_from:  crop.grown_from || "",
     });
     if (crop.crop_def_id) {
       try {
@@ -1865,6 +1866,20 @@ function CropList() {
                 <label style={labelStyle}>Notes</label>
                 <input value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle} placeholder="Optional notes" />
               </div>
+              <div>
+                <label style={labelStyle}>Grown from</label>
+                <select value={editForm.grown_from} onChange={e => setEditForm(f => ({ ...f, grown_from: e.target.value }))} style={inputStyle}>
+                  <option value="">Not specified</option>
+                  <option value="seed">Seed</option>
+                  <option value="sets">Sets</option>
+                  <option value="tuber">Tuber</option>
+                  <option value="plug">Plug plant</option>
+                  <option value="cutting">Cutting</option>
+                  <option value="crown">Crown</option>
+                  <option value="runner">Runner</option>
+                  <option value="cane">Cane</option>
+                </select>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
                   style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -1916,7 +1931,8 @@ function CropList() {
               {/* Progress bar */}
               {(() => {
                 const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
-                const idx = STAGES.indexOf(crop.stage || "seed");
+                const stageKey = crop.stage || "seed";
+                const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
                 const pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
                 const stageColor = STAGE_COLOR[crop.stage] || C.stone;
                 const harvestWeeks = crop.crop_def?.days_to_maturity_max
@@ -1925,7 +1941,7 @@ function CropList() {
                 return (
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage || "seed"}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage && crop.stage !== "seed" ? crop.stage : (crop.grown_from || "seed")}</span>
                       {harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
                       {harvestWeeks <= 0 && crop.sown_date && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
                     </div>
