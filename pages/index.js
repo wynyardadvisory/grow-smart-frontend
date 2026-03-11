@@ -737,7 +737,8 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
         <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
         <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
       </div>
-      {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
+      {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>{item.variety}</div>}
+      {item.area_name && <div style={{ fontSize: 11, color: C.forest, marginBottom: 4 }}>📍 {item.area_name}{item.sown_date ? ` · Sown ${new Date(item.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}</div>}
 
       {/* Progress bar */}
       <div style={{ marginBottom: 8 }}>
@@ -816,14 +817,17 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
     });
   };
 
+  const [saveError, setSaveError] = useState(null);
+
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const entry = await apiFetch("/harvest-log", {
         method: "POST",
         body: JSON.stringify({
           crop_instance_id: item.crop_instance_id || null,
-          crop_name:        item.crop,
+          crop_name:        item.crop || item.name || "Unknown",
           variety:          item.variety || null,
           yield_score:      yieldScore,
           quality_score:    qualScore,
@@ -837,7 +841,8 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id);
     } catch (e) {
-      console.error(e);
+      console.error("Harvest save error:", e);
+      setSaveError(e.message || "Something went wrong. Please try again.");
     }
     setSaving(false);
   };
@@ -966,6 +971,11 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               )}
             </div>
 
+            {saveError && (
+              <div style={{ background: "#fff0f0", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.red, marginBottom: 10 }}>
+                ⚠️ {saveError}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
               <button onClick={save} disabled={saving}
