@@ -902,7 +902,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         ) : (
           <>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              {item.area_name && <span style={{ fontSize: 12, color: C.forest, background: "#f0f7f4", borderRadius: 20, padding: "2px 10px" }}>📍 {item.area_name}</span>}
+              {item.sown_date && <span style={{ fontSize: 12, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 10px" }}>Sown {new Date(item.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+              {!item.area_name && !item.sown_date && <span style={{ fontSize: 12, color: C.stone }}> </span>}
+            </div>
 
             {/* Yield score */}
             <div style={{ marginBottom: 20 }}>
