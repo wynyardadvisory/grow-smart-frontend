@@ -795,15 +795,25 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
 
   const uploadPhoto = async (entryId) => {
     if (!photo) return;
-    const reader = new FileReader();
-    reader.readAsDataURL(photo);
-    reader.onload = async () => {
-      const base64 = reader.result.split(",")[1];
-      await apiFetch(`/harvest-log/${entryId}/photo`, {
-        method: "POST",
-        body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type }),
-      });
-    };
+    // Wrap FileReader in a Promise so save() actually waits for upload to complete
+    await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(photo);
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result.split(",")[1];
+          await apiFetch(`/harvest-log/${entryId}/photo`, {
+            method: "POST",
+            body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type }),
+          });
+          resolve();
+        } catch (e) {
+          console.error("Photo upload failed:", e);
+          resolve(); // resolve anyway so save() completes even if photo fails
+        }
+      };
+      reader.onerror = () => resolve(); // don't block save on read error
+    });
   };
 
   const save = async () => {
@@ -3274,7 +3284,7 @@ function AdminFeedbackList() {
           </div>
           <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 8 }}>{item.message}</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || item.profiles?.email || "Unknown user"}</span>
+            <span style={{ fontSize: 11, color: C.stone }}>{item.user_name || item.user_email || "Unknown user"}</span>
             {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
           </div>
         </div>
