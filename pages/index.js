@@ -1276,6 +1276,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{task.action}</div>
         <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
           {task.area?.name && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{task.area.name}</span>}
+          {task.crop?.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(task.crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
           {isEstimated     && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>~estimated</span>}
           {showUndo && onUndo && (
             <button onClick={e => { e.stopPropagation(); onUndo(task); }}
@@ -1721,6 +1722,8 @@ function CropList() {
   const [confirm,       setConfirm]       = useState(null);
   const [diary,         setDiary]         = useState(null);  // crop to show diary for
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
+  const [filterArea,    setFilterArea]    = useState("all");
+  const [filterStatus,  setFilterStatus]  = useState("all");
 
   const load = useCallback(async () => {
     try {
@@ -1806,14 +1809,47 @@ function CropList() {
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
-        <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} growing</div>
+        <div style={{ fontSize: 13, color: C.stone, marginTop: 2, marginBottom: 14 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} growing</div>
+
+        {/* Filter bar */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select value={filterArea} onChange={e => setFilterArea(e.target.value)}
+            style={{ fontSize: 12, padding: "6px 10px", borderRadius: 20, border: `1px solid ${C.border}`, background: filterArea !== "all" ? C.forest : C.offwhite, color: filterArea !== "all" ? "#fff" : C.stone, cursor: "pointer" }}>
+            <option value="all">All areas</option>
+            {[...new Set(crops.map(c => c.area?.name).filter(Boolean))].sort().map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            style={{ fontSize: 12, padding: "6px 10px", borderRadius: 20, border: `1px solid ${C.border}`, background: filterStatus !== "all" ? C.forest : C.offwhite, color: filterStatus !== "all" ? "#fff" : C.stone, cursor: "pointer" }}>
+            <option value="all">All stages</option>
+            <option value="planned">🗓 Planned</option>
+            <option value="growing">🌱 Growing</option>
+            <option value="sown_indoors">🪟 Sown indoors</option>
+            <option value="sown_outdoors">🌿 Sown outdoors</option>
+            <option value="transplanted">🪴 Transplanted</option>
+          </select>
+          {(filterArea !== "all" || filterStatus !== "all") && (
+            <button onClick={() => { setFilterArea("all"); setFilterStatus("all"); }}
+              style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.border}`, background: "none", color: C.stone, cursor: "pointer" }}>
+              Clear
+            </button>
+          )}
+        </div>
       </div>
-      {crops.length === 0 && (
-        <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
-      )}
-      {crops.map(crop => (
+
+      {(() => {
+        const filtered = crops.filter(c => {
+          if (filterArea !== "all" && c.area?.name !== filterArea) return false;
+          if (filterStatus !== "all" && (c.status || "growing") !== filterStatus) return false;
+          return true;
+        });
+        if (filtered.length === 0) return (
+          <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops match your filters.</div>
+        );
+        return filtered.map(crop => (
         <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
 
           {/* Confirm delete overlay */}
@@ -1987,7 +2023,8 @@ function CropList() {
             </>
           )}
         </div>
-      ))}
+        ));
+      })()}
     </div>
   );
 }
