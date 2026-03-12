@@ -1159,7 +1159,7 @@ function Dashboard() {
       {totalToday > 0 && (
         <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 6 }}>Today&apos;s tasks</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 6 }}>This week&apos;s tasks</div>
             <div style={{ height: 6, background: C.border, borderRadius: 10, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${totalToday > 0 ? (doneToday / totalToday) * 100 : 0}%`, background: C.leaf, borderRadius: 10, transition: "width 0.4s ease" }} />
             </div>
@@ -1170,9 +1170,9 @@ function Dashboard() {
 
       {/* Active tasks */}
       {[
-        { label: "Today",     items: grouped.today.filter(t     => !completed.has(t.id)) },
-        { label: "This Week", items: grouped.this_week.filter(t => !completed.has(t.id)) },
-        { label: "Coming Up", items: grouped.coming_up.filter(t => !completed.has(t.id)) },
+        { label: "This Week",  items: grouped.today.filter(t     => !completed.has(t.id)) },
+        { label: "Coming Up",  items: grouped.this_week.filter(t => !completed.has(t.id)) },
+        { label: "Later",      items: grouped.coming_up.filter(t => !completed.has(t.id)) },
       ].map(({ label, items }) => items?.length > 0 && (
         <div key={label}>
           <SectionLabel>{label}</SectionLabel>
@@ -1189,7 +1189,7 @@ function Dashboard() {
       {/* Recently completed — stays visible with undo option */}
       {recentlyDone.length > 0 && (
         <div>
-          <SectionLabel>Done today</SectionLabel>
+          <SectionLabel>Done</SectionLabel>
           {recentlyDone.map(t => (
             <TaskCard key={t.id} task={t} completed={true}
               onComplete={() => {}}
@@ -1200,16 +1200,16 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Harvest forecast */}
+      {/* Tips section */}
+      <TipsSection />
+
+      {/* Harvest forecast — collapsible */}
       {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
-        <>
-          <SectionLabel>Harvest Forecast</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id)).map((h, i) => (
-              <HarvestForecastCard key={i} item={h} pending={!!pendingHarvest && pendingHarvest === h} onHarvest={() => setPendingHarvest(h)} />
-            ))}
-          </div>
-        </>
+        <CollapsibleHarvestForecast
+          items={data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id))}
+          onHarvest={(h) => setPendingHarvest(h)}
+          pending={pendingHarvest}
+        />
       )}
       {pendingHarvest && (
         <HarvestModal
@@ -1231,10 +1231,133 @@ function Dashboard() {
   );
 }
 
+// ── Tips section ──────────────────────────────────────────────────────────────
+function TipsSection() {
+  const [open,    setOpen]    = useState(false);
+  const [tips,    setTips]    = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded,  setLoaded]  = useState(false);
+
+  const load = async () => {
+    if (loaded) { setOpen(v => !v); return; }
+    setOpen(true);
+    setLoading(true);
+    try {
+      const d = await apiFetch("/tips");
+      setTips(d.tips || []);
+    } catch {}
+    setLoading(false);
+    setLoaded(true);
+  };
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div onClick={load}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>💡</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#222" }}>Garden tips</span>
+          <span style={{ fontSize: 11, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>This week</span>
+        </div>
+        <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "16px 0", color: C.stone, fontSize: 13 }}>Generating tips for your garden...</div>
+          ) : tips.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "16px 0", color: C.stone, fontSize: 13 }}>No tips yet — add some crops to get personalised advice.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {tips.map((tip, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: C.offwhite, borderRadius: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{tip.emoji || "🌱"}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#222", marginBottom: 2 }}>{tip.title}</div>
+                    <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip.tip}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Collapsible harvest forecast ──────────────────────────────────────────────
+function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div onClick={() => setOpen(v => !v)}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>🌾</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#222" }}>Harvest forecast</span>
+          <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
+        </div>
+        <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {items.map((h, i) => (
+              <HarvestForecastCard key={i} item={h} pending={!!pending && pending === h} onHarvest={() => onHarvest(h)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
   const [animating, setAnimating] = useState(false);
+  const [expanded,  setExpanded]  = useState(false);
+
+  // ── Timing colour ──────────────────────────────────────────────────────────
+  const timing = task.timing_status || "peak";
+  const timingColor = timing === "early" ? "#D9A441"   // amber — early
+                    : timing === "late"  ? "#C65A5A"   // red — past peak
+                    : "#6FAF63";                        // green — peak
+  const timingLabel = timing === "early" ? "Early in window"
+                    : timing === "late"  ? "Past peak"
+                    : "Peak time";
+  const timingBg    = timing === "early" ? "#fff8ed"
+                    : timing === "late"  ? "#fff0f0"
+                    : "#f0f7ee";
+
   const urgencyColor = task.urgency === "high" ? C.red : task.urgency === "medium" ? C.amber : C.leaf;
   const isEstimated  = task.date_confidence === "estimated";
+
+  // ── Window label ───────────────────────────────────────────────────────────
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let windowLabel = null;
+  if (task.due_window_start && task.due_window_end) {
+    const ws = new Date(task.due_window_start);
+    const we = new Date(task.due_window_end);
+    const wsM = MONTHS[ws.getMonth()];
+    const weM = MONTHS[we.getMonth()];
+    windowLabel = wsM === weM ? wsM : `${wsM}–${weM}`;
+
+    // Days until window closes
+    const daysLeft = Math.ceil((we.getTime() - Date.now()) / 86400000);
+    if (daysLeft > 0 && daysLeft <= 14) {
+      windowLabel += ` · ${daysLeft}d left`;
+    } else if (daysLeft <= 0) {
+      windowLabel += " · closing";
+    }
+  }
+
+  // ── Why text from meta ─────────────────────────────────────────────────────
+  let whyText = null;
+  try {
+    const meta = typeof task.meta === "string" ? JSON.parse(task.meta) : task.meta;
+    if (meta?.why) whyText = meta.why;
+  } catch {}
 
   const handleComplete = () => {
     if (completed || animating) return;
@@ -1243,33 +1366,87 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
   };
 
   return (
-    <div onClick={handleComplete}
-      style={{ background: completed ? "#f0f4f2" : C.cardBg, border: `1px solid ${completed ? C.border : urgencyColor + "44"}`, borderLeft: `3px solid ${completed ? C.sage : urgencyColor}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: completed ? "default" : "pointer",
-        opacity: animating ? 0 : completed ? 0.55 : 1,
-        transform: animating ? "translateX(30px)" : "translateX(0)",
-        transition: "opacity 0.35s ease, transform 0.35s ease" }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: "serif" }}>
-          {task.crop?.name ? getCropEmoji(task.crop.name) + " " + task.crop.name : "General"}
+    <div style={{ marginBottom: 10 }}>
+      <div
+        style={{
+          background: completed ? "#f0f4f2" : C.cardBg,
+          border: `1px solid ${completed ? C.border : timingColor + "55"}`,
+          borderLeft: `3px solid ${completed ? C.sage : timingColor}`,
+          borderRadius: 12,
+          padding: "13px 14px",
+          opacity: animating ? 0 : completed ? 0.55 : 1,
+          transform: animating ? "translateX(30px)" : "translateX(0)",
+          transition: "opacity 0.35s ease, transform 0.35s ease",
+        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Timing dot */}
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: timingColor, flexShrink: 0, marginTop: 2 }} />
+
+          <div style={{ flex: 1, minWidth: 0 }} onClick={() => !completed && setExpanded(e => !e)} role="button">
+            <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: "serif" }}>
+              {task.crop?.name ? getCropEmoji(task.crop.name) + " " + task.crop.name : "General"}
+              {task.crop?.variety && <span style={{ fontWeight: 400, color: C.stone, fontSize: 13 }}> · {task.crop.variety}</span>}
+            </div>
+            <div style={{ fontSize: 13, color: C.stone, marginTop: 2, lineHeight: 1.4 }}>{task.action}</div>
+
+            {/* Pills row */}
+            <div style={{ display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
+              {/* Timing pill */}
+              {!completed && (
+                <span style={{ background: timingBg, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: timingColor, fontWeight: 700, border: `1px solid ${timingColor}44` }}>
+                  {timingLabel}
+                </span>
+              )}
+              {/* Window pill */}
+              {windowLabel && !completed && (
+                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.stone }}>
+                  📅 {windowLabel}
+                </span>
+              )}
+              {/* Area pill */}
+              {task.area?.name && (
+                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest }}>
+                  {task.area.name}
+                </span>
+              )}
+              {isEstimated && (
+                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.amber }}>
+                  ~estimated
+                </span>
+              )}
+              {/* Expand why */}
+              {whyText && !completed && (
+                <span onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
+                  style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                  {expanded ? "▲ less" : "▼ why?"}
+                </span>
+              )}
+              {showUndo && onUndo && (
+                <button onClick={e => { e.stopPropagation(); onUndo(task); }}
+                  style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, fontSize: 10, padding: "2px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                  Undo
+                </button>
+              )}
+            </div>
+
+            {/* Expanded why text */}
+            {expanded && whyText && (
+              <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0f7f4", borderRadius: 8, fontSize: 12, color: C.forest, lineHeight: 1.5, borderLeft: `2px solid ${C.sage}` }}>
+                💡 {whyText}
+              </div>
+            )}
+          </div>
+
+          {/* Complete button */}
+          <div onClick={handleComplete} style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${animating || completed ? C.leaf : C.border}`, background: animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s", cursor: completed ? "default" : "pointer" }}>
+            {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{task.action}</div>
-        <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {task.area?.name && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{task.area.name}</span>}
-          {isEstimated     && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>~estimated</span>}
-          {showUndo && onUndo && (
-            <button onClick={e => { e.stopPropagation(); onUndo(task); }}
-              style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, fontSize: 11, padding: "2px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
-              Undo
-            </button>
-          )}
-        </div>
-      </div>
-      <div style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${animating || completed ? C.leaf : C.border}`, background: animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
-        {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
       </div>
     </div>
   );
 }
+
 
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
@@ -1908,8 +2085,8 @@ function CropList() {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1 }}>
-                  {/* Thumbnail or emoji */}
-                  <div onClick={() => setDiary(crop)} style={{ cursor: "pointer", flexShrink: 0 }}>
+                  {/* Thumbnail or emoji — with red dot if missed task */}
+                  <div onClick={() => setDiary(crop)} style={{ cursor: "pointer", flexShrink: 0, position: "relative" }}>
                     {cropPhotos[crop.id] ? (
                       <img src={cropPhotos[crop.id]} alt={crop.name}
                         style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover", display: "block" }} />
@@ -1917,6 +2094,10 @@ function CropList() {
                       <div style={{ width: 48, height: 48, borderRadius: 10, background: C.offwhite, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
                         {getCropEmoji(crop.name)}
                       </div>
+                    )}
+                    {crop.missed_task_note && (
+                      <div title={crop.missed_task_note}
+                        style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: C.red, border: "2px solid #fff", flexShrink: 0 }} />
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -1971,6 +2152,22 @@ function CropList() {
                 {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
                 {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
               </div>
+
+              {/* Missed task note */}
+              {crop.missed_task_note && (
+                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 2 }}>⚠ Missed task</div>
+                    <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
+                  </div>
+                  <button onClick={async () => {
+                    await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
+                    await load();
+                  }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
+                    Clear
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
