@@ -1052,7 +1052,8 @@ function Dashboard() {
   const weekEnd = weekEndISO();
 
   // Merge server tasks with any tasks un-completed this session
-  const serverTasks = [
+  // Pull from raw tasks array to capture overdue tasks too
+  const serverTasks = data.tasks?.tasks || [
     ...(data.tasks.today     || []),
     ...(data.tasks.this_week || []),
     ...(data.tasks.coming_up || []),
@@ -1061,9 +1062,9 @@ function Dashboard() {
   const extraTasks = undone.filter(t => !allTaskIds.has(t.id)); // undone tasks not yet in server data
   const allTasks   = [...serverTasks, ...extraTasks];
 
-  // Re-group with undone tasks included
+  // Re-group with undone tasks included — overdue tasks surface in today
   const grouped = {
-    today:     allTasks.filter(t => t.due_date === today),
+    today:     allTasks.filter(t => t.due_date <= today),
     this_week: allTasks.filter(t => t.due_date > today && t.due_date <= weekEnd),
     coming_up: allTasks.filter(t => t.due_date > weekEnd),
   };
