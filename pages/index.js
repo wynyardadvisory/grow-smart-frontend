@@ -1146,13 +1146,7 @@ function Dashboard() {
 
       {/* Missing data prompt */}
       {data.missing_data?.length > 0 && (
-        <div style={{ background: "#fffbf0", border: `1px solid ${C.amber}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: C.amber, marginBottom: 4 }}>Needs your input</div>
-          {data.missing_data.slice(0, 3).map(c => (
-            <div key={c.id} style={{ fontSize: 12, color: C.stone }}>{c.name} — missing: {c.missing.join(", ")}</div>
-          ))}
-          <div style={{ fontSize: 11, color: C.stone, marginTop: 6, fontStyle: "italic" }}>Better data = more accurate tasks</div>
-        </div>
+        <CollapsibleNeedsInput items={data.missing_data} />
       )}
 
       {/* Progress */}
@@ -1225,6 +1219,34 @@ function Dashboard() {
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
           <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Your garden is all set</div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No tasks right now. Add crops to start getting personalised recommendations.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Collapsible needs input ───────────────────────────────────────────────────
+function CollapsibleNeedsInput({ items }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div onClick={() => setOpen(v => !v)}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fffbf0", border: `1px solid ${C.amber}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: C.amber }}>Needs your input</span>
+          <span style={{ fontSize: 11, color: C.amber, background: "#fff3d6", borderRadius: 20, padding: "2px 8px", fontWeight: 600, border: `1px solid ${C.amber}44` }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
+        </div>
+        <span style={{ fontSize: 12, color: C.amber }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ background: "#fffbf0", border: `1px solid ${C.amber}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
+          {items.slice(0, 5).map(c => (
+            <div key={c.id} style={{ fontSize: 13, color: C.stone, paddingBottom: 6, marginBottom: 6, borderBottom: `1px solid ${C.amber}22` }}>
+              <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.name}</span> — missing: {c.missing.join(", ")}
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: C.stone, marginTop: 4, fontStyle: "italic" }}>Better data = more accurate tasks</div>
         </div>
       )}
     </div>
