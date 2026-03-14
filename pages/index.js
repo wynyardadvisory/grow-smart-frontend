@@ -1907,6 +1907,11 @@ function CropList() {
   const [confirm,       setConfirm]       = useState(null);
   const [diary,         setDiary]         = useState(null);  // crop to show diary for
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
+  const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
+  const [filterArea,    setFilterArea]    = useState("");    // "" | area id
+  const [filterType,    setFilterType]    = useState("");    // "" | "veg" | "fruit" | "herb"
+  const [sortBy,        setSortBy]        = useState("recent"); // "recent" | "alpha" | "pct"
+  const [showFilters,   setShowFilters]   = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -1986,20 +1991,135 @@ function CropList() {
 
   const STAGE_COLOR = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone };
 
+  // Infer crop type from name for type filter
+  const HERB_NAMES = ["basil","parsley","mint","thyme","rosemary","chive","chives","coriander","dill","sage","oregano","tarragon","bay","fennel"];
+  const FRUIT_NAMES = ["tomato","strawberry","apple","pear","blueberry","raspberry","blackberry","grape","melon","watermelon","cucumber","courgette","zucchini","pumpkin","squash","pepper","chilli","chili","aubergine","eggplant","corn","sweetcorn"];
+  const inferCropType = (name) => {
+    if (!name) return "veg";
+    const lower = name.toLowerCase();
+    if (HERB_NAMES.some(h => lower.includes(h))) return "herb";
+    if (FRUIT_NAMES.some(f => lower.includes(f))) return "fruit";
+    return "veg";
+  };
+
+  // Apply filters
+  let visibleCrops = crops.filter(crop => {
+    if (filterStatus && crop.status !== filterStatus) return false;
+    if (filterArea   && crop.area_id !== filterArea)  return false;
+    if (filterType   && inferCropType(crop.name) !== filterType) return false;
+    return true;
+  });
+
+  // Apply sort
+  visibleCrops = [...visibleCrops].sort((a, b) => {
+    if (sortBy === "alpha") return a.name.localeCompare(b.name);
+    if (sortBy === "pct") {
+      const getPct = (crop) => {
+        if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
+          const days = Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000);
+          return Math.min(100, Math.round((days / crop.crop_def.days_to_maturity_max) * 100));
+        }
+        const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
+        const idx = STAGES.indexOf(crop.stage || "seed");
+        return idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
+      };
+      return getPct(b) - getPct(a);
+    }
+    return 0; // recent — preserve server order
+  });
+
+  const activeFilterCount = [filterStatus, filterArea, filterType].filter(Boolean).length;
+
   if (loading) return <Spinner />;
   if (error)   return <ErrorMsg msg={error} />;
 
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
-        <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} growing</div>
+      {/* Header + filter/sort controls */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
+            <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{visibleCrops.length} of {crops.length} crop{crops.length !== 1 ? "s" : ""}</div>
+          </div>
+          <button onClick={() => setShowFilters(v => !v)}
+            style={{ background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </button>
+        </div>
+        {/* Filter/sort dropdown */}
+        {showFilters && (
+          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Status filter */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Status</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["harvested", "Harvested"]].map(([val, label]) => (
+                  <button key={val} onClick={() => setFilterStatus(val)}
+                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterStatus === val ? C.forest : C.border}`, background: filterStatus === val ? C.forest : "transparent", color: filterStatus === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Type filter */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Type</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[["", "All"], ["veg", "🥦 Veg"], ["fruit", "🍅 Fruit"], ["herb", "🌿 Herb"]].map(([val, label]) => (
+                  <button key={val} onClick={() => setFilterType(val)}
+                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterType === val ? C.forest : C.border}`, background: filterType === val ? C.forest : "transparent", color: filterType === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Area filter */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Area</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button onClick={() => setFilterArea("")}
+                  style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === "" ? C.forest : C.border}`, background: filterArea === "" ? C.forest : "transparent", color: filterArea === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  All
+                </button>
+                {areas.map(a => (
+                  <button key={a.id} onClick={() => setFilterArea(a.id)}
+                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === a.id ? C.forest : C.border}`, background: filterArea === a.id ? C.forest : "transparent", color: filterArea === a.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Sort */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Sort by</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[["recent", "Recently added"], ["alpha", "A–Z"], ["pct", "% grown"]].map(([val, label]) => (
+                  <button key={val} onClick={() => setSortBy(val)}
+                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${sortBy === val ? C.forest : C.border}`, background: sortBy === val ? C.forest : "transparent", color: sortBy === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Clear */}
+            {activeFilterCount > 0 && (
+              <button onClick={() => { setFilterStatus(""); setFilterArea(""); setFilterType(""); }}
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {crops.length === 0 && (
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
       )}
-      {crops.map(crop => (
+      {crops.length > 0 && visibleCrops.length === 0 && (
+        <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops match your filters.</div>
+      )}
+      {visibleCrops.map(crop => (
         <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
 
           {/* Confirm delete overlay */}
