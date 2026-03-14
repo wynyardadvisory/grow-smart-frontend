@@ -1144,10 +1144,12 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Missing data prompt */}
-      {data.missing_data?.length > 0 && (
-        <CollapsibleNeedsInput items={data.missing_data} />
-      )}
+      {/* Quick crop check — lifecycle confirmations + missing data */}
+      <QuickCropCheck
+        crops={data.crops || []}
+        missingItems={data.missing_data || []}
+        onDismiss={load}
+      />
 
       {/* Progress */}
       {totalToday > 0 && (
@@ -1217,36 +1219,159 @@ function Dashboard() {
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Your garden is all set</div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No tasks right now. Add crops to start getting personalised recommendations.</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>You're all caught up</div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No garden jobs right now.</div>
         </div>
       )}
     </div>
   );
 }
 
-// ── Collapsible needs input ───────────────────────────────────────────────────
-function CollapsibleNeedsInput({ items }) {
-  const [open, setOpen] = useState(false);
+// ── Quick Crop Check ─────────────────────────────────────────────────────────
+// Replaces "Needs your input". Two prompt types:
+// 1. Missing data (sow date, area)
+// 2. Lifecycle confirmations (predicted stage arrived — confirm yes/no)
+
+const STAGE_SEQUENCE = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
+
+// Predict which stage a crop should be at based on days since sown
+function predictNextStage(crop) {
+  if (!crop.sown_date || !crop.crop_def?.days_to_maturity_max) return null;
+  const daysSown = Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000);
+  const total    = crop.crop_def.days_to_maturity_max;
+  // Rough stage thresholds as % of total maturity
+  const thresholds = [
+    { stage: "seedling",   pct: 0.08 },
+    { stage: "vegetative", pct: 0.20 },
+    { stage: "flowering",  pct: 0.50 },
+    { stage: "fruiting",   pct: 0.70 },
+    { stage: "harvesting", pct: 0.90 },
+  ];
+  const currentStageIdx = STAGE_SEQUENCE.indexOf(crop.stage || "seed");
+  for (const t of thresholds) {
+    const stageIdx = STAGE_SEQUENCE.indexOf(t.stage);
+    if (stageIdx <= currentStageIdx) continue; // already past this stage
+    if (daysSown >= Math.floor(total * t.pct)) return t.stage;
+  }
+  return null;
+}
+
+const STAGE_QUESTIONS = {
+  seedling:   { emoji: "🌱", q: "Have your seedlings emerged?" },
+  vegetative: { emoji: "🟢", q: "Are your plants growing strongly now?" },
+  flowering:  { emoji: "🌼", q: "Are your plants flowering yet?" },
+  fruiting:   { emoji: "🍅", q: "Has fruit started to set?" },
+  harvesting: { emoji: "🔵", q: "Is this crop ready to start harvesting?" },
+};
+
+function QuickCropCheck({ crops, missingItems, onDismiss }) {
+  const [open,       setOpen]       = useState(false);
+  const [actioning,  setActioning]  = useState(null);
+  const [dismissed,  setDismissed]  = useState(new Set());
+
+  // Build lifecycle prompts from crops
+  const lifecyclePrompts = crops
+    .filter(crop => {
+      if (dismissed.has(crop.id + "_lifecycle")) return false;
+      // Skip if snoozed
+      if (crop.stage_check_snoozed_until && new Date(crop.stage_check_snoozed_until) > new Date()) return false;
+      return !!predictNextStage(crop);
+    })
+    .map(crop => ({
+      type:        "lifecycle",
+      crop,
+      nextStage:   predictNextStage(crop),
+    }));
+
+  // Build missing data prompts
+  const missingPrompts = (missingItems || [])
+    .filter(item => !dismissed.has(item.id + "_missing"))
+    .map(item => ({ type: "missing", item }));
+
+  // Priority order: missing sow date first, then lifecycle, then other missing
+  const sowDateMissing = missingPrompts.filter(p => p.item.missing.some(m => m.includes("sow")));
+  const otherMissing   = missingPrompts.filter(p => !p.item.missing.some(m => m.includes("sow")));
+  const allPrompts     = [...sowDateMissing, ...lifecyclePrompts, ...otherMissing].slice(0, 3);
+
+  if (allPrompts.length === 0) return null;
+
+  const handleLifecycle = async (crop, nextStage, confirmed) => {
+    setActioning(crop.id);
+    try {
+      await apiFetch(`/crops/${crop.id}/confirm-stage`, {
+        method: "POST",
+        body: JSON.stringify({ stage: nextStage, confirmed }),
+      });
+      setDismissed(prev => new Set([...prev, crop.id + "_lifecycle"]));
+      if (onDismiss) onDismiss();
+    } catch (e) { console.error(e); }
+    setActioning(null);
+  };
+
+  const handleMissingDismiss = (itemId) => {
+    setDismissed(prev => new Set([...prev, itemId + "_missing"]));
+  };
+
   return (
     <div style={{ marginBottom: 16 }}>
       <div onClick={() => setOpen(v => !v)}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fffbf0", border: `1px solid ${C.amber}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: C.amber }}>Needs your input</span>
-          <span style={{ fontSize: 11, color: C.amber, background: "#fff3d6", borderRadius: 20, padding: "2px 8px", fontWeight: 600, border: `1px solid ${C.amber}44` }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: 16 }}>🌱</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: C.forest }}>Quick crop check</span>
+          <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
         </div>
-        <span style={{ fontSize: 12, color: C.amber }}>{open ? "▲" : "▼"}</span>
+        <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
       </div>
       {open && (
-        <div style={{ background: "#fffbf0", border: `1px solid ${C.amber}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
-          {items.slice(0, 5).map(c => (
-            <div key={c.id} style={{ fontSize: 13, color: C.stone, paddingBottom: 6, marginBottom: 6, borderBottom: `1px solid ${C.amber}22` }}>
-              <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.name}</span> — missing: {c.missing.join(", ")}
-            </div>
-          ))}
-          <div style={{ fontSize: 11, color: C.stone, marginTop: 4, fontStyle: "italic" }}>Better data = more accurate tasks</div>
+        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {allPrompts.map((prompt, i) => {
+            if (prompt.type === "lifecycle") {
+              const { crop, nextStage } = prompt;
+              const q = STAGE_QUESTIONS[nextStage];
+              const isActioning = actioning === crop.id;
+              return (
+                <div key={crop.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 22 }}>{q?.emoji || "🌱"}</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      {crop.variety && <div style={{ fontSize: 11, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, color: C.stone, marginBottom: 12, lineHeight: 1.4 }}>{q?.q || `Has this crop reached the ${nextStage} stage?`}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => handleLifecycle(crop, nextStage, true)} disabled={isActioning}
+                      style={{ flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      {isActioning ? "Saving…" : "Yes ✓"}
+                    </button>
+                    <button onClick={() => handleLifecycle(crop, nextStage, false)} disabled={isActioning}
+                      style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      Not yet
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            // Missing data prompt
+            const { item } = prompt;
+            return (
+              <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 20 }}>📅</span>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{item.name}</div>
+                </div>
+                <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Missing: {item.missing.join(", ")} — add it for more accurate tasks</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => handleMissingDismiss(item.id)}
+                    style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    Later
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic", textAlign: "center" }}>Better data = more accurate tasks and predictions</div>
         </div>
       )}
     </div>
