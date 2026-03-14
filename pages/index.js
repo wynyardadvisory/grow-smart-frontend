@@ -1217,8 +1217,8 @@ function Dashboard() {
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Your garden is all set</div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No tasks right now. Add crops to start getting personalised recommendations.</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>You're all caught up 🌿</div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No garden jobs right now.</div>
         </div>
       )}
     </div>
@@ -1986,6 +1986,18 @@ function CropList() {
 
   const STAGE_COLOR = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone };
 
+  const STAGE_LABEL = {
+    seed:       "🌱 Germinating",
+    seedling:   "🌱 Seedling",
+    vegetative: "🟢 Vegetative",
+    flowering:  "🌼 Flowering",
+    fruiting:   "🍅 Fruiting",
+    harvesting: "🔵 Ready to harvest",
+    finished:   "✅ Finished",
+  };
+
+  const [swipeOpen, setSwipeOpen] = useState(null);
+
   if (loading) return <Spinner />;
   if (error)   return <ErrorMsg msg={error} />;
 
@@ -2000,7 +2012,7 @@ function CropList() {
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
       )}
       {crops.map(crop => (
-        <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+        <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 12, overflow: "hidden" }}>
 
           {/* Confirm delete overlay */}
           {confirm === crop.id && (
@@ -2103,97 +2115,133 @@ function CropList() {
               </div>
             </div>
           ) : (
-            /* Normal view */
-            <>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1 }}>
-                  {/* Thumbnail or emoji — with red dot if missed task */}
+            /* Normal view — swipeable card */
+            <div style={{ position: "relative", overflow: "hidden", borderRadius: 10 }}>
+              {/* Swipe action buttons — revealed on swipe left */}
+              <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "stretch", zIndex: 0 }}>
+                <button onClick={() => { setSwipeOpen(null); startEdit(crop); }}
+                  style={{ width: 72, background: "#6E6E6E", border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                  <span style={{ fontSize: 18 }}>✏️</span>Edit
+                </button>
+                <button onClick={() => { setSwipeOpen(null); setConfirm(crop.id); }}
+                  style={{ width: 72, background: C.red, border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: "0 10px 10px 0" }}>
+                  <span style={{ fontSize: 18 }}>🗑️</span>Delete
+                </button>
+              </div>
+
+              {/* Main card content — slides left to reveal actions */}
+              <div
+                onClick={() => swipeOpen === crop.id ? setSwipeOpen(null) : null}
+                onTouchStart={e => { const x = e.touches[0].clientX; e.currentTarget._touchX = x; }}
+                onTouchEnd={e => {
+                  const diff = e.currentTarget._touchX - e.changedTouches[0].clientX;
+                  if (diff > 40) setSwipeOpen(crop.id);
+                  if (diff < -20) setSwipeOpen(null);
+                }}
+                style={{ position: "relative", zIndex: 1, background: C.cardBg, transform: swipeOpen === crop.id ? "translateX(-144px)" : "translateX(0)", transition: "transform 0.25s ease", borderRadius: 10, padding: "18px 18px" }}>
+
+                {/* Top row: thumbnail + name + variety */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
                   <div onClick={() => setDiary(crop)} style={{ cursor: "pointer", flexShrink: 0, position: "relative" }}>
                     {cropPhotos[crop.id] ? (
                       <img src={cropPhotos[crop.id]} alt={crop.name}
-                        style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover", display: "block" }} />
+                        style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover", display: "block" }} />
                     ) : (
-                      <div style={{ width: 48, height: 48, borderRadius: 10, background: C.offwhite, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: 12, background: C.offwhite, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
                         {getCropEmoji(crop.name)}
                       </div>
                     )}
                     {crop.missed_task_note && (
                       <div title={crop.missed_task_note}
-                        style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: C.red, border: "2px solid #fff", flexShrink: 0 }} />
+                        style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: C.red, border: "2px solid #fff" }} />
                     )}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
-                    <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a", lineHeight: 1.2 }}>{crop.name}</div>
+                    {varietyName(crop.variety) && (
+                      <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{varietyName(crop.variety)}</div>
+                    )}
                   </div>
+                  {/* Subtle swipe hint */}
+                  <div style={{ color: C.border, fontSize: 16, flexShrink: 0, marginTop: 4 }}>‹</div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => setDiary(crop)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
-                    📷
-                  </button>
-                  <button onClick={() => startEdit(crop)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
-                    Edit
-                  </button>
-                  <button onClick={() => setConfirm(crop.id)}
-                    style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.red, cursor: "pointer" }}>
-                    ✕
-                  </button>
-                </div>
-              </div>
 
-              {/* Progress bar */}
-              {(() => {
-                const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
-                const stageKey = crop.stage || "seed";
-                const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
-                const pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
-                const stageColor = STAGE_COLOR[crop.stage] || C.stone;
-                const harvestWeeks = crop.crop_def?.days_to_maturity_max
-                  ? Math.round((crop.crop_def.days_to_maturity_max - (crop.sown_date ? Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) : 0)) / 7)
-                  : null;
-                return (
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage && crop.stage !== "seed" ? crop.stage : (crop.grown_from || "seed")}</span>
-                      {harvestWeeks > 0 && <span style={{ fontSize: 11, color: C.stone }}>Harvest in ~{harvestWeeks}w</span>}
-                      {harvestWeeks <= 0 && crop.sown_date && <span style={{ fontSize: 11, color: C.leaf, fontWeight: 600 }}>Ready to harvest</span>}
+                {/* Middle: stage + harvest estimate */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+                  {/* Stage label */}
+                  {(() => {
+                    const stageKey = crop.stage || "seed";
+                    const stageColor = STAGE_COLOR[stageKey] || C.stone;
+                    const stageLabel = STAGE_LABEL[stageKey] || `🌱 ${stageKey}`;
+                    return (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: stageColor, background: stageColor + "18", borderRadius: 20, padding: "3px 10px" }}>
+                        {stageLabel}
+                      </span>
+                    );
+                  })()}
+
+                  {/* Harvest estimate */}
+                  {(() => {
+                    if (crop.stage === "harvesting" || crop.stage === "finished") return null;
+                    const harvestWeeks = crop.crop_def?.days_to_maturity_max && crop.sown_date
+                      ? Math.round((crop.crop_def.days_to_maturity_max - Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000)) / 7)
+                      : null;
+                    if (harvestWeeks === null) return null;
+                    if (harvestWeeks <= 0) return (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.leaf, background: C.leaf + "18", borderRadius: 20, padding: "3px 10px" }}>
+                        🔵 Ready to harvest
+                      </span>
+                    );
+                    return (
+                      <span style={{ fontSize: 12, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "3px 10px" }}>
+                        Harvest in ~{harvestWeeks}w
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {/* Bottom: metadata single line */}
+                <div style={{ fontSize: 12, color: C.stone }}>
+                  {[
+                    crop.area?.name,
+                    crop.sown_date ? `Sown ${new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : null,
+                    crop.status === "planned" ? "🗓 Planned" : null,
+                    crop.status === "sown_indoors" ? "🪟 Indoors" : null,
+                    !crop.crop_def_id ? "🔍 Identifying…" : null,
+                  ].filter(Boolean).join(" · ")}
+                </div>
+
+                {/* Missed task note */}
+                {crop.missed_task_note && (
+                  <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 2 }}>⚠ Missed task</div>
+                      <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
                     </div>
-                    <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99, transition: "width 0.5s ease" }} />
-                    </div>
+                    <button onClick={async () => {
+                      await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
+                      await load();
+                    }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
+                      Clear
+                    </button>
                   </div>
-                );
-              })()}
+                )}
 
-              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
-                {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
-                {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>🗓 Planned</span>}
-                {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
-                {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
+                {/* Photo diary tap hint — subtle, only if no photo */}
+                {!cropPhotos[crop.id] && (
+                  <div onClick={() => setDiary(crop)} style={{ marginTop: 10, fontSize: 11, color: C.border, cursor: "pointer", textAlign: "right" }}>
+                    📷 Add growth photo
+                  </div>
+                )}
               </div>
-
-              {/* Missed task note */}
-              {crop.missed_task_note && (
-                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 2 }}>⚠ Missed task</div>
-                    <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
-                  </div>
-                  <button onClick={async () => {
-                    await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
-                    await load();
-                  }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
-                    Clear
-                  </button>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       ))}
+      {/* Swipe close overlay */}
+      {swipeOpen && (
+        <div onClick={() => setSwipeOpen(null)} style={{ position: "fixed", inset: 0, zIndex: 0 }} />
+      )}
     </div>
   );
 }
