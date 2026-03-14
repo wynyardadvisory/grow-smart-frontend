@@ -2156,18 +2156,22 @@ function CropList() {
 
               {/* Progress bar */}
               {(() => {
-                const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
                 const stageKey = crop.stage || "seed";
-                const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
-                const pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
-                const stageColor = STAGE_COLOR[crop.stage] || C.stone;
-                const harvestWeeks = crop.crop_def?.days_to_maturity_max
-                  ? Math.round((crop.crop_def.days_to_maturity_max - (crop.sown_date ? Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) : 0)) / 7)
-                  : null;
+                const stageColor = STAGE_COLOR[stageKey] || C.stone;
+                // Use days-based % if we have sown_date + maturity data, else fall back to stage index
+                let pct;
+                if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
+                  const daysSinceSown = Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000);
+                  pct = Math.min(100, Math.max(0, Math.round((daysSinceSown / crop.crop_def.days_to_maturity_max) * 100)));
+                } else {
+                  const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
+                  const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
+                  pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
+                }
                 return (
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{crop.stage && crop.stage !== "seed" ? crop.stage : (crop.grown_from || "seed")}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{stageKey && stageKey !== "seed" ? stageKey : (crop.grown_from || "seed")}</span>
                       <span style={{ fontSize: 11, color: stageColor, fontWeight: 600 }}>{pct}% grown</span>
                     </div>
                     <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
