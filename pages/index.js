@@ -2125,6 +2125,17 @@ function CropList() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
                     <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
+                    {(() => {
+                      const stageKey = crop.stage || "seed";
+                      const stageColor = STAGE_COLOR[stageKey] || C.stone;
+                      const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
+                      const label = STAGE_LABEL[stageKey] || stageKey;
+                      return (
+                        <span style={{ display: "inline-block", marginTop: 5, fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
