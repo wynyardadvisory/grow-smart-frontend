@@ -1049,7 +1049,7 @@ function ShareGardenSheet({ onClose }) {
 
     // ── Title — large serif, forest green, centred ────────────────────────────
     ctx.fillStyle = "#2F5D50";
-    ctx.font = "bold 84px Georgia, serif";
+    ctx.font = "bold 63px Georgia, serif";
     ctx.textAlign = "center";
     const words = title.split(" ");
     const titleLines = [];
@@ -1060,8 +1060,8 @@ function ShareGardenSheet({ onClose }) {
       else cur = test;
     });
     if (cur) titleLines.push(cur);
-    titleLines.forEach((l, i) => ctx.fillText(l, W / 2, y + i * 96));
-    y += titleLines.length * 96 + 50;
+    titleLines.forEach((l, i) => ctx.fillText(l, W / 2, y + i * 72));
+    y += titleLines.length * 72 + 30;
 
     // ── Two column: seasonal garden bg always, user photo on left if provided ───
     const colY = y;
@@ -1097,11 +1097,11 @@ function ShareGardenSheet({ onClose }) {
       const sh = Math.round(bgImg.height * scale);
       ctx.drawImage(bgImg, PAD + ((W - PAD * 2) - sw) / 2, colY + (colH - sh) / 2, sw, sh);
       ctx.restore();
-      // Fade overlay — left stays visible, right fades to cream
+      // Fade overlay — lighter so text pops
       const fadeGrad = ctx.createLinearGradient(PAD, 0, W - PAD, 0);
-      fadeGrad.addColorStop(0,    "rgba(245,242,235,0.15)");
-      fadeGrad.addColorStop(0.42, "rgba(245,242,235,0.15)");
-      fadeGrad.addColorStop(1,    "rgba(245,242,235,0.88)");
+      fadeGrad.addColorStop(0,    "rgba(245,242,235,0.45)");
+      fadeGrad.addColorStop(0.42, "rgba(245,242,235,0.45)");
+      fadeGrad.addColorStop(1,    "rgba(245,242,235,0.92)");
       ctx.fillStyle = fadeGrad;
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
@@ -1194,6 +1194,9 @@ function ShareGardenSheet({ onClose }) {
     ctx.font = "bold 54px Georgia, serif";
     ctx.textAlign = "center";
     ctx.fillText("🌱 Vercro", W / 2, y);
+    ctx.fillStyle = "#6E6E6E";
+    ctx.font = "28px sans-serif";
+    ctx.fillText("Plan your garden  |  vercro.com", W / 2, y + 50);
   };
 
   // Render preview canvas whenever data/photo/title changes
