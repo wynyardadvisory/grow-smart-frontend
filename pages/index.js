@@ -1054,50 +1054,83 @@ What's on your list this month?
     setPhotoB64(b64.split(",")[1]);
   };
 
+  // Truncate task text to max 6 words for social sharing
+  const shortTask = (t) => {
+    const raw = t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action;
+    const words = raw.split(" ");
+    return words.length > 6 ? words.slice(0, 6).join(" ") : raw;
+  };
+
   const generateCard = async () => {
     if (!data) return;
     setGenerating(true);
-    const W = 1080, H = 1080;
+
+    // 1080 × 1920 — story format, safe zone 285–1635px
+    const W = 1080, H = 1920;
+    const SAFE_TOP = 285, SAFE_BOT = 1635;
+    const PAD = 80; // horizontal padding
+
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d");
 
-    // Background
-    ctx.fillStyle = "#F7F6F2";
-    ctx.fillRect(0, 0, W, H);
-
-    // Header band
-    const headerH = 120;
+    // ── Background ────────────────────────────────────────────────────────────
+    // Forest green top, soft off-white body, green footer band
     ctx.fillStyle = "#2F5D50";
-    ctx.fillRect(0, 0, W, headerH);
+    ctx.fillRect(0, 0, W, SAFE_TOP + 10);
+    ctx.fillStyle = "#F7F6F2";
+    ctx.fillRect(0, SAFE_TOP + 10, W, H);
+
+    // Decorative circle top-right
+    ctx.beginPath();
+    ctx.arc(W + 60, -60, 320, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fill();
+
+    // ── Logo (top padding area — decorative but readable) ────────────────────
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 52px Georgia, serif";
+    ctx.font = "bold 56px Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", W/2, 72);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = "28px sans-serif";
-    ctx.fillText("vercro.com", W/2, 108);
+    ctx.fillText("🌱 Vercro", W / 2, 200);
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "30px sans-serif";
+    ctx.fillText("vercro.com", W / 2, 250);
 
-    let y = headerH + 60;
+    let y = SAFE_TOP + 70; // start content inside safe zone
 
-    // Optional photo
+    // ── Optional photo ────────────────────────────────────────────────────────
     if (photo) {
       try {
         const img = await new Promise((res, rej) => {
           const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = photo;
         });
-        const photoH = 340;
-        ctx.drawImage(img, 0, headerH, W, photoH);
-        y = headerH + photoH + 50;
+        const maxPhotoH = 480;
+        const scale = Math.min(W / img.width, maxPhotoH / img.height);
+        const pw = Math.round(img.width * scale);
+        const ph = Math.round(img.height * scale);
+        const px = (W - pw) / 2;
+        // Rounded clip
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(px, y, pw, ph, 20);
+        ctx.clip();
+        ctx.drawImage(img, px, y, pw, ph);
+        ctx.restore();
+        y += ph + 60;
       } catch(e) {}
     }
 
-    // Title
+    // ── Title ─────────────────────────────────────────────────────────────────
     ctx.fillStyle = "#1a1a1a";
-    ctx.font = "bold 68px Georgia, serif";
+    ctx.font = "bold 72px Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillText(title.slice(0, 40), W/2, y);
-    y += 30;
+    // Wrap title if long
+    const titleWords = title.split(" ");
+    let line1 = "", line2 = "";
+    titleWords.forEach(w => { if ((line1 + " " + w).trim().length <= 20) line1 = (line1 + " " + w).trim(); else line2 = (line2 + " " + w).trim(); });
+    ctx.fillText(line1, W / 2, y);
+    if (line2) { ctx.fillText(line2, W / 2, y + 84); y += 84; }
+    y += 44;
 
     // Subtitle
     ctx.fillStyle = "#6E6E6E";
@@ -1105,104 +1138,106 @@ What's on your list this month?
     const subtitle = mode === "recent"
       ? "A quick garden update"
       : data.is_early_month
-        ? `Done in ${data.prev_month_name} · Coming up in ${data.month_name}`
+        ? `${data.prev_month_name} recap · ${data.month_name} ahead`
         : "Progress this month";
-    ctx.fillText(subtitle, W/2, y + 34);
+    ctx.fillText(subtitle, W / 2, y + 34);
     y += 90;
 
-    // Divider
+    // ── Divider helper ────────────────────────────────────────────────────────
     const drawDivider = (yPos) => {
       ctx.strokeStyle = "#D4E8CE";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(60, yPos); ctx.lineTo(W - 60, yPos);
+      ctx.moveTo(PAD, yPos); ctx.lineTo(W - PAD, yPos);
       ctx.stroke();
     };
-    drawDivider(y); y += 50;
 
-    // Completed section
+    // ── Completed tasks ───────────────────────────────────────────────────────
+    drawDivider(y); y += 55;
     if (data.completed?.length > 0) {
-      ctx.fillStyle = "#2F5D50";
-      ctx.font = "bold 32px sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText(mode === "recent" ? "DONE RECENTLY" : "COMPLETED", 60, y);
-      y += 50;
-      data.completed.slice(0, mode === "recent" ? 3 : 4).forEach(t => {
+      data.completed.slice(0, 4).forEach(t => {
+        // Tick circle
+        ctx.beginPath();
+        ctx.arc(PAD + 22, y - 14, 22, 0, Math.PI * 2);
         ctx.fillStyle = "#6FAF63";
-        ctx.font = "40px sans-serif";
-        ctx.fillText("✓", 60, y);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 26px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("✓", PAD + 22, y - 6);
+        // Task text
         ctx.fillStyle = "#1a1a1a";
-        ctx.font = "38px sans-serif";
-        const taskText = t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action;
-        ctx.fillText(taskText.slice(0, 42), 120, y);
-        y += 58;
+        ctx.font = "42px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(shortTask(t), PAD + 60, y);
+        y += 68;
       });
-      y += 10;
     } else {
       ctx.fillStyle = "#6E6E6E";
-      ctx.font = "italic 36px sans-serif";
+      ctx.font = "italic 38px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Garden planning in progress", W/2, y);
+      ctx.fillText("Garden planning in progress", W / 2, y);
       ctx.textAlign = "left";
       y += 60;
     }
+    y += 20;
 
-    // Upcoming section
+    // ── Upcoming tasks ────────────────────────────────────────────────────────
     if (data.upcoming?.length > 0) {
-      drawDivider(y); y += 50;
-      ctx.fillStyle = "#2F5D50";
-      ctx.font = "bold 32px sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText("COMING UP", 60, y);
-      y += 50;
-      data.upcoming.slice(0, mode === "recent" ? 2 : 3).forEach(t => {
+      drawDivider(y); y += 55;
+      data.upcoming.slice(0, 3).forEach(t => {
         ctx.fillStyle = "#D9A441";
-        ctx.font = "40px sans-serif";
-        ctx.fillText("🌱", 60, y);
+        ctx.font = "44px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("🌱", PAD, y);
         ctx.fillStyle = "#1a1a1a";
-        ctx.font = "38px sans-serif";
-        const taskText = t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action;
-        ctx.fillText(taskText.slice(0, 42), 120, y);
-        y += 58;
+        ctx.font = "42px sans-serif";
+        ctx.fillText(shortTask(t), PAD + 58, y);
+        y += 68;
       });
-      y += 10;
+      y += 20;
     }
 
-    // Stats row (month mode only)
-    if (mode === "month" && data.stats) {
-      drawDivider(y); y += 40;
-      ctx.fillStyle = "#6E6E6E";
-      ctx.font = "30px sans-serif";
-      ctx.textAlign = "center";
-      const statsStr = [
-        `${data.stats.completed_count} tasks done`,
-        `${data.stats.crop_count} crops active`,
-        data.stats.harvest_count > 0 ? `${data.stats.harvest_count} harvests` : null,
-      ].filter(Boolean).join("  ·  ");
-      ctx.fillText(statsStr, W/2, y + 30);
-      y += 70;
-    }
+    // ── Stats block ───────────────────────────────────────────────────────────
+    drawDivider(y); y += 55;
+    const stats = [
+      { emoji: "🌿", text: `${data.stats?.completed_count || 0} tasks completed` },
+      { emoji: "🥕", text: `${data.stats?.crop_count || 0} crops growing` },
+      ...(data.stats?.harvest_count > 0 ? [{ emoji: "🧺", text: `${data.stats.harvest_count} harvest${data.stats.harvest_count !== 1 ? "s" : ""}` }] : []),
+    ];
+    stats.forEach(s => {
+      ctx.font = "42px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillText(`${s.emoji}  ${s.text}`, PAD, y);
+      y += 64;
+    });
+    y += 20;
 
-    // Location + date
-    const locationY = Math.max(y + 20, H - 160);
+    // ── Location + date ───────────────────────────────────────────────────────
+    drawDivider(y); y += 50;
     ctx.fillStyle = "#6E6E6E";
-    ctx.font = "28px sans-serif";
+    ctx.font = "32px sans-serif";
     ctx.textAlign = "center";
-    if (data.profile?.postcode) ctx.fillText(`${data.profile.postcode}, UK  ·  ${data.month_name} ${new Date().getFullYear()}`, W/2, locationY);
-    else ctx.fillText(`${data.month_name} ${new Date().getFullYear()}`, W/2, locationY);
+    const locText = data.profile?.postcode
+      ? `${data.profile.postcode}, UK  ·  ${data.month_name} ${new Date().getFullYear()}`
+      : `${data.month_name} ${new Date().getFullYear()}`;
+    ctx.fillText(locText, W / 2, y);
+    y += 50;
 
-    // Footer
+    // ── Footer — inside safe zone bottom ─────────────────────────────────────
+    const footerY = Math.max(y + 40, SAFE_BOT - 120);
     ctx.fillStyle = "#2F5D50";
-    ctx.fillRect(0, H - 90, W, 90);
+    ctx.fillRect(0, footerY, W, 120);
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 30px Georgia, serif";
+    ctx.font = "bold 34px Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillText("Plan your garden with Vercro  ·  vercro.com", W/2, H - 44);
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "22px sans-serif";
-    ctx.fillText("app.vercro.com", W/2, H - 14);
+    ctx.fillText("Plan your garden with Vercro", W / 2, footerY + 52);
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "26px sans-serif";
+    ctx.fillText("vercro.com", W / 2, footerY + 96);
 
-    // Try native share, fallback to download
+    // ── Share or download ─────────────────────────────────────────────────────
     canvas.toBlob(async (blob) => {
       const file = new File([blob], "vercro-garden.png", { type: "image/png" });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1223,13 +1258,6 @@ What's on your list this month?
     link.download = "vercro-garden.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
-  };
-
-  const saveOnly = async () => {
-    if (!data) return;
-    setGenerating(true);
-    // Re-generate without sharing
-    await generateCard();
   };
 
   return (
