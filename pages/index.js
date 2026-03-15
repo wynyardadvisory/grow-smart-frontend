@@ -730,9 +730,8 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
   const weeksLeft = Math.max(0, Math.round((start - now) / (7*24*60*60*1000)));
   const isReady = weeksLeft === 0;
 
-  // Amber/earthy throughout — not alarming
-  const borderColor = "#C8844C";
-  const bgColor     = pending ? "#fff3e8" : "#fffaf5";
+  const borderColor = C.forest;
+  const bgColor     = C.cardBg;
   const barColor    = C.amber;
 
   // Committed optimal harvest date — 35% into the window
@@ -751,12 +750,12 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
           <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
         </div>
         {isReady
-          ? <span style={{ fontSize: 10, fontWeight: 700, color: borderColor, background: "#ffe8d6", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
+          ? <span style={{ fontSize: 10, fontWeight: 700, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
           : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>{weeksLeft}w away</span>
         }
       </div>
       {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
-      <div style={{ fontSize: 11, color: borderColor, fontWeight: 600, marginBottom: 8 }}>
+      <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginBottom: 8 }}>
         🎯 Aim to harvest around {optimalStr}
       </div>
       <div style={{ marginBottom: 10 }}>
