@@ -1409,8 +1409,7 @@ function GardenStatusCard({ data }) {
   if (!data) return null;
 
   const cropCount   = data.crop_count || 0;
-  const allTasks    = data.tasks?.tasks || [];
-  const completedThisWeek = allTasks.filter(t => t.completed_at).length;
+  const completedThisWeek = data.tasks_completed_this_week || 0;
 
   // Next harvest — first item in harvest forecast sorted by window_start
   const nextHarvest = data.harvest_forecast?.length > 0
@@ -1454,14 +1453,17 @@ function GardenStatusCard({ data }) {
 }
 
 // ── Coming Up Soon Card ───────────────────────────────────────────────────────
-function ComingUpSoonCard({ tasks }) {
-  if (!tasks?.length) return null;
-
+function ComingUpSoonCard({ data }) {
   const now = Date.now();
+  const today = new Date().toISOString().split("T")[0];
 
-  // Get next 3 incomplete future tasks with due dates
-  const upcoming = tasks
-    .filter(t => !t.completed_at && t.due_date > new Date().toISOString().split("T")[0])
+  // Combine this_week and coming_up tasks — all future incomplete tasks
+  const allFuture = [
+    ...(data.tasks?.this_week || []),
+    ...(data.tasks?.coming_up || []),
+  ].filter(t => t.due_date >= today);
+
+  const upcoming = allFuture
     .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
     .slice(0, 3);
 
@@ -1724,7 +1726,7 @@ function Dashboard() {
 
       {/* Garden status + coming up — shown below tasks */}
       <GardenStatusCard data={data} />
-      <ComingUpSoonCard tasks={data.tasks?.tasks || []} />
+      <ComingUpSoonCard data={data} />
 
       {/* Tips section */}
       <TipsSection />
