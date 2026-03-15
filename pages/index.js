@@ -985,6 +985,382 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   );
 }
 
+// ── Share Garden Sheet ───────────────────────────────────────────────────────
+function ShareGardenSheet({ onClose }) {
+  const [mode,        setMode]        = useState("recent");
+  const [data,        setData]        = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [photo,       setPhoto]       = useState(null);
+  const [photoB64,    setPhotoB64]    = useState(null);
+  const [title,       setTitle]       = useState("");
+  const [generating,  setGenerating]  = useState(false);
+  const [caption,     setCaption]     = useState("");
+  const [captionCopied, setCaptionCopied] = useState(false);
+  const photoInputRef = useRef(null);
+
+  const load = async (m) => {
+    setLoading(true);
+    try {
+      const d = await apiFetch(`/share/garden-data?mode=${m}`);
+      setData(d);
+      // Set default title
+      const name = d.profile?.name || "My";
+      setTitle(m === "recent"
+        ? `${name}'s Garden Update`
+        : `${d.month_name} Garden Progress`
+      );
+      // Set suggested caption
+      if (m === "recent") {
+        const tasks = d.completed.slice(0, 2).map(t => t.action.toLowerCase()).join(" and ");
+        setCaption(`A few jobs ticked off in the garden 🌱${tasks ? `
+
+${tasks.charAt(0).toUpperCase() + tasks.slice(1)}.` : ""}
+
+What's everyone working on at the moment?
+
+#growyourown #vegetablegarden #kitchengarden`);
+      } else {
+        setCaption(`A look at what I've been getting done in the garden and what's coming up 🌿
+
+Slow progress is still progress.
+
+What's on your list this month?
+
+#growyourown #gardenupdate #allotmentlife`);
+      }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(mode); }, []);
+
+  const handleModeChange = (m) => {
+    setMode(m);
+    load(m);
+  };
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement("canvas");
+    const maxW = 1080; const maxH = 400;
+    const scale = Math.min(1, maxW / bitmap.width, maxH / bitmap.height);
+    canvas.width  = Math.round(bitmap.width  * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const b64 = canvas.toDataURL("image/jpeg", 0.8);
+    setPhoto(b64);
+    setPhotoB64(b64.split(",")[1]);
+  };
+
+  const generateCard = async () => {
+    if (!data) return;
+    setGenerating(true);
+    const W = 1080, H = 1080;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#F7F6F2";
+    ctx.fillRect(0, 0, W, H);
+
+    // Header band
+    const headerH = 120;
+    ctx.fillStyle = "#2F5D50";
+    ctx.fillRect(0, 0, W, headerH);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 52px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🌱 Vercro", W/2, 72);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = "28px sans-serif";
+    ctx.fillText("vercro.com", W/2, 108);
+
+    let y = headerH + 60;
+
+    // Optional photo
+    if (photo) {
+      try {
+        const img = await new Promise((res, rej) => {
+          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = photo;
+        });
+        const photoH = 340;
+        ctx.drawImage(img, 0, headerH, W, photoH);
+        y = headerH + photoH + 50;
+      } catch(e) {}
+    }
+
+    // Title
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = "bold 68px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText(title.slice(0, 40), W/2, y);
+    y += 30;
+
+    // Subtitle
+    ctx.fillStyle = "#6E6E6E";
+    ctx.font = "34px sans-serif";
+    const subtitle = mode === "recent"
+      ? "A quick garden update"
+      : data.is_early_month
+        ? `Done in ${data.prev_month_name} · Coming up in ${data.month_name}`
+        : "Progress this month";
+    ctx.fillText(subtitle, W/2, y + 34);
+    y += 90;
+
+    // Divider
+    const drawDivider = (yPos) => {
+      ctx.strokeStyle = "#D4E8CE";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(60, yPos); ctx.lineTo(W - 60, yPos);
+      ctx.stroke();
+    };
+    drawDivider(y); y += 50;
+
+    // Completed section
+    if (data.completed?.length > 0) {
+      ctx.fillStyle = "#2F5D50";
+      ctx.font = "bold 32px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(mode === "recent" ? "DONE RECENTLY" : "COMPLETED", 60, y);
+      y += 50;
+      data.completed.slice(0, mode === "recent" ? 3 : 4).forEach(t => {
+        ctx.fillStyle = "#6FAF63";
+        ctx.font = "40px sans-serif";
+        ctx.fillText("✓", 60, y);
+        ctx.fillStyle = "#1a1a1a";
+        ctx.font = "38px sans-serif";
+        const taskText = t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action;
+        ctx.fillText(taskText.slice(0, 42), 120, y);
+        y += 58;
+      });
+      y += 10;
+    } else {
+      ctx.fillStyle = "#6E6E6E";
+      ctx.font = "italic 36px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Garden planning in progress", W/2, y);
+      ctx.textAlign = "left";
+      y += 60;
+    }
+
+    // Upcoming section
+    if (data.upcoming?.length > 0) {
+      drawDivider(y); y += 50;
+      ctx.fillStyle = "#2F5D50";
+      ctx.font = "bold 32px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("COMING UP", 60, y);
+      y += 50;
+      data.upcoming.slice(0, mode === "recent" ? 2 : 3).forEach(t => {
+        ctx.fillStyle = "#D9A441";
+        ctx.font = "40px sans-serif";
+        ctx.fillText("🌱", 60, y);
+        ctx.fillStyle = "#1a1a1a";
+        ctx.font = "38px sans-serif";
+        const taskText = t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action;
+        ctx.fillText(taskText.slice(0, 42), 120, y);
+        y += 58;
+      });
+      y += 10;
+    }
+
+    // Stats row (month mode only)
+    if (mode === "month" && data.stats) {
+      drawDivider(y); y += 40;
+      ctx.fillStyle = "#6E6E6E";
+      ctx.font = "30px sans-serif";
+      ctx.textAlign = "center";
+      const statsStr = [
+        `${data.stats.completed_count} tasks done`,
+        `${data.stats.crop_count} crops active`,
+        data.stats.harvest_count > 0 ? `${data.stats.harvest_count} harvests` : null,
+      ].filter(Boolean).join("  ·  ");
+      ctx.fillText(statsStr, W/2, y + 30);
+      y += 70;
+    }
+
+    // Location + date
+    const locationY = Math.max(y + 20, H - 160);
+    ctx.fillStyle = "#6E6E6E";
+    ctx.font = "28px sans-serif";
+    ctx.textAlign = "center";
+    if (data.profile?.postcode) ctx.fillText(`${data.profile.postcode}, UK  ·  ${data.month_name} ${new Date().getFullYear()}`, W/2, locationY);
+    else ctx.fillText(`${data.month_name} ${new Date().getFullYear()}`, W/2, locationY);
+
+    // Footer
+    ctx.fillStyle = "#2F5D50";
+    ctx.fillRect(0, H - 90, W, 90);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 30px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Plan your garden with Vercro  ·  vercro.com", W/2, H - 44);
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "22px sans-serif";
+    ctx.fillText("app.vercro.com", W/2, H - 14);
+
+    // Try native share, fallback to download
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], "vercro-garden.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: title, text: caption });
+        } catch (e) {
+          if (e.name !== "AbortError") downloadCanvas(canvas);
+        }
+      } else {
+        downloadCanvas(canvas);
+      }
+      setGenerating(false);
+    }, "image/png");
+  };
+
+  const downloadCanvas = (canvas) => {
+    const link = document.createElement("a");
+    link.download = "vercro-garden.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  const saveOnly = async () => {
+    if (!data) return;
+    setGenerating(true);
+    // Re-generate without sharing
+    await generateCard();
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "92vh", overflowY: "auto" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Share my garden 🌱</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Generate a card to share with friends</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {[["recent", "Recent"], ["month", "This month"]].map(([val, label]) => (
+            <button key={val} onClick={() => handleModeChange(val)}
+              style={{ flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === val ? C.forest : C.border}`, background: mode === val ? "#f0f5f3" : "transparent", color: mode === val ? C.forest : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? <div style={{ textAlign: "center", padding: "32px 0" }}><Spinner /></div> : data && (
+          <>
+            {/* Card preview */}
+            <div style={{ background: "#F7F6F2", borderRadius: 14, overflow: "hidden", marginBottom: 16, border: `1px solid ${C.border}` }}>
+              {/* Preview header */}
+              <div style={{ background: C.forest, padding: "14px 20px", textAlign: "center" }}>
+                <div style={{ color: "#fff", fontWeight: 700, fontSize: 16, fontFamily: "serif" }}>🌱 Vercro</div>
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>vercro.com</div>
+              </div>
+              {/* Photo */}
+              {photo && <img src={photo} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }} />}
+              <div style={{ padding: "16px 18px" }}>
+                <div style={{ fontWeight: 700, fontSize: 17, fontFamily: "serif", color: "#1a1a1a", marginBottom: 2 }}>{title}</div>
+                <div style={{ fontSize: 11, color: C.stone, marginBottom: 14 }}>
+                  {mode === "recent" ? "A quick garden update" : data.is_early_month ? `Done in ${data.prev_month_name} · Coming up in ${data.month_name}` : "Progress this month"}
+                </div>
+                {data.completed?.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{mode === "recent" ? "Done recently" : "Completed"}</div>
+                    {data.completed.slice(0, 3).map((t, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 13, color: "#1a1a1a" }}>
+                        <span style={{ color: C.leaf, fontWeight: 700 }}>✓</span>
+                        {t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action}
+                      </div>
+                    ))}
+                  </>
+                )}
+                {!data.completed?.length && (
+                  <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic", marginBottom: 8 }}>Garden planning in progress</div>
+                )}
+                {data.upcoming?.length > 0 && (
+                  <>
+                    <div style={{ height: 1, background: C.border, margin: "12px 0" }} />
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Coming up</div>
+                    {data.upcoming.slice(0, 2).map((t, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 13, color: "#1a1a1a" }}>
+                        <span style={{ fontSize: 14 }}>🌱</span>
+                        {t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action}
+                      </div>
+                    ))}
+                  </>
+                )}
+                {mode === "month" && data.stats && (
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 12, textAlign: "center" }}>
+                    {data.stats.completed_count} tasks done · {data.stats.crop_count} crops active
+                    {data.stats.harvest_count > 0 ? ` · ${data.stats.harvest_count} harvests` : ""}
+                  </div>
+                )}
+                <div style={{ marginTop: 12, fontSize: 11, color: C.stone, textAlign: "center" }}>{data.profile?.postcode && `${data.profile.postcode}, UK · `}{data.month_name} {new Date().getFullYear()}</div>
+              </div>
+              <div style={{ background: C.forest, padding: "10px", textAlign: "center" }}>
+                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Plan your garden with Vercro · vercro.com</div>
+              </div>
+            </div>
+
+            {/* Editable title */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Card title</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} maxLength={60} />
+            </div>
+
+            {/* Photo picker */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Add a photo (optional)</label>
+              {photo ? (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <img src={photo} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} />
+                  <button onClick={() => setPhoto(null)}
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, color: C.stone, fontSize: 13, cursor: "pointer" }}>
+                    Remove photo
+                  </button>
+                </div>
+              ) : (
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: 10, padding: "12px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
+                  📷 Add a garden photo
+                  <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
+                </label>
+              )}
+            </div>
+
+            {/* Suggested caption */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Suggested caption</label>
+              <textarea value={caption} onChange={e => setCaption(e.target.value)}
+                style={{ ...inputStyle, height: 100, resize: "vertical", fontSize: 13 }} />
+              <button onClick={() => { navigator.clipboard.writeText(caption); setCaptionCopied(true); setTimeout(() => setCaptionCopied(false), 2000); }}
+                style={{ marginTop: 6, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 14px", fontSize: 12, color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                {captionCopied ? "✓ Copied!" : "Copy caption"}
+              </button>
+            </div>
+
+            {/* Actions */}
+            <button onClick={generateCard} disabled={generating}
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
+              {generating ? "Generating…" : "⬆ Share my garden"}
+            </button>
+            <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
+              Generates a 1080×1080px card — perfect for Instagram, Facebook and WhatsApp
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard() {
   const [data,         setData]        = useState(null);
@@ -997,6 +1373,7 @@ function Dashboard() {
   const [harvestedIds,        setHarvestedIds]        = useState(new Set());
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
+  const [showShareGarden,    setShowShareGarden]    = useState(false);
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -1206,6 +1583,13 @@ function Dashboard() {
           ))}
         </div>
       )}
+
+      {/* Share my garden button */}
+      {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
+      <button onClick={() => setShowShareGarden(true)}
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
+        🌱 Share my garden
+      </button>
 
       {/* Tips section */}
       <TipsSection />
