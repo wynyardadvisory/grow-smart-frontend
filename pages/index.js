@@ -1061,10 +1061,7 @@ function ShareGardenSheet({ onClose }) {
     });
     if (cur) titleLines.push(cur);
     titleLines.forEach((l, i) => ctx.fillText(l, W / 2, y + i * 96));
-    y += titleLines.length * 96 + 30;
-    // Seedling emoji
-    ctx.font = "56px serif";
-    ctx.fillText("🌱", W / 2, y); y += 80;
+    y += titleLines.length * 96 + 50;
 
     // ── Two column: seasonal garden bg always, user photo on left if provided ───
     const colY = y;
