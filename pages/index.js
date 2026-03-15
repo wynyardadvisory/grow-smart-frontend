@@ -724,46 +724,58 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
 // ── Harvest Forecast Card ─────────────────────────────────────────────────────
 
 function HarvestForecastCard({ item, onHarvest, pending }) {
-  const borderColor = pending ? C.amber : C.red;
-  const bgColor     = pending ? "#fff8ed" : C.cardBg;
-
-  // Progress toward harvest window
   const now    = Date.now();
   const start  = new Date(item.window_start).getTime();
   const end    = new Date(item.window_end).getTime();
-  const pct    = Math.min(100, Math.max(0, Math.round(((now - (start - 30*24*60*60*1000)) / (end - (start - 30*24*60*60*1000))) * 100)));
   const weeksLeft = Math.max(0, Math.round((start - now) / (7*24*60*60*1000)));
+  const isReady = weeksLeft === 0;
+
+  // Amber/earthy throughout — not alarming
+  const borderColor = "#C8844C";
+  const bgColor     = pending ? "#fff3e8" : "#fffaf5";
+  const barColor    = C.amber;
+
+  // Committed optimal harvest date — 35% into the window
+  const optimalDate = new Date(start + (end - start) * 0.35);
+  const optimalStr  = optimalDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+  // Progress bar — journey toward harvest window
+  const journeyStart = start - 60 * 24 * 60 * 60 * 1000;
+  const pct = Math.min(100, Math.max(0, Math.round(((now - journeyStart) / (end - journeyStart)) * 100)));
 
   return (
-    <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.3s" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-        <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
-        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
+    <div style={{ background: bgColor, border: `1px solid ${borderColor}44`, borderLeft: `3px solid ${borderColor}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.3s" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
+          <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
+        </div>
+        {isReady
+          ? <span style={{ fontSize: 10, fontWeight: 700, color: borderColor, background: "#ffe8d6", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
+          : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>{weeksLeft}w away</span>
+        }
       </div>
       {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
-
-      {/* Progress bar */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-          <span style={{ fontSize: 10, color: C.stone }}>
-            {new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })} — {new Date(item.window_end).toLocaleDateString("en-GB", { month: "short" })}
-          </span>
-          <span style={{ fontSize: 10, color: weeksLeft === 0 ? C.red : C.stone, fontWeight: weeksLeft === 0 ? 700 : 400 }}>
-            {weeksLeft === 0 ? "Ready now" : `~${weeksLeft}w`}
-          </span>
-        </div>
+      <div style={{ fontSize: 11, color: borderColor, fontWeight: 600, marginBottom: 8 }}>
+        🎯 Aim to harvest around {optimalStr}
+      </div>
+      <div style={{ marginBottom: 10 }}>
         <div style={{ height: 5, background: C.border, borderRadius: 99, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: pct + "%", background: weeksLeft === 0 ? C.red : C.amber, borderRadius: 99, transition: "width 0.5s" }} />
+          <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 99, transition: "width 0.5s" }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+          <span style={{ fontSize: 10, color: C.stone }}>{new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })}</span>
+          <span style={{ fontSize: 10, color: C.stone }}>{new Date(item.window_end).toLocaleDateString("en-GB", { month: "short" })}</span>
         </div>
       </div>
-
       <button onClick={() => !pending && onHarvest()}
-        style={{ width: "100%", padding: "7px", borderRadius: 8, border: `1px solid ${borderColor}`, background: pending ? C.amber : "transparent", color: pending ? "#fff" : borderColor, fontWeight: 700, fontSize: 11, cursor: pending ? "default" : "pointer", transition: "all 0.3s" }}>
-        {pending ? "Logging…" : "Mark Harvested"}
+        style={{ width: "100%", padding: "8px", borderRadius: 8, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontWeight: 700, fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
+        {pending ? "Logging…" : "🌾 Harvest Now"}
       </button>
     </div>
   );
 }
+
 
 // ── Harvest Modal ─────────────────────────────────────────────────────────────
 
