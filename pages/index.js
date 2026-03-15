@@ -1111,13 +1111,7 @@ function ShareGardenSheet({ onClose }) {
     });
     y += 10;
 
-    // Location
-    drawDivider(y); y += 50;
-    ctx.fillStyle = "#6E6E6E"; ctx.font = "32px sans-serif"; ctx.textAlign = "center";
-    const locText = data.profile?.postcode
-      ? `${data.profile.postcode}, UK  ·  ${data.month_name} ${new Date().getFullYear()}`
-      : `${data.month_name} ${new Date().getFullYear()}`;
-    ctx.fillText(locText, W / 2, y); y += 50;
+
 
     // Vercro branding — inside safe zone
     const brandY = Math.min(y + 40, 1500);
