@@ -1074,29 +1074,21 @@ What's on your list this month?
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d");
 
-    // ── Background ────────────────────────────────────────────────────────────
-    // Forest green top, soft off-white body, green footer band
-    ctx.fillStyle = "#2F5D50";
-    ctx.fillRect(0, 0, W, SAFE_TOP + 10);
+    // ── Background — entirely off-white, no bands ───────────────────────────
     ctx.fillStyle = "#F7F6F2";
-    ctx.fillRect(0, SAFE_TOP + 10, W, H);
+    ctx.fillRect(0, 0, W, H);
 
-    // Decorative circle top-right
+    // Subtle decorative circles — decorative only, outside safe zone
     ctx.beginPath();
-    ctx.arc(W + 60, -60, 320, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.arc(W + 80, -80, 380, 0, Math.PI * 2);
+    ctx.fillStyle = "#D4E8CE";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-80, H + 80, 300, 0, Math.PI * 2);
+    ctx.fillStyle = "#D4E8CE";
     ctx.fill();
 
-    // ── Logo (top padding area — decorative but readable) ────────────────────
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 56px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", W / 2, 200);
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "30px sans-serif";
-    ctx.fillText("vercro.com", W / 2, 250);
-
-    let y = SAFE_TOP + 70; // start content inside safe zone
+    let y = SAFE_TOP + 60; // all content starts inside safe zone
 
     // ── Optional photo ────────────────────────────────────────────────────────
     if (photo) {
@@ -1225,17 +1217,15 @@ What's on your list this month?
     ctx.fillText(locText, W / 2, y);
     y += 50;
 
-    // ── Footer — inside safe zone bottom ─────────────────────────────────────
-    const footerY = Math.max(y + 40, SAFE_BOT - 120);
+    // ── Vercro branding — inside safe zone, no band ─────────────────────────
+    const brandY = Math.max(y + 40, SAFE_BOT - 130);
     ctx.fillStyle = "#2F5D50";
-    ctx.fillRect(0, footerY, W, 120);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 34px Georgia, serif";
+    ctx.font = "bold 44px Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillText("Plan your garden with Vercro", W / 2, footerY + 52);
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = "26px sans-serif";
-    ctx.fillText("vercro.com", W / 2, footerY + 96);
+    ctx.fillText("🌱 Vercro", W / 2, brandY);
+    ctx.fillStyle = "#6E6E6E";
+    ctx.font = "30px sans-serif";
+    ctx.fillText("Plan your garden · vercro.com", W / 2, brandY + 52);
 
     // ── Share or download ─────────────────────────────────────────────────────
     canvas.toBlob(async (blob) => {
@@ -1287,11 +1277,8 @@ What's on your list this month?
           <>
             {/* Card preview */}
             <div style={{ background: "#F7F6F2", borderRadius: 14, overflow: "hidden", marginBottom: 16, border: `1px solid ${C.border}` }}>
-              {/* Preview header */}
-              <div style={{ background: C.forest, padding: "14px 20px", textAlign: "center" }}>
-                <div style={{ color: "#fff", fontWeight: 700, fontSize: 16, fontFamily: "serif" }}>🌱 Vercro</div>
-                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>vercro.com</div>
-              </div>
+              {/* No header band — decorative top only */}
+              <div style={{ background: "#D4E8CE", height: 8, borderRadius: "14px 14px 0 0" }} />
               {/* Photo */}
               {photo && <img src={photo} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }} />}
               <div style={{ padding: "16px 18px" }}>
@@ -1333,8 +1320,9 @@ What's on your list this month?
                 )}
                 <div style={{ marginTop: 12, fontSize: 11, color: C.stone, textAlign: "center" }}>{data.profile?.postcode && `${data.profile.postcode}, UK · `}{data.month_name} {new Date().getFullYear()}</div>
               </div>
-              <div style={{ background: C.forest, padding: "10px", textAlign: "center" }}>
-                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Plan your garden with Vercro · vercro.com</div>
+              <div style={{ padding: "12px", textAlign: "center", borderTop: `1px solid ${C.border}` }}>
+                <div style={{ color: C.forest, fontSize: 13, fontWeight: 700, fontFamily: "serif" }}>🌱 Vercro</div>
+                <div style={{ color: C.stone, fontSize: 11, marginTop: 2 }}>Plan your garden · vercro.com</div>
               </div>
             </div>
 
