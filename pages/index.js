@@ -1404,6 +1404,101 @@ What's on your list this month?
   );
 }
 
+// ── Garden Status Card ───────────────────────────────────────────────────────
+function GardenStatusCard({ data }) {
+  if (!data) return null;
+
+  const cropCount   = data.crop_count || 0;
+  const allTasks    = data.tasks?.tasks || [];
+  const completedThisWeek = allTasks.filter(t => t.completed_at).length;
+
+  // Next harvest — first item in harvest forecast sorted by window_start
+  const nextHarvest = data.harvest_forecast?.length > 0
+    ? [...data.harvest_forecast].sort((a, b) => new Date(a.window_start) - new Date(b.window_start))[0]
+    : null;
+
+  const optimalDate = nextHarvest
+    ? new Date(new Date(nextHarvest.window_start).getTime() + (new Date(nextHarvest.window_end) - new Date(nextHarvest.window_start)) * 0.35)
+    : null;
+
+  return (
+    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Garden Status</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Crops growing */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 20 }}>🌱</span>
+          <span style={{ fontSize: 14, color: "#1a1a1a" }}>
+            <strong style={{ color: C.forest }}>{cropCount}</strong> crop{cropCount !== 1 ? "s" : ""} growing
+          </span>
+        </div>
+        {/* Next harvest */}
+        {nextHarvest && optimalDate && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🌾</span>
+            <span style={{ fontSize: 14, color: "#1a1a1a" }}>
+              Next harvest: <strong style={{ color: C.forest }}>{nextHarvest.crop}</strong> — aiming for {optimalDate.toLocaleDateString("en-GB", { day: "numeric", month: "long" })}
+            </span>
+          </div>
+        )}
+        {/* Tasks completed this week */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 20 }}>✅</span>
+          <span style={{ fontSize: 14, color: "#1a1a1a" }}>
+            <strong style={{ color: C.forest }}>{completedThisWeek}</strong> task{completedThisWeek !== 1 ? "s" : ""} completed this week
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Coming Up Soon Card ───────────────────────────────────────────────────────
+function ComingUpSoonCard({ tasks }) {
+  if (!tasks?.length) return null;
+
+  const now = Date.now();
+
+  // Get next 3 incomplete future tasks with due dates
+  const upcoming = tasks
+    .filter(t => !t.completed_at && t.due_date > new Date().toISOString().split("T")[0])
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+    .slice(0, 3);
+
+  if (!upcoming.length) return null;
+
+  const relativeTime = (dateStr) => {
+    const days = Math.ceil((new Date(dateStr) - now) / 86400000);
+    if (days <= 1)  return "tomorrow";
+    if (days <= 7)  return `in ${days} days`;
+    if (days <= 14) return "next week";
+    const weeks = Math.round(days / 7);
+    return `in ${weeks} week${weeks !== 1 ? "s" : ""}`;
+  };
+
+  return (
+    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 18 }}>⏳</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1 }}>Coming Up Soon</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {upcoming.map((t, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
+              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{getCropEmoji(t.crop?.name || "")}</span>
+              <span style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.4 }}>
+                {t.action}{t.crop?.name ? ` ${t.crop.name.toLowerCase()}` : ""}
+              </span>
+            </div>
+            <span style={{ fontSize: 12, color: C.stone, flexShrink: 0, fontStyle: "italic" }}>{relativeTime(t.due_date)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard() {
   const [data,         setData]        = useState(null);
@@ -1574,6 +1669,10 @@ function Dashboard() {
           })()}
         </div>
       </div>
+
+      {/* Garden status + coming up — always visible */}
+      <GardenStatusCard data={data} />
+      <ComingUpSoonCard tasks={data.tasks?.tasks || []} />
 
       {/* Quick crop check — lifecycle confirmations + missing data */}
       <QuickCropCheck
