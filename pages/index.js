@@ -1032,121 +1032,166 @@ function ShareGardenSheet({ onClose }) {
     if (!data) return;
     const W = 1080, H = 1920;
     const SAFE_TOP = 285, SAFE_BOT = 1635;
-    const PAD = 80;
+    const PAD = 60;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#F7F6F2";
+    // ── Soft cream background ─────────────────────────────────────────────────
+    ctx.fillStyle = "#F5F2EB";
     ctx.fillRect(0, 0, W, H);
+    // Subtle green wash at bottom
+    const bgGrad = ctx.createLinearGradient(0, H * 0.6, 0, H);
+    bgGrad.addColorStop(0, "rgba(212,232,206,0)");
+    bgGrad.addColorStop(1, "rgba(212,232,206,0.4)");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, H * 0.6, W, H * 0.4);
 
-    // Decorative circles in padding zones only
-    ctx.beginPath(); ctx.arc(W + 80, -80, 380, 0, Math.PI * 2);
-    ctx.fillStyle = "#D4E8CE"; ctx.fill();
-    ctx.beginPath(); ctx.arc(-80, H + 80, 300, 0, Math.PI * 2);
-    ctx.fillStyle = "#D4E8CE"; ctx.fill();
+    let y = SAFE_TOP + 80;
 
-    let y = SAFE_TOP + 60;
+    // ── Title — large serif, forest green, centred ────────────────────────────
+    ctx.fillStyle = "#2F5D50";
+    ctx.font = "bold 84px Georgia, serif";
+    ctx.textAlign = "center";
+    const words = title.split(" ");
+    const titleLines = [];
+    let cur = "";
+    words.forEach(w => {
+      const test = cur ? cur + " " + w : w;
+      if (ctx.measureText(test).width > W - PAD * 3) { titleLines.push(cur); cur = w; }
+      else cur = test;
+    });
+    if (cur) titleLines.push(cur);
+    titleLines.forEach((l, i) => ctx.fillText(l, W / 2, y + i * 96));
+    y += titleLines.length * 96 + 30;
+    // Seedling emoji
+    ctx.font = "56px serif";
+    ctx.fillText("🌱", W / 2, y); y += 80;
 
-    // Photo — fixed max height 400px so it never overflows safe zone
+    // ── Two column: seasonal garden bg always, user photo on left if provided ───
+    const colY = y;
+    const colH = 560;
+    const photoW = 480, photoX = PAD;
+    const taskX = photoX + photoW + 44;
+
+    // Pick seasonal background image
+    const month = new Date().getMonth(); // 0-11
+    const seasonBg = month >= 2 && month <= 4 ? "/garden-spring.jpg"
+                   : month >= 5 && month <= 7 ? "/garden-summer.jpg"
+                   : month >= 8 && month <= 10 ? "/garden-autumn.jpg"
+                   : "/garden-winter.jpg";
+
+    // Load and draw seasonal background across full width, faded
+    try {
+      const bgImg = await new Promise((res, rej) => {
+        const i = new Image(); i.onload = () => res(i); i.onerror = rej;
+        i.src = seasonBg;
+      });
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
+      else ctx.rect(PAD, colY, W - PAD * 2, colH);
+      ctx.clip();
+      const scale = Math.max((W - PAD * 2) / bgImg.width, colH / bgImg.height);
+      const sw = Math.round(bgImg.width * scale);
+      const sh = Math.round(bgImg.height * scale);
+      ctx.drawImage(bgImg, PAD + ((W - PAD * 2) - sw) / 2, colY + (colH - sh) / 2, sw, sh);
+      ctx.restore();
+      // Fade overlay — left stays visible, right fades to cream
+      const fadeGrad = ctx.createLinearGradient(PAD, 0, W - PAD, 0);
+      fadeGrad.addColorStop(0,    "rgba(245,242,235,0.15)");
+      fadeGrad.addColorStop(0.42, "rgba(245,242,235,0.15)");
+      fadeGrad.addColorStop(1,    "rgba(245,242,235,0.88)");
+      ctx.fillStyle = fadeGrad;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
+      else ctx.rect(PAD, colY, W - PAD * 2, colH);
+      ctx.fill();
+    } catch(e) {
+      // Fallback if image fails to load
+      ctx.fillStyle = "#D4E8CE";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
+      else ctx.rect(PAD, colY, W - PAD * 2, colH);
+      ctx.fill();
+    }
+
+    // User photo on left — overlaid on top of seasonal bg if provided
     if (photo) {
       try {
         const img = await new Promise((res, rej) => {
           const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = photo;
         });
-        const maxPhotoH = 400;
-        const scale = Math.min(W / img.width, maxPhotoH / img.height);
-        const pw = Math.round(img.width * scale);
-        const ph = Math.round(img.height * scale);
-        const px = (W - pw) / 2;
         ctx.save();
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(px, y, pw, ph, 16);
-        else ctx.rect(px, y, pw, ph);
+        if (ctx.roundRect) ctx.roundRect(photoX, colY, photoW, colH, 24);
+        else ctx.rect(photoX, colY, photoW, colH);
         ctx.clip();
-        ctx.drawImage(img, px, y, pw, ph);
+        const scale = Math.max(photoW / img.width, colH / img.height);
+        const sw = Math.round(img.width * scale);
+        const sh = Math.round(img.height * scale);
+        ctx.drawImage(img, photoX + (photoW - sw) / 2, colY + (colH - sh) / 2, sw, sh);
         ctx.restore();
-        y += ph + 80; // more breathing room between photo and title
       } catch(e) {}
     }
 
-    // Title
-    ctx.fillStyle = "#1a1a1a";
-    ctx.font = "bold 72px Georgia, serif";
-    ctx.textAlign = "center";
-    const titleWords = title.split(" ");
-    let line1 = "", line2 = "";
-    titleWords.forEach(w => { if ((line1 + " " + w).trim().length <= 22) line1 = (line1 + " " + w).trim(); else line2 = (line2 + " " + w).trim(); });
-    ctx.fillText(line1, W / 2, y); y += line2 ? 84 : 44;
-    if (line2) { ctx.fillText(line2, W / 2, y); y += 44; }
+    // Tasks on right — deduplicated, max 3
+    const seen = new Set();
+    const deduped = (data.completed || []).filter(t => {
+      const text = shortTask(t);
+      if (seen.has(text)) return false;
+      seen.add(text); return true;
+    }).slice(0, 3);
 
-    // Subtitle
-    ctx.fillStyle = "#6E6E6E"; ctx.font = "34px sans-serif";
-    const subtitle = mode === "recent" ? "A quick garden update"
-      : data.is_early_month ? `${data.prev_month_name} recap · ${data.month_name} ahead`
-      : "Progress this month";
-    ctx.fillText(subtitle, W / 2, y + 34); y += 90;
-
-    const drawDivider = (yPos) => {
-      ctx.strokeStyle = "#D4E8CE"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(PAD, yPos); ctx.lineTo(W - PAD, yPos); ctx.stroke();
-    };
-
-    // Completed — deduplicated by achievement text, max 3
-    drawDivider(y); y += 55;
-    if (data.completed?.length > 0) {
-      const seen = new Set();
-      const deduped = data.completed.filter(t => {
-        const text = shortTask(t);
-        if (seen.has(text)) return false;
-        seen.add(text);
-        return true;
-      }).slice(0, 3);
-      deduped.forEach(t => {
-        ctx.beginPath(); ctx.arc(PAD + 22, y - 14, 22, 0, Math.PI * 2);
-        ctx.fillStyle = "#6FAF63"; ctx.fill();
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("✓", PAD + 22, y - 6);
-        ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif"; ctx.textAlign = "left";
-        ctx.fillText(shortTask(t), PAD + 60, y); y += 68;
-      });
-    } else {
-      ctx.fillStyle = "#6E6E6E"; ctx.font = "italic 38px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("Garden planning in progress", W / 2, y); ctx.textAlign = "left"; y += 60;
-    }
-    y += 20;
-
-    // Upcoming
-    if (data.upcoming?.length > 0) {
-      drawDivider(y); y += 55;
-      data.upcoming.slice(0, 3).forEach(t => {
-        ctx.fillStyle = "#D9A441"; ctx.font = "44px sans-serif"; ctx.textAlign = "left";
-        ctx.fillText("🌱", PAD, y);
-        ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif";
-        ctx.fillText(shortTask(t), PAD + 58, y); y += 68;
-      });
-      y += 20;
-    }
-
-    // Stats — divider closer to achievements above
-    drawDivider(y); y += 44;
-    const stats = [
-      { emoji: "🌿", text: `${data.stats?.completed_count || 0} tasks completed` },
-      { emoji: "🥕", text: `${data.stats?.crop_count || 0} crops growing` },
-      ...(data.stats?.harvest_count > 0 ? [{ emoji: "🧺", text: `${data.stats.harvest_count} harvest${data.stats.harvest_count !== 1 ? "s" : ""}` }] : []),
-    ];
-    stats.forEach(s => {
-      ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif"; ctx.textAlign = "left";
-      ctx.fillText(`${s.emoji}  ${s.text}`, PAD, y); y += 60;
+    const rowSpacing = colH / 3;
+    deduped.forEach((t, i) => {
+      const rowY = colY + i * rowSpacing + rowSpacing / 2 - 30;
+      const cx = taskX + 32, cy = rowY + 22;
+      ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
+      ctx.fillStyle = "#2F5D50"; ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "bold 34px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("✓", cx, cy + 12);
+      ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "left";
+      const taskWords = shortTask(t).split(" ");
+      const mid = Math.ceil(taskWords.length / 2);
+      ctx.fillText(taskWords.slice(0, mid).join(" "), taskX + 80, rowY + 12);
+      if (taskWords.slice(mid).length) ctx.fillText(taskWords.slice(mid).join(" "), taskX + 80, rowY + 64);
     });
-    y += 10;
 
+    y = colY + colH + 60;
 
+    // ── Stats bar ─────────────────────────────────────────────────────────────
+    const statsBarH = 120;
+    ctx.fillStyle = "#E8E4D8";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, statsBarH, 18);
+    else ctx.rect(PAD, y, W - PAD * 2, statsBarH);
+    ctx.fill();
 
-    // Vercro branding — inside safe zone
-    const brandY = Math.min(y + 40, 1500);
-    ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px Georgia, serif"; ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", W / 2, brandY);
-    ctx.fillStyle = "#6E6E6E"; ctx.font = "30px sans-serif";
-    ctx.fillText("Plan your garden · vercro.com", W / 2, brandY + 52);
+    const statItems = [
+      { num: data.stats?.crop_count || 0,      label: "crops growing" },
+      { num: data.stats?.completed_count || 0, label: "tasks done" },
+      ...(data.stats?.harvest_count > 0 ? [{ num: data.stats.harvest_count, label: "harvest" }] : []),
+    ];
+    const statW2 = (W - PAD * 2) / statItems.length;
+    statItems.forEach((s, i) => {
+      const sx = PAD + i * statW2 + statW2 / 2;
+      const sy = y + 42;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#2F5D50"; ctx.font = "bold 54px Georgia, serif";
+      ctx.fillText(String(s.num), sx, sy);
+      ctx.fillStyle = "#6E6E6E"; ctx.font = "26px sans-serif";
+      ctx.fillText(s.label, sx, sy + 40);
+      if (i < statItems.length - 1) {
+        ctx.fillStyle = "#B8B4A8"; ctx.font = "50px sans-serif";
+        ctx.fillText("·", PAD + (i + 1) * statW2, sy + 8);
+      }
+    });
+    y += statsBarH + 60;
+
+    // ── Vercro branding ───────────────────────────────────────────────────────
+    ctx.fillStyle = "#2F5D50";
+    ctx.font = "bold 54px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🌱 Vercro", W / 2, y);
   };
 
   // Render preview canvas whenever data/photo/title changes
