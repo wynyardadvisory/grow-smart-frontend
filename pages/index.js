@@ -1113,7 +1113,7 @@ function ShareGardenSheet({ onClose }) {
     ctx.fillText(locText, W / 2, y); y += 50;
 
     // Vercro branding — inside safe zone
-    const brandY = Math.max(y + 40, SAFE_BOT - 130);
+    const brandY = Math.min(y + 40, 1500);
     ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px Georgia, serif"; ctx.textAlign = "center";
     ctx.fillText("🌱 Vercro", W / 2, brandY);
     ctx.fillStyle = "#6E6E6E"; ctx.font = "30px sans-serif";
@@ -1185,11 +1185,31 @@ What's on your list this month?
     setPhotoB64(b64.split(",")[1]);
   };
 
-  // Truncate task text to max 6 words for social sharing
+  // Human-readable achievement text for social share card
   const shortTask = (t) => {
-    const raw = t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action;
-    const words = raw.split(" ");
-    return words.length > 6 ? words.slice(0, 6).join(" ") : raw;
+    const crop = t.crop?.name || "";
+    const action = (t.action || "").toLowerCase();
+    if (action.includes("plant out") || action.includes("transplant"))
+      return crop ? `Planted out ${crop.toLowerCase()}` : "Planted out";
+    if (action.includes("sow") || action.includes("direct sow"))
+      return crop ? `Sowed ${crop.toLowerCase()}` : "Sowed seeds";
+    if (action.includes("harvest"))
+      return crop ? `Harvested ${crop.toLowerCase()}` : "Harvested";
+    if (action.includes("feed") || action.includes("fertili"))
+      return crop ? `Fed ${crop.toLowerCase()}` : "Fed plants";
+    if (action.includes("water"))
+      return crop ? `Watered ${crop.toLowerCase()}` : "Watered";
+    if (action.includes("prune") || action.includes("trim"))
+      return crop ? `Pruned ${crop.toLowerCase()}` : "Pruned";
+    if (action.includes("pot on") || action.includes("repot"))
+      return crop ? `Potted on ${crop.toLowerCase()}` : "Potted on";
+    if (action.includes("thin"))
+      return crop ? `Thinned ${crop.toLowerCase()}` : "Thinned seedlings";
+    if (action.includes("weed"))   return "Weeded the bed";
+    if (action.includes("mulch"))  return "Applied mulch";
+    if (action.includes("stake") || action.includes("support"))
+      return crop ? `Staked ${crop.toLowerCase()}` : "Added support";
+    return crop ? `Tended ${crop.toLowerCase()}` : "Completed task";
   };
 
   const generateCard = async () => {
