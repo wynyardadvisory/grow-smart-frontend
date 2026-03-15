@@ -1278,9 +1278,10 @@ function QuickCropCheck({ crops, missingItems, onDismiss }) {
   const [actioning,  setActioning]  = useState(null);
   const [dismissed,  setDismissed]  = useState(new Set());
 
-  // Build lifecycle prompts from crops
+  // Build lifecycle prompts from crops — exclude planned/unsown crops
   const lifecyclePrompts = crops
     .filter(crop => {
+      if (crop.status === "planned" || !crop.sown_date) return false;
       if (dismissed.has(crop.id + "_lifecycle")) return false;
       // Skip if snoozed
       if (crop.stage_check_snoozed_until && new Date(crop.stage_check_snoozed_until) > new Date()) return false;
@@ -1292,9 +1293,9 @@ function QuickCropCheck({ crops, missingItems, onDismiss }) {
       nextStage:   predictNextStage(crop),
     }));
 
-  // Build missing data prompts
+  // Build missing data prompts — exclude planned crops (they have no sow date by design)
   const missingPrompts = (missingItems || [])
-    .filter(item => !dismissed.has(item.id + "_missing"))
+    .filter(item => !dismissed.has(item.id + "_missing") && item.status !== "planned")
     .map(item => ({ type: "missing", item }));
 
   // Priority order: missing sow date first, then lifecycle, then other missing
@@ -2417,17 +2418,19 @@ function CropList() {
               {(() => {
                 const stageKey = crop.stage || "seed";
                 const stageColor = STAGE_COLOR[stageKey] || C.stone;
-                // Use days-based % if we have sown_date + maturity data, else fall back to stage index
-                // stage_delay_days shifts the effective days back when user has said "not yet"
+                // 0% if not sown yet
                 let pct;
-                if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
+                if (!crop.sown_date || crop.status === "planned") {
+                  pct = 0;
+                } else if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
                   const delay = crop.stage_delay_days || 0;
                   const daysSinceSown = Math.max(0, Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) - delay);
                   pct = Math.min(100, Math.max(0, Math.round((daysSinceSown / crop.crop_def.days_to_maturity_max) * 100)));
                 } else {
+                  // No maturity data — fall back to stage index but skip if no sow date
                   const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
                   const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
-                  pct = idx < 0 ? 0 : Math.round(((idx + 1) / STAGES.length) * 100);
+                  pct = idx <= 0 ? 0 : Math.round((idx / STAGES.length) * 100);
                 }
                 return (
                   <div style={{ marginTop: 10 }}>
