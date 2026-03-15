@@ -1079,59 +1079,46 @@ function TodayBadgeCard({ onViewBadges }) {
   const { badges, loading } = useBadges();
   if (loading || !badges) return null;
 
-  // Recent earned badges — up to 5
   const recentEarned = (badges.recent_unlocks || []).slice(0, 5);
-
-  // Next closest badge — highest % progress, not yet complete
   const nextBadge = (badges.badges || [])
     .filter(b => !b.is_completed)
     .sort((a, b) => (b.current_progress / b.threshold_value) - (a.current_progress / a.threshold_value))[0];
-
-  // Monthly challenge as alternative if no badge in progress
   const monthly = badges.monthly_challenge;
+  const next = nextBadge || (monthly && !monthly.is_completed ? monthly : null);
+
+  // Stacked emoji — overlapping like admin pill buttons content
+  const stackedIcons = recentEarned.length > 0
+    ? <span style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
+        {recentEarned.map((u, i) => (
+          <span key={i} style={{ position:"relative", marginLeft: i === 0 ? 0 : -6, fontSize:14, zIndex: recentEarned.length - i }}>
+            {u.badge?.icon_key || "🏆"}
+          </span>
+        ))}
+      </span>
+    : <span style={{ fontSize:14, opacity:0.4 }}>🏆</span>;
 
   return (
-    <div style={{ display:"flex", gap:10, marginBottom:12 }}>
-      {/* Left button — recent badges earned */}
+    <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+      {/* Earned badges pill */}
       <button onClick={onViewBadges}
-        style={{ flex:1, background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", cursor:"pointer", textAlign:"left" }}>
-        <div style={{ fontSize:10, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Earned</div>
-        {recentEarned.length > 0 ? (
-          <div style={{ position:"relative", height:36, width: 24 + (recentEarned.length - 1) * 14 }}>
-            {recentEarned.map((u, i) => (
-              <span key={i} style={{ position:"absolute", left: i * 14, top:0, fontSize:24, zIndex: recentEarned.length - i, filter:"drop-shadow(1px 1px 2px rgba(0,0,0,0.15))" }}>
-                {u.badge?.icon_key || "🏆"}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <div style={{ fontSize:24, opacity:0.3 }}>🏆</div>
-        )}
-        <div style={{ fontSize:11, color:C.stone, marginTop:6 }}>
-          {recentEarned.length > 0 ? `${recentEarned.length} badge${recentEarned.length !== 1 ? "s" : ""}` : "None yet"}
-        </div>
+        style={{ padding:"8px 14px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.stone, fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
+        {stackedIcons}
+        <span>{recentEarned.length > 0 ? `${recentEarned.length} earned` : "No badges yet"}</span>
       </button>
 
-      {/* Right button — next badge / monthly challenge */}
-      <button onClick={onViewBadges}
-        style={{ flex:1, background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", cursor:"pointer", textAlign:"left" }}>
-        <div style={{ fontSize:10, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Next Up</div>
-        {nextBadge ? (
-          <>
-            <div style={{ fontSize:22, filter:"grayscale(1)", opacity:0.5 }}>{nextBadge.icon_key}</div>
-            <div style={{ fontSize:12, fontWeight:600, color:"#888", marginTop:4 }}>{nextBadge.title}</div>
-            <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>{nextBadge.current_progress} / {nextBadge.threshold_value}</div>
-          </>
-        ) : monthly && !monthly.is_completed ? (
-          <>
-            <div style={{ fontSize:22, filter:"grayscale(1)", opacity:0.5 }}>{monthly.icon_key}</div>
-            <div style={{ fontSize:12, fontWeight:600, color:"#888", marginTop:4 }}>{monthly.title}</div>
-            <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>{monthly.progress} / {monthly.threshold}</div>
-          </>
-        ) : (
-          <div style={{ fontSize:22, opacity:0.4 }}>⭐</div>
-        )}
-      </button>
+      {/* Next badge pill */}
+      {next && (
+        <button onClick={onViewBadges}
+          style={{ padding:"8px 14px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.stone, fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
+          <span style={{ fontSize:14, filter:"grayscale(1)", opacity:0.5 }}>{next.icon_key || next.icon_key}</span>
+          <span style={{ color:"#888" }}>{next.title || next.title}</span>
+          <span style={{ color:C.stone, fontWeight:400 }}>
+            {next.current_progress !== undefined
+              ? `${next.current_progress} / ${next.threshold_value}`
+              : `${next.progress} / ${next.threshold}`}
+          </span>
+        </button>
+      )}
     </div>
   );
 }
