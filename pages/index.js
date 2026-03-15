@@ -1036,7 +1036,7 @@ function ShareGardenSheet({ onClose }) {
         ctx.clip();
         ctx.drawImage(img, px, y, pw, ph);
         ctx.restore();
-        y += ph + 50;
+        y += ph + 80; // more breathing room between photo and title
       } catch(e) {}
     }
 
@@ -1120,7 +1120,7 @@ function ShareGardenSheet({ onClose }) {
     ctx.fillText(locText, W / 2, y); y += 50;
 
     // Vercro branding — inside safe zone
-    const brandY = Math.min(y + 40, 1500);
+    const brandY = Math.min(y + 80, 1540);
     ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px Georgia, serif"; ctx.textAlign = "center";
     ctx.fillText("🌱 Vercro", W / 2, brandY);
     ctx.fillStyle = "#6E6E6E"; ctx.font = "30px sans-serif";
