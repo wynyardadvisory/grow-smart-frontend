@@ -1062,10 +1062,17 @@ function ShareGardenSheet({ onClose }) {
       ctx.beginPath(); ctx.moveTo(PAD, yPos); ctx.lineTo(W - PAD, yPos); ctx.stroke();
     };
 
-    // Completed
+    // Completed — deduplicated by achievement text, max 3
     drawDivider(y); y += 55;
     if (data.completed?.length > 0) {
-      data.completed.slice(0, 4).forEach(t => {
+      const seen = new Set();
+      const deduped = data.completed.filter(t => {
+        const text = shortTask(t);
+        if (seen.has(text)) return false;
+        seen.add(text);
+        return true;
+      }).slice(0, 3);
+      deduped.forEach(t => {
         ctx.beginPath(); ctx.arc(PAD + 22, y - 14, 22, 0, Math.PI * 2);
         ctx.fillStyle = "#6FAF63"; ctx.fill();
         ctx.fillStyle = "#ffffff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
