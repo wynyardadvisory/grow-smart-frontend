@@ -2552,7 +2552,7 @@ function CropGrowthDiary({ crop, onClose }) {
   );
 }
 
-function CropList() {
+function CropList({ onAddCrop }) {
   const [crops,    setCrops]   = useState([]);
   const [loading,  setLoading] = useState(true);
   const [error,    setError]   = useState(null);
@@ -2700,10 +2700,16 @@ function CropList() {
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
             <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{visibleCrops.length} of {crops.length} crop{crops.length !== 1 ? "s" : ""}</div>
           </div>
-          <button onClick={() => setShowFilters(v => !v)}
-            style={{ background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => onAddCrop()}
+              style={{ background: C.forest, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              + Add Crop
+            </button>
+            <button onClick={() => setShowFilters(v => !v)}
+              style={{ background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+            </button>
+          </div>
         </div>
         {/* Filter/sort dropdown */}
         {showFilters && (
@@ -4792,10 +4798,9 @@ function AdminScreen() {
 }
 
 const TABS = [
-  { id: "dashboard", label: "Today",  icon: "◈" },
+  { id: "dashboard", label: "Today",   icon: "◈" },
   { id: "garden",    label: "Garden",  icon: "⬡" },
   { id: "crops",     label: "Crops",   icon: "◉" },
-  { id: "add",       label: "Add",     icon: "+" },
   { id: "feeds",     label: "Feeds",   icon: "🧪" },
   { id: "profile",   label: "Profile", icon: "👤" },
 ];
@@ -5083,7 +5088,8 @@ export default function GrowSmart() {
       <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setAddPrefill(prefill); setTab("add"); }} />}
-        {tab === "crops"     && <CropList />}
+        {tab === "crops"     && <CropList onAddCrop={() => setTab("add")} />}
+        {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} />}
