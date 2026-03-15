@@ -1235,23 +1235,32 @@ function Dashboard() {
 const STAGE_SEQUENCE = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
 
 // Predict which stage a crop should be at based on days since sown
+// stage_delay_days is added when user taps "Not yet" — shifts all predictions forward
 function predictNextStage(crop) {
   if (!crop.sown_date || !crop.crop_def?.days_to_maturity_max) return null;
-  const daysSown = Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000);
+  const delay    = crop.stage_delay_days || 0;
+  const daysSown = Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) - delay;
   const total    = crop.crop_def.days_to_maturity_max;
+  const pctGrown = daysSown / total;
+
   // Rough stage thresholds as % of total maturity
   const thresholds = [
-    { stage: "seedling",   pct: 0.08 },
-    { stage: "vegetative", pct: 0.20 },
-    { stage: "flowering",  pct: 0.50 },
-    { stage: "fruiting",   pct: 0.70 },
-    { stage: "harvesting", pct: 0.90 },
+    { stage: "seedling",   pct: 0.08, maxPct: 0.25 },
+    { stage: "vegetative", pct: 0.20, maxPct: 0.55 },
+    { stage: "flowering",  pct: 0.50, maxPct: 0.75 },
+    { stage: "fruiting",   pct: 0.70, maxPct: 0.92 },
+    { stage: "harvesting", pct: 0.90, maxPct: 1.50 },
   ];
   const currentStageIdx = STAGE_SEQUENCE.indexOf(crop.stage || "seed");
+
   for (const t of thresholds) {
     const stageIdx = STAGE_SEQUENCE.indexOf(t.stage);
-    if (stageIdx <= currentStageIdx) continue; // already past this stage
-    if (daysSown >= Math.floor(total * t.pct)) return t.stage;
+    // Skip stages the crop has already confirmed or is clearly past
+    if (stageIdx <= currentStageIdx) continue;
+    // Skip if the crop is well past this stage's window (maxPct)
+    if (pctGrown > t.maxPct) continue;
+    // Only prompt if we've reached this stage's threshold
+    if (pctGrown >= t.pct) return t.stage;
   }
   return null;
 }
@@ -1297,14 +1306,19 @@ function QuickCropCheck({ crops, missingItems, onDismiss }) {
 
   const handleLifecycle = async (crop, nextStage, confirmed) => {
     setActioning(crop.id);
+    // Dismiss immediately so card disappears straight away regardless of reload
+    setDismissed(prev => new Set([...prev, crop.id + "_lifecycle"]));
     try {
       await apiFetch(`/crops/${crop.id}/confirm-stage`, {
         method: "POST",
         body: JSON.stringify({ stage: nextStage, confirmed }),
       });
-      setDismissed(prev => new Set([...prev, crop.id + "_lifecycle"]));
       if (onDismiss) onDismiss();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      // Undo dismiss if API call failed
+      setDismissed(prev => { const s = new Set(prev); s.delete(crop.id + "_lifecycle"); return s; });
+    }
     setActioning(null);
   };
 
@@ -2404,9 +2418,11 @@ function CropList() {
                 const stageKey = crop.stage || "seed";
                 const stageColor = STAGE_COLOR[stageKey] || C.stone;
                 // Use days-based % if we have sown_date + maturity data, else fall back to stage index
+                // stage_delay_days shifts the effective days back when user has said "not yet"
                 let pct;
                 if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
-                  const daysSinceSown = Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000);
+                  const delay = crop.stage_delay_days || 0;
+                  const daysSinceSown = Math.max(0, Math.floor((Date.now() - new Date(crop.sown_date)) / 86400000) - delay);
                   pct = Math.min(100, Math.max(0, Math.round((daysSinceSown / crop.crop_def.days_to_maturity_max) * 100)));
                 } else {
                   const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
