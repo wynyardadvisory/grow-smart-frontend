@@ -996,7 +996,138 @@ function ShareGardenSheet({ onClose }) {
   const [generating,  setGenerating]  = useState(false);
   const [caption,     setCaption]     = useState("");
   const [captionCopied, setCaptionCopied] = useState(false);
-  const photoInputRef = useRef(null);
+  const photoInputRef   = useRef(null);
+  const previewRef      = useRef(null);
+
+  // Draw the card onto any canvas — shared by preview + export
+  const drawCard = async (canvas) => {
+    if (!data) return;
+    const W = 1080, H = 1920;
+    const SAFE_TOP = 285, SAFE_BOT = 1635;
+    const PAD = 80;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#F7F6F2";
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative circles in padding zones only
+    ctx.beginPath(); ctx.arc(W + 80, -80, 380, 0, Math.PI * 2);
+    ctx.fillStyle = "#D4E8CE"; ctx.fill();
+    ctx.beginPath(); ctx.arc(-80, H + 80, 300, 0, Math.PI * 2);
+    ctx.fillStyle = "#D4E8CE"; ctx.fill();
+
+    let y = SAFE_TOP + 60;
+
+    // Photo — fixed max height 400px so it never overflows safe zone
+    if (photo) {
+      try {
+        const img = await new Promise((res, rej) => {
+          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = photo;
+        });
+        const maxPhotoH = 400;
+        const scale = Math.min(W / img.width, maxPhotoH / img.height);
+        const pw = Math.round(img.width * scale);
+        const ph = Math.round(img.height * scale);
+        const px = (W - pw) / 2;
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(px, y, pw, ph, 16);
+        else ctx.rect(px, y, pw, ph);
+        ctx.clip();
+        ctx.drawImage(img, px, y, pw, ph);
+        ctx.restore();
+        y += ph + 50;
+      } catch(e) {}
+    }
+
+    // Title
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = "bold 72px Georgia, serif";
+    ctx.textAlign = "center";
+    const titleWords = title.split(" ");
+    let line1 = "", line2 = "";
+    titleWords.forEach(w => { if ((line1 + " " + w).trim().length <= 22) line1 = (line1 + " " + w).trim(); else line2 = (line2 + " " + w).trim(); });
+    ctx.fillText(line1, W / 2, y); y += line2 ? 84 : 44;
+    if (line2) { ctx.fillText(line2, W / 2, y); y += 44; }
+
+    // Subtitle
+    ctx.fillStyle = "#6E6E6E"; ctx.font = "34px sans-serif";
+    const subtitle = mode === "recent" ? "A quick garden update"
+      : data.is_early_month ? `${data.prev_month_name} recap · ${data.month_name} ahead`
+      : "Progress this month";
+    ctx.fillText(subtitle, W / 2, y + 34); y += 90;
+
+    const drawDivider = (yPos) => {
+      ctx.strokeStyle = "#D4E8CE"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(PAD, yPos); ctx.lineTo(W - PAD, yPos); ctx.stroke();
+    };
+
+    // Completed
+    drawDivider(y); y += 55;
+    if (data.completed?.length > 0) {
+      data.completed.slice(0, 4).forEach(t => {
+        ctx.beginPath(); ctx.arc(PAD + 22, y - 14, 22, 0, Math.PI * 2);
+        ctx.fillStyle = "#6FAF63"; ctx.fill();
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("✓", PAD + 22, y - 6);
+        ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif"; ctx.textAlign = "left";
+        ctx.fillText(shortTask(t), PAD + 60, y); y += 68;
+      });
+    } else {
+      ctx.fillStyle = "#6E6E6E"; ctx.font = "italic 38px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("Garden planning in progress", W / 2, y); ctx.textAlign = "left"; y += 60;
+    }
+    y += 20;
+
+    // Upcoming
+    if (data.upcoming?.length > 0) {
+      drawDivider(y); y += 55;
+      data.upcoming.slice(0, 3).forEach(t => {
+        ctx.fillStyle = "#D9A441"; ctx.font = "44px sans-serif"; ctx.textAlign = "left";
+        ctx.fillText("🌱", PAD, y);
+        ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif";
+        ctx.fillText(shortTask(t), PAD + 58, y); y += 68;
+      });
+      y += 20;
+    }
+
+    // Stats
+    drawDivider(y); y += 55;
+    const stats = [
+      { emoji: "🌿", text: `${data.stats?.completed_count || 0} tasks completed` },
+      { emoji: "🥕", text: `${data.stats?.crop_count || 0} crops growing` },
+      ...(data.stats?.harvest_count > 0 ? [{ emoji: "🧺", text: `${data.stats.harvest_count} harvest${data.stats.harvest_count !== 1 ? "s" : ""}` }] : []),
+    ];
+    stats.forEach(s => {
+      ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif"; ctx.textAlign = "left";
+      ctx.fillText(`${s.emoji}  ${s.text}`, PAD, y); y += 64;
+    });
+    y += 20;
+
+    // Location
+    drawDivider(y); y += 50;
+    ctx.fillStyle = "#6E6E6E"; ctx.font = "32px sans-serif"; ctx.textAlign = "center";
+    const locText = data.profile?.postcode
+      ? `${data.profile.postcode}, UK  ·  ${data.month_name} ${new Date().getFullYear()}`
+      : `${data.month_name} ${new Date().getFullYear()}`;
+    ctx.fillText(locText, W / 2, y); y += 50;
+
+    // Vercro branding — inside safe zone
+    const brandY = Math.max(y + 40, SAFE_BOT - 130);
+    ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px Georgia, serif"; ctx.textAlign = "center";
+    ctx.fillText("🌱 Vercro", W / 2, brandY);
+    ctx.fillStyle = "#6E6E6E"; ctx.font = "30px sans-serif";
+    ctx.fillText("Plan your garden · vercro.com", W / 2, brandY + 52);
+  };
+
+  // Render preview canvas whenever data/photo/title changes
+  const renderPreview = async () => {
+    if (!previewRef.current || !data) return;
+    const canvas = previewRef.current;
+    await drawCard(canvas);
+  };
+
+  useEffect(() => { renderPreview(); }, [data, photo, title]);
 
   const load = async (m) => {
     setLoading(true);
@@ -1064,170 +1195,9 @@ What's on your list this month?
   const generateCard = async () => {
     if (!data) return;
     setGenerating(true);
-
-    // 1080 × 1920 — story format, safe zone 285–1635px
-    const W = 1080, H = 1920;
-    const SAFE_TOP = 285, SAFE_BOT = 1635;
-    const PAD = 80; // horizontal padding
-
     const canvas = document.createElement("canvas");
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext("2d");
-
-    // ── Background — entirely off-white, no bands ───────────────────────────
-    ctx.fillStyle = "#F7F6F2";
-    ctx.fillRect(0, 0, W, H);
-
-    // Subtle decorative circles — decorative only, outside safe zone
-    ctx.beginPath();
-    ctx.arc(W + 80, -80, 380, 0, Math.PI * 2);
-    ctx.fillStyle = "#D4E8CE";
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(-80, H + 80, 300, 0, Math.PI * 2);
-    ctx.fillStyle = "#D4E8CE";
-    ctx.fill();
-
-    let y = SAFE_TOP + 60; // all content starts inside safe zone
-
-    // ── Optional photo ────────────────────────────────────────────────────────
-    if (photo) {
-      try {
-        const img = await new Promise((res, rej) => {
-          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = photo;
-        });
-        const maxPhotoH = 480;
-        const scale = Math.min(W / img.width, maxPhotoH / img.height);
-        const pw = Math.round(img.width * scale);
-        const ph = Math.round(img.height * scale);
-        const px = (W - pw) / 2;
-        // Rounded clip
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(px, y, pw, ph, 20);
-        ctx.clip();
-        ctx.drawImage(img, px, y, pw, ph);
-        ctx.restore();
-        y += ph + 60;
-      } catch(e) {}
-    }
-
-    // ── Title ─────────────────────────────────────────────────────────────────
-    ctx.fillStyle = "#1a1a1a";
-    ctx.font = "bold 72px Georgia, serif";
-    ctx.textAlign = "center";
-    // Wrap title if long
-    const titleWords = title.split(" ");
-    let line1 = "", line2 = "";
-    titleWords.forEach(w => { if ((line1 + " " + w).trim().length <= 20) line1 = (line1 + " " + w).trim(); else line2 = (line2 + " " + w).trim(); });
-    ctx.fillText(line1, W / 2, y);
-    if (line2) { ctx.fillText(line2, W / 2, y + 84); y += 84; }
-    y += 44;
-
-    // Subtitle
-    ctx.fillStyle = "#6E6E6E";
-    ctx.font = "34px sans-serif";
-    const subtitle = mode === "recent"
-      ? "A quick garden update"
-      : data.is_early_month
-        ? `${data.prev_month_name} recap · ${data.month_name} ahead`
-        : "Progress this month";
-    ctx.fillText(subtitle, W / 2, y + 34);
-    y += 90;
-
-    // ── Divider helper ────────────────────────────────────────────────────────
-    const drawDivider = (yPos) => {
-      ctx.strokeStyle = "#D4E8CE";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(PAD, yPos); ctx.lineTo(W - PAD, yPos);
-      ctx.stroke();
-    };
-
-    // ── Completed tasks ───────────────────────────────────────────────────────
-    drawDivider(y); y += 55;
-    if (data.completed?.length > 0) {
-      data.completed.slice(0, 4).forEach(t => {
-        // Tick circle
-        ctx.beginPath();
-        ctx.arc(PAD + 22, y - 14, 22, 0, Math.PI * 2);
-        ctx.fillStyle = "#6FAF63";
-        ctx.fill();
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 26px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("✓", PAD + 22, y - 6);
-        // Task text
-        ctx.fillStyle = "#1a1a1a";
-        ctx.font = "42px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText(shortTask(t), PAD + 60, y);
-        y += 68;
-      });
-    } else {
-      ctx.fillStyle = "#6E6E6E";
-      ctx.font = "italic 38px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("Garden planning in progress", W / 2, y);
-      ctx.textAlign = "left";
-      y += 60;
-    }
-    y += 20;
-
-    // ── Upcoming tasks ────────────────────────────────────────────────────────
-    if (data.upcoming?.length > 0) {
-      drawDivider(y); y += 55;
-      data.upcoming.slice(0, 3).forEach(t => {
-        ctx.fillStyle = "#D9A441";
-        ctx.font = "44px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText("🌱", PAD, y);
-        ctx.fillStyle = "#1a1a1a";
-        ctx.font = "42px sans-serif";
-        ctx.fillText(shortTask(t), PAD + 58, y);
-        y += 68;
-      });
-      y += 20;
-    }
-
-    // ── Stats block ───────────────────────────────────────────────────────────
-    drawDivider(y); y += 55;
-    const stats = [
-      { emoji: "🌿", text: `${data.stats?.completed_count || 0} tasks completed` },
-      { emoji: "🥕", text: `${data.stats?.crop_count || 0} crops growing` },
-      ...(data.stats?.harvest_count > 0 ? [{ emoji: "🧺", text: `${data.stats.harvest_count} harvest${data.stats.harvest_count !== 1 ? "s" : ""}` }] : []),
-    ];
-    stats.forEach(s => {
-      ctx.font = "42px sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fillText(`${s.emoji}  ${s.text}`, PAD, y);
-      y += 64;
-    });
-    y += 20;
-
-    // ── Location + date ───────────────────────────────────────────────────────
-    drawDivider(y); y += 50;
-    ctx.fillStyle = "#6E6E6E";
-    ctx.font = "32px sans-serif";
-    ctx.textAlign = "center";
-    const locText = data.profile?.postcode
-      ? `${data.profile.postcode}, UK  ·  ${data.month_name} ${new Date().getFullYear()}`
-      : `${data.month_name} ${new Date().getFullYear()}`;
-    ctx.fillText(locText, W / 2, y);
-    y += 50;
-
-    // ── Vercro branding — inside safe zone, no band ─────────────────────────
-    const brandY = Math.max(y + 40, SAFE_BOT - 130);
-    ctx.fillStyle = "#2F5D50";
-    ctx.font = "bold 44px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", W / 2, brandY);
-    ctx.fillStyle = "#6E6E6E";
-    ctx.font = "30px sans-serif";
-    ctx.fillText("Plan your garden · vercro.com", W / 2, brandY + 52);
-
-    // ── Share or download ─────────────────────────────────────────────────────
+    canvas.width = 1080; canvas.height = 1920;
+    await drawCard(canvas);
     canvas.toBlob(async (blob) => {
       const file = new File([blob], "vercro-garden.png", { type: "image/png" });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1249,6 +1219,7 @@ What's on your list this month?
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
+
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
@@ -1275,56 +1246,12 @@ What's on your list this month?
 
         {loading ? <div style={{ textAlign: "center", padding: "32px 0" }}><Spinner /></div> : data && (
           <>
-            {/* Card preview */}
-            <div style={{ background: "#F7F6F2", borderRadius: 14, overflow: "hidden", marginBottom: 16, border: `1px solid ${C.border}` }}>
-              {/* No header band — decorative top only */}
-              <div style={{ background: "#D4E8CE", height: 8, borderRadius: "14px 14px 0 0" }} />
-              {/* Photo */}
-              {photo && <img src={photo} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }} />}
-              <div style={{ padding: "16px 18px" }}>
-                <div style={{ fontWeight: 700, fontSize: 17, fontFamily: "serif", color: "#1a1a1a", marginBottom: 2 }}>{title}</div>
-                <div style={{ fontSize: 11, color: C.stone, marginBottom: 14 }}>
-                  {mode === "recent" ? "A quick garden update" : data.is_early_month ? `Done in ${data.prev_month_name} · Coming up in ${data.month_name}` : "Progress this month"}
-                </div>
-                {data.completed?.length > 0 && (
-                  <>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{mode === "recent" ? "Done recently" : "Completed"}</div>
-                    {data.completed.slice(0, 3).map((t, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 13, color: "#1a1a1a" }}>
-                        <span style={{ color: C.leaf, fontWeight: 700 }}>✓</span>
-                        {t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action}
-                      </div>
-                    ))}
-                  </>
-                )}
-                {!data.completed?.length && (
-                  <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic", marginBottom: 8 }}>Garden planning in progress</div>
-                )}
-                {data.upcoming?.length > 0 && (
-                  <>
-                    <div style={{ height: 1, background: C.border, margin: "12px 0" }} />
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Coming up</div>
-                    {data.upcoming.slice(0, 2).map((t, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 13, color: "#1a1a1a" }}>
-                        <span style={{ fontSize: 14 }}>🌱</span>
-                        {t.crop?.name ? `${t.crop.name} — ${t.action}` : t.action}
-                      </div>
-                    ))}
-                  </>
-                )}
-                {mode === "month" && data.stats && (
-                  <div style={{ fontSize: 11, color: C.stone, marginTop: 12, textAlign: "center" }}>
-                    {data.stats.completed_count} tasks done · {data.stats.crop_count} crops active
-                    {data.stats.harvest_count > 0 ? ` · ${data.stats.harvest_count} harvests` : ""}
-                  </div>
-                )}
-                <div style={{ marginTop: 12, fontSize: 11, color: C.stone, textAlign: "center" }}>{data.profile?.postcode && `${data.profile.postcode}, UK · `}{data.month_name} {new Date().getFullYear()}</div>
-              </div>
-              <div style={{ padding: "12px", textAlign: "center", borderTop: `1px solid ${C.border}` }}>
-                <div style={{ color: C.forest, fontSize: 13, fontWeight: 700, fontFamily: "serif" }}>🌱 Vercro</div>
-                <div style={{ color: C.stone, fontSize: 11, marginTop: 2 }}>Plan your garden · vercro.com</div>
-              </div>
+            {/* Card preview — actual canvas render, scaled down */}
+            <div style={{ marginBottom: 16, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}` }}>
+              <canvas ref={previewRef} width={1080} height={1920}
+                style={{ width: "100%", display: "block", borderRadius: 14 }} />
             </div>
+
 
             {/* Editable title */}
             <div style={{ marginBottom: 14 }}>
