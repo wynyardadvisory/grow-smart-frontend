@@ -1670,10 +1670,6 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Garden status + coming up — always visible */}
-      <GardenStatusCard data={data} />
-      <ComingUpSoonCard tasks={data.tasks?.tasks || []} />
-
       {/* Quick crop check — lifecycle confirmations + missing data */}
       <QuickCropCheck
         crops={data.crops || []}
@@ -1725,6 +1721,10 @@ function Dashboard() {
           ))}
         </div>
       )}
+
+      {/* Garden status + coming up — shown below tasks */}
+      <GardenStatusCard data={data} />
+      <ComingUpSoonCard tasks={data.tasks?.tasks || []} />
 
       {/* Tips section */}
       <TipsSection />
