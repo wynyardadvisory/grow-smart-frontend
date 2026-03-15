@@ -4976,6 +4976,59 @@ function MetricRow({ label, val, sub, highlight }) {
   );
 }
 
+// ── Admin Tools ──────────────────────────────────────────────────────────────
+function AdminTools() {
+  const [backfillStatus, setBackfillStatus] = useState(null);
+  const [running,        setRunning]        = useState(false);
+
+  const runBackfill = async () => {
+    if (!confirm("This will backfill badge progress for all users from their existing data. Run it?")) return;
+    setRunning(true);
+    setBackfillStatus(null);
+    try {
+      const result = await apiFetch("/admin/backfill-badges", { method: "POST" });
+      setBackfillStatus({ ok: true, count: result.processed, results: result.results });
+    } catch (e) {
+      setBackfillStatus({ ok: false, error: e.message });
+    }
+    setRunning(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>🏆 Backfill Badges</div>
+        <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
+          Calculates badge progress for all existing users from their real data — tasks completed, crops added, harvests logged etc. Run this once after deploying badges. Safe to re-run.
+        </div>
+        <button onClick={runBackfill} disabled={running}
+          style={{ background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
+          {running ? "Running…" : "Run Badge Backfill"}
+        </button>
+        {backfillStatus && (
+          <div style={{ marginTop: 14, padding: "12px", borderRadius: 8, background: backfillStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${backfillStatus.ok ? "#b8ddb8" : "#f4b8b8"}` }}>
+            {backfillStatus.ok ? (
+              <>
+                <div style={{ fontWeight: 700, color: C.forest, fontSize: 13, marginBottom: 8 }}>✅ Backfill complete — {backfillStatus.count} users processed</div>
+                <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 12, color: C.stone }}>
+                  {(backfillStatus.results || []).map((r, i) => (
+                    <div key={i} style={{ padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>
+                      {r.email} — {r.tasks ?? "?"} tasks, {r.crops ?? "?"} crops, {r.harvests ?? "?"} harvests
+                      {r.error && <span style={{ color: "red" }}> ⚠ {r.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ color: "red", fontSize: 13 }}>❌ Error: {backfillStatus.error}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Admin Screen ─────────────────────────────────────────────────────────────
 // Only visible to mark@wynyardadvisory.co.uk
 
@@ -5037,6 +5090,7 @@ function AdminScreen() {
           { id: "crops",    label: "🌱 Crop queue" },
           { id: "users",    label: "👤 Users" },
           { id: "feedback", label: "💬 Feedback" },
+          { id: "tools",    label: "🔧 Tools" },
         ].map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
             style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -5047,6 +5101,11 @@ function AdminScreen() {
 
       {error && <ErrorMsg msg={error} />}
       {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
+
+      {/* ── Tools ── */}
+      {!loading && tab === "tools" && (
+        <AdminTools />
+      )}
 
       {/* ── Metrics dashboard ── */}
       {!loading && tab === "metrics" && metrics && (
