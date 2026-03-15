@@ -3329,6 +3329,188 @@ function AddCrop({ prefill, onPrefillConsumed }) {
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function weekEndISO() { return new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]; }
 
+// ── FAQ Section ──────────────────────────────────────────────────────────────
+const FAQ_DATA = [
+  {
+    section: "Getting Started",
+    emoji: "🌱",
+    items: [
+      {
+        q: "What is Vercro and how does it work?",
+        a: "Vercro is an AI garden planner built for UK home growers and allotment holders. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season.",
+      },
+      {
+        q: "How do I add my first crop?",
+        a: "Tap the Add tab at the bottom of the screen. Select your crop, choose a variety if you know it, pick your growing area and tell us what stage it's at. Vercro generates a task schedule automatically. You can also tap 'Scan packet' to identify a crop from a photo of the seed packet.",
+      },
+      {
+        q: "Why do I need to add a postcode?",
+        a: "Your postcode pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate. Enter the first part only — for example TS22, not TS22 5BQ.",
+      },
+      {
+        q: "What's the difference between a location and a growing area?",
+        a: "A location is where you garden — for example your back garden or your allotment plot. A growing area is a specific space within that location — for example Raised bed 1, Greenhouse or Container pots. You can have multiple locations, each with multiple growing areas.",
+      },
+    ],
+  },
+  {
+    section: "Crops & Tasks",
+    emoji: "🥕",
+    items: [
+      {
+        q: "Why aren't I seeing any tasks yet?",
+        a: "Tasks are generated based on your crops, sow dates and location. If you've just added a crop, tasks can take a few moments to appear. Check the Quick crop check section on your Today screen — it may be asking for a sow date or other information that's needed to generate tasks.",
+      },
+      {
+        q: "How do I edit or delete a crop?",
+        a: "Go to the Crops tab and swipe left on the crop card. This reveals an Edit button and a Delete button. Tap Edit to update the variety, status, sow date, area or notes. Tap Delete to remove it — you'll be asked to confirm first.",
+      },
+      {
+        q: "What does each crop status mean?",
+        a: "🗓 Planned — you intend to grow this but haven't started yet
+🪟 Sowing indoors — seeds started on a windowsill, greenhouse or cold frame
+🌱 Sowing outdoors — direct sown outside in the final position
+🪴 Transplanted — moved outside from indoors or a greenhouse
+✅ Growing — established and growing
+🧺 Harvested — the crop has been harvested",
+      },
+      {
+        q: "What if my crop isn't in the list?",
+        a: "Select 'Other' at the bottom of the crop list and type the name. Vercro will identify it and build a growing profile automatically, including sow windows, spacing, feeding guidance and harvest timing. This usually takes about 30 seconds.",
+      },
+      {
+        q: "Why does my crop say 'Being identified'?",
+        a: "When you add a crop not in our database, Vercro uses AI to research it and build a profile. This normally completes within a minute. Once done, tasks will start appearing for it.",
+      },
+      {
+        q: "What does the % grown bar mean?",
+        a: "For crops with a sow date, the bar shows how far through the crop's typical growing period you are — based on days since sowing divided by days to maturity. For perennial plants like fruit trees, it shows seasonal progress toward their harvest window. Planned crops that haven't been sown yet show 0%.",
+      },
+      {
+        q: "What does the harvest estimate mean and how accurate is it?",
+        a: "The harvest estimate is calculated from your sow date, the variety's typical days to maturity and your growing conditions. It gives an approximate date for when your crop should be ready. The more information you add — sow date, variety, updates via the Quick crop check — the more accurate it becomes. If you tap 'Not yet' on a lifecycle prompt, the estimate adjusts to reflect the delay.",
+      },
+    ],
+  },
+  {
+    section: "Garden Setup",
+    emoji: "⬡",
+    items: [
+      {
+        q: "Can I have more than one garden location?",
+        a: "Yes. Go to the Garden tab and tap + Location. Each location can have its own growing areas and its own postcode for localised weather.",
+      },
+      {
+        q: "What types of growing area should I add?",
+        a: "Add whatever matches how you actually grow — raised bed, open ground, greenhouse, polytunnel or container/pots. Getting this right matters: greenhouse and polytunnel crops get earlier planting dates and no frost warnings, while containers get more frequent watering reminders.",
+      },
+      {
+        q: "Does it matter if I'm in a greenhouse vs open ground?",
+        a: "Yes — significantly. Greenhouse and polytunnel growing extends your season at both ends. Vercro uses your area type to adjust sowing windows, frost alerts and task timing accordingly.",
+      },
+    ],
+  },
+  {
+    section: "Weather & Alerts",
+    emoji: "🌤",
+    items: [
+      {
+        q: "How does Vercro use my location?",
+        a: "Vercro uses your postcode to pull live weather data including temperature, conditions and frost risk. This appears on your Today screen and is used to adjust task timing — for example delaying outdoor sowing tasks if frost is forecast.",
+      },
+      {
+        q: "What are frost alerts and when do I get them?",
+        a: "Frost alerts appear on your Today screen when the temperature at your location is forecast to drop close to or below zero. They show as a traffic light indicator — green for no risk, amber for near frost, red for frost risk. If you have frost-sensitive crops outdoors, this is your warning to protect them.",
+      },
+    ],
+  },
+  {
+    section: "Feeds",
+    emoji: "🧪",
+    items: [
+      {
+        q: "What are feeds and why should I add them?",
+        a: "Feeds are the fertilisers and plant foods you use in your garden. When you register what you own, Vercro personalises your feeding tasks to match — including the right dilution rates, application frequency and which crops each feed suits.",
+      },
+      {
+        q: "What if my feed brand isn't listed?",
+        a: "Select Other as the brand and type the name. Vercro will look it up and fill in the details automatically, including NPK values, dilution rates and feeding frequency. This usually takes about a minute.",
+      },
+    ],
+  },
+  {
+    section: "Account",
+    emoji: "👤",
+    items: [
+      {
+        q: "How do I change my name or postcode?",
+        a: "Scroll up in the Profile tab to Your Details, update your name or postcode and tap Save Changes.",
+      },
+      {
+        q: "How do I change my password?",
+        a: "In the Profile tab, scroll to Change Password, enter your new password twice and tap Update Password.",
+      },
+      {
+        q: "How do I delete my account?",
+        a: "To request account deletion, email us at hello@vercro.com. We'll remove your account and all associated data within 7 days.",
+      },
+      {
+        q: "Is my data private?",
+        a: "Yes. Your garden data, crop information and location are only used to power your personal Vercro experience. We do not sell your data or share it with third parties. Aggregated and anonymised growing data may be used in future to improve crop timing predictions for all users.",
+      },
+    ],
+  },
+];
+
+function FAQSection() {
+  const [openSection, setOpenSection] = useState(null);
+  const [openItem,    setOpenItem]    = useState(null);
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 12 }}>
+        Help & FAQ
+      </div>
+      {FAQ_DATA.map((section, si) => (
+        <div key={si} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+          {/* Section header */}
+          <button onClick={() => { setOpenSection(openSection === si ? null : si); setOpenItem(null); }}
+            style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>{section.emoji}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{section.section}</span>
+            </div>
+            <span style={{ fontSize: 12, color: C.stone }}>{openSection === si ? "▲" : "▼"}</span>
+          </button>
+          {/* FAQ items */}
+          {openSection === si && (
+            <div style={{ borderTop: `1px solid ${C.border}` }}>
+              {section.items.map((item, ii) => {
+                const key = `${si}-${ii}`;
+                const isOpen = openItem === key;
+                return (
+                  <div key={ii} style={{ borderBottom: ii < section.items.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                    <button onClick={() => setOpenItem(isOpen ? null : key)}
+                      style={{ width: "100%", padding: "13px 16px", background: isOpen ? "#f6faf8" : "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, textAlign: "left" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.forest, flex: 1, lineHeight: 1.4 }}>{item.q}</span>
+                      <span style={{ fontSize: 11, color: C.stone, flexShrink: 0, marginTop: 2 }}>{isOpen ? "▲" : "▼"}</span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: "0 16px 14px", fontSize: 13, color: C.stone, lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                        {item.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Profile Screen ────────────────────────────────────────────────────────────
 function ProfileScreen({ session }) {
   const [form,       setForm]      = useState({ name: "", postcode: "" });
@@ -3584,6 +3766,9 @@ function ProfileScreen({ session }) {
           </div>
         )}
       </div>
+
+      {/* FAQ Section */}
+      <FAQSection />
 
       {/* Sign out */}
       <button
