@@ -1627,13 +1627,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Share my garden button */}
-      {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
-      <button onClick={() => setShowShareGarden(true)}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
-        🌱 Share my garden
-      </button>
-
       {/* Tips section */}
       <TipsSection />
 
@@ -1645,6 +1638,13 @@ function Dashboard() {
           pending={pendingHarvest}
         />
       )}
+      {/* Share my garden — below harvest forecast */}
+      {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
+      <button onClick={() => setShowShareGarden(true)}
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
+        🌱 Share my garden
+      </button>
+
       {pendingHarvest && (
         <HarvestModal
           item={pendingHarvest}
@@ -1887,6 +1887,31 @@ function QuickCropCheck({ crops, missingItems, onDismiss }) {
   );
 }
 
+// ── Tips inner — shows 1 tip with show more ──────────────────────────────────
+function TipsInner({ tips }) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? tips : tips.slice(0, 1);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {visible.map((tip, i) => (
+        <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: C.offwhite, borderRadius: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>{tip.emoji || "🌱"}</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "#222", marginBottom: 2 }}>{tip.title}</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip.tip}</div>
+          </div>
+        </div>
+      ))}
+      {tips.length > 1 && (
+        <button onClick={() => setShowAll(v => !v)}
+          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px", fontSize: 12, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+          {showAll ? "▲ Show less" : `+ ${tips.length - 1} more tip${tips.length - 1 !== 1 ? "s" : ""}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Tips section ──────────────────────────────────────────────────────────────
 function TipsSection() {
   const [open,    setOpen]    = useState(false);
@@ -1924,17 +1949,7 @@ function TipsSection() {
           ) : tips.length === 0 ? (
             <div style={{ textAlign: "center", padding: "16px 0", color: C.stone, fontSize: 13 }}>No tips yet — add some crops to get personalised advice.</div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {tips.map((tip, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: C.offwhite, borderRadius: 10, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{tip.emoji || "🌱"}</span>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "#222", marginBottom: 2 }}>{tip.title}</div>
-                    <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip.tip}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TipsInner tips={tips} />
           )}
         </div>
       )}
@@ -1944,31 +1959,39 @@ function TipsSection() {
 
 // ── Collapsible harvest forecast ──────────────────────────────────────────────
 function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
-  const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_SHOW = 4;
+
+  // Sort by window_start soonest first
+  const sorted = [...items].sort((a, b) => new Date(a.window_start) - new Date(b.window_start));
+  const visible = showAll ? sorted : sorted.slice(0, INITIAL_SHOW);
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div onClick={() => setOpen(v => !v)}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: "12px 12px 0 0", padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌾</span>
           <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#222" }}>Harvest forecast</span>
           <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
         </div>
-        <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
       </div>
-      {open && (
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {items.map((h, i) => (
-              <HarvestForecastCard key={i} item={h} pending={!!pending && pending === h} onHarvest={() => onHarvest(h)} />
-            ))}
-          </div>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {visible.map((h, i) => (
+            <HarvestForecastCard key={i} item={h} pending={!!pending && pending === h} onHarvest={() => onHarvest(h)} />
+          ))}
         </div>
-      )}
+        {items.length > INITIAL_SHOW && (
+          <button onClick={() => setShowAll(v => !v)}
+            style={{ width: "100%", marginTop: 10, padding: "8px", borderRadius: 8, border: `1px solid ${C.border}`, background: "none", color: C.forest, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            {showAll ? "▲ Show less" : `+ ${items.length - INITIAL_SHOW} more`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
+
 
 function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
   const [animating, setAnimating] = useState(false);
