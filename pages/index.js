@@ -1135,7 +1135,7 @@ function ShareGardenSheet({ onClose }) {
       } catch(e) {}
     }
 
-    // Tasks on right — deduplicated, max 3
+    // Tasks — left when no photo, right when photo present
     const seen = new Set();
     const deduped = (data.completed || []).filter(t => {
       const text = shortTask(t);
@@ -1143,10 +1143,11 @@ function ShareGardenSheet({ onClose }) {
       seen.add(text); return true;
     }).slice(0, 3);
 
+    const effectiveTaskX = photo ? taskX : PAD + 20;
     const rowSpacing = colH / 3;
     deduped.forEach((t, i) => {
       const rowY = colY + i * rowSpacing + rowSpacing / 2 - 30;
-      const cx = taskX + 32, cy = rowY + 22;
+      const cx = effectiveTaskX + 32, cy = rowY + 22;
       ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
       ctx.fillStyle = "#2F5D50"; ctx.fill();
       ctx.fillStyle = "#fff"; ctx.font = "bold 34px sans-serif"; ctx.textAlign = "center";
@@ -1154,8 +1155,8 @@ function ShareGardenSheet({ onClose }) {
       ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "left";
       const taskWords = shortTask(t).split(" ");
       const mid = Math.ceil(taskWords.length / 2);
-      ctx.fillText(taskWords.slice(0, mid).join(" "), taskX + 80, rowY + 12);
-      if (taskWords.slice(mid).length) ctx.fillText(taskWords.slice(mid).join(" "), taskX + 80, rowY + 64);
+      ctx.fillText(taskWords.slice(0, mid).join(" "), effectiveTaskX + 80, rowY + 12);
+      if (taskWords.slice(mid).length) ctx.fillText(taskWords.slice(mid).join(" "), effectiveTaskX + 80, rowY + 64);
     });
 
     y = colY + colH + 60;
