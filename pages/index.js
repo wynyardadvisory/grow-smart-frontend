@@ -1013,6 +1013,324 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   );
 }
 
+
+// =============================================================================
+// BADGES & CHALLENGES
+// =============================================================================
+
+const BADGE_CATEGORIES = ["tasks","planning","sowing","harvest","photos","consistency","seasonal"];
+const CATEGORY_LABELS  = { tasks:"Tasks", planning:"Planning", sowing:"Sowing", harvest:"Harvest", photos:"Photos & Sharing", consistency:"Consistency", seasonal:"Seasonal" };
+
+function useBadges() {
+  const [badges, setBadges] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const load = async () => {
+    setLoading(true);
+    try { const d = await apiFetch("/badges"); setBadges(d); }
+    catch(e) { console.error(e); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+  return { badges, loading, reload: load };
+}
+
+// ── Badge Celebration Sheet ───────────────────────────────────────────────────
+function BadgeCelebrationSheet({ unlocks, onClose }) {
+  const [idx, setIdx] = useState(0);
+  if (!unlocks?.length) return null;
+  const u = unlocks[idx];
+
+  const handleNext = async () => {
+    // Mark as shown
+    try { await apiFetch("/badges/mark-shown", { method: "POST", body: JSON.stringify({ ids: [u.id] }) }); } catch(e) {}
+    if (idx < unlocks.length - 1) setIdx(idx + 1);
+    else onClose();
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:2000, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+      <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", padding:"32px 24px 48px", width:"100%", maxWidth:440, textAlign:"center" }}>
+        {/* Sparkle animation */}
+        <div style={{ fontSize:72, marginBottom:8, animation:"badgePop 0.4s ease-out" }}>{u.badge?.icon_key || "🏆"}</div>
+        <div style={{ fontSize:13, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>
+          {u.badge?.type === "monthly" ? "Challenge Complete" : "Badge Unlocked"}
+        </div>
+        <div style={{ fontSize:24, fontWeight:700, fontFamily:"serif", color:"#1a1a1a", marginBottom:8 }}>{u.badge?.title}</div>
+        <div style={{ fontSize:14, color:C.stone, marginBottom:u.badge?.celebration_copy ? 8 : 24, lineHeight:1.5 }}>{u.badge?.description}</div>
+        {u.badge?.celebration_copy && (
+          <div style={{ fontSize:15, color:C.forest, fontStyle:"italic", marginBottom:24 }}>{u.badge.celebration_copy}</div>
+        )}
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <button onClick={handleNext}
+            style={{ background:C.forest, color:"#fff", border:"none", borderRadius:12, padding:"14px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"serif" }}>
+            {idx < unlocks.length - 1 ? "Next →" : "Continue"}
+          </button>
+        </div>
+        {unlocks.length > 1 && (
+          <div style={{ marginTop:12, fontSize:12, color:C.stone }}>{idx + 1} of {unlocks.length}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Today Badge Card ──────────────────────────────────────────────────────────
+function TodayBadgeCard({ onViewBadges }) {
+  const { badges, loading } = useBadges();
+  if (loading || !badges) return null;
+
+  const recentUnlock = badges.recent_unlocks?.find(u => {
+    const days = (Date.now() - new Date(u.unlocked_at)) / 86400000;
+    return days <= 7;
+  });
+
+  const monthly = badges.monthly_challenge;
+  const inProgress = (badges.badges || [])
+    .filter(b => !b.is_completed && b.current_progress > 0)
+    .sort((a, b) => (b.current_progress / b.threshold_value) - (a.current_progress / a.threshold_value))[0];
+
+  // Priority: recent unlock > monthly challenge > closest milestone
+  let card = null;
+  if (recentUnlock) {
+    card = (
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <span style={{ fontSize:32 }}>{recentUnlock.badge?.icon_key || "🏆"}</span>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.8 }}>Badge Unlocked</div>
+          <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a", marginTop:2 }}>{recentUnlock.badge?.title}</div>
+          <div style={{ fontSize:12, color:C.stone }}>{recentUnlock.badge?.description}</div>
+        </div>
+      </div>
+    );
+  } else if (monthly && !monthly.is_completed) {
+    const pct = Math.min(100, Math.round((monthly.progress / monthly.threshold) * 100));
+    card = (
+      <div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+          <span style={{ fontSize:20 }}>{monthly.icon_key}</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.8 }}>Monthly Challenge</div>
+            <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>{monthly.title}</div>
+          </div>
+          <span style={{ fontSize:12, color:C.stone, fontWeight:600 }}>{monthly.progress} / {monthly.threshold}</span>
+        </div>
+        <div style={{ height:6, background:C.border, borderRadius:99, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:pct+"%", background:C.forest, borderRadius:99, transition:"width 0.5s" }} />
+        </div>
+      </div>
+    );
+  } else if (inProgress) {
+    const pct = Math.min(100, Math.round((inProgress.current_progress / inProgress.threshold_value) * 100));
+    card = (
+      <div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+          <span style={{ fontSize:20 }}>{inProgress.icon_key}</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.8 }}>Next Badge</div>
+            <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>{inProgress.title}</div>
+          </div>
+          <span style={{ fontSize:12, color:C.stone, fontWeight:600 }}>{inProgress.current_progress} / {inProgress.threshold_value}</span>
+        </div>
+        <div style={{ height:6, background:C.border, borderRadius:99, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:pct+"%", background:C.amber, borderRadius:99, transition:"width 0.5s" }} />
+        </div>
+      </div>
+    );
+  } else {
+    card = (
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <span style={{ fontSize:28 }}>🌱</span>
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>Start growing your collection</div>
+          <div style={{ fontSize:12, color:C.stone }}>Complete tasks to earn your first badge</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:12, cursor:"pointer" }}
+      onClick={onViewBadges}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+        <span style={{ fontSize:12, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1 }}>Challenges & Badges</span>
+        <span style={{ fontSize:12, color:C.forest, fontWeight:600 }}>View all →</span>
+      </div>
+      {card}
+    </div>
+  );
+}
+
+// ── Badge Card ────────────────────────────────────────────────────────────────
+function BadgeCard({ badge }) {
+  const pct = Math.min(100, Math.round((badge.current_progress / badge.threshold_value) * 100));
+  const locked = !badge.is_completed && badge.current_progress === 0;
+
+  return (
+    <div style={{ background: locked ? "#f8f8f8" : C.cardBg, border:`1px solid ${locked ? "#e8e8e8" : C.border}`, borderRadius:12, padding:"14px", opacity: locked ? 0.7 : 1 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom: badge.is_completed ? 4 : 10 }}>
+        <span style={{ fontSize:28, filter: locked ? "grayscale(1)" : "none" }}>{badge.icon_key}</span>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:13, fontWeight:700, color: locked ? "#888" : "#1a1a1a" }}>{badge.title}</div>
+          <div style={{ fontSize:11, color:C.stone, lineHeight:1.4, marginTop:2 }}>{badge.description}</div>
+        </div>
+        {badge.is_completed && <span style={{ fontSize:16 }}>✅</span>}
+      </div>
+      {badge.is_completed ? (
+        <div style={{ fontSize:11, color:C.forest, fontWeight:600 }}>
+          Earned {new Date(badge.completed_at).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })}
+        </div>
+      ) : (
+        <>
+          <div style={{ height:5, background:"#e8e8e8", borderRadius:99, overflow:"hidden", marginBottom:4 }}>
+            <div style={{ height:"100%", width:pct+"%", background: pct > 0 ? C.forest : "#ccc", borderRadius:99, transition:"width 0.5s" }} />
+          </div>
+          <div style={{ fontSize:11, color:C.stone, textAlign:"right" }}>{badge.current_progress} / {badge.threshold_value}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Badges Page ───────────────────────────────────────────────────────────────
+function BadgesPage() {
+  const { badges, loading } = useBadges();
+  const [activeSection, setActiveSection] = useState("active");
+
+  if (loading) return <div style={{ padding:32, textAlign:"center" }}><Spinner /></div>;
+  if (!badges) return <div style={{ padding:24, color:C.stone }}>Unable to load badges.</div>;
+
+  const allBadges     = badges.badges || [];
+  const monthly       = badges.monthly_challenge;
+  const recentUnlocks = badges.recent_unlocks || [];
+  const counters      = badges.counters || {};
+
+  // Active: incomplete with progress, sorted by % complete desc
+  const active = allBadges
+    .filter(b => !b.is_completed)
+    .sort((a, b) => (b.current_progress / b.threshold_value) - (a.current_progress / a.threshold_value))
+    .slice(0, 5);
+
+  // Earned: completed badges
+  const earned = allBadges.filter(b => b.is_completed)
+    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+
+  const SECTIONS = [
+    { id:"active",     label:"Active" },
+    { id:"collection", label:"Collection" },
+    { id:"earned",     label:"Earned" },
+  ];
+
+  return (
+    <div style={{ padding:"16px 16px 100px" }}>
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:22, fontWeight:700, fontFamily:"serif", color:"#1a1a1a" }}>Challenges & Badges</div>
+        <div style={{ fontSize:13, color:C.stone, marginTop:2 }}>Track progress and unlock rewards for real garden activity.</div>
+      </div>
+
+      {/* Section tabs */}
+      <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+        {SECTIONS.map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            style={{ flex:1, padding:"9px", borderRadius:10, border:`2px solid ${activeSection === s.id ? C.forest : C.border}`, background: activeSection === s.id ? "#f0f5f3" : "transparent", color: activeSection === s.id ? C.forest : C.stone, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Active section ── */}
+      {activeSection === "active" && (
+        <div>
+          {/* Monthly challenge */}
+          {monthly && (
+            <div style={{ background:C.cardBg, border:`2px solid ${C.forest}`, borderRadius:12, padding:"16px", marginBottom:16 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ fontSize:24 }}>{monthly.icon_key}</span>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.8 }}>Monthly Challenge</div>
+                    <div style={{ fontSize:15, fontWeight:700, fontFamily:"serif", color:"#1a1a1a" }}>{monthly.title}</div>
+                  </div>
+                </div>
+                <span style={{ fontSize:13, fontWeight:700, color:monthly.is_completed ? C.forest : "#1a1a1a" }}>
+                  {monthly.is_completed ? "✅ Done" : `${monthly.progress} / ${monthly.threshold}`}
+                </span>
+              </div>
+              <div style={{ fontSize:13, color:C.stone, marginBottom:10 }}>{monthly.description}</div>
+              {!monthly.is_completed && (
+                <div style={{ height:8, background:C.border, borderRadius:99, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width: Math.min(100, Math.round(monthly.progress / monthly.threshold * 100)) + "%", background:C.forest, borderRadius:99, transition:"width 0.5s" }} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Active milestones */}
+          <div style={{ fontSize:13, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>In Progress</div>
+          {active.length === 0 ? (
+            <div style={{ background:C.offwhite, borderRadius:12, padding:"20px", textAlign:"center" }}>
+              <div style={{ fontSize:13, color:C.stone }}>No badges in progress yet.</div>
+              <div style={{ fontSize:12, color:C.stone, marginTop:4 }}>Complete tasks, add crops and log harvests to get started.</div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {active.map(b => <BadgeCard key={b.id} badge={b} />)}
+            </div>
+          )}
+
+          {/* Streak */}
+          <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginTop:16 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:28 }}>🔥</span>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a" }}>Current Streak</div>
+                  <div style={{ fontSize:12, color:C.stone }}>Longest: {counters.longest_streak_days || 0} days</div>
+                </div>
+              </div>
+              <div style={{ fontSize:28, fontWeight:700, fontFamily:"serif", color:C.forest }}>{counters.current_streak_days || 0}<span style={{ fontSize:14, fontWeight:400, color:C.stone }}> days</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Collection section ── */}
+      {activeSection === "collection" && (
+        <div>
+          {BADGE_CATEGORIES.map(cat => {
+            const catBadges = allBadges.filter(b => b.category === cat);
+            if (!catBadges.length) return null;
+            return (
+              <div key={cat} style={{ marginBottom:24 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>{CATEGORY_LABELS[cat]}</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  {catBadges.map(b => <BadgeCard key={b.id} badge={b} />)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Earned section ── */}
+      {activeSection === "earned" && (
+        <div>
+          {earned.length === 0 ? (
+            <div style={{ background:C.offwhite, borderRadius:12, padding:"32px 20px", textAlign:"center" }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>🌱</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Start growing your collection</div>
+              <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Complete tasks, add crops, log sowing and harvests to unlock your first badges.</div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {earned.map(b => <BadgeCard key={b.id} badge={b} />)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Share Garden Sheet ───────────────────────────────────────────────────────
 function ShareGardenSheet({ onClose }) {
   const [mode,        setMode]        = useState("recent");
@@ -1502,7 +1820,7 @@ function ComingUpSoonCard({ data }) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-function Dashboard() {
+function Dashboard({ onTabChange }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
   const [error,        setError]       = useState(null);
@@ -1514,6 +1832,8 @@ function Dashboard() {
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [showShareGarden,    setShowShareGarden]    = useState(false);
+  const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
+  const [showCelebration,    setShowCelebration]    = useState(false);
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -1530,7 +1850,17 @@ function Dashboard() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    checkPendingUnlocks();
+  }, [load]);
+
+  const checkPendingUnlocks = async () => {
+    try {
+      const unlocks = await apiFetch("/badges/pending-unlocks");
+      if (unlocks?.length) { setPendingUnlocks(unlocks); setShowCelebration(true); }
+    } catch(e) {}
+  };
 
   const completeTask = async (task) => {
     setCompleted(prev => new Set([...prev, task.id]));
@@ -1728,6 +2058,9 @@ function Dashboard() {
       <GardenStatusCard data={data} />
       <ComingUpSoonCard data={data} />
 
+      {/* Challenges & Badges card */}
+      <TodayBadgeCard onViewBadges={() => onTabChange("badges")} />
+
       {/* Tips section */}
       <TipsSection />
 
@@ -1745,6 +2078,13 @@ function Dashboard() {
         style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
         🌱 Share my garden
       </button>
+
+      {showCelebration && pendingUnlocks.length > 0 && (
+        <BadgeCelebrationSheet
+          unlocks={pendingUnlocks}
+          onClose={() => { setShowCelebration(false); setPendingUnlocks([]); }}
+        />
+      )}
 
       {pendingHarvest && (
         <HarvestModal
@@ -3716,7 +4056,7 @@ function FAQSection() {
 }
 
 // ── Profile Screen ────────────────────────────────────────────────────────────
-function ProfileScreen({ session }) {
+function ProfileScreen({ session, onTabChange }) {
   const [form,       setForm]      = useState({ name: "", postcode: "" });
   const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
   const [loading,    setLoading]   = useState(true);
@@ -3970,6 +4310,19 @@ function ProfileScreen({ session }) {
           </div>
         )}
       </div>
+
+      {/* Challenges & Badges link */}
+      <button onClick={() => onTabChange("badges")}
+        style={{ width:"100%", background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:20 }}>🏆</span>
+          <div style={{ textAlign:"left" }}>
+            <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a" }}>Challenges & Badges</div>
+            <div style={{ fontSize:12, color:C.stone, marginTop:1 }}>Track progress and unlock garden rewards</div>
+          </div>
+        </div>
+        <span style={{ color:C.stone, fontSize:16 }}>›</span>
+      </button>
 
       {/* FAQ Section */}
       <FAQSection />
@@ -4905,6 +5258,7 @@ const TABS = [
   { id: "feeds",     label: "Feeds",   icon: "🧪" },
   { id: "profile",   label: "Profile", icon: "👤" },
 ];
+// badges is not a nav tab — accessed from Profile and Today card
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 // Runs once after sign-up. Three steps: profile → location → area.
@@ -5187,13 +5541,14 @@ export default function GrowSmart() {
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <Dashboard />}
+        {tab === "dashboard" && <Dashboard onTabChange={setTab} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setAddPrefill(prefill); setTab("add"); }} />}
         {tab === "crops"     && <CropList onAddCrop={() => setTab("add")} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
+        {tab === "badges"    && <BadgesPage />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
         {tab === "feeds"     && <FeedsScreen />}
-        {tab === "profile"   && <ProfileScreen session={session} />}
+        {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} />}
         {tab === "admin"     && isAdmin && <AdminScreen />}
       </div>
 
