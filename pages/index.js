@@ -1098,8 +1098,8 @@ function ShareGardenSheet({ onClose }) {
       y += 20;
     }
 
-    // Stats
-    drawDivider(y); y += 55;
+    // Stats — divider closer to achievements above
+    drawDivider(y); y += 44;
     const stats = [
       { emoji: "🌿", text: `${data.stats?.completed_count || 0} tasks completed` },
       { emoji: "🥕", text: `${data.stats?.crop_count || 0} crops growing` },
@@ -1107,9 +1107,9 @@ function ShareGardenSheet({ onClose }) {
     ];
     stats.forEach(s => {
       ctx.fillStyle = "#1a1a1a"; ctx.font = "42px sans-serif"; ctx.textAlign = "left";
-      ctx.fillText(`${s.emoji}  ${s.text}`, PAD, y); y += 64;
+      ctx.fillText(`${s.emoji}  ${s.text}`, PAD, y); y += 60;
     });
-    y += 20;
+    y += 10;
 
     // Location
     drawDivider(y); y += 50;
@@ -1120,7 +1120,7 @@ function ShareGardenSheet({ onClose }) {
     ctx.fillText(locText, W / 2, y); y += 50;
 
     // Vercro branding — inside safe zone
-    const brandY = Math.min(y + 80, 1540);
+    const brandY = Math.min(y + 40, 1500);
     ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px Georgia, serif"; ctx.textAlign = "center";
     ctx.fillText("🌱 Vercro", W / 2, brandY);
     ctx.fillStyle = "#6E6E6E"; ctx.font = "30px sans-serif";
