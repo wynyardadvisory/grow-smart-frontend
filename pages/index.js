@@ -1072,17 +1072,22 @@ function ShareGardenSheet({ onClose }) {
     const photoW = 480, photoX = PAD;
     const taskX = photoX + photoW + 44;
 
-    // Pick seasonal background image
+    // Pick seasonal background image — full absolute URL for canvas loading
     const month = new Date().getMonth(); // 0-11
-    const seasonBg = month >= 2 && month <= 4 ? "/garden-spring.jpg"
-                   : month >= 5 && month <= 7 ? "/garden-summer.jpg"
-                   : month >= 8 && month <= 10 ? "/garden-autumn.jpg"
-                   : "/garden-winter.jpg";
+    const seasonFile = month >= 2 && month <= 4 ? "garden-spring.jpeg"
+                     : month >= 5 && month <= 7 ? "garden-summer.jpeg"
+                     : month >= 8 && month <= 10 ? "garden-autumn.jpeg"
+                     : "garden-winter.jpeg";
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const seasonBg = `${origin}/${seasonFile}`;
 
     // Load and draw seasonal background across full width, faded
     try {
       const bgImg = await new Promise((res, rej) => {
-        const i = new Image(); i.onload = () => res(i); i.onerror = rej;
+        const i = new Image();
+        i.crossOrigin = "anonymous";
+        i.onload = () => res(i);
+        i.onerror = rej;
         i.src = seasonBg;
       });
       ctx.save();
