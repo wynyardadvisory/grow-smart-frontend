@@ -2474,9 +2474,31 @@ function CropList() {
               {(() => {
                 const stageKey = crop.stage || "seed";
                 const stageColor = STAGE_COLOR[stageKey] || C.stone;
-                // 0% if not sown yet
+                // Calculate % grown
                 let pct;
-                if (!crop.sown_date || crop.status === "planned") {
+                const isPerennial = crop.crop_def?.is_perennial;
+                if (crop.status === "planned") {
+                  // Planned but not sown — always 0
+                  pct = 0;
+                } else if (isPerennial && crop.crop_def?.harvest_month_start) {
+                  // Perennials: show seasonal progress toward harvest window
+                  const now = new Date();
+                  const month = now.getMonth() + 1; // 1-12
+                  const hs = crop.crop_def.harvest_month_start;
+                  const he = crop.crop_def.harvest_month_end || hs;
+                  // Season runs Jan→harvest end. Show progress through the year toward harvest.
+                  if (month > he) {
+                    pct = 100; // past harvest window
+                  } else if (month >= hs) {
+                    // In harvest window
+                    pct = Math.round(((month - hs + 1) / (he - hs + 1)) * 100);
+                    pct = Math.max(80, Math.min(100, pct));
+                  } else {
+                    // Before harvest window — progress toward it
+                    pct = Math.round((month / hs) * 75);
+                    pct = Math.max(0, Math.min(74, pct));
+                  }
+                } else if (!crop.sown_date) {
                   pct = 0;
                 } else if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
                   const delay = crop.stage_delay_days || 0;
