@@ -4445,6 +4445,208 @@ function FAQSection() {
 }
 
 // ── Profile Screen ────────────────────────────────────────────────────────────
+
+// =============================================================================
+// PUSH NOTIFICATION SETTINGS + PERMISSION PROMPT
+// =============================================================================
+
+async function registerPushSubscription(publicKey) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return existing;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+    return sub;
+  } catch(e) {
+    console.error("[Push] Subscribe failed:", e);
+    return null;
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw     = window.atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function NotificationPermissionCard({ onEnabled, onDismiss }) {
+  const [loading, setLoading] = useState(false);
+
+  const enable = async () => {
+    setLoading(true);
+    try {
+      // Get VAPID public key
+      const { publicKey } = await apiFetch("/notifications/vapid-key");
+      if (!publicKey) throw new Error("Push not configured");
+
+      // Request OS permission
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") { setLoading(false); onDismiss(); return; }
+
+      // Register service worker subscription
+      const sub = await registerPushSubscription(publicKey);
+      if (!sub) throw new Error("Subscription failed");
+
+      // Save token
+      await apiFetch("/notifications/register-token", {
+        method: "POST",
+        body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
+      });
+
+      onEnabled();
+    } catch(e) {
+      console.error("[Push]", e);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "18px 18px", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
+        <span style={{ fontSize: 28, flexShrink: 0 }}>🔔</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: C.forest, marginBottom: 4 }}>Stay on top of your garden</div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+            Get timely reminders for frost alerts, feeding, harvesting and crop checks — when they matter, not all day long.
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={enable} disabled={loading}
+          style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Setting up…" : "Turn on notifications"}
+        </button>
+        <button onClick={onDismiss}
+          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NotificationSettingsSection() {
+  const [prefs,   setPrefs]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/notifications/preferences")
+      .then(p => { setPrefs(p); setLoading(false); })
+      .catch(() => setLoading(false));
+
+    // Check if push is supported and not yet enabled
+    if ("Notification" in window && Notification.permission === "default") {
+      setShowPrompt(true);
+    }
+  }, []);
+
+  const save = async (updates) => {
+    setSaving(true);
+    const newPrefs = { ...prefs, ...updates };
+    setPrefs(newPrefs);
+    try {
+      await apiFetch("/notifications/preferences", { method: "PUT", body: JSON.stringify(updates) });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch(e) { console.error(e); }
+    setSaving(false);
+  };
+
+  const toggle = (key) => save({ [key]: !prefs[key] });
+
+  if (loading) return null;
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>Notifications</div>
+
+      {/* Permission prompt if not yet enabled */}
+      {showPrompt && !prefs?.push_enabled && (
+        <NotificationPermissionCard
+          onEnabled={() => { setShowPrompt(false); save({ push_enabled: true }); }}
+          onDismiss={() => setShowPrompt(false)}
+        />
+      )}
+
+      {/* Main push toggle */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Push notifications</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
+              {prefs?.push_enabled ? "Enabled — tap to manage settings below" : "Off — enable to get garden reminders"}
+            </div>
+          </div>
+          <div onClick={() => {
+            if (!prefs?.push_enabled && "Notification" in window) {
+              setShowPrompt(true);
+            } else {
+              toggle("push_enabled");
+            }
+          }} style={{ width: 44, height: 24, borderRadius: 12, background: prefs?.push_enabled ? C.forest : C.border, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+            <div style={{ position: "absolute", top: 2, left: prefs?.push_enabled ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed settings — only show if push enabled */}
+      {prefs?.push_enabled && (
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+          {[
+            { key: "due_today_enabled",      label: "Garden tasks due today",       desc: "Feeding, sowing, harvesting and care tasks" },
+            { key: "coming_up_enabled",       label: "Coming up soon",              desc: "Reminders a few days before key tasks" },
+            { key: "weather_alerts_enabled",  label: "Frost and weather alerts",    desc: "Time-sensitive alerts for frost and heat" },
+            { key: "pest_alerts_enabled",     label: "Pest and disease watch",      desc: "When conditions increase pest risk" },
+            { key: "crop_checks_enabled",     label: "Quick crop checks",           desc: "Flowering, fruit set and condition prompts" },
+            { key: "weekly_summary_enabled",  label: "Weekly garden summary",       desc: "Sunday evening roundup of the week ahead" },
+            { key: "milestones_enabled",      label: "Milestones and achievements", desc: "Harvest milestones and badge unlocks" },
+          ].map(({ key, label, desc }, i, arr) => (
+            <div key={key} style={{ padding: "13px 16px", borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{label}</div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{desc}</div>
+              </div>
+              <div onClick={() => toggle(key)}
+                style={{ width: 36, height: 20, borderRadius: 10, background: prefs?.[key] ? C.forest : C.border, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                <div style={{ position: "absolute", top: 2, left: prefs?.[key] ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+              </div>
+            </div>
+          ))}
+
+          {/* Timing preferences */}
+          <div style={{ padding: "13px 16px", borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 10 }}>Delivery timing</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { key: "morning_time_local", label: "Morning reminders" },
+                { key: "evening_time_local", label: "Evening alerts" },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{label}</div>
+                  <input type="time"
+                    value={prefs?.[key] || (key === "morning_time_local" ? "08:30" : "18:00")}
+                    onChange={e => save({ [key]: e.target.value })}
+                    style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#1a1a1a", background: C.offwhite }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {saved && <div style={{ fontSize: 12, color: C.forest, textAlign: "center", marginTop: 8 }}>✓ Settings saved</div>}
+    </div>
+  );
+}
+
 function ProfileScreen({ session, onTabChange }) {
   const [form,       setForm]      = useState({ name: "", postcode: "" });
   const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
@@ -4712,6 +4914,9 @@ function ProfileScreen({ session, onTabChange }) {
         </div>
         <span style={{ color:C.stone, fontSize:16 }}>›</span>
       </button>
+
+      {/* Notification Settings */}
+      <NotificationSettingsSection />
 
       {/* FAQ Section */}
       <FAQSection />
@@ -5986,6 +6191,14 @@ export default function GrowSmart() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+
+    // Register service worker for push notifications
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js")
+        .then(reg => console.log("[SW] Registered:", reg.scope))
+        .catch(err => console.warn("[SW] Registration failed:", err));
+    }
+
     return () => subscription.unsubscribe();
   }, []);
 
