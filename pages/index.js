@@ -2010,7 +2010,20 @@ function Dashboard({ onTabChange }) {
       <QuickCropCheck
         crops={data.crops || []}
         missingItems={data.missing_data || []}
-        onDismiss={load}
+        onDismiss={(updatedCrop) => {
+          // Patch local crop data immediately so prompt doesn't reappear
+          // before the next full reload
+          if (updatedCrop?.id) {
+            setData(prev => ({
+              ...prev,
+              crops: (prev.crops || []).map(c =>
+                c.id === updatedCrop.id ? { ...c, ...updatedCrop } : c
+              ),
+            }));
+          }
+          // Also do a full reload to get fresh tasks
+          load();
+        }}
       />
 
       {/* Progress */}
@@ -2199,17 +2212,18 @@ function QuickCropCheck({ crops, missingItems, onDismiss }) {
 
   const handleLifecycle = async (crop, nextStage, confirmed) => {
     setActioning(crop.id);
-    // Dismiss immediately so card disappears straight away regardless of reload
+    // Dismiss immediately — card disappears before server responds
     setDismissed(prev => new Set([...prev, crop.id + "_lifecycle"]));
     try {
-      await apiFetch(`/crops/${crop.id}/confirm-stage`, {
+      const result = await apiFetch(`/crops/${crop.id}/confirm-stage`, {
         method: "POST",
         body: JSON.stringify({ stage: nextStage, confirmed }),
       });
-      if (onDismiss) onDismiss();
+      // Pass updated crop back to Dashboard so it can patch local state
+      // This prevents the same or next prompt reappearing before next full reload
+      if (onDismiss) onDismiss(result?.crop);
     } catch (e) {
       console.error(e);
-      // Undo dismiss if API call failed
       setDismissed(prev => { const s = new Set(prev); s.delete(crop.id + "_lifecycle"); return s; });
     }
     setActioning(null);
