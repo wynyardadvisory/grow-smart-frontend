@@ -326,9 +326,9 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
   const prepSuggestion     = suggestions.find(s => s.type === "prep");
   const hasExistingCrops   = cropSuggestions.length === 0 && companionSuggestions.length > 0;
 
-  // Tapping a crop card closes the sheet and pre-fills the Add Crop form
+  // Tapping a crop/companion card closes the sheet and pre-fills the Add Crop form
   const handleCropTap = (s) => {
-    onClose({ prefill: { name: s.crop, variety: s.variety } });
+    onClose({ prefill: { name: s.crop, variety: s.variety, is_companion: s.is_companion || false } });
   };
 
   return (
@@ -429,7 +429,11 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
                           🌿 {s.companion_note}
                         </div>
                       )}
-                      {s.sow_note && <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic" }}>📅 {s.sow_note}</div>}
+                      {s.sow_note && <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginBottom: 6 }}>📅 {s.sow_note}</div>}
+                      <button onClick={() => handleCropTap({ ...s, is_companion: true })}
+                        style={{ width: "100%", background: "#7b5ea7", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "serif" }}>
+                        + Add {s.crop} to this bed
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -3503,6 +3507,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             variety:     prefill.variety || "",
             variety_id:  prefill.variety ? "__other__" : "",
             area_id:     prefill.area_id || "",
+            is_companion: prefill.is_companion || false,
           }));
           if (onPrefillConsumed) onPrefillConsumed();
         }
@@ -3609,6 +3614,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           notes:            form.notes || null,
           is_other_crop:    isOtherCrop,
           is_other_variety: isOtherVariety,
+          is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
         }),
