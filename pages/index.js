@@ -2682,29 +2682,26 @@ function GardenView({ onNavigateAdd }) {
         />
       )}
 
-      {locations.map(loc => {
-        const isCollapsed = !!collapsedLocs[loc.id];
-        return (
+      {locations.map(loc => (
         <div key={loc.id} style={{ marginBottom: 28 }}>
-          {/* Location header — tap to collapse */}
+          {/* Location header — tap name to collapse */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }}
               onClick={() => setCollapsedLocs(c => ({ ...c, [loc.id]: !c[loc.id] }))}>
               <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
                 onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
-              <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{isCollapsed ? "▶" : "▼"}</span>
+              <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{collapsedLocs[loc.id] ? "▶" : "▼"}</span>
             </div>
-            {!isCollapsed && (
-              <button onClick={() => { setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
+            {!collapsedLocs[loc.id] && (
+              <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
                 style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                 + Add area
               </button>
             )}
           </div>
 
-          {/* Collapsible content */}
-          {!isCollapsed && (<>
+          {!collapsedLocs[loc.id] && <div>
 
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
@@ -2845,10 +2842,9 @@ function GardenView({ onNavigateAdd }) {
                   </>
                 )}
               </div>
-          </>)}
+          </div>}
         </div>
-        );
-      })}
+      ))}
     </div>
   );
 }
