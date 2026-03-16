@@ -4977,6 +4977,40 @@ function MetricRow({ label, val, sub, highlight }) {
 }
 
 // ── Admin Tools ──────────────────────────────────────────────────────────────
+function InviteWaitlistButton() {
+  const [status,  setStatus]  = useState(null);
+  const [running, setRunning] = useState(false);
+
+  const run = async () => {
+    if (!confirm("This will email all waitlist users telling them they can now join. Each person is only emailed once. Continue?")) return;
+    setRunning(true);
+    setStatus(null);
+    try {
+      const result = await apiFetch("/admin/invite-waitlist", { method: "POST" });
+      setStatus({ ok: true, sent: result.sent, total: result.total });
+    } catch (e) {
+      setStatus({ ok: false, error: e.message });
+    }
+    setRunning(false);
+  };
+
+  return (
+    <>
+      <button onClick={run} disabled={running}
+        style={{ background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
+        {running ? "Sending…" : "Send Invite Emails"}
+      </button>
+      {status && (
+        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: status.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${status.ok ? "#b8ddb8" : "#f4b8b8"}`, fontSize: 13 }}>
+          {status.ok
+            ? `✅ Sent to ${status.sent} of ${status.total} waitlist users`
+            : `❌ Error: ${status.error}`}
+        </div>
+      )}
+    </>
+  );
+}
+
 function AdminTools() {
   const [backfillStatus, setBackfillStatus] = useState(null);
   const [running,        setRunning]        = useState(false);
@@ -4996,6 +5030,15 @@ function AdminTools() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Invite waitlist */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>📬 Invite Waitlist Users</div>
+        <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
+          Emails everyone on the waitlist telling them access is now open. Each user is only emailed once. Also updates their status to accepted.
+        </div>
+        <InviteWaitlistButton />
+      </div>
+
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
         <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>🏆 Backfill Badges</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
