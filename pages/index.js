@@ -2016,6 +2016,7 @@ function Dashboard({ onTabChange }) {
       {/* Quick crop check — lifecycle confirmations + missing data */}
       <QuickCropCheck
         crops={data.crops || []}
+        allTasks={allTasks}
         missingItems={data.missing_data || []}
         onNavigateCrop={(cropId, field) => { if (onTabChange) onTabChange("crops", { editCropId: cropId, editCropField: field }); }}
         onDismiss={(updatedCrop) => {
@@ -2184,7 +2185,7 @@ const STAGE_QUESTIONS = {
   harvesting: { emoji: "🔵", q: "Is this crop ready to start harvesting?" },
 };
 
-function QuickCropCheck({ crops, missingItems, onDismiss, onNavigateCrop }) {
+function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavigateCrop }) {
   const [open,       setOpen]       = useState(false);
   const [actioning,  setActioning]  = useState(null);
   const [dismissed,  setDismissed]  = useState(new Set());
@@ -2194,7 +2195,6 @@ function QuickCropCheck({ crops, missingItems, onDismiss, onNavigateCrop }) {
     .filter(crop => {
       if (crop.status === "planned" || !crop.sown_date) return false;
       if (dismissed.has(crop.id + "_lifecycle")) return false;
-      // Skip if snoozed
       if (crop.stage_check_snoozed_until && new Date(crop.stage_check_snoozed_until) > new Date()) return false;
       return !!predictNextStage(crop);
     })
@@ -2203,6 +2203,24 @@ function QuickCropCheck({ crops, missingItems, onDismiss, onNavigateCrop }) {
       crop,
       nextStage:   predictNextStage(crop),
     }));
+
+  // Build perennial lifecycle prompts from tasks with lifecycle_check meta
+  const perennialPrompts = (crops || [])
+    .filter(crop => crop.crop_def?.is_perennial && !dismissed.has(crop.id + "_perennial"))
+    .flatMap(crop => {
+      // Find open check tasks for this crop with lifecycle_check in meta
+      const checkTasks = (allTasks || []).filter(t => {
+        if (t.crop_instance_id !== crop.id) return false;
+        if (t.completed_at) return false;
+        if (t.task_type !== "check" && t.task_type !== "harvest") return false;
+        try {
+          const meta = typeof t.meta === "string" ? JSON.parse(t.meta) : (t.meta || {});
+          return meta.lifecycle_check === true;
+        } catch { return false; }
+      });
+      return checkTasks.map(t => ({ type: "perennial_lifecycle", crop, task: t }));
+    })
+    .filter((p, i, arr) => arr.findIndex(x => x.crop.id === p.crop.id) === i); // one per crop
 
   // Build sow method prompts — planned crops where sow_method is "either" and establishment_method not set
   const sowMethodPrompts = (crops || [])
@@ -2222,7 +2240,7 @@ function QuickCropCheck({ crops, missingItems, onDismiss, onNavigateCrop }) {
   // Priority order: sow method first, then missing sow date, then lifecycle, then other missing
   const sowDateMissing = missingPrompts.filter(p => p.item.missing.some(m => m.includes("sow")));
   const otherMissing   = missingPrompts.filter(p => !p.item.missing.some(m => m.includes("sow")));
-  const allPrompts     = [...sowMethodPrompts, ...sowDateMissing, ...lifecyclePrompts, ...otherMissing].slice(0, 3);
+  const allPrompts     = [...sowMethodPrompts, ...sowDateMissing, ...lifecyclePrompts, ...perennialPrompts, ...otherMissing].slice(0, 3);
 
   if (allPrompts.length === 0) return null;
 
@@ -2330,6 +2348,36 @@ function QuickCropCheck({ crops, missingItems, onDismiss, onNavigateCrop }) {
                     <button onClick={() => handleSowMethod(crop, "direct_sow")} disabled={isActioning}
                       style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: "#1a1a1a", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       🌱 Outdoors
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            // Perennial lifecycle check
+            if (prompt.type === "perennial_lifecycle") {
+              const { crop, task } = prompt;
+              return (
+                <div key={crop.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>Perennial check</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, color: C.stone, marginBottom: 12, lineHeight: 1.4 }}>{task.action}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={async () => {
+                      setDismissed(prev => new Set([...prev, crop.id + "_perennial"]));
+                      await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
+                      if (onDismiss) onDismiss();
+                    }} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                      ✓ Done
+                    </button>
+                    <button onClick={() => setDismissed(prev => new Set([...prev, crop.id + "_perennial"]))}
+                      style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                      Later
                     </button>
                   </div>
                 </div>
