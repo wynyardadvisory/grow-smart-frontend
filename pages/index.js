@@ -1776,15 +1776,18 @@ function ComingUpSoonCard({ data }) {
   const now = Date.now();
   const today = new Date().toISOString().split("T")[0];
 
-  // Combine this_week and coming_up tasks — all future incomplete tasks
+  // Combine this_week and coming_up — deduplicate to one per crop name (earliest due date)
   const allFuture = [
     ...(data.tasks?.this_week || []),
     ...(data.tasks?.coming_up || []),
-  ].filter(t => t.due_date >= today);
+  ].filter(t => t.due_date >= today && !t.completed_at);
 
-  const upcoming = allFuture
-    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
-    .slice(0, 3);
+  const seen = new Map();
+  for (const t of allFuture.sort((a, b) => new Date(a.due_date) - new Date(b.due_date))) {
+    const key = t.crop?.name || t.rule_id || t.id;
+    if (!seen.has(key)) seen.set(key, t);
+  }
+  const upcoming = [...seen.values()].slice(0, 3);
 
   if (!upcoming.length) return null;
 
@@ -2044,7 +2047,14 @@ function Dashboard({ onTabChange }) {
       {[
         { label: "This Week",  items: grouped.today.filter(t     => !completed.has(t.id)) },
         { label: "Coming Up",  items: grouped.this_week.filter(t => !completed.has(t.id)) },
-        { label: "Later",      items: grouped.coming_up.filter(t => !completed.has(t.id)), upcoming: true },
+        { label: "Later", upcoming: true, items: (() => {
+          const seen = new Map();
+          for (const t of (grouped.coming_up || []).filter(t => !completed.has(t.id)).sort((a,b) => a.due_date.localeCompare(b.due_date))) {
+            const key = t.crop?.name || t.rule_id || t.id;
+            if (!seen.has(key)) seen.set(key, t);
+          }
+          return [...seen.values()];
+        })() },
       ].map(({ label, items, upcoming }) => items?.length > 0 && (
         <div key={label}>
           <SectionLabel>{label}</SectionLabel>
