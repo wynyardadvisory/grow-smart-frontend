@@ -1776,14 +1776,11 @@ function ComingUpSoonCard({ data }) {
   const now = Date.now();
   const today = new Date().toISOString().split("T")[0];
 
-  // Combine this_week and coming_up — deduplicate to one per crop name (earliest due date)
-  const allFuture = [
-    ...(data.tasks?.this_week || []),
-    ...(data.tasks?.coming_up || []),
-  ].filter(t => t.due_date >= today && !t.completed_at);
-
+  // Coming Up Soon — only show future tasks beyond this week (coming_up bucket)
+  // This week's tasks are already in the main task list
+  const comingUp = (data.tasks?.coming_up || []).filter(t => !t.completed_at);
   const seen = new Map();
-  for (const t of allFuture.sort((a, b) => new Date(a.due_date) - new Date(b.due_date))) {
+  for (const t of comingUp.sort((a, b) => new Date(a.due_date) - new Date(b.due_date))) {
     const key = t.crop?.name || t.rule_id || t.id;
     if (!seen.has(key)) seen.set(key, t);
   }
