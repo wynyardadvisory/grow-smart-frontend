@@ -2589,6 +2589,7 @@ function GardenView({ onNavigateAdd }) {
   const [editAreaForm,   setEditAreaForm]   = useState({ name: "", type: "" });
   const [confirmArea,    setConfirmArea]    = useState(null);
   const [suggestArea,    setSuggestArea]    = useState(null);
+  const [collapsedLocs,  setCollapsedLocs]  = useState({});
 
   const saveEditArea = async (areaId) => {
     setSaving(true);
@@ -2681,20 +2682,29 @@ function GardenView({ onNavigateAdd }) {
         />
       )}
 
-      {locations.map(loc => (
+      {locations.map(loc => {
+        const isCollapsed = !!collapsedLocs[loc.id];
+        return (
         <div key={loc.id} style={{ marginBottom: 28 }}>
-          {/* Location header */}
+          {/* Location header — tap to collapse */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }}
+              onClick={() => setCollapsedLocs(c => ({ ...c, [loc.id]: !c[loc.id] }))}>
               <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
                 onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
+              <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{isCollapsed ? "▶" : "▼"}</span>
             </div>
-            <button onClick={() => { setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-              style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-              + Add area
-            </button>
+            {!isCollapsed && (
+              <button onClick={() => { setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
+                style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                + Add area
+              </button>
+            )}
           </div>
+
+          {/* Collapsible content */}
+          {!isCollapsed && (<>
 
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
@@ -2792,13 +2802,13 @@ function GardenView({ onNavigateAdd }) {
                         <span style={{ background: C.offwhite, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600 }}>
                           {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
                         </span>
-                        <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type }); }}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
-                          Edit
-                        </button>
                         <button onClick={() => onNavigateAdd({ area_id: area.id })}
                           style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                           + Add
+                        </button>
+                        <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type }); }}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          Edit
                         </button>
                         <button onClick={() => setConfirmArea(area.id)}
                           style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.red, cursor: "pointer" }}>
@@ -4950,8 +4960,10 @@ function AdminFeedbackList() {
             <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || item.profiles?.email || "Unknown user"}</span>
             {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
           </div>
+          </>)}
         </div>
-      ))}
+        );
+      })}
     </>
   );
 }
