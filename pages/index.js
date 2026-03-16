@@ -1821,6 +1821,105 @@ function ComingUpSoonCard({ data }) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+
+// =============================================================================
+// NOTIFICATION DASHBOARD PROMPT
+// =============================================================================
+function NotificationDashboardPrompt({ onTabChange }) {
+  const [state, setState] = useState("loading"); // loading | enabled | prompt | disabled
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const check = async () => {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        setState("unsupported"); return;
+      }
+      const perm = Notification.permission;
+      if (perm === "granted") {
+        // Check if actually registered
+        try {
+          const prefs = await apiFetch("/notifications/preferences");
+          setState(prefs?.push_enabled ? "enabled" : "disabled");
+        } catch { setState("enabled"); }
+      } else if (perm === "denied") {
+        setState("disabled");
+      } else {
+        setState("prompt"); // default — never asked
+      }
+    };
+    check();
+  }, []);
+
+  const enable = async () => {
+    try {
+      const { publicKey } = await apiFetch("/notifications/vapid-key");
+      if (!publicKey) return;
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") { setState("disabled"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      await apiFetch("/notifications/register-token", {
+        method: "POST",
+        body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
+      });
+      await apiFetch("/notifications/preferences", {
+        method: "PUT",
+        body: JSON.stringify({
+          push_enabled: true,
+          due_today_enabled: true,
+          coming_up_enabled: true,
+          weather_alerts_enabled: true,
+          pest_alerts_enabled: true,
+          crop_checks_enabled: true,
+          weekly_summary_enabled: true,
+          milestones_enabled: true,
+          morning_time_local: "07:00",
+          evening_time_local: "18:00",
+        }),
+      });
+      setState("enabled");
+    } catch(e) { console.error("[Push]", e); }
+  };
+
+  if (state === "loading" || state === "unsupported" || state === "enabled") return null;
+  if (dismissed) return null;
+
+  if (state === "prompt") {
+    return (
+      <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: C.forest, fontFamily: "serif" }}>Get garden reminders</div>
+          <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Frost alerts, task reminders and crop checks — when they matter</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button onClick={enable}
+            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            Turn on
+          </button>
+          <button onClick={() => setDismissed(true)}
+            style={{ background: "none", border: "none", color: C.stone, fontSize: 18, cursor: "pointer", padding: "4px 8px" }}>
+            ×
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // disabled state — subtle pill
+  return (
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+      <button onClick={() => onTabChange("profile")}
+        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <span>🔔</span> Notifications off · Turn on
+      </button>
+    </div>
+  );
+}
+
 function Dashboard({ onTabChange }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
@@ -2067,6 +2166,9 @@ function Dashboard({ onTabChange }) {
           <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
         </div>
       </div>
+
+      {/* ── NOTIFICATION PROMPT ────────────────────────────────────────────────── */}
+      <NotificationDashboardPrompt onTabChange={onTabChange} />
 
       {/* ── BADGES PILL ────────────────────────────────────────────────────── */}
       <TodayBadgeCard onViewBadges={() => onTabChange("badges")} />
@@ -4497,7 +4599,15 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
         method: "POST",
         body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
       });
-
+      await apiFetch("/notifications/preferences", {
+        method: "PUT",
+        body: JSON.stringify({
+          push_enabled: true, due_today_enabled: true, coming_up_enabled: true,
+          weather_alerts_enabled: true, pest_alerts_enabled: true,
+          crop_checks_enabled: true, weekly_summary_enabled: true, milestones_enabled: true,
+          morning_time_local: "07:00", evening_time_local: "18:00",
+        }),
+      });
       onEnabled();
     } catch(e) {
       console.error("[Push]", e);
@@ -4621,23 +4731,9 @@ function NotificationSettingsSection() {
             </div>
           ))}
 
-          {/* Timing preferences */}
+          {/* Timing — fixed at 7am / 6pm, no user choice */}
           <div style={{ padding: "13px 16px", borderTop: `1px solid ${C.border}` }}>
-            <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 10 }}>Delivery timing</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {[
-                { key: "morning_time_local", label: "Morning reminders" },
-                { key: "evening_time_local", label: "Evening alerts" },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{label}</div>
-                  <input type="time"
-                    value={prefs?.[key] || (key === "morning_time_local" ? "08:30" : "18:00")}
-                    onChange={e => save({ [key]: e.target.value })}
-                    style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#1a1a1a", background: C.offwhite }} />
-                </div>
-              ))}
-            </div>
+            <div style={{ fontSize: 13, color: C.stone }}>Reminders are sent at <strong style={{ color: "#1a1a1a" }}>7am</strong> and <strong style={{ color: "#1a1a1a" }}>6pm</strong></div>
           </div>
         </div>
       )}
