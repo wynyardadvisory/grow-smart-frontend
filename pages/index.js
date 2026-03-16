@@ -1833,7 +1833,6 @@ function Dashboard({ onTabChange }) {
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [showShareGarden,    setShowShareGarden]    = useState(false);
-  const [editCropFocus,      setEditCropFocus]      = useState(null); // { cropId, field }
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
 
@@ -2011,7 +2010,7 @@ function Dashboard({ onTabChange }) {
       <QuickCropCheck
         crops={data.crops || []}
         missingItems={data.missing_data || []}
-        onNavigateCrop={(cropId, field) => { setEditCropFocus({ cropId, field }); setTab("crops"); }}
+        onNavigateCrop={(cropId, field) => { if (onTabChange) onTabChange("crops", { editCropId: cropId, editCropField: field }); }}
         onDismiss={(updatedCrop) => {
           // Patch local crop data immediately so prompt doesn't reappear
           // before the next full reload
@@ -5653,6 +5652,7 @@ export default function GrowSmart() {
   const [tab,         setTab]         = useState("dashboard");
   const [addPrefill,  setAddPrefill]  = useState(null);
   const [prevTab,     setPrevTab]     = useState("dashboard");
+  const [editCropFocus, setEditCropFocus] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -5705,7 +5705,7 @@ export default function GrowSmart() {
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <Dashboard onTabChange={setTab} />}
+        {tab === "dashboard" && <Dashboard onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); setTab(newTab); }} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
         {tab === "crops"     && <CropList onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
