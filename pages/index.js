@@ -3440,7 +3440,7 @@ function CropList({ onAddCrop }) {
 }
 
 // ── Add crop ──────────────────────────────────────────────────────────────────
-function AddCrop({ prefill, onPrefillConsumed }) {
+function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [cropDefs,  setCropDefs]  = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [areas,     setAreas]     = useState([]);
@@ -3748,7 +3748,15 @@ function AddCrop({ prefill, onPrefillConsumed }) {
           }}
         />
       )}
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 6, color: "#1a1a1a" }}>Add Crop</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Add Crop</div>
+        {onCancel && (
+          <button onClick={onCancel}
+            style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: C.stone, lineHeight: 1, padding: "0 4px" }}>
+            ×
+          </button>
+        )}
+      </div>
       <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>Tell us what you're growing and we'll build a task schedule for you.</div>
       {error && <ErrorMsg msg={error} />}
 
@@ -5568,6 +5576,7 @@ export default function GrowSmart() {
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
   const [tab,         setTab]         = useState("dashboard");
   const [addPrefill,  setAddPrefill]  = useState(null);
+  const [prevTab,     setPrevTab]     = useState("dashboard");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -5621,11 +5630,10 @@ export default function GrowSmart() {
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard onTabChange={setTab} />}
-        {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setAddPrefill(prefill); setTab("add"); }} />}
-        {tab === "crops"     && <CropList onAddCrop={() => setTab("add")} />}
-        {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
+        {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
+        {tab === "crops"     && <CropList onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} />}
+        {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
-        {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} />}
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} />}
         {tab === "admin"     && isAdmin && <AdminScreen />}
