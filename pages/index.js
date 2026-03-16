@@ -4775,9 +4775,11 @@ function NotificationSettingsSection() {
 }
 
 function ProfileScreen({ session, onTabChange }) {
-  const [form,       setForm]      = useState({ name: "", postcode: "" });
+  const PROFILE_CACHE = "vercro_profile_v1";
+  const _cachedProfile = (() => { try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {} return null; })();
+  const [form,       setForm]      = useState(_cachedProfile || { name: "", postcode: "" });
   const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
-  const [loading,    setLoading]   = useState(true);
+  const [loading,    setLoading]   = useState(!_cachedProfile);
   const [saving,     setSaving]    = useState(false);
   const [pwSaving,   setPwSaving]  = useState(false);
   const [saved,      setSaved]     = useState(false);
@@ -4808,7 +4810,12 @@ function ProfileScreen({ session, onTabChange }) {
 
   useEffect(() => {
     apiFetch("/auth/profile")
-      .then(p => { setForm({ name: p.name || "", postcode: p.postcode || "", photo_url: p.photo_url || null }); setLoading(false); })
+      .then(p => {
+        const f = { name: p.name || "", postcode: p.postcode || "", photo_url: p.photo_url || null };
+        setForm(f);
+        try { localStorage.setItem(PROFILE_CACHE, JSON.stringify({ form: f, ts: Date.now() })); } catch(e) {}
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
     loadAllHarvests();
   }, []);
@@ -5068,9 +5075,11 @@ const KNOWN_BRANDS = [
 ];
 
 function FeedsScreen() {
-  const [feeds,    setFeeds]    = useState([]);
-  const [catalog,  setCatalog]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
+  const FEEDS_CACHE = "vercro_feeds_v1";
+  const _cachedFeeds = (() => { try { const c = localStorage.getItem(FEEDS_CACHE); if (c) { const { feeds, catalog, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { feeds, catalog }; } } catch(e) {} return null; })();
+  const [feeds,    setFeeds]    = useState(_cachedFeeds?.feeds || []);
+  const [catalog,  setCatalog]  = useState(_cachedFeeds?.catalog || []);
+  const [loading,  setLoading]  = useState(!_cachedFeeds);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState(null);
   const [added,    setAdded]    = useState(false);
@@ -5090,6 +5099,7 @@ function FeedsScreen() {
       ]);
       setFeeds(feedData);
       setCatalog(catalogData);
+      try { localStorage.setItem(FEEDS_CACHE, JSON.stringify({ feeds: feedData, catalog: catalogData, ts: Date.now() })); } catch(e) {}
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
@@ -5161,6 +5171,7 @@ function FeedsScreen() {
       // Reset form
       setBrand(""); setOtherBrand(""); setIsLiquid(null);
       setProduct(""); setOtherProduct("");
+      try { localStorage.removeItem(FEEDS_CACHE); } catch(e) {}
       setAdded(true);
       setTimeout(() => setAdded(false), 4000);
       await load();
