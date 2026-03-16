@@ -4958,10 +4958,8 @@ function AdminFeedbackList() {
             <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || item.profiles?.email || "Unknown user"}</span>
             {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
           </div>
-          </>)}
         </div>
-        );
-      })}
+      ))}
     </>
   );
 }
