@@ -1870,12 +1870,15 @@ function Dashboard({ onTabChange }) {
     setCompleted(prev => new Set([...prev, task.id]));
     setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     setUndone(prev => prev.filter(t => t.id !== task.id));
+    // Increment local week count immediately
+    setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
     } catch {
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
       setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
+      setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
       return;
     }
 
@@ -1893,6 +1896,7 @@ function Dashboard({ onTabChange }) {
     // Remove from completed — this makes it active again
     setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
     setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
+    setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
     // Add to undone so it appears in active list even if not in data.tasks
     setUndone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
 
