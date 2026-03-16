@@ -1833,6 +1833,7 @@ function Dashboard({ onTabChange }) {
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [showShareGarden,    setShowShareGarden]    = useState(false);
+  const [strugglingCrop,     setStrugglingCrop]     = useState(null);
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
 
@@ -2119,10 +2120,9 @@ function Dashboard({ onTabChange }) {
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {t.crop_instance_id && (
-                    <button onClick={() => logObservation(t.crop_instance_id, "other", "plant_struggling")}
-                      title="Flag as struggling"
-                      style={{ width: 28, height: 28, borderRadius: "50%", border: `1px solid ${C.red}44`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
-                      ⚠️
+                    <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
+                      style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", padding: "0 4px", textDecoration: "underline", flexShrink: 0 }}>
+                      Struggling?
                     </button>
                   )}
                   <button onClick={() => completeTask(t)}
@@ -2317,6 +2317,43 @@ function Dashboard({ onTabChange }) {
         style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
         🌱 Share my garden
       </button>
+
+      {/* Struggling plant confirmation sheet */}
+      {strugglingCrop && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+          onClick={e => { if (e.target === e.currentTarget) setStrugglingCrop(null); }}>
+          <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+            <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🌿</div>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
+              Is your {strugglingCrop.name} struggling?
+            </div>
+            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
+              We'll adjust your care plan to focus on getting it back to health — reducing pressure and adding targeted checks.
+            </div>
+            <div style={{ background: C.offwhite, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>What we'll do:</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {["Pause non-essential tasks for this crop", "Add a daily health check prompt", "Flag it for your attention", "Resume normal care once it recovers"].map((item, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ color: C.forest, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span style={{ fontSize: 13, color: C.stone }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={async () => {
+              await logObservation(strugglingCrop.id, "other", "plant_struggling");
+              setStrugglingCrop(null);
+            }} style={{ width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Yes, it&apos;s struggling
+            </button>
+            <button onClick={() => setStrugglingCrop(null)}
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCelebration && pendingUnlocks.length > 0 && (
         <BadgeCelebrationSheet
