@@ -2701,7 +2701,7 @@ function GardenView({ onNavigateAdd }) {
             )}
           </div>
 
-          {!collapsedLocs[loc.id] && <div>
+          {!collapsedLocs[loc.id] && (<div>
 
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
@@ -2842,7 +2842,7 @@ function GardenView({ onNavigateAdd }) {
                   </>
                 )}
               </div>
-          </div>}
+          </div>)}
         </div>
       ))}
     </div>
