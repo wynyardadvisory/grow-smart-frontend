@@ -2845,10 +2845,10 @@ function GardenView({ onNavigateAdd }) {
                   </>
                 )}
               </div>
-            );
-          })}
+          </>)}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
