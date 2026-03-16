@@ -1954,6 +1954,17 @@ function Dashboard({ onTabChange }) {
   const h = new Date().getHours();
   const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 
+  // ── Observation helper ───────────────────────────────────────────────────────
+  const logObservation = async (cropId, type, symptomCode, severity = null) => {
+    try {
+      await apiFetch(`/crops/${cropId}/observe`, {
+        method: "POST",
+        body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity }),
+      });
+      load(); // refresh dashboard after observation
+    } catch(e) { console.error("[Observe]", e); }
+  };
+
   // ── Derived data for new dashboard layout ────────────────────────────────────
 
   // Today's focus — single most important item
@@ -2106,10 +2117,19 @@ function Dashboard({ onTabChange }) {
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{t.crop?.name || "General"}</div>
                   <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.3 }}>{t.action}</div>
                 </div>
-                <button onClick={() => completeTask(t)}
-                  style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
-                  ✓
-                </button>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {t.crop_instance_id && (
+                    <button onClick={() => logObservation(t.crop_instance_id, "other", "plant_struggling")}
+                      title="Flag as struggling"
+                      style={{ width: 28, height: 28, borderRadius: "50%", border: `1px solid ${C.red}44`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                      ⚠️
+                    </button>
+                  )}
+                  <button onClick={() => completeTask(t)}
+                    style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                    ✓
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -2173,14 +2193,33 @@ function Dashboard({ onTabChange }) {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <button onClick={() => completeTask(t)}
-                      style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                      ✓ Done
-                    </button>
-                    <button onClick={() => { setCompleted(prev => new Set([...prev, t.id])); apiFetch(`/tasks/${t.id}/complete`, { method: "POST" }); }}
-                      style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
-                      Dismiss
-                    </button>
+                    {t.crop?.name && (t.task_type?.includes("pest") || t.task_type?.includes("inspect") || t.task_type === "protect") ? (
+                      <>
+                        <button onClick={async () => {
+                          if (t.crop_instance_id) await logObservation(t.crop_instance_id, "pest", "pest_found", "mild");
+                          completeTask(t);
+                        }} style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                          🐛 Found it
+                        </button>
+                        <button onClick={async () => {
+                          if (t.crop_instance_id) await logObservation(t.crop_instance_id, "pest", "looks_healthy");
+                          completeTask(t);
+                        }} style={{ flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "8px", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                          ✓ All clear
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => completeTask(t)}
+                          style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                          ✓ Done
+                        </button>
+                        <button onClick={() => { setCompleted(prev => new Set([...prev, t.id])); apiFetch(`/tasks/${t.id}/complete`, { method: "POST" }); }}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
+                          Dismiss
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -2413,15 +2452,25 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
 
   const handleLifecycle = async (crop, nextStage, confirmed) => {
     setActioning(crop.id);
-    // Dismiss immediately — card disappears before server responds
     setDismissed(prev => new Set([...prev, crop.id + "_lifecycle"]));
     try {
+      // Log observation — feeds back into engine
+      const symptomCode = confirmed
+        ? `${nextStage}_confirmed`
+        : `${nextStage}_not_yet`;
+      await apiFetch(`/crops/${crop.id}/observe`, {
+        method: "POST",
+        body: JSON.stringify({
+          observation_type: "growth",
+          symptom_code:     symptomCode,
+          notes:            confirmed ? `Stage ${nextStage} confirmed by user` : `Stage ${nextStage} not yet reached`,
+        }),
+      });
+      // Also update the stage via confirm-stage
       const result = await apiFetch(`/crops/${crop.id}/confirm-stage`, {
         method: "POST",
         body: JSON.stringify({ stage: nextStage, confirmed }),
       });
-      // Pass updated crop back to Dashboard so it can patch local state
-      // This prevents the same or next prompt reappearing before next full reload
       if (onDismiss) onDismiss(result?.crop);
     } catch (e) {
       console.error(e);
