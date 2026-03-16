@@ -1833,6 +1833,7 @@ function Dashboard({ onTabChange }) {
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [showShareGarden,    setShowShareGarden]    = useState(false);
+  const [editCropFocus,      setEditCropFocus]      = useState(null); // { cropId, field }
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
 
@@ -2010,6 +2011,7 @@ function Dashboard({ onTabChange }) {
       <QuickCropCheck
         crops={data.crops || []}
         missingItems={data.missing_data || []}
+        onNavigateCrop={(cropId, field) => { setEditCropFocus({ cropId, field }); setTab("crops"); }}
         onDismiss={(updatedCrop) => {
           // Patch local crop data immediately so prompt doesn't reappear
           // before the next full reload
@@ -2168,7 +2170,7 @@ const STAGE_QUESTIONS = {
   harvesting: { emoji: "🔵", q: "Is this crop ready to start harvesting?" },
 };
 
-function QuickCropCheck({ crops, missingItems, onDismiss }) {
+function QuickCropCheck({ crops, missingItems, onDismiss, onNavigateCrop }) {
   const [open,       setOpen]       = useState(false);
   const [actioning,  setActioning]  = useState(null);
   const [dismissed,  setDismissed]  = useState(new Set());
@@ -2322,14 +2324,24 @@ function QuickCropCheck({ crops, missingItems, onDismiss }) {
 
             // Missing data prompt
             const { item } = prompt;
+            const missingVariety = item.missing.some(m => m.includes("variety"));
+            const missingSowDate = item.missing.some(m => m.includes("sow"));
             return (
               <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 20 }}>📅</span>
+                  <span style={{ fontSize: 20 }}>{missingVariety ? "🌿" : "📅"}</span>
                   <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{item.name}</div>
                 </div>
-                <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Missing: {item.missing.join(", ")} — add it for more accurate tasks</div>
+                <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
+                  Missing: {item.missing.join(", ")} — add it for more accurate tasks
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
+                  {onNavigateCrop && (
+                    <button onClick={() => { handleMissingDismiss(item.id); onNavigateCrop(item.id, missingVariety ? "variety" : "sow_date"); }}
+                      style={{ flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                      {missingVariety ? "Add variety →" : "Add sow date →"}
+                    </button>
+                  )}
                   <button onClick={() => handleMissingDismiss(item.id)}
                     style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                     Later
@@ -3020,11 +3032,23 @@ function CropGrowthDiary({ crop, onClose }) {
   );
 }
 
-function CropList({ onAddCrop }) {
+function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const [crops,    setCrops]   = useState([]);
   const [loading,  setLoading] = useState(true);
   const [error,    setError]   = useState(null);
   const [editing,       setEditing]      = useState(null);
+
+  // Auto-open edit for a specific crop (from QuickCropCheck)
+  useEffect(() => {
+    if (editCropId && crops.length > 0) {
+      const crop = crops.find(c => c.id === editCropId);
+      if (crop) {
+        openEdit(crop);
+        if (onEditOpened) onEditOpened();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }, [editCropId, crops.length]);
   const [editForm,      setEditForm]      = useState({});
   const [editVarieties, setEditVarieties] = useState([]);
   const [areas,         setAreas]         = useState([]);
@@ -5683,7 +5707,7 @@ export default function GrowSmart() {
       <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard onTabChange={setTab} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
-        {tab === "crops"     && <CropList onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} />}
+        {tab === "crops"     && <CropList onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && <FeedsScreen />}
