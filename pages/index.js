@@ -4987,7 +4987,7 @@ function InviteWaitlistButton() {
     setStatus(null);
     try {
       const result = await apiFetch("/admin/invite-waitlist", { method: "POST" });
-      setStatus({ ok: true, sent: result.sent, total: result.total });
+      setStatus({ ok: true, sent: result.queued, total: result.queued });
     } catch (e) {
       setStatus({ ok: false, error: e.message });
     }
