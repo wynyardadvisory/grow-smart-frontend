@@ -1954,171 +1954,325 @@ function Dashboard({ onTabChange }) {
   const h = new Date().getHours();
   const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 
+  // ── Derived data for new dashboard layout ────────────────────────────────────
+
+  // Today's focus — single most important item
+  const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id));
+  const todayTasks     = grouped.today.filter(t => !completed.has(t.id));
+  const thisWeekTasks  = grouped.this_week.filter(t => !completed.has(t.id));
+  const comingUpTasks  = (grouped.coming_up || []).filter(t => !completed.has(t.id));
+
+  // Hero focus: critical alert > high task > medium task > first check
+  const focusItem = (() => {
+    const crit = alerts.find(a => a.urgency === "high" || a.urgency === "critical");
+    if (crit) return { ...crit, _source: "alert" };
+    const highTask = todayTasks.find(t => t.urgency === "high");
+    if (highTask) return { ...highTask, _source: "task" };
+    const medTask = todayTasks[0];
+    if (medTask) return { ...medTask, _source: "task" };
+    return null;
+  })();
+
+  // Remaining today tasks (exclude focus item)
+  const remainingToday = todayTasks.filter(t => t.id !== focusItem?.id);
+
+  // Crop checks — lifecycle prompts (non-alert, non-regular-task)
+  const cropCheckTasks = allTasks.filter(t => {
+    if (completed.has(t.id) || t.completed_at) return false;
+    if (t.record_type === "alert") return false;
+    try {
+      const meta = typeof t.meta === "string" ? JSON.parse(t.meta) : (t.meta || {});
+      return meta.lifecycle_check === true;
+    } catch { return false; }
+  });
+
+  // Watch outs — risk alerts
+  const watchOuts = alerts.slice(0, 3);
+
+  // Coming up next — group by crop name
+  const comingUpByCrop = (() => {
+    const byName = new Map();
+    const allUpcoming = [...thisWeekTasks, ...comingUpTasks];
+    for (const t of allUpcoming) {
+      const name = t.crop?.name || "General";
+      if (!byName.has(name)) byName.set(name, []);
+      byName.get(name).push(t);
+    }
+    return [...byName.entries()].map(([name, tasks]) => ({
+      name,
+      emoji: getCropEmoji(name),
+      tasks: tasks.sort((a,b) => (a.due_date||"").localeCompare(b.due_date||"")),
+    })).sort((a,b) => (a.tasks[0]?.due_date||"").localeCompare(b.tasks[0]?.due_date||""));
+  })();
+
+  // Garden progress counts
+  const cropCount      = data.crop_count || 0;
+  const harvestCount   = (data.harvest_forecast || []).filter(h => {
+    const today2 = todayISO();
+    return h.window_start <= today2 && h.window_end >= today2;
+  }).length;
+  const needsInput     = (data.missing_data || []).length;
+  const completedWeek  = data.tasks_completed_this_week || 0;
+
+  // Relative time helper
+  const relTime = (dateStr) => {
+    if (!dateStr) return "";
+    const days = Math.ceil((new Date(dateStr) - Date.now()) / 86400000);
+    if (days <= 0)  return "today";
+    if (days === 1) return "tomorrow";
+    if (days <= 6)  return `in ${days} days`;
+    if (days <= 13) return "next week";
+    const weeks = Math.round(days / 7);
+    return `in ${weeks} week${weeks !== 1 ? "s" : ""}`;
+  };
+
   return (
     <div>
-      {/* Hero header */}
-      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden", borderBottom: "3px solid " + C.accent }}>
-        {/* Subtle seasonal circle decoration */}
-        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: C.accent, opacity: 0.08 }} />
-        <div style={{ position: "absolute", bottom: -30, right: 40, width: 70, height: 70, borderRadius: "50%", background: C.accent, opacity: 0.06 }} />
+
+      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
-            <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", lineHeight: 1.1, marginBottom: 2 }}>Today in your garden</div>
-            <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{greeting}{data.user ? `, ${data.user}` : ""} 👋</div>
+            <div style={{ fontSize: 11, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", lineHeight: 1.1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
+            {data.weather ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, opacity: 0.85 }}>
+                {data.weather.icon_code && <img src={`https://openweathermap.org/img/wn/${data.weather.icon_code}.png`} alt="" style={{ width: 24, height: 24 }} />}
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{data.weather.temp_c}°C</span>
+                <span style={{ fontSize: 12, opacity: 0.8, textTransform: "capitalize" }}>{data.weather.condition}</span>
+                {data.frost_risk !== "low" && (
+                  <span style={{ fontSize: 11, background: data.frost_risk === "high" ? "#e74c3c" : "#f39c12", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>
+                    {data.frost_risk === "high" ? "❄️ Frost" : "❄️ Near frost"}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>Set postcode in profile for weather</div>
+            )}
           </div>
           <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
         </div>
       </div>
 
-      {/* Weather + traffic lights strip */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
-        {/* Weather */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-          {data.weather?.icon_code && (
-            <img
-              src={`https://openweathermap.org/img/wn/${data.weather.icon_code}.png`}
-              alt={data.weather.condition}
-              style={{ width: 36, height: 36 }}
-            />
-          )}
-          {data.weather ? (
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: C.forest, fontFamily: "serif", lineHeight: 1 }}>{data.weather.temp_c}°C</div>
-              <div style={{ fontSize: 11, color: C.stone, textTransform: "capitalize", marginTop: 1 }}>{data.weather.condition}</div>
-            </div>
-          ) : (
-            <div style={{ fontSize: 12, color: C.stone }}>No weather data — set postcode in profile</div>
-          )}
-        </div>
-
-        {/* Traffic lights */}
-        <div style={{ display: "flex", gap: 10 }}>
-          {/* Frost risk */}
-          {(() => {
-            const risk   = data.frost_risk || "low";
-            const colour = risk === "high" ? "#e74c3c" : risk === "medium" ? "#f39c12" : "#27ae60";
-            const label  = risk === "high" ? "Frost risk" : risk === "medium" ? "Near frost" : "No frost";
-            return (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: colour, boxShadow: `0 0 6px ${colour}88` }} />
-                <div style={{ fontSize: 9, color: C.stone, textAlign: "center", lineHeight: 1.2 }}>❄️ {label}</div>
-              </div>
-            );
-          })()}
-
-          {/* Pest risk */}
-          {(() => {
-            const risk   = data.pest_risk || "low";
-            const colour = risk === "high" ? "#e74c3c" : risk === "medium" ? "#f39c12" : "#27ae60";
-            const label  = risk === "high" ? "High pest" : risk === "medium" ? "Pest alert" : "Low pest";
-            const tip    = data.pest_crops?.length > 0 ? data.pest_crops.slice(0, 2).join(", ") : null;
-            return (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: colour, boxShadow: `0 0 6px ${colour}88` }} />
-                <div style={{ fontSize: 9, color: C.stone, textAlign: "center", lineHeight: 1.2 }}>🐛 {tip || label}</div>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-
-      {/* Challenges & Badges — two pill buttons */}
+      {/* ── BADGES PILL ────────────────────────────────────────────────────── */}
       <TodayBadgeCard onViewBadges={() => onTabChange("badges")} />
 
-      {/* Quick crop check — lifecycle confirmations + missing data */}
+      {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today&apos;s focus</div>
+
+        {focusItem ? (
+          <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: 14, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+                  {focusItem.crop?.name || "Garden task"}
+                </div>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => completeTask(focusItem)}
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                    ✓ Mark done
+                  </button>
+                  <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
+                    Later
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 28 }}>🌿</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
+              <div style={{ fontSize: 12, color: C.stone }}>
+                {thisWeekTasks.length > 0 ? `${thisWeekTasks.length} thing${thisWeekTasks.length !== 1 ? "s" : ""} coming up this week` : comingUpTasks.length > 0 ? `${comingUpTasks.length} task${comingUpTasks.length !== 1 ? "s" : ""} planned ahead` : "Nothing urgent — enjoy your garden"}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Remaining today tasks */}
+        {remainingToday.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            {remainingToday.map(t => (
+              <div key={t.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{getCropEmoji(t.crop?.name || "")}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{t.crop?.name || "General"}</div>
+                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.3 }}>{t.action}</div>
+                </div>
+                <button onClick={() => completeTask(t)}
+                  style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                  ✓
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recently done */}
+        {recentlyDone.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            {recentlyDone.map(t => (
+              <div key={t.id} style={{ background: "#f5faf5", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
+                <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
+                {undoQueue[t.id] && (
+                  <button onClick={() => undoComplete(t)}
+                    style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+                    Undo
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── 2. QUICK CROP CHECKS ───────────────────────────────────────────── */}
       <QuickCropCheck
         crops={data.crops || []}
         allTasks={allTasks}
-        missingItems={data.missing_data || []}
+        missingItems={[]}
         onNavigateCrop={(cropId, field) => { if (onTabChange) onTabChange("crops", { editCropId: cropId, editCropField: field }); }}
         onDismiss={(updatedCrop) => {
-          // Patch local crop data immediately so prompt doesn't reappear
-          // before the next full reload
           if (updatedCrop?.id) {
-            setData(prev => ({
-              ...prev,
-              crops: (prev.crops || []).map(c =>
-                c.id === updatedCrop.id ? { ...c, ...updatedCrop } : c
-              ),
-            }));
+            setData(prev => ({ ...prev, crops: (prev.crops || []).map(c => c.id === updatedCrop.id ? { ...c, ...updatedCrop } : c) }));
           }
-          // Also do a full reload to get fresh tasks
           load();
         }}
       />
 
-      {/* Progress */}
-      {totalToday > 0 && (
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 6 }}>This week&apos;s tasks</div>
-            <div style={{ height: 6, background: C.border, borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${totalToday > 0 ? (doneToday / totalToday) * 100 : 0}%`, background: C.leaf, borderRadius: 10, transition: "width 0.4s ease" }} />
-            </div>
+      {/* ── 3. WATCH OUTS ──────────────────────────────────────────────────── */}
+      {watchOuts.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Watch outs</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {watchOuts.map(t => {
+              const urgColour = t.urgency === "high" ? "#e74c3c" : t.urgency === "medium" ? "#e67e22" : "#7f8c8d";
+              const urgBg     = t.urgency === "high" ? "#fff5f5" : t.urgency === "medium" ? "#fff8f0" : "#f8f8f8";
+              return (
+                <div key={t.id} style={{ background: urgBg, border: `1px solid ${urgColour}33`, borderLeft: `3px solid ${urgColour}`, borderRadius: 12, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>
+                      {t.task_type === "protect" ? "🛡️" : t.task_type?.includes("pest") ? "🐛" : t.task_type?.includes("disease") ? "🔬" : "⚠️"}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{t.crop?.name || "Watch out"}</div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: urgColour, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", flexShrink: 0, marginLeft: 8 }}>
+                          {t.urgency === "high" ? "Act now" : t.urgency === "medium" ? "Inspect" : "Watch"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{t.action}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button onClick={() => completeTask(t)}
+                      style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                      ✓ Done
+                    </button>
+                    <button onClick={() => { setCompleted(prev => new Set([...prev, t.id])); apiFetch(`/tasks/${t.id}/complete`, { method: "POST" }); }}
+                      style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, fontFamily: "serif" }}>{doneToday}/{totalToday}</div>
         </div>
       )}
 
-      {/* Active tasks */}
-      {[
-        { label: "This Week",  items: grouped.today.filter(t     => !completed.has(t.id)) },
-        { label: "Coming Up",  items: grouped.this_week.filter(t => !completed.has(t.id)) },
-        { label: "Later", upcoming: true, items: (() => {
-          const seen = new Map();
-          for (const t of (grouped.coming_up || []).filter(t => !completed.has(t.id)).sort((a,b) => a.due_date.localeCompare(b.due_date))) {
-            const key = t.crop?.name || t.rule_id || t.id;
-            if (!seen.has(key)) seen.set(key, t);
-          }
-          return [...seen.values()];
-        })() },
-      ].map(({ label, items, upcoming }) => items?.length > 0 && (
-        <div key={label}>
-          <SectionLabel>{label}</SectionLabel>
-          {items.map(t => (
-            <TaskCard key={t.id} task={t} completed={false}
-              onComplete={() => !upcoming && completeTask(t)}
-              isUpcoming={!!upcoming}
-              showUndo={false}
-              onUndo={null}
-            />
-          ))}
-        </div>
-      ))}
-
-      {/* Recently completed — stays visible with undo option */}
-      {recentlyDone.length > 0 && (
-        <div>
-          <SectionLabel>Done</SectionLabel>
-          {recentlyDone.map(t => (
-            <TaskCard key={t.id} task={t} completed={true}
-              onComplete={() => {}}
-              showUndo={!!undoQueue[t.id]}
-              onUndo={() => undoComplete(t)}
-            />
-          ))}
+      {/* ── 4. COMING UP NEXT ──────────────────────────────────────────────── */}
+      {comingUpByCrop.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Coming up next</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {comingUpByCrop.slice(0, 5).map(({ name, emoji, tasks }) => (
+              <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: tasks.length > 1 ? 8 : 4 }}>
+                  <span style={{ fontSize: 18 }}>{emoji}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{name}</span>
+                  <span style={{ fontSize: 11, color: C.stone, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
+                </div>
+                {tasks.slice(0, 3).map((t, i) => (
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: i > 0 ? 6 : 0, borderTop: i > 0 ? `1px solid ${C.border}` : "none", marginTop: i > 0 ? 6 : 0 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.sage, flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: 12, color: C.stone, lineHeight: 1.3 }}>{t.action}</div>
+                    <span style={{ fontSize: 11, color: C.forest, fontWeight: 600, flexShrink: 0 }}>
+                      {new Date(t.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Garden status + coming up — shown below tasks */}
-      <GardenStatusCard data={data} />
-      <ComingUpSoonCard data={data} />
+      {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Garden progress</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { label: "Active crops",       value: cropCount,      emoji: "🌱" },
+            { label: "In harvest window",  value: harvestCount,   emoji: "🌾" },
+            { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
+            { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
+          ].map(({ label, value, emoji, highlight }) => (
+            <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: highlight ? C.amber : C.forest, fontFamily: "serif", lineHeight: 1 }}>{value}</div>
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
+      {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
+      {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Harvest forecast</div>
+          <CollapsibleHarvestForecast
+            items={data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id))}
+            onHarvest={(h) => setPendingHarvest(h)}
+            pending={pendingHarvest}
+          />
+        </div>
+      )}
 
+      {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
+      {(data.missing_data || []).length > 0 && (
+        <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Help me improve your plan</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(data.missing_data || []).slice(0, 3).map(item => (
+              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>{getCropEmoji(item.name)}</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{item.name}</span>
+                  <span style={{ fontSize: 12, color: C.stone }}> — {item.missing.join(", ")}</span>
+                </div>
+                <button onClick={() => { if (onTabChange) onTabChange("crops", { editCropId: item.id, editCropField: item.missing[0]?.includes("variety") ? "variety" : "sow_date" }); }}
+                  style={{ fontSize: 12, fontWeight: 700, color: C.amber, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  Update →
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Tips section */}
+      {/* ── TIPS ───────────────────────────────────────────────────────────── */}
       <TipsSection />
 
-      {/* Harvest forecast — collapsible */}
-      {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
-        <CollapsibleHarvestForecast
-          items={data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id))}
-          onHarvest={(h) => setPendingHarvest(h)}
-          pending={pendingHarvest}
-        />
-      )}
-      {/* Share my garden — below harvest forecast */}
+      {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
       <button onClick={() => setShowShareGarden(true)}
         style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
