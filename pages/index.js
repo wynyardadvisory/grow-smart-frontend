@@ -3060,9 +3060,11 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
 
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
-  const [locations, setLocations] = useState([]);
-  const [crops,     setCrops]     = useState([]);
-  const [loading,   setLoading]   = useState(true);
+  const GARDEN_CACHE = "vercro_garden_v1";
+  const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
+  const [locations, setLocations] = useState(_cachedGarden?.locs || []);
+  const [crops,     setCrops]     = useState(_cachedGarden?.cropsData || []);
+  const [loading,   setLoading]   = useState(!_cachedGarden);
   const [error,     setError]     = useState(null);
 
   // Add area form state
@@ -3073,13 +3075,11 @@ function GardenView({ onNavigateAdd }) {
   const [saving,          setSaving]          = useState(false);
 
   const load = useCallback(async () => {
+    // Fetch fresh
     try {
-      const [locs, cropsData] = await Promise.all([
-        apiFetch("/locations"),
-        apiFetch("/crops"),
-      ]);
-      setLocations(locs);
-      setCrops(cropsData);
+      const [locs, cropsData] = await Promise.all([apiFetch("/locations"), apiFetch("/crops")]);
+      setLocations(locs); setCrops(cropsData);
+      try { localStorage.setItem(GARDEN_CACHE, JSON.stringify({ locs, cropsData, ts: Date.now() })); } catch(e) {}
     } catch (e) { setError(e.message); }
     setLoading(false);
   }, []);
@@ -3093,6 +3093,7 @@ function GardenView({ onNavigateAdd }) {
       await apiFetch("/areas", { method: "POST", body: JSON.stringify(newArea) });
       setNewArea({ name: "", type: "raised_bed", location_id: "" });
       setShowAddArea(false);
+      try { localStorage.removeItem("vercro_garden_v1"); } catch(e) {}
       await load();
     } catch (e) { setError(e.message); }
     setSaving(false);
@@ -3494,8 +3495,10 @@ function CropGrowthDiary({ crop, onClose }) {
 }
 
 function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
-  const [crops,    setCrops]   = useState([]);
-  const [loading,  setLoading] = useState(true);
+  const CROPS_CACHE = "vercro_crops_v1";
+  const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
+  const [crops,    setCrops]   = useState(_cachedCrops?.cropsData || []);
+  const [loading,  setLoading] = useState(!_cachedCrops);
   const [error,    setError]   = useState(null);
   const [editing,       setEditing]      = useState(null);
 
@@ -3524,24 +3527,19 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const [showFilters,   setShowFilters]   = useState(false);
 
   const load = useCallback(async () => {
+    // Fetch fresh
     try {
-      const [cropsData, areasData] = await Promise.all([
-        apiFetch("/crops"),
-        apiFetch("/areas"),
-      ]);
-      setCrops(cropsData);
-      setAreas(areasData);
-      // Load latest photo for each crop (for thumbnail) — fail silently if table missing
+      const [cropsData, areasData] = await Promise.all([apiFetch("/crops"), apiFetch("/areas")]);
+      setCrops(cropsData); setAreas(areasData);
+      try { localStorage.setItem(CROPS_CACHE, JSON.stringify({ cropsData, areasData, ts: Date.now() })); } catch(e) {}
+      // Load photos in background — non-blocking
       const photoMap = {};
-      try {
-        await Promise.allSettled(cropsData.map(async crop => {
-          try {
-            const photos = await apiFetch(`/crops/${crop.id}/photos`);
-            if (Array.isArray(photos) && photos.length > 0) photoMap[crop.id] = photos[0].photo_url;
-          } catch {}
-        }));
-      } catch {}
-      setCropPhotos(photoMap);
+      Promise.allSettled(cropsData.map(async crop => {
+        try {
+          const photos = await apiFetch(`/crops/${crop.id}/photos`);
+          if (Array.isArray(photos) && photos.length > 0) photoMap[crop.id] = photos[0].photo_url;
+        } catch {}
+      })).then(() => setCropPhotos({...photoMap})).catch(() => {});
     } catch (e) { setError(e.message); }
     setLoading(false);
   }, []);
@@ -3593,6 +3591,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     setSaving(true);
     try {
       await apiFetch(`/crops/${cropId}`, { method: "DELETE" });
+      try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); } catch(e) {}
       setConfirm(null);
       await load();
     } catch (e) { setError(e.message); }
@@ -4120,6 +4119,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       });
 
       if (result.enriching) setEnriching(true);
+      try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
       setStep("done");
       setTimeout(() => {
         setStep("form");
