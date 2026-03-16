@@ -1917,22 +1917,38 @@ function Dashboard({ onTabChange }) {
   const today   = todayISO();
   const weekEnd = weekEndISO();
 
-  // Merge server tasks with any tasks un-completed this session
-  // Pull from raw tasks array to capture overdue tasks too
-  const serverTasks = data.tasks?.tasks || [
-    ...(data.tasks.today     || []),
-    ...(data.tasks.this_week || []),
-    ...(data.tasks.coming_up || []),
-  ];
+  // Use server-deduped groups directly — server handles one-per-crop logic
+  const serverToday    = data.tasks?.today     || [];
+  const serverThisWeek = data.tasks?.this_week || [];
+  const serverComingUp = data.tasks?.coming_up || [];
+  const serverTasks    = data.tasks?.tasks     || [...serverToday, ...serverThisWeek, ...serverComingUp];
+
+  // Merge any undone tasks back in
   const allTaskIds = new Set(serverTasks.map(t => t.id));
-  const extraTasks = undone.filter(t => !allTaskIds.has(t.id)); // undone tasks not yet in server data
+  const extraTasks = undone.filter(t => !allTaskIds.has(t.id));
   const allTasks   = [...serverTasks, ...extraTasks];
 
-  // Re-group with undone tasks included — overdue tasks surface in today
+  const URGENCY_RANK = { high: 3, medium: 2, low: 1 };
+  const dedupByCrop = (items) => {
+    const seen = new Map();
+    for (const t of [...items].sort((a,b) => {
+      const uDiff = (URGENCY_RANK[b.urgency]||0) - (URGENCY_RANK[a.urgency]||0);
+      return uDiff !== 0 ? uDiff : (a.due_date||"").localeCompare(b.due_date||"");
+    })) {
+      const key = t.crop?.name || t.rule_id || t.id;
+      if (!seen.has(key)) seen.set(key, t);
+    }
+    return [...seen.values()].sort((a,b) => {
+      const uDiff = (URGENCY_RANK[b.urgency]||0) - (URGENCY_RANK[a.urgency]||0);
+      return uDiff !== 0 ? uDiff : (a.due_date||"").localeCompare(b.due_date||"");
+    });
+  };
+
+  // Use server groups but apply frontend dedup too (catches undone tasks)
   const grouped = {
-    today:     allTasks.filter(t => t.due_date <= today),
-    this_week: allTasks.filter(t => t.due_date > today && t.due_date <= weekEnd),
-    coming_up: allTasks.filter(t => t.due_date > weekEnd),
+    today:     dedupByCrop([...serverToday,    ...extraTasks.filter(t => t.due_date <= today)]),
+    this_week: dedupByCrop([...serverThisWeek, ...extraTasks.filter(t => t.due_date > today && t.due_date <= weekEnd)]),
+    coming_up: serverComingUp, // already deduped server-side
   };
 
   const activeTodayCount = grouped.today.filter(t => !completed.has(t.id)).length;
