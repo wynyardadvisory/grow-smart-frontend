@@ -2798,7 +2798,7 @@ function GardenView({ onNavigateAdd }) {
                         </button>
                         <button onClick={() => onNavigateAdd({ area_id: area.id })}
                           style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
-                          + Add crop
+                          + Add
                         </button>
                         <button onClick={() => setConfirmArea(area.id)}
                           style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.red, cursor: "pointer" }}>
