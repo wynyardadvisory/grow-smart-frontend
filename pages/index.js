@@ -320,9 +320,11 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
     }
   };
 
-  // Split suggestions into crops and prep
-  const cropSuggestions = suggestions.filter(s => s.type === "crop");
-  const prepSuggestion  = suggestions.find(s => s.type === "prep");
+  // Split suggestions — handle both empty-bed and populated-bed types
+  const cropSuggestions    = suggestions.filter(s => s.type === "crop" || s.type === "interplant");
+  const companionSuggestions = suggestions.filter(s => s.type === "companion" || s.type === "beneficial");
+  const prepSuggestion     = suggestions.find(s => s.type === "prep");
+  const hasExistingCrops   = cropSuggestions.length === 0 && companionSuggestions.length > 0;
 
   // Tapping a crop card closes the sheet and pre-fills the Add Crop form
   const handleCropTap = (s) => {
@@ -336,7 +338,7 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>What to plant?</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{hasExistingCrops ? "Companion suggestions" : "What to plant?"}</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{area.name}</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
@@ -396,6 +398,38 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
                       <div style={{ fontSize: 13, color: C.stone, marginBottom: s.sow_note || s.companion_note ? 8 : 0, lineHeight: 1.4 }}>{s.reason}</div>
                       {s.sow_note && <div style={{ fontSize: 12, color: C.forest, marginBottom: 4 }}>🗓 {s.sow_note}</div>}
                       {s.companion_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>🤝 {s.companion_note}</div>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Companion / beneficial suggestions for populated beds */}
+            {companionSuggestions.length > 0 && (
+              <>
+                <SectionLabel>{hasExistingCrops ? "Companions & beneficials" : "Companion plants"}</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+                  {companionSuggestions.map((s, i) => (
+                    <div key={i} style={{ background: "#faf5ff", border: `1px solid #d4b8e8`, borderLeft: `3px solid #7b5ea7`, borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 22 }}>{getCropEmoji(s.crop)}</span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{s.crop}</div>
+                            {s.variety && <div style={{ fontSize: 12, color: "#7b5ea7", fontWeight: 600, marginTop: 1 }}>{s.variety}</div>}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#7b5ea7", background: "#f0ebf8", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
+                          {s.type === "companion" ? "Companion" : "Beneficial"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 13, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.4 }}>{s.reason}</div>
+                      {s.companion_note && (
+                        <div style={{ fontSize: 12, color: "#7b5ea7", background: "#f0ebf8", borderRadius: 8, padding: "6px 10px", marginBottom: 6, lineHeight: 1.4 }}>
+                          🌿 {s.companion_note}
+                        </div>
+                      )}
+                      {s.sow_note && <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic" }}>📅 {s.sow_note}</div>}
                     </div>
                   ))}
                 </div>
@@ -2831,14 +2865,12 @@ function GardenView({ onNavigateAdd }) {
                       </div>
                     )}
                     {areaCrops.length === 0 && (
-                      <>
-                        <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
-                        <button onClick={() => setSuggestArea(area)}
-                          style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                          🌱 What should I plant here?
-                        </button>
-                      </>
+                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
                     )}
+                    <button onClick={() => setSuggestArea(area)}
+                      style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                      {areaCrops.length === 0 ? "🌱 What should I plant here?" : "💡 Companion & planting suggestions"}
+                    </button>
                   </>
                 )}
               </div>
