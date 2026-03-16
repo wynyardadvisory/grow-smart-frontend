@@ -2048,6 +2048,7 @@ function Dashboard({ onTabChange }) {
           <div>
             <div style={{ fontSize: 11, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", lineHeight: 1.1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
+            <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>Here&apos;s what&apos;s happening in your garden today</div>
             {data.weather ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, opacity: 0.85 }}>
                 {data.weather.icon_code && <img src={`https://openweathermap.org/img/wn/${data.weather.icon_code}.png`} alt="" style={{ width: 24, height: 24 }} />}
@@ -2108,9 +2109,11 @@ function Dashboard({ onTabChange }) {
           </div>
         )}
 
-        {/* Remaining today tasks */}
+        {/* Also today — secondary tasks */}
         {remainingToday.length > 0 && (
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Also today</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {remainingToday.map(t => (
               <div key={t.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 18, flexShrink: 0 }}>{getCropEmoji(t.crop?.name || "")}</span>
@@ -2122,7 +2125,7 @@ function Dashboard({ onTabChange }) {
                   {t.crop_instance_id && (
                     <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
                       style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", padding: "0 4px", textDecoration: "underline", flexShrink: 0 }}>
-                      Struggling?
+                      Having problems?
                     </button>
                   )}
                   <button onClick={() => completeTask(t)}
@@ -2132,6 +2135,7 @@ function Dashboard({ onTabChange }) {
                 </div>
               </div>
             ))}
+            </div>
           </div>
         )}
 
@@ -2159,6 +2163,7 @@ function Dashboard({ onTabChange }) {
         crops={data.crops || []}
         allTasks={allTasks}
         missingItems={[]}
+        sectionLabel="Quick crop checks"
         onNavigateCrop={(cropId, field) => { if (onTabChange) onTabChange("crops", { editCropId: cropId, editCropField: field }); }}
         onDismiss={(updatedCrop) => {
           if (updatedCrop?.id) {
@@ -2235,18 +2240,15 @@ function Dashboard({ onTabChange }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {comingUpByCrop.slice(0, 5).map(({ name, emoji, tasks }) => (
               <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: tasks.length > 1 ? 8 : 4 }}>
-                  <span style={{ fontSize: 18 }}>{emoji}</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{name}</span>
-                  <span style={{ fontSize: 11, color: C.stone, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 20 }}>{emoji}</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{name}</span>
+                  <span style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
                 </div>
                 {tasks.slice(0, 3).map((t, i) => (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: i > 0 ? 6 : 0, borderTop: i > 0 ? `1px solid ${C.border}` : "none", marginTop: i > 0 ? 6 : 0 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.sage, flexShrink: 0 }} />
-                    <div style={{ flex: 1, fontSize: 12, color: C.stone, lineHeight: 1.3 }}>{t.action}</div>
-                    <span style={{ fontSize: 11, color: C.forest, fontWeight: 600, flexShrink: 0 }}>
-                      {new Date(t.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </span>
+                  <div key={t.id} style={{ fontSize: 13, color: C.stone, lineHeight: 1.4, paddingTop: i > 0 ? 5 : 0, borderTop: i > 0 ? `1px solid ${C.border}` : "none", marginTop: i > 0 ? 5 : 0, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <span style={{ color: C.sage, flexShrink: 0, marginTop: 1 }}>›</span>
+                    <span style={{ flex: 1 }}>{t.action}</span>
                   </div>
                 ))}
               </div>
@@ -2428,7 +2430,7 @@ const STAGE_QUESTIONS = {
   harvesting: { emoji: "🔵", q: "Is this crop ready to start harvesting?" },
 };
 
-function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavigateCrop }) {
+function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavigateCrop, sectionLabel }) {
   const [open,       setOpen]       = useState(false);
   const [actioning,  setActioning]  = useState(null);
   const [dismissed,  setDismissed]  = useState(new Set());
@@ -2486,6 +2488,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
   const allPrompts     = [...sowMethodPrompts, ...sowDateMissing, ...lifecyclePrompts, ...perennialPrompts, ...otherMissing].slice(0, 3);
 
   if (allPrompts.length === 0) return null;
+  // Render with optional section label
 
   const handleLifecycle = async (crop, nextStage, confirmed) => {
     setActioning(crop.id);
@@ -2537,12 +2540,15 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
   };
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 20 }}>
+      {sectionLabel && (
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{sectionLabel}</div>
+      )}
       <div onClick={() => setOpen(v => !v)}
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌱</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: C.forest }}>Quick crop check</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: C.forest }}>Crop checks</span>
           <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
