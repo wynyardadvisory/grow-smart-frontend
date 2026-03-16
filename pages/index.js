@@ -3043,7 +3043,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     if (editCropId && crops.length > 0) {
       const crop = crops.find(c => c.id === editCropId);
       if (crop) {
-        openEdit(crop);
+        startEdit(crop);
         if (onEditOpened) onEditOpened();
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
