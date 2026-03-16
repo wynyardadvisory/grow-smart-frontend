@@ -1943,11 +1943,32 @@ function Dashboard({ onTabChange }) {
     } catch(e) {}
   };
 
-  const load = useCallback(async () => {
+  const CACHE_KEY = "vercro_dashboard_v1";
+
+  const load = useCallback(async (isBackground = false) => {
+    // Show cached data instantly if available
+    if (!isBackground) {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data: cachedData, ts } = JSON.parse(cached);
+          const age = Date.now() - ts;
+          if (age < 5 * 60 * 1000) { // under 5 minutes — show immediately
+            setData(cachedData);
+            setLoading(false);
+          }
+        }
+      } catch(e) {}
+    }
+
+    // Always fetch fresh in background
     try {
       const d = await apiFetch("/dashboard");
       setData(d);
-    } catch (e) { setError(e.message); }
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
+    } catch (e) {
+      if (!isBackground) setError(e.message);
+    }
     setLoading(false);
   }, []);
 
@@ -2007,9 +2028,19 @@ function Dashboard({ onTabChange }) {
     }
   };
 
-  if (loading) return <Spinner />;
-  if (error)   return <ErrorMsg msg={error} />;
-  if (!data)   return null;
+  if (error && !data) return <ErrorMsg msg={error} />;
+  if (loading && !data) return (
+    <div style={{ padding: "0 0 80px" }}>
+      {/* Skeleton header */}
+      <div style={{ background: "linear-gradient(135deg, #2F5D50 0%, #1e3d33 100%)", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, height: 100 }} />
+      {/* Skeleton cards */}
+      {[1,2,3].map(i => (
+        <div key={i} style={{ background: "#f0f0f0", borderRadius: 12, height: 80, marginBottom: 12, animation: "pulse 1.5s ease-in-out infinite" }} />
+      ))}
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+    </div>
+  );
+  if (!data) return null;
 
   const today   = todayISO();
   const weekEnd = weekEndISO();
