@@ -2044,13 +2044,14 @@ function Dashboard({ onTabChange }) {
       {[
         { label: "This Week",  items: grouped.today.filter(t     => !completed.has(t.id)) },
         { label: "Coming Up",  items: grouped.this_week.filter(t => !completed.has(t.id)) },
-        { label: "Later",      items: grouped.coming_up.filter(t => !completed.has(t.id)) },
-      ].map(({ label, items }) => items?.length > 0 && (
+        { label: "Later",      items: grouped.coming_up.filter(t => !completed.has(t.id)), upcoming: true },
+      ].map(({ label, items, upcoming }) => items?.length > 0 && (
         <div key={label}>
           <SectionLabel>{label}</SectionLabel>
           {items.map(t => (
             <TaskCard key={t.id} task={t} completed={false}
-              onComplete={() => completeTask(t)}
+              onComplete={() => !upcoming && completeTask(t)}
+              isUpcoming={!!upcoming}
               showUndo={false}
               onUndo={null}
             />
@@ -2462,7 +2463,7 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
 }
 
 
-function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
+function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = false }) {
   const [animating, setAnimating] = useState(false);
   const [expanded,  setExpanded]  = useState(false);
 
@@ -2537,6 +2538,13 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginTop: 2, lineHeight: 1.4 }}>{task.action}</div>
 
+            {/* Upcoming date label */}
+            {isUpcoming && task.due_date && (
+              <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 4 }}>
+                📅 Due {new Date(task.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              </div>
+            )}
+
             {/* Pills row */}
             <div style={{ display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
               {/* Timing pill */}
@@ -2586,7 +2594,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo }) {
           </div>
 
           {/* Complete button */}
-          <div onClick={handleComplete} style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${animating || completed ? C.leaf : C.border}`, background: animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s", cursor: completed ? "default" : "pointer" }}>
+          <div onClick={isUpcoming ? undefined : handleComplete} style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${isUpcoming ? C.border : animating || completed ? C.leaf : C.border}`, background: isUpcoming ? C.offwhite : animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s", cursor: isUpcoming ? "default" : completed ? "default" : "pointer" }}>
             {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
           </div>
         </div>
