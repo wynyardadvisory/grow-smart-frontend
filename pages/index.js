@@ -301,11 +301,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
         setSuggestions(existing.suggestions);
         setGeneratedAt(existing.generated_at);
         setState("ready");
-      } else if (hasCrops) {
-        // Populated bed with no suggestions yet — generate companion suggestions
-        generate();
       } else {
-        // Empty bed — generate planting suggestions
         generate();
       }
     } catch (e) { setState("error"); }
@@ -3205,7 +3201,7 @@ function GardenView({ onNavigateAdd }) {
       {suggestArea && (
         <PlantingSuggestionsSheet
           area={suggestArea}
-          hasCrops={(cropsByArea[suggestArea?.id] || []).filter(c => c.status !== "planned").length > 0}
+          hasCrops={(suggestArea?.cropCount || 0) > 0}
           onClose={(result) => {
             setSuggestArea(null);
             if (result?.prefill && onNavigateAdd) {
@@ -3370,7 +3366,7 @@ function GardenView({ onNavigateAdd }) {
                     {areaCrops.length === 0 && (
                       <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
                     )}
-                    <button onClick={() => setSuggestArea(area)}
+                    <button onClick={() => setSuggestArea({ ...area, cropCount: (cropsByArea[area.id] || []).filter(c => c.status !== 'planned').length })}
                       style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                       {areaCrops.length === 0 ? "🌱 What should I plant here?" : "💡 Companion & planting suggestions"}
                     </button>
