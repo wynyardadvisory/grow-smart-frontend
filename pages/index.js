@@ -286,7 +286,7 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
 // ── Planting Suggestions Sheet ────────────────────────────────────────────────
 
 // ── Planting Suggestions Sheet ────────────────────────────────────────────────
-function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
+function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }) {
   const [state,       setState]       = useState("loading"); // loading | generating | ready | error
   const [suggestions, setSuggestions] = useState([]);
   const [generatedAt, setGeneratedAt] = useState(null);
@@ -301,7 +301,11 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
         setSuggestions(existing.suggestions);
         setGeneratedAt(existing.generated_at);
         setState("ready");
+      } else if (hasCrops) {
+        // Populated bed with no suggestions yet — generate companion suggestions
+        generate();
       } else {
+        // Empty bed — generate planting suggestions
         generate();
       }
     } catch (e) { setState("error"); }
@@ -315,8 +319,14 @@ function PlantingSuggestionsSheet({ area, onClose, onAddCrop }) {
       setGeneratedAt(result.generated_at);
       setState("ready");
     } catch (e) {
-      console.error(e);
-      setState("error");
+      // 400 = area has crops, no suggestions generated yet — show empty state
+      if (e.message?.includes("400") || e.message?.includes("not empty")) {
+        setSuggestions([]);
+        setState("ready");
+      } else {
+        console.error(e);
+        setState("error");
+      }
     }
   };
 
@@ -3195,6 +3205,7 @@ function GardenView({ onNavigateAdd }) {
       {suggestArea && (
         <PlantingSuggestionsSheet
           area={suggestArea}
+          hasCrops={(cropsByArea[suggestArea?.id] || []).filter(c => c.status !== "planned").length > 0}
           onClose={(result) => {
             setSuggestArea(null);
             if (result?.prefill && onNavigateAdd) {
