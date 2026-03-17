@@ -376,6 +376,13 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
                 Based on your garden in {new Date(generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
               </div>
             )}
+            {suggestions.length === 0 && (
+              <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>No suggestions yet</div>
+                <div style={{ fontSize: 13 }}>Suggestions are generated for empty beds. Add crops to get companion planting ideas.</div>
+              </div>
+            )}
 
             {/* Crop suggestions — tappable, go to Add Crop pre-filled */}
             {cropSuggestions.length > 0 && (
