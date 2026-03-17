@@ -3508,6 +3508,220 @@ function CropGrowthDiary({ crop, onClose }) {
   );
 }
 
+// ── Crop Timeline Sheet ───────────────────────────────────────────────────────
+
+function CropTimelineSheet({ crop, onClose }) {
+  const [timeline,     setTimeline]     = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [confirming,   setConfirming]   = useState(null); // node key being confirmed
+  const [actionResult, setActionResult] = useState(null); // {key, result}
+
+  useEffect(() => {
+    apiFetch(`/crops/${crop.id}`)
+      .then(d => { setTimeline(d.timeline); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [crop.id]);
+
+  const confirmStage = async (node) => {
+    if (!node.confirm_symptom_code) return;
+    setConfirming(node.key);
+    try {
+      await apiFetch(`/crops/${crop.id}/observe`, {
+        method: "POST",
+        body: JSON.stringify({
+          observation_type: "stage",
+          symptom_code: node.confirm_symptom_code,
+          confirmed_stage: node.key,
+        }),
+      });
+      setActionResult({ key: node.key, result: "confirmed" });
+      // Reload timeline
+      const d = await apiFetch(`/crops/${crop.id}`);
+      setTimeline(d.timeline);
+    } catch(e) { console.error(e); }
+    setConfirming(null);
+  };
+
+  const notYet = (node) => {
+    setActionResult({ key: node.key, result: "not_yet" });
+  };
+
+  // Node dot colours
+  const nodeStyle = (status) => ({
+    completed: { dot: C.forest,   ring: "none",                    line: C.forest + "60" },
+    current:   { dot: C.leaf,     ring: `0 0 0 3px ${C.leaf}33`,  line: C.border },
+    upcoming:  { dot: "#fff",     ring: "none",                    line: C.border },
+  }[status] || { dot: C.border, ring: "none", line: C.border });
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "92vh", overflowY: "auto" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Growth timeline</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
+        </div>
+
+        {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
+
+        {!loading && !timeline && (
+          <div style={{ textAlign: "center", padding: "32px 0", color: C.stone }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Timeline not available</div>
+            <div style={{ fontSize: 13 }}>Add a sow date and variety to unlock a more accurate timeline.</div>
+          </div>
+        )}
+
+        {!loading && timeline && (() => {
+          const { nodes, current_stage_label, current_stage_description, next_stage_label, next_stage_date, confidence } = timeline;
+
+          return (
+            <>
+              {/* Current stage summary card */}
+              <div style={{ background: C.forest, borderRadius: 14, padding: "16px 18px", marginBottom: 24, color: "#fff" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, opacity: 0.75, marginBottom: 6 }}>Current stage</div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", marginBottom: 8 }}>{current_stage_label}</div>
+                <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9 }}>{current_stage_description}</div>
+                {confidence === "low" && (
+                  <div style={{ marginTop: 10, fontSize: 11, opacity: 0.7, fontStyle: "italic" }}>
+                    Add a sow date and variety for more accurate predictions
+                  </div>
+                )}
+              </div>
+
+              {/* Vertical timeline */}
+              <div style={{ position: "relative", paddingLeft: 28 }}>
+                {nodes.map((node, i) => {
+                  const { dot, ring, line } = nodeStyle(node.status);
+                  const isLast    = i === nodes.length - 1;
+                  const isCurrent = node.status === "current";
+                  const isUpcoming = node.status === "upcoming";
+                  const isDone    = node.status === "completed";
+                  const showAction = (isCurrent || isUpcoming) && node.can_confirm && i <= nodes.findIndex(n => n.status === "current") + 2;
+                  const actionDone = actionResult?.key === node.key;
+
+                  return (
+                    <div key={node.key} style={{ position: "relative", paddingBottom: isLast ? 0 : 24 }}>
+                      {/* Connecting line */}
+                      {!isLast && (
+                        <div style={{ position: "absolute", left: -20, top: 20, width: 2, bottom: 0, background: isDone ? C.forest + "60" : C.border }} />
+                      )}
+
+                      {/* Dot */}
+                      <div style={{
+                        position: "absolute", left: -26, top: 4,
+                        width: 14, height: 14, borderRadius: "50%",
+                        background: dot,
+                        border: isDone ? "none" : `2px solid ${isCurrent ? C.leaf : C.border}`,
+                        boxShadow: ring,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {isDone && (
+                          <svg width="8" height="8" viewBox="0 0 8 8">
+                            <path d="M1 4l2 2 4-4" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+
+                      {/* Node content */}
+                      <div style={{
+                        background: isCurrent ? C.forest + "08" : "#fff",
+                        border: `1px solid ${isCurrent ? C.forest + "30" : C.border}`,
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        opacity: isUpcoming && !node.display_date ? 0.6 : 1,
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: isCurrent ? C.forest : isDone ? "#1a1a1a" : C.stone, fontFamily: "serif" }}>
+                            {node.label}
+                          </div>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, marginLeft: 8 }}>
+                            {isCurrent && (
+                              <span style={{ background: C.forest, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                Now
+                              </span>
+                            )}
+                            {node.source === "observation" && (
+                              <span style={{ background: C.leaf + "22", color: C.leaf, fontSize: 10, borderRadius: 20, padding: "2px 7px" }}>
+                                Confirmed
+                              </span>
+                            )}
+                            {node.source === "user" && isDone && (
+                              <span style={{ background: C.forest + "15", color: C.forest, fontSize: 10, borderRadius: 20, padding: "2px 7px" }}>
+                                Logged
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {node.formatted_date && (
+                          <div style={{ fontSize: 12, color: isDone ? C.stone : isCurrent ? C.forest : C.stone, marginBottom: node.description ? 6 : 0 }}>
+                            {isDone ? node.formatted_date : `Expected ${node.formatted_date}`}
+                            {node.harvest_window_label && (
+                              <span style={{ marginLeft: 6, fontSize: 11, color: C.amber, fontWeight: 600 }}>
+                                {node.harvest_window_label}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {(isCurrent || isDone) && node.description && (
+                          <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5, marginTop: 2 }}>
+                            {node.description}
+                          </div>
+                        )}
+
+                        {/* Confirm / not yet / problem buttons */}
+                        {showAction && !actionDone && (
+                          <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
+                            <button
+                              onClick={() => confirmStage(node)}
+                              disabled={confirming === node.key}
+                              style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "none", background: C.leaf, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              {confirming === node.key ? "Saving…" : isCurrent ? "✓ Confirm" : "✓ Yes, started"}
+                            </button>
+                            <button
+                              onClick={() => notYet(node)}
+                              style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff", color: C.stone, fontSize: 12, cursor: "pointer" }}>
+                              Not yet
+                            </button>
+                          </div>
+                        )}
+
+                        {actionDone && actionResult.result === "confirmed" && (
+                          <div style={{ marginTop: 8, fontSize: 12, color: C.leaf, fontWeight: 600 }}>✓ Confirmed — timeline updated</div>
+                        )}
+                        {actionDone && actionResult.result === "not_yet" && (
+                          <div style={{ marginTop: 8, fontSize: 12, color: C.stone }}>OK — we'll keep this as upcoming</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer confidence note */}
+              <div style={{ marginTop: 20, padding: "12px 14px", background: C.offwhite, borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.5 }}>
+                  {timeline.observation_offset_days !== 0 && Math.abs(timeline.observation_offset_days) > 0
+                    ? `Timeline adjusted ${Math.abs(timeline.observation_offset_days)} days ${timeline.observation_offset_days > 0 ? "later" : "earlier"} based on your observations.`
+                    : "Dates are estimated from your sow date and variety data. Confirm stages as they happen to improve accuracy."
+                  }
+                </div>
+              </div>
+            </>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
 function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
@@ -3533,6 +3747,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const [saving,        setSaving]        = useState(false);
   const [confirm,       setConfirm]       = useState(null);
   const [diary,         setDiary]         = useState(null);  // crop to show diary for
+  const [timelineCrop,  setTimelineCrop]  = useState(null);  // crop to show timeline for
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
@@ -3659,6 +3874,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
+      {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} />}
       {/* Header + filter/sort controls */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -3888,6 +4104,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => setTimelineCrop(crop)}
+                    style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+                    Timeline
+                  </button>
                   <button onClick={() => setDiary(crop)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
                     📷
