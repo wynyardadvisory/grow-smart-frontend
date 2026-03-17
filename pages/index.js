@@ -2104,6 +2104,8 @@ function Dashboard({ onTabChange }) {
   const [strugglingCrop,     setStrugglingCrop]     = useState(null);
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
+  const [showShareNudge,     setShowShareNudge]     = useState(false);
+  const [showReferral,       setShowReferral]       = useState(false);
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -2162,6 +2164,15 @@ function Dashboard({ onTabChange }) {
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
+      // Nudge to share after 5th task — high-emotion moment
+      const newCount = (data?.tasks_completed_this_week || 0) + 1;
+      const totalKey = "vercro_total_completed";
+      const total = parseInt(localStorage.getItem(totalKey) || "0") + 1;
+      localStorage.setItem(totalKey, String(total));
+      if (total === 5 && !localStorage.getItem("vercro_share_nudge_shown")) {
+        setTimeout(() => setShowShareNudge(true), 800);
+        localStorage.setItem("vercro_share_nudge_shown", "1");
+      }
     } catch {
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
       setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
@@ -2618,9 +2629,95 @@ function Dashboard({ onTabChange }) {
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
       <button onClick={() => setShowShareGarden(true)}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
         🌱 Share my garden
       </button>
+
+      {/* Invite a friend button */}
+      <button onClick={() => setShowReferral(true)}
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.stone, fontWeight: 600, fontSize: 13 }}>
+        👋 Invite a gardening friend — it's free
+      </button>
+
+      {/* ── SHARE NUDGE MODAL ──────────────────────────────────────────────── */}
+      {showShareNudge && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setShowShareNudge(false)}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 480 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>🎉</div>
+              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>5 tasks done!</div>
+              <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
+                You're making real progress. Share your garden with friends — it takes 30 seconds and looks great on Instagram.
+              </div>
+            </div>
+            <button onClick={() => { setShowShareNudge(false); setShowShareGarden(true); }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              🌱 Share my garden
+            </button>
+            <button onClick={() => setShowShareNudge(false)}
+              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── REFERRAL SHEET ─────────────────────────────────────────────────── */}
+      {showReferral && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setShowReferral(false)}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>👋</div>
+              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Invite a friend</div>
+              <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
+                Know a gardener who'd love this? Send them the link — Vercro is completely free to use.
+              </div>
+            </div>
+
+            <div style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1, fontSize: 13, color: C.forest, fontWeight: 600, wordBreak: "break-all" }}>
+                https://vercro.com
+              </div>
+              <button onClick={() => { navigator.clipboard.writeText("https://vercro.com"); }}
+                style={{ flexShrink: 0, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                Copy
+              </button>
+            </div>
+
+            <button onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: "Vercro — know exactly what to do in your garden", text: "I've been using Vercro to plan my garden — it tells you exactly what to do each day based on your crops and the weather. Free to use:", url: "https://vercro.com" });
+              } else {
+                navigator.clipboard.writeText("https://vercro.com");
+              }
+            }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              📤 Share link
+            </button>
+
+            <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+              <a href={`https://wa.me/?text=${encodeURIComponent("I've been using Vercro to keep on top of my garden — it tells you exactly what to do each day. Free to use: https://vercro.com")}`}
+                target="_blank" rel="noreferrer"
+                style={{ flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: 12, padding: "12px", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
+                💬 WhatsApp
+              </a>
+              <a href={`mailto:?subject=You'd love this gardening app&body=${encodeURIComponent("Hey! I've been using Vercro to keep on top of my garden — it tells you exactly what tasks to do each day based on your crops and the weather. Completely free: https://vercro.com")}`}
+                style={{ flex: 1, background: C.offwhite, color: C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
+                ✉️ Email
+              </a>
+            </div>
+
+            <button onClick={() => setShowReferral(false)}
+              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Struggling plant confirmation sheet */}
       {strugglingCrop && (
