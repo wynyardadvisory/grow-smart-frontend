@@ -1497,7 +1497,7 @@ function ShareGardenSheet({ onClose }) {
       seen.add(text); return true;
     }).slice(0, 3);
 
-    const rowH   = 88;
+    const rowH   = 70;
     const rowGap = 8;
     deduped.forEach((t, i) => {
       const rowY = y + i * (rowH + rowGap);
@@ -1515,21 +1515,11 @@ function ShareGardenSheet({ onClose }) {
       ctx.fillStyle = "#fff"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
       ctx.fillText("✓", PAD + 44, rowY + rowH / 2 + 8);
 
-      // Task name — uses user override if set, otherwise generated label
+      // Task name — centred vertically in row
       ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Georgia, serif"; ctx.textAlign = "left";
-      ctx.fillText(label, PAD + 86, rowY + 36);
+      ctx.fillText(label, PAD + 86, rowY + rowH / 2 + 12);
 
-      // Variety + date subline
-      const cropName  = t.crop?.name || "";
-      const variety   = t.crop?.variety ? ` · ${typeof t.crop.variety === "object" ? t.crop.variety.name : t.crop.variety}` : "";
-      const dateStr   = t.completed_at
-        ? new Date(t.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-        : "";
-      const subline = [cropName + variety, dateStr].filter(Boolean).join("  ·  ");
-      if (subline) {
-        ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "22px sans-serif";
-        ctx.fillText(subline, PAD + 86, rowY + 66);
-      }
+      // No subline — task label is user-editable and self-explanatory
     });
 
     y += deduped.length * (rowH + rowGap) + 24;
