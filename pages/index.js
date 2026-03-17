@@ -1660,28 +1660,92 @@ What's on your list this month?
   // Human-readable achievement text for social share card
   const shortTask = (t) => {
     const crop = t.crop?.name || "";
+    const c    = crop.toLowerCase();
     const action = (t.action || "").toLowerCase();
-    if (action.includes("plant out") || action.includes("transplant"))
-      return crop ? `Planted out ${crop.toLowerCase()}` : "Planted out";
-    if (action.includes("sow") || action.includes("direct sow"))
-      return crop ? `Sowed ${crop.toLowerCase()}` : "Sowed seeds";
-    if (action.includes("harvest"))
-      return crop ? `Harvested ${crop.toLowerCase()}` : "Harvested";
-    if (action.includes("feed") || action.includes("fertili"))
-      return crop ? `Fed ${crop.toLowerCase()}` : "Fed plants";
+    const type   = (t.task_type || "").toLowerCase();
+
+    // Sowing / planting
+    if (action.includes("sow indoors") || action.includes("sow inside"))
+      return crop ? `Sowed ${c} indoors` : "Sowed seeds indoors";
+    if (action.includes("direct sow") || action.includes("sow outdoors") || action.includes("sow outside"))
+      return crop ? `Direct sowed ${c}` : "Direct sowed seeds";
+    if (action.includes("sow") && !action.includes("window"))
+      return crop ? `Sowed ${c}` : "Sowed seeds";
+    if (action.includes("plant out") || action.includes("planted out"))
+      return crop ? `Planted out ${c}` : "Planted out";
+    if (action.includes("transplant"))
+      return crop ? `Transplanted ${c}` : "Transplanted";
+    if (action.includes("chit") || action.includes("tuber"))
+      return crop ? `Planted ${c}` : "Planted out";
+
+    // Feeding
+    if (action.includes("feed") || action.includes("fertili") || type === "feed")
+      return crop ? `Fed ${c}` : "Fed plants";
+
+    // Harvesting
+    if (action.includes("harvest") || action.includes("pick") || action.includes("ready to harvest") || type === "harvest")
+      return crop ? `Harvested ${c}` : "Harvested";
+
+    // Watering
     if (action.includes("water"))
-      return crop ? `Watered ${crop.toLowerCase()}` : "Watered";
-    if (action.includes("prune") || action.includes("trim"))
-      return crop ? `Pruned ${crop.toLowerCase()}` : "Pruned";
-    if (action.includes("pot on") || action.includes("repot"))
-      return crop ? `Potted on ${crop.toLowerCase()}` : "Potted on";
+      return crop ? `Watered ${c}` : "Watered plants";
+
+    // Pruning / cutting
+    if (action.includes("prune") || action.includes("trim") || action.includes("cut back") || action.includes("deadhead"))
+      return crop ? `Pruned ${c}` : "Pruned";
+
+    // Pest / disease
+    if (action.includes("pest") || action.includes("aphid") || action.includes("slug") || action.includes("inspect") || action.includes("treat"))
+      return crop ? `Checked ${c} for pests` : "Checked for pests";
+
+    // Protection / frost
+    if (action.includes("protect") || action.includes("fleece") || action.includes("cover") || action.includes("frost"))
+      return crop ? `Protected ${c} from frost` : "Covered plants";
+
+    // Hardening off
+    if (action.includes("harden"))
+      return crop ? `Hardened off ${c}` : "Hardened off seedlings";
+
+    // Thinning
     if (action.includes("thin"))
-      return crop ? `Thinned ${crop.toLowerCase()}` : "Thinned seedlings";
-    if (action.includes("weed"))   return "Weeded the bed";
-    if (action.includes("mulch"))  return "Applied mulch";
-    if (action.includes("stake") || action.includes("support"))
-      return crop ? `Staked ${crop.toLowerCase()}` : "Added support";
-    return crop ? `Tended ${crop.toLowerCase()}` : "Completed task";
+      return crop ? `Thinned ${c}` : "Thinned seedlings";
+
+    // Weeding / mulching
+    if (action.includes("weed"))  return "Weeded the bed";
+    if (action.includes("mulch")) return crop ? `Mulched ${c}` : "Applied mulch";
+
+    // Staking / supporting
+    if (action.includes("stake") || action.includes("support") || action.includes("tie in") || action.includes("cane"))
+      return crop ? `Staked ${c}` : "Added support";
+
+    // Potting / repotting
+    if (action.includes("pot on") || action.includes("repot"))
+      return crop ? `Potted on ${c}` : "Potted on";
+
+    // Runners / propagation
+    if (action.includes("runner") || action.includes("propagat"))
+      return crop ? `Propagated ${c}` : "Propagated plants";
+
+    // Earthing up
+    if (action.includes("earth up") || action.includes("earthing"))
+      return crop ? `Earthed up ${c}` : "Earthed up";
+
+    // Checking / inspecting
+    if (action.includes("check") || action.includes("inspect") || action.includes("monitor") || type === "check")
+      return crop ? `Checked on ${c}` : "Checked plants";
+
+    // Task type fallbacks — use the type itself if no action match
+    if (type === "sow")       return crop ? `Sowed ${c}` : "Sowed seeds";
+    if (type === "transplant") return crop ? `Transplanted ${c}` : "Transplanted";
+    if (type === "prune")     return crop ? `Pruned ${c}` : "Pruned";
+    if (type === "mulch")     return crop ? `Mulched ${c}` : "Applied mulch";
+    if (type === "weed")      return "Weeded the bed";
+    if (type === "protect")   return crop ? `Protected ${c}` : "Covered plants";
+
+    // Last resort — use the raw action text truncated if it's short enough, otherwise generic
+    const rawAction = (t.action || "").trim();
+    if (rawAction.length > 0 && rawAction.length <= 40) return rawAction;
+    return crop ? `Worked on ${c}` : "Completed a task";
   };
 
   const generateCard = async () => {
