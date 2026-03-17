@@ -1578,53 +1578,6 @@ function ShareGardenSheet({ onClose }) {
     ctx.fillText("vercro.com · grow smarter", W / 2, H - 30);
   };
 
-    // ── Rich dark forest background ───────────────────────────────────────────
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-    bgGrad.addColorStop(0,   "#1e3d33");
-    bgGrad.addColorStop(0.5, "#2F5D50");
-    bgGrad.addColorStop(1,   "#1a3528");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, W, H);
-
-    // Decorative depth circles
-    ctx.beginPath(); ctx.arc(980, 200, 320, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(111,175,99,0.06)"; ctx.fill();
-    ctx.beginPath(); ctx.arc(120, 1750, 380, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.025)"; ctx.fill();
-    ctx.beginPath(); ctx.arc(920, 1430, 200, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(217,164,65,0.06)"; ctx.fill();
-
-    // Subtle dot accents top
-    const dotPositions = [80,160,240, 840,920,1000];
-    dotPositions.forEach(x => {
-      ctx.beginPath(); ctx.arc(x, 210, 5, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fill();
-    });
-
-    // ── Header row: logo pill + date pill ─────────────────────────────────────
-    // Logo pill
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(PAD, 110, 220, 60, 30);
-    else ctx.rect(PAD, 110, 220, 60);
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 32px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", PAD + 110, 152);
-
-    // Date pill
-    const monthName = new Date().toLocaleString("en-GB", { month: "long", year: "numeric" });
-    ctx.fillStyle = "rgba(111,175,99,0.2)";
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(W - PAD - 240, 110, 240, 60, 30);
-    else ctx.rect(W - PAD - 240, 110, 240, 60);
-    ctx.fill();
-    ctx.fillStyle = "#7FB069";
-    ctx.font = "600 28px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(monthName, W - PAD - 120, 150);
-
   // Render preview canvas whenever data/photo/title changes
   const renderPreview = async () => {
     if (!previewRef.current || !data) return;
