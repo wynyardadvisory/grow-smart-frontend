@@ -1363,111 +1363,147 @@ function ShareGardenSheet({ onClose }) {
   const drawCard = async (canvas) => {
     if (!data) return;
     const W = 1080, H = 1920;
-    const SAFE_TOP = 285, SAFE_BOT = 1635;
     const PAD = 60;
     const ctx = canvas.getContext("2d");
 
-    // ── Soft cream background ─────────────────────────────────────────────────
-    ctx.fillStyle = "#F5F2EB";
-    ctx.fillRect(0, 0, W, H);
-    // Subtle green wash at bottom
-    const bgGrad = ctx.createLinearGradient(0, H * 0.6, 0, H);
-    bgGrad.addColorStop(0, "rgba(212,232,206,0)");
-    bgGrad.addColorStop(1, "rgba(212,232,206,0.4)");
+    // ── Rich dark forest background ───────────────────────────────────────────
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0,   "#1e3d33");
+    bgGrad.addColorStop(0.5, "#2F5D50");
+    bgGrad.addColorStop(1,   "#1a3528");
     ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, H * 0.6, W, H * 0.4);
+    ctx.fillRect(0, 0, W, H);
 
-    let y = SAFE_TOP + 80;
+    // Decorative depth circles
+    ctx.beginPath(); ctx.arc(980, 200, 320, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(111,175,99,0.06)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(120, 1750, 380, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.025)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(920, 1430, 200, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(217,164,65,0.06)"; ctx.fill();
 
-    // ── Title — large serif, forest green, centred ────────────────────────────
-    ctx.fillStyle = "#2F5D50";
-    ctx.font = "bold 63px Georgia, serif";
+    // Subtle dot accents top
+    const dotPositions = [80,160,240, 840,920,1000];
+    dotPositions.forEach(x => {
+      ctx.beginPath(); ctx.arc(x, 210, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fill();
+    });
+
+    // ── Header row: logo pill + date pill ─────────────────────────────────────
+    // Logo pill
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(PAD, 110, 220, 60, 30);
+    else ctx.rect(PAD, 110, 220, 60);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 32px Georgia, serif";
     ctx.textAlign = "center";
+    ctx.fillText("🌱 Vercro", PAD + 110, 152);
+
+    // Date pill
+    const monthName = new Date().toLocaleString("en-GB", { month: "long", year: "numeric" });
+    ctx.fillStyle = "rgba(111,175,99,0.2)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(W - PAD - 240, 110, 240, 60, 30);
+    else ctx.rect(W - PAD - 240, 110, 240, 60);
+    ctx.fill();
+    ctx.fillStyle = "#7FB069";
+    ctx.font = "600 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(monthName, W - PAD - 120, 150);
+
+    // ── Title ─────────────────────────────────────────────────────────────────
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 72px Georgia, serif";
+    ctx.textAlign = "center";
+    // Word-wrap title
     const words = title.split(" ");
     const titleLines = [];
     let cur = "";
     words.forEach(w => {
       const test = cur ? cur + " " + w : w;
-      if (ctx.measureText(test).width > W - PAD * 3) { titleLines.push(cur); cur = w; }
+      if (ctx.measureText(test).width > W - PAD * 4) { titleLines.push(cur); cur = w; }
       else cur = test;
     });
     if (cur) titleLines.push(cur);
-    titleLines.forEach((l, i) => ctx.fillText(l, W / 2, y + i * 72));
-    y += titleLines.length * 72 + 30;
+    titleLines.forEach((l, i) => ctx.fillText(l, W / 2, 310 + i * 82));
 
-    // ── Two column: seasonal garden bg always, user photo on left if provided ───
-    const colY = y;
-    const colH = 560;
-    const photoW = 480, photoX = PAD;
-    const taskX = photoX + photoW + 44;
+    let y = 310 + titleLines.length * 82 + 20;
 
-    // Pick seasonal background image — full absolute URL for canvas loading
-    const month = new Date().getMonth(); // 0-11
-    const seasonFile = month >= 2 && month <= 4 ? "garden-spring.jpeg"
-                     : month >= 5 && month <= 7 ? "garden-summer.jpeg"
-                     : month >= 8 && month <= 10 ? "garden-autumn.jpeg"
-                     : "garden-winter.jpeg";
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const seasonBg = `${origin}/${seasonFile}`;
+    // ── Photo section ─────────────────────────────────────────────────────────
+    const photoH = 640;
+    const photoY = y;
 
-    // Load and draw seasonal background across full width, faded
-    try {
-      const bgImg = await new Promise((res, rej) => {
-        const i = new Image();
-        i.crossOrigin = "anonymous";
-        i.onload = () => res(i);
-        i.onerror = rej;
-        i.src = seasonBg;
-      });
-      ctx.save();
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
-      else ctx.rect(PAD, colY, W - PAD * 2, colH);
-      ctx.clip();
-      const scale = Math.max((W - PAD * 2) / bgImg.width, colH / bgImg.height);
-      const sw = Math.round(bgImg.width * scale);
-      const sh = Math.round(bgImg.height * scale);
-      ctx.drawImage(bgImg, PAD + ((W - PAD * 2) - sw) / 2, colY + (colH - sh) / 2, sw, sh);
-      ctx.restore();
-      // Fade overlay — lighter so text pops
-      const fadeGrad = ctx.createLinearGradient(PAD, 0, W - PAD, 0);
-      fadeGrad.addColorStop(0,    "rgba(245,242,235,0.45)");
-      fadeGrad.addColorStop(0.42, "rgba(245,242,235,0.45)");
-      fadeGrad.addColorStop(1,    "rgba(245,242,235,0.92)");
-      ctx.fillStyle = fadeGrad;
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
-      else ctx.rect(PAD, colY, W - PAD * 2, colH);
-      ctx.fill();
-    } catch(e) {
-      // Fallback if image fails to load
-      ctx.fillStyle = "#D4E8CE";
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(PAD, colY, W - PAD * 2, colH, 24);
-      else ctx.rect(PAD, colY, W - PAD * 2, colH);
-      ctx.fill();
-    }
-
-    // User photo on left — overlaid on top of seasonal bg if provided
     if (photo) {
+      // User photo — full resolution, cropped to fill area
       try {
         const img = await new Promise((res, rej) => {
-          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = photo;
+          const i = new Image();
+          i.onload = () => res(i);
+          i.onerror = rej;
+          i.src = photo;
         });
         ctx.save();
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(photoX, colY, photoW, colH, 24);
-        else ctx.rect(photoX, colY, photoW, colH);
+        if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 28);
+        else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
         ctx.clip();
-        const scale = Math.max(photoW / img.width, colH / img.height);
-        const sw = Math.round(img.width * scale);
-        const sh = Math.round(img.height * scale);
-        ctx.drawImage(img, photoX + (photoW - sw) / 2, colY + (colH - sh) / 2, sw, sh);
+        // Cover fit — scale to fill, crop centre
+        const scale = Math.max((W - PAD * 2) / img.width, photoH / img.height);
+        const sw = img.width * scale;
+        const sh = img.height * scale;
+        ctx.drawImage(img,
+          PAD  + ((W - PAD * 2) - sw) / 2,
+          photoY + (photoH - sh) / 2,
+          sw, sh
+        );
+        // Subtle dark vignette at bottom of photo so text reads over it
+        const vigGrad = ctx.createLinearGradient(0, photoY + photoH * 0.5, 0, photoY + photoH);
+        vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+        vigGrad.addColorStop(1, "rgba(0,0,0,0.35)");
+        ctx.fillStyle = vigGrad;
+        ctx.fillRect(PAD, photoY, W - PAD * 2, photoH);
         ctx.restore();
-      } catch(e) {}
+      } catch(e) {
+        // Fallback placeholder
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 28);
+        else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
+        ctx.fill();
+      }
+    } else {
+      // No photo — frosted glass placeholder
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 28);
+      else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 28);
+      else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.font = "36px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Add a garden photo", W / 2, photoY + photoH / 2 + 14);
     }
 
-    // Tasks — left when no photo, right when photo present
+    y = photoY + photoH + 50;
+
+    // Subtle divider
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, y);
+    ctx.lineTo(W - PAD, y);
+    ctx.stroke();
+    y += 40;
+
+    // ── Task rows ─────────────────────────────────────────────────────────────
     const seen = new Set();
     const deduped = (data.completed || []).filter(t => {
       const text = shortTask(t);
@@ -1475,61 +1511,116 @@ function ShareGardenSheet({ onClose }) {
       seen.add(text); return true;
     }).slice(0, 3);
 
-    const effectiveTaskX = photo ? taskX : PAD + 20;
-    const rowSpacing = colH / 3;
     deduped.forEach((t, i) => {
-      const rowY = colY + i * rowSpacing + rowSpacing / 2 - 30;
-      const cx = effectiveTaskX + 32, cy = rowY + 22;
-      ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
-      ctx.fillStyle = "#2F5D50"; ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.font = "bold 34px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("✓", cx, cy + 12);
-      ctx.fillStyle = "#2F5D50"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "left";
-      const taskWords = shortTask(t).split(" ");
-      const mid = Math.ceil(taskWords.length / 2);
-      ctx.fillText(taskWords.slice(0, mid).join(" "), effectiveTaskX + 80, rowY + 12);
-      if (taskWords.slice(mid).length) ctx.fillText(taskWords.slice(mid).join(" "), effectiveTaskX + 80, rowY + 64);
+      const rowH = 110;
+      const rowY = y + i * (rowH + 10);
+
+      // Row background — alternating opacity
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, rowY, W - PAD * 2, rowH, 18);
+      else ctx.rect(PAD, rowY, W - PAD * 2, rowH);
+      ctx.fill();
+
+      // Green check circle
+      ctx.beginPath(); ctx.arc(PAD + 52, rowY + rowH / 2, 30, 0, Math.PI * 2);
+      ctx.fillStyle = "#6FAF63"; ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 28px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("✓", PAD + 52, rowY + rowH / 2 + 10);
+
+      // Task name
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 40px Georgia, serif";
+      ctx.textAlign = "left";
+      ctx.fillText(shortTask(t), PAD + 104, rowY + 44);
+
+      // Variety + date subline
+      const cropName = t.crop?.name || "";
+      const variety  = t.crop?.variety ? ` · ${typeof t.crop.variety === "object" ? t.crop.variety.name : t.crop.variety}` : "";
+      const dateStr  = t.completed_at
+        ? new Date(t.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+        : "";
+      const subline = [cropName + variety, dateStr].filter(Boolean).join("  ·  ");
+      if (subline) {
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.font = "26px sans-serif";
+        ctx.fillText(subline, PAD + 104, rowY + 82);
+      }
     });
 
-    y = colY + colH + 60;
+    y += deduped.length * 120 + 20;
 
-    // ── Stats bar ─────────────────────────────────────────────────────────────
-    const statsBarH = 120;
-    ctx.fillStyle = "#E8E4D8";
+    // ── Stats bar — glassy green ──────────────────────────────────────────────
+    const statsH = 160;
+    const statsGrad = ctx.createLinearGradient(0, y, 0, y + statsH);
+    statsGrad.addColorStop(0, "rgba(111,175,99,0.22)");
+    statsGrad.addColorStop(1, "rgba(111,175,99,0.08)");
+    ctx.fillStyle = statsGrad;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, statsBarH, 18);
-    else ctx.rect(PAD, y, W - PAD * 2, statsBarH);
+    if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, statsH, 24);
+    else ctx.rect(PAD, y, W - PAD * 2, statsH);
     ctx.fill();
+    ctx.strokeStyle = "rgba(111,175,99,0.3)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, statsH, 24);
+    else ctx.rect(PAD, y, W - PAD * 2, statsH);
+    ctx.stroke();
 
     const statItems = [
       { num: data.stats?.crop_count || 0,      label: "crops growing" },
-      { num: data.stats?.completed_count || 0, label: "tasks done" },
-      ...(data.stats?.harvest_count > 0 ? [{ num: data.stats.harvest_count, label: "harvest" }] : []),
+      { num: data.stats?.completed_count || 0, label: "tasks done"    },
+      ...(data.stats?.harvest_count > 0 ? [{ num: data.stats.harvest_count, label: "harvests" }] : []),
     ];
-    const statW2 = (W - PAD * 2) / statItems.length;
+    const statW = (W - PAD * 2) / statItems.length;
     statItems.forEach((s, i) => {
-      const sx = PAD + i * statW2 + statW2 / 2;
-      const sy = y + 42;
+      const sx = PAD + i * statW + statW / 2;
       ctx.textAlign = "center";
-      ctx.fillStyle = "#2F5D50"; ctx.font = "bold 54px Georgia, serif";
-      ctx.fillText(String(s.num), sx, sy);
-      ctx.fillStyle = "#6E6E6E"; ctx.font = "26px sans-serif";
-      ctx.fillText(s.label, sx, sy + 40);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 64px Georgia, serif";
+      ctx.fillText(String(s.num), sx, y + 90);
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.font = "26px sans-serif";
+      ctx.fillText(s.label, sx, y + 132);
+      // Dividers
       if (i < statItems.length - 1) {
-        ctx.fillStyle = "#B8B4A8"; ctx.font = "50px sans-serif";
-        ctx.fillText("·", PAD + (i + 1) * statW2, sy + 8);
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD + (i + 1) * statW, y + 20);
+        ctx.lineTo(PAD + (i + 1) * statW, y + statsH - 20);
+        ctx.stroke();
       }
     });
-    y += statsBarH + 60;
 
-    // ── Vercro branding ───────────────────────────────────────────────────────
-    ctx.fillStyle = "#2F5D50";
-    ctx.font = "bold 54px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", W / 2, y);
-    ctx.fillStyle = "#6E6E6E";
+    y += statsH + 50;
+
+    // ── Upcoming section (if available) ───────────────────────────────────────
+    if (data.upcoming?.length > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, 100, 18);
+      else ctx.rect(PAD, y, W - PAD * 2, 100);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.font = "26px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("Coming up", PAD + 30, y + 40);
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "bold 32px Georgia, serif";
+      const upNext = data.upcoming[0];
+      const upText = shortTask(upNext) + (upNext.due_date ? ` · ${new Date(upNext.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "");
+      ctx.fillText(upText, PAD + 30, y + 80);
+      y += 120;
+    }
+
+    // ── Branding footer ───────────────────────────────────────────────────────
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
     ctx.font = "28px sans-serif";
-    ctx.fillText("Plan your garden  |  vercro.com", W / 2, y + 50);
+    ctx.textAlign = "center";
+    ctx.fillText("vercro.com · grow smarter", W / 2, H - 60);
   };
 
   // Render preview canvas whenever data/photo/title changes
@@ -1585,16 +1676,30 @@ What's on your list this month?
   const handlePhoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Keep full resolution — the canvas draws at 1080px so we need quality source pixels
+    // Only downscale if truly massive (>4000px wide) to avoid memory issues
     const bitmap = await createImageBitmap(file);
-    const canvas = document.createElement("canvas");
-    const maxW = 1080; const maxH = 400;
-    const scale = Math.min(1, maxW / bitmap.width, maxH / bitmap.height);
-    canvas.width  = Math.round(bitmap.width  * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const b64 = canvas.toDataURL("image/jpeg", 0.8);
-    setPhoto(b64);
-    setPhotoB64(b64.split(",")[1]);
+    const maxDim = 4000;
+    if (bitmap.width <= maxDim && bitmap.height <= maxDim) {
+      // Use full resolution
+      const canvas = document.createElement("canvas");
+      canvas.width  = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      const b64 = canvas.toDataURL("image/jpeg", 0.95);
+      setPhoto(b64);
+      setPhotoB64(b64.split(",")[1]);
+    } else {
+      // Only scale down if truly massive
+      const scale = maxDim / Math.max(bitmap.width, bitmap.height);
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(bitmap.width  * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const b64 = canvas.toDataURL("image/jpeg", 0.95);
+      setPhoto(b64);
+      setPhotoB64(b64.split(",")[1]);
+    }
   };
 
   // Human-readable achievement text for social share card
