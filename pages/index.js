@@ -296,6 +296,11 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
   const loadOrGenerate = async () => {
     setState("loading");
     try {
+      // For beds with crops, skip cache and go straight to companion generation
+      if (hasCrops) {
+        generate();
+        return;
+      }
       const existing = await apiFetch("/areas/" + area.id + "/suggestions");
       if (existing?.suggestions?.length) {
         setSuggestions(existing.suggestions);
@@ -315,14 +320,8 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
       setGeneratedAt(result.generated_at);
       setState("ready");
     } catch (e) {
-      // 400 = area has crops, no suggestions generated yet — show empty state
-      if (e.message?.includes("400") || e.message?.includes("not empty")) {
-        setSuggestions([]);
-        setState("ready");
-      } else {
-        console.error(e);
-        setState("error");
-      }
+      console.error(e);
+      setState("error");
     }
   };
 
@@ -344,7 +343,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{hasExistingCrops ? "Companion suggestions" : "What to plant?"}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{hasCrops ? "Companion suggestions" : "What to plant?"}</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{area.name}</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
@@ -357,8 +356,10 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
         {state === "generating" && (
           <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Thinking about your bed...</div>
-            <div style={{ fontSize: 12 }}>Checking rotation, season, and your garden</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
+              {hasCrops ? "Finding companions for your crops..." : "Thinking about your bed..."}
+            </div>
+            <div style={{ fontSize: 12 }}>{hasCrops ? "Matching companions to what you're growing" : "Checking rotation, season, and your garden"}</div>
           </div>
         )}
 
@@ -1946,6 +1947,7 @@ function Dashboard({ onTabChange }) {
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [showShareGarden,    setShowShareGarden]    = useState(false);
   const [strugglingCrop,     setStrugglingCrop]     = useState(null);
+  const [recoveringCrop,     setRecoveringCrop]     = useState(null);
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
 
@@ -2496,6 +2498,43 @@ function Dashboard({ onTabChange }) {
               Yes, it&apos;s struggling
             </button>
             <button onClick={() => setStrugglingCrop(null)}
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Recover plant confirmation sheet */}
+      {recoveringCrop && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+          onClick={e => { if (e.target === e.currentTarget) setRecoveringCrop(null); }}>
+          <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+            <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>💚</div>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
+              {recoveringCrop.name} is looking healthy?
+            </div>
+            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
+              Great news! We'll clear the struggling flag and resume your normal care plan.
+            </div>
+            <div style={{ background: C.offwhite, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>What we'll do:</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {["Clear the struggling flag", "Remove the daily health check prompt", "Resume normal task generation"].map((item, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ color: C.leaf, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span style={{ fontSize: 13, color: C.stone }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={async () => {
+              await logObservation(recoveringCrop.id, "other", "looks_healthy");
+              setRecoveringCrop(null);
+            }} style={{ width: "100%", background: C.leaf, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Yes, it&apos;s recovered
+            </button>
+            <button onClick={() => setRecoveringCrop(null)}
               style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
@@ -3127,8 +3166,20 @@ function GardenView({ onNavigateAdd }) {
   const [editingArea,    setEditingArea]    = useState(null);
   const [editAreaForm,   setEditAreaForm]   = useState({ name: "", type: "" });
   const [confirmArea,    setConfirmArea]    = useState(null);
+  const [confirmLocation, setConfirmLocation] = useState(null);
   const [suggestArea,    setSuggestArea]    = useState(null);
   const [collapsedLocs,  setCollapsedLocs]  = useState({});
+
+  const deleteLocation = async (locId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/locations/${locId}`, { method: "DELETE" });
+      setConfirmLocation(null);
+      try { localStorage.removeItem("vercro_garden_v1"); } catch(e) {}
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
 
   const saveEditArea = async (areaId) => {
     setSaving(true);
@@ -3234,12 +3285,37 @@ function GardenView({ onNavigateAdd }) {
               <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{collapsedLocs[loc.id] ? "▶" : "▼"}</span>
             </div>
             {!collapsedLocs[loc.id] && (
-              <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-                style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                + Add area
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
+                  style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  + Add area
+                </button>
+                <button onClick={e => { e.stopPropagation(); setConfirmLocation(loc.id); }}
+                  style={{ background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
+                  title="Delete location">
+                  🗑
+                </button>
+              </div>
             )}
           </div>
+
+          {/* Confirm delete location */}
+          {confirmLocation === loc.id && (
+            <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 4 }}>Delete {loc.name}?</div>
+              <div style={{ fontSize: 12, color: C.stone, marginBottom: 10 }}>This will also delete all growing areas and their crops. This cannot be undone.</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => deleteLocation(loc.id)} disabled={saving}
+                  style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  {saving ? "Deleting…" : "Yes, delete"}
+                </button>
+                <button onClick={() => setConfirmLocation(null)}
+                  style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {!collapsedLocs[loc.id] && (<div>
 
@@ -3966,16 +4042,22 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
 
               {/* Missed task note */}
               {crop.missed_task_note && (
-                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 2 }}>⚠ Missed task</div>
-                    <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
+                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 2 }}>⚠ Missed task</div>
+                      <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
+                    </div>
+                    <button onClick={async () => {
+                      await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
+                      await load();
+                    }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
+                      Clear
+                    </button>
                   </div>
-                  <button onClick={async () => {
-                    await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
-                    await load();
-                  }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
-                    Clear
+                  <button onClick={() => setRecoveringCrop({ id: crop.id, name: crop.name })}
+                    style={{ width: "100%", background: C.leaf, color: "#fff", border: "none", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    ✓ This plant has recovered
                   </button>
                 </div>
               )}
