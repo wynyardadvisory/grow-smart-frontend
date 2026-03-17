@@ -1360,11 +1360,223 @@ function ShareGardenSheet({ onClose }) {
   const previewRef      = useRef(null);
 
   // Draw the card onto any canvas — shared by preview + export
+  // 1080×1350 = Instagram 4:5 safe zone — shows in full on feed without cropping
   const drawCard = async (canvas) => {
     if (!data) return;
-    const W = 1080, H = 1920;
-    const PAD = 60;
+    const W = 1080, H = 1350;
+    const PAD = 54;
     const ctx = canvas.getContext("2d");
+
+    // ── Rich dark forest background ───────────────────────────────────────────
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0,   "#1e3d33");
+    bgGrad.addColorStop(0.5, "#2F5D50");
+    bgGrad.addColorStop(1,   "#1a3528");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative depth circles
+    ctx.beginPath(); ctx.arc(960, 140, 260, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(111,175,99,0.06)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(120, 1260, 280, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.025)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(880, 1000, 160, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(217,164,65,0.06)"; ctx.fill();
+
+    // Dot accents top
+    [80,160,240,840,920,1000].forEach(x => {
+      ctx.beginPath(); ctx.arc(x, 150, 4, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fill();
+    });
+
+    // ── Header row ────────────────────────────────────────────────────────────
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(PAD, 70, 210, 52, 26);
+    else ctx.rect(PAD, 70, 210, 52);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 28px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🌱 Vercro", PAD + 105, 105);
+
+    const monthName = new Date().toLocaleString("en-GB", { month: "long", year: "numeric" });
+    ctx.fillStyle = "rgba(111,175,99,0.2)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(W - PAD - 230, 70, 230, 52, 26);
+    else ctx.rect(W - PAD - 230, 70, 230, 52);
+    ctx.fill();
+    ctx.fillStyle = "#7FB069";
+    ctx.font = "600 25px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(monthName, W - PAD - 115, 104);
+
+    // ── Title ─────────────────────────────────────────────────────────────────
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 60px Georgia, serif";
+    ctx.textAlign = "center";
+    const words = title.split(" ");
+    const titleLines = [];
+    let cur = "";
+    words.forEach(w => {
+      const test = cur ? cur + " " + w : w;
+      if (ctx.measureText(test).width > W - PAD * 4) { titleLines.push(cur); cur = w; }
+      else cur = test;
+    });
+    if (cur) titleLines.push(cur);
+    titleLines.forEach((l, i) => ctx.fillText(l, W / 2, 200 + i * 68));
+
+    let y = 200 + titleLines.length * 68 + 16;
+
+    // ── Photo ─────────────────────────────────────────────────────────────────
+    const photoH = 420;
+    const photoY = y;
+
+    if (photo) {
+      try {
+        const img = await new Promise((res, rej) => {
+          const i = new Image();
+          i.onload = () => res(i); i.onerror = rej; i.src = photo;
+        });
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 24);
+        else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
+        ctx.clip();
+        const scale = Math.max((W - PAD * 2) / img.width, photoH / img.height);
+        const sw = img.width * scale;
+        const sh = img.height * scale;
+        ctx.drawImage(img,
+          PAD  + ((W - PAD * 2) - sw) / 2,
+          photoY + (photoH - sh) / 2,
+          sw, sh
+        );
+        // Vignette at bottom
+        const vigGrad = ctx.createLinearGradient(0, photoY + photoH * 0.55, 0, photoY + photoH);
+        vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+        vigGrad.addColorStop(1, "rgba(0,0,0,0.3)");
+        ctx.fillStyle = vigGrad;
+        ctx.fillRect(PAD, photoY, W - PAD * 2, photoH);
+        ctx.restore();
+      } catch(e) {
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 24);
+        else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
+        ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, photoY, W - PAD * 2, photoH, 24);
+      else ctx.rect(PAD, photoY, W - PAD * 2, photoH);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.font = "30px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Add a garden photo", W / 2, photoY + photoH / 2 + 12);
+    }
+
+    y = photoY + photoH + 32;
+
+    // Divider
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+    y += 26;
+
+    // ── Task rows ─────────────────────────────────────────────────────────────
+    const seen = new Set();
+    const deduped = (data.completed || []).filter(t => {
+      const text = shortTask(t);
+      if (seen.has(text)) return false;
+      seen.add(text); return true;
+    }).slice(0, 3);
+
+    const rowH   = 88;
+    const rowGap = 8;
+    deduped.forEach((t, i) => {
+      const rowY = y + i * (rowH + rowGap);
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(PAD, rowY, W - PAD * 2, rowH, 16);
+      else ctx.rect(PAD, rowY, W - PAD * 2, rowH);
+      ctx.fill();
+
+      // Check circle
+      ctx.beginPath(); ctx.arc(PAD + 44, rowY + rowH / 2, 24, 0, Math.PI * 2);
+      ctx.fillStyle = "#6FAF63"; ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("✓", PAD + 44, rowY + rowH / 2 + 8);
+
+      // Task name
+      ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Georgia, serif"; ctx.textAlign = "left";
+      ctx.fillText(shortTask(t), PAD + 86, rowY + 36);
+
+      // Variety + date subline
+      const cropName  = t.crop?.name || "";
+      const variety   = t.crop?.variety ? ` · ${typeof t.crop.variety === "object" ? t.crop.variety.name : t.crop.variety}` : "";
+      const dateStr   = t.completed_at
+        ? new Date(t.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+        : "";
+      const subline = [cropName + variety, dateStr].filter(Boolean).join("  ·  ");
+      if (subline) {
+        ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "22px sans-serif";
+        ctx.fillText(subline, PAD + 86, rowY + 66);
+      }
+    });
+
+    y += deduped.length * (rowH + rowGap) + 24;
+
+    // ── Stats bar ─────────────────────────────────────────────────────────────
+    const statsH = 130;
+    const statsGrad = ctx.createLinearGradient(0, y, 0, y + statsH);
+    statsGrad.addColorStop(0, "rgba(111,175,99,0.22)");
+    statsGrad.addColorStop(1, "rgba(111,175,99,0.08)");
+    ctx.fillStyle = statsGrad;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, statsH, 20);
+    else ctx.rect(PAD, y, W - PAD * 2, statsH);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(111,175,99,0.3)"; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(PAD, y, W - PAD * 2, statsH, 20);
+    else ctx.rect(PAD, y, W - PAD * 2, statsH);
+    ctx.stroke();
+
+    const statItems = [
+      { num: data.stats?.crop_count || 0,      label: "crops growing" },
+      { num: data.stats?.completed_count || 0, label: "tasks done"    },
+      ...(data.stats?.harvest_count > 0 ? [{ num: data.stats.harvest_count, label: "harvests" }] : []),
+    ];
+    const statW = (W - PAD * 2) / statItems.length;
+    statItems.forEach((s, i) => {
+      const sx = PAD + i * statW + statW / 2;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffffff"; ctx.font = "bold 52px Georgia, serif";
+      ctx.fillText(String(s.num), sx, y + 72);
+      ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "22px sans-serif";
+      ctx.fillText(s.label, sx, y + 106);
+      if (i < statItems.length - 1) {
+        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD + (i + 1) * statW, y + 18);
+        ctx.lineTo(PAD + (i + 1) * statW, y + statsH - 18);
+        ctx.stroke();
+      }
+    });
+
+    y += statsH + 22;
+
+    // ── Branding footer ───────────────────────────────────────────────────────
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.font = "24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("vercro.com · grow smarter", W / 2, H - 30);
+  };
 
     // ── Rich dark forest background ───────────────────────────────────────────
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
@@ -1605,24 +1817,6 @@ function ShareGardenSheet({ onClose }) {
       else ctx.rect(PAD, y, W - PAD * 2, 100);
       ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,0.35)";
-      ctx.font = "26px sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText("Coming up", PAD + 30, y + 40);
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "bold 32px Georgia, serif";
-      const upNext = data.upcoming[0];
-      const upText = shortTask(upNext) + (upNext.due_date ? ` · ${new Date(upNext.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "");
-      ctx.fillText(upText, PAD + 30, y + 80);
-      y += 120;
-    }
-
-    // ── Branding footer ───────────────────────────────────────────────────────
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.font = "28px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("vercro.com · grow smarter", W / 2, H - 60);
-  };
-
   // Render preview canvas whenever data/photo/title changes
   const renderPreview = async () => {
     if (!previewRef.current || !data) return;
@@ -1733,7 +1927,7 @@ What's on your list this month?
     if (!data) return;
     setGenerating(true);
     const canvas = document.createElement("canvas");
-    canvas.width = 1080; canvas.height = 1920;
+    canvas.width = 1080; canvas.height = 1350;
     await drawCard(canvas);
     canvas.toBlob(async (blob) => {
       const file = new File([blob], "vercro-garden.png", { type: "image/png" });
@@ -1785,7 +1979,7 @@ What's on your list this month?
           <>
             {/* Card preview — actual canvas render, scaled down */}
             <div style={{ marginBottom: 16, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}` }}>
-              <canvas ref={previewRef} width={1080} height={1920}
+              <canvas ref={previewRef} width={1080} height={1350}
                 style={{ width: "100%", display: "block", borderRadius: 14 }} />
             </div>
 
@@ -1832,7 +2026,7 @@ What's on your list this month?
               {generating ? "Generating…" : "⬆ Share my garden"}
             </button>
             <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
-              Generates a 1080×1080px card — perfect for Instagram, Facebook and WhatsApp
+              Generates a 1080×1350px card — Instagram, Facebook and WhatsApp safe (no cropping)
             </div>
           </>
         )}
