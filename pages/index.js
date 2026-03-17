@@ -1356,6 +1356,7 @@ function ShareGardenSheet({ onClose }) {
   const [generating,  setGenerating]  = useState(false);
   const [caption,     setCaption]     = useState("");
   const [captionCopied, setCaptionCopied] = useState(false);
+  const [taskLabels,  setTaskLabels]  = useState(["", "", ""]); // user-editable overrides
   const photoInputRef   = useRef(null);
   const previewRef      = useRef(null);
 
@@ -1500,6 +1501,8 @@ function ShareGardenSheet({ onClose }) {
     const rowGap = 8;
     deduped.forEach((t, i) => {
       const rowY = y + i * (rowH + rowGap);
+      // Use user's override label if set, otherwise generated suggestion
+      const label = taskLabels[i]?.trim() || shortTask(t);
       ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)";
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(PAD, rowY, W - PAD * 2, rowH, 16);
@@ -1512,9 +1515,9 @@ function ShareGardenSheet({ onClose }) {
       ctx.fillStyle = "#fff"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
       ctx.fillText("✓", PAD + 44, rowY + rowH / 2 + 8);
 
-      // Task name
+      // Task name — uses user override if set, otherwise generated label
       ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Georgia, serif"; ctx.textAlign = "left";
-      ctx.fillText(shortTask(t), PAD + 86, rowY + 36);
+      ctx.fillText(label, PAD + 86, rowY + 36);
 
       // Variety + date subline
       const cropName  = t.crop?.name || "";
@@ -1585,13 +1588,20 @@ function ShareGardenSheet({ onClose }) {
     await drawCard(canvas);
   };
 
-  useEffect(() => { renderPreview(); }, [data, photo, title]);
+  useEffect(() => { renderPreview(); }, [data, photo, title, taskLabels]);
 
   const load = async (m) => {
     setLoading(true);
     try {
       const d = await apiFetch(`/share/garden-data?mode=${m}`);
       setData(d);
+      // Seed editable task labels with generated suggestions
+      const seen2 = new Set();
+      const seededLabels = (d.completed || [])
+        .filter(t => { const tx = shortTask(t); if (seen2.has(tx)) return false; seen2.add(tx); return true; })
+        .slice(0, 3)
+        .map(t => shortTask(t));
+      setTaskLabels([seededLabels[0] || "", seededLabels[1] || "", seededLabels[2] || ""]);
       // Set default title
       const name = d.profile?.name || "My";
       setTitle(m === "recent"
@@ -1808,6 +1818,38 @@ What's on your list this month?
                 style={{ width: "100%", display: "block", borderRadius: 14 }} />
             </div>
 
+
+            {/* Editable task labels */}
+            {(() => {
+              const seen3 = new Set();
+              const tasks = (data.completed || [])
+                .filter(t => { const tx = shortTask(t); if (seen3.has(tx)) return false; seen3.add(tx); return true; })
+                .slice(0, 3);
+              if (!tasks.length) return null;
+              return (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                    What you did <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: C.stone }}>(edit to personalise)</span>
+                  </div>
+                  {tasks.map((t, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: C.leaf, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 700, flexShrink: 0 }}>✓</div>
+                      <input
+                        value={taskLabels[i] || ""}
+                        onChange={e => {
+                          const updated = [...taskLabels];
+                          updated[i] = e.target.value;
+                          setTaskLabels(updated);
+                        }}
+                        maxLength={50}
+                        style={{ ...inputStyle, fontSize: 13, padding: "9px 12px" }}
+                        placeholder={shortTask(t)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Editable title */}
             <div style={{ marginBottom: 14 }}>
