@@ -1,12 +1,11 @@
 {
   "name": "Vercro",
   "short_name": "Vercro",
-  "description": "Your personal crop planner",
+  "description": "AI Garden Planner",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#2F5D50",
+  "background_color": "#1e3d30",
   "theme_color": "#2F5D50",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -19,6 +18,11 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ]
 }
