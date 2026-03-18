@@ -3427,6 +3427,8 @@ function GardenView({ onNavigateAdd }) {
   const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "" });
   const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "" });
   const [saving,          setSaving]          = useState(false);
+  const [deleteLocationTarget, setDeleteLocationTarget] = useState(null); // location to confirm delete
+  const [deletingLocation,     setDeletingLocation]     = useState(false);
 
   const load = useCallback(async () => {
     // Fetch fresh
@@ -3515,6 +3517,54 @@ function GardenView({ onNavigateAdd }) {
         </button>
       </div>
 
+      {/* Delete location confirmation modal */}
+      {deleteLocationTarget && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+          onClick={e => { if (e.target === e.currentTarget) setDeleteLocationTarget(null); }}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 480, margin: "0 auto" }}>
+            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 14 }}>⚠️</div>
+            <div style={{ fontSize: 19, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", textAlign: "center", marginBottom: 6 }}>
+              Delete "{deleteLocationTarget.name}"?
+            </div>
+            <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6 }}>
+              This will permanently delete this location and everything inside it.
+            </div>
+            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "12px 14px", margin: "14px 0" }}>
+              {[
+                { icon: "🪣", text: `${deleteLocationTarget.areas?.length || 0} growing area${(deleteLocationTarget.areas?.length || 0) !== 1 ? "s" : ""} will be deleted` },
+                { icon: "🌱", text: "All crops in this location and their tasks will be deleted" },
+                { icon: "📋", text: "All task history for these crops will be lost" },
+              ].map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#8a5c00", marginBottom: i < 2 ? 6 : 0, lineHeight: 1.4 }}>
+                  <span style={{ flexShrink: 0 }}>{r.icon}</span>
+                  <span>{r.text}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, textAlign: "center", marginBottom: 18 }}>This cannot be undone.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button disabled={deletingLocation}
+                onClick={async () => {
+                  setDeletingLocation(true);
+                  try {
+                    await apiFetch(`/locations/${deleteLocationTarget.id}`, { method: "DELETE" });
+                    setLocations(ls => ls.filter(l => l.id !== deleteLocationTarget.id));
+                    setDeleteLocationTarget(null);
+                  } catch(e) { alert("Failed to delete location: " + e.message); }
+                  setDeletingLocation(false);
+                }}
+                style={{ background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                {deletingLocation ? "Deleting…" : "Yes, delete this location"}
+              </button>
+              <button onClick={() => setDeleteLocationTarget(null)}
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, fontSize: 14, color: "#666", cursor: "pointer" }}>
+                Cancel — keep it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add location form */}
       {showAddLocation && (
         <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
@@ -3574,12 +3624,18 @@ function GardenView({ onNavigateAdd }) {
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
               <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{collapsedLocs[loc.id] ? "▶" : "▼"}</span>
             </div>
-            {!collapsedLocs[loc.id] && (
-              <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-                style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                + Add area
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {!collapsedLocs[loc.id] && (
+                <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
+                  style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  + Add area
+                </button>
+              )}
+              <button onClick={e => { e.stopPropagation(); setDeleteLocationTarget(loc); }}
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.red, fontSize: 13, flexShrink: 0 }}>
+                ✕
               </button>
-            )}
+            </div>
           </div>
 
           {!collapsedLocs[loc.id] && (<div>
