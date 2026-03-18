@@ -6360,6 +6360,160 @@ function MetricRow({ label, val, sub, highlight }) {
   );
 }
 
+function MetricCard({ label, value, sub, status, suggestion }) {
+  const [open, setOpen] = useState(false);
+  const bg   = status === "green" ? "#EAF3DE" : status === "amber" ? "#FFF8E7" : status === "red" ? "#FFF0F0" : C.offwhite;
+  const col  = status === "green" ? "#3B6D11" : status === "amber" ? "#92600A" : status === "red" ? "#8B1A1A" : C.stone;
+  const badge = status === "green" ? "✓ on target" : status === "amber" ? "↗ below target" : status === "red" ? "⚠ needs action" : null;
+  return (
+    <div style={{ background: C.offwhite, borderRadius: 12, padding: "12px 14px" }}>
+      <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", lineHeight: 1, marginBottom: 3 }}>{value ?? "—"}</div>
+      {sub && <div style={{ fontSize: 11, color: C.stone, marginBottom: 6 }}>{sub}</div>}
+      {badge && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, background: bg, color: col, borderRadius: 99, padding: "2px 8px", display: "inline-block" }}>{badge}</span>
+          {suggestion && status !== "green" && (
+            <button onClick={() => setOpen(o => !o)}
+              style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: 99, padding: "2px 8px", cursor: "pointer" }}>
+              {open ? "hide" : "⚙ fix"}
+            </button>
+          )}
+        </div>
+      )}
+      {open && suggestion && (
+        <div style={{ marginTop: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#1a1a1a", lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6, color: C.forest }}>{suggestion.title}</div>
+          <div style={{ color: C.stone, marginBottom: 6 }}>{suggestion.body}</div>
+          <ul style={{ margin: 0, paddingLeft: 16, color: C.stone }}>
+            {suggestion.steps.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricRowWithFix({ label, val, sub, status, suggestion }) {
+  const [open, setOpen] = useState(false);
+  const col  = status === "green" ? C.forest : status === "amber" ? "#92600A" : status === "red" ? "#8B1A1A" : "#1a1a1a";
+  const bg   = status === "green" ? "#EAF3DE" : status === "amber" ? "#FFF8E7" : status === "red" ? "#FFF0F0" : C.offwhite;
+  const badge = status === "green" ? "✓" : status === "amber" ? "↗" : status === "red" ? "⚠" : null;
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: open ? "none" : `1px solid ${C.border}` }}>
+        <div>
+          <div style={{ fontSize: 13, color: "#1a1a1a" }}>{label}</div>
+          {sub && <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{sub}</div>}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", fontFamily: "serif" }}>{val ?? "—"}</div>
+          {badge && <span style={{ fontSize: 10, background: bg, color: col, borderRadius: 99, padding: "2px 7px" }}>{badge}</span>}
+          {suggestion && status !== "green" && (
+            <button onClick={() => setOpen(o => !o)}
+              style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: 99, padding: "2px 8px", cursor: "pointer" }}>
+              {open ? "hide" : "⚙ fix"}
+            </button>
+          )}
+        </div>
+      </div>
+      {open && suggestion && (
+        <div style={{ margin: "0 14px 10px", background: C.offwhite, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#1a1a1a", lineHeight: 1.6, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontWeight: 700, marginBottom: 5, color: C.forest }}>{suggestion.title}</div>
+          <div style={{ color: C.stone, marginBottom: 6 }}>{suggestion.body}</div>
+          <ul style={{ margin: 0, paddingLeft: 16, color: C.stone }}>
+            {suggestion.steps.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
+const SUGGESTIONS = {
+  activation: {
+    title: "Improve activation rate",
+    body: "Most users drop off between signup and adding their first crop. The empty state is the biggest friction point.",
+    steps: [
+      "Add a single-step onboarding prompt immediately after signup: \"What are you growing?\"",
+      "Pre-populate with 3 quick-add crop buttons (Tomatoes, Courgettes, Potatoes)",
+      "Send the unactivated nudge email sooner — try 2 hours instead of 24",
+      "Show a progress indicator: \"Step 1 of 2 — add your first crop to get your plan\"",
+    ],
+  },
+  week4retention: {
+    title: "Improve month 1 retention",
+    body: "Users who haven't formed the daily check-in habit by day 28 are unlikely to return. Day 14 is your last real lever.",
+    steps: [
+      "Check day 14 re-engagement email open rate in Resend — if below 20%, rewrite the subject line",
+      "Add a streak mechanic — users with a 7-day streak are significantly more likely to stay",
+      "Ensure morning push is firing reliably for day 14-28 users with tasks due",
+      "The day 30 lapsed email tone shift (\"Your carrots need you\") is correct — verify it's sending",
+    ],
+  },
+  waitlist: {
+    title: "Improve waitlist conversion",
+    body: "69% of invited users never set up an account. The invite email and follow-up sequence is your biggest lever.",
+    steps: [
+      "A/B test the invite email subject line — try \"Your Vercro garden is ready\" vs current",
+      "Check if Hotmail/Outlook recipients are converting — those had delivery delays",
+      "Day 7 nudge email should feel more urgent — growing season framing is working, lean into it",
+      "Add a deadline feel to day 14 final email — \"last nudge from me\" is good but could be stronger",
+    ],
+  },
+  dau_wau: {
+    title: "Improve daily stickiness",
+    body: "DAU/WAU below 0.25 means most weekly users aren't checking in daily. Push notifications are the main driver.",
+    steps: [
+      "Verify morning push is firing at 7am UK time and tokens are valid",
+      "The engagement_nudge fallback fires when no tasks exist — check it's reaching users",
+      "Today's focus hero card needs to always show something — if empty state shows, users don't open",
+      "Consider a daily \"garden check-in\" streak visible on the dashboard",
+    ],
+  },
+  taskcompletion: {
+    title: "Improve task completion",
+    body: "Users with too many visible tasks complete fewer. The today/focus split helps but volume is still the issue.",
+    steps: [
+      "The \"Today's focus\" hero card is working — ensure it always shows a high-urgency task",
+      "Check if duplicate tasks per crop are diluting completion (dedup logic)",
+      "The expandable \"See all\" list keeps the main view clean — good, keep it collapsed by default",
+      "Consider a \"nice job\" moment when all today's tasks are done",
+    ],
+  },
+  pushenabled: {
+    title: "Improve push opt-in rate",
+    body: "43% opt-in is below average for a utility app (typical is 55-70%). Timing and framing of the prompt matters most.",
+    steps: [
+      "Move the push prompt to after the first task is completed — higher intent moment",
+      "Add context before the browser dialog: \"Get a 7am nudge when something needs doing\"",
+      "For users who declined, re-prompt after 7 days via an in-app banner",
+      "Show a sample notification in the prompt to reduce uncertainty",
+    ],
+  },
+  organic: {
+    title: "Grow organic share",
+    body: "Referral and share card are your best organic channels right now. Both were just launched.",
+    steps: [
+      "Monitor how many referral sheet opens convert to actual signups",
+      "The share card Instagram moment at 5 tasks is your best organic acquisition — track shares",
+      "Consider a small incentive for referrals once you have more users",
+      "SEO on vercro.com for \"UK gardening app\" terms is a medium-term play",
+    ],
+  },
+  week1retention: {
+    title: "Improve week 1 retention",
+    body: "Day 7 is the critical checkpoint. Users who complete at least 3 tasks in week 1 retain at 2x the rate.",
+    steps: [
+      "Day 3 feedback email (active version) is asking the right questions — check reply rate",
+      "Ensure the rule engine generates at least 3-5 tasks in first 7 days for new users",
+      "The \"also today\" and \"see all\" task sections help — make sure first-week users have visible tasks",
+      "Consider a welcome badge for completing first 5 tasks",
+    ],
+  },
+};
+}
+
 // ── Admin Tools ──────────────────────────────────────────────────────────────
 function InviteWaitlistButton() {
   const [status,  setStatus]  = useState(null);
@@ -6535,87 +6689,218 @@ function AdminScreen() {
       )}
 
       {/* ── Metrics dashboard ── */}
-      {!loading && tab === "metrics" && metrics && (
-        <div>
-          {/* Hero — 5 key numbers */}
-          <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "20px", marginBottom: 16, color: "#fff" }}>
-            <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Founder Dashboard</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+      {!loading && tab === "metrics" && metrics && (() => {
+        const [metricTab, setMetricTab] = useState("overview");
+
+        const actRate  = metrics.activationRate || 0;
+        const w1Ret    = metrics.week1Retention || 0;
+        const w4Ret    = metrics.week4Retention || 0;
+        const dauWau   = parseFloat(metrics.dauWauRatio) || 0;
+        const taskRate = metrics.taskCompletionRate || 0;
+
+        const status = (val, green, amber) =>
+          val >= green ? "green" : val >= amber ? "amber" : "red";
+
+        return (
+          <div>
+            {/* Hero strip */}
+            <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "18px 20px", marginBottom: 16, color: "#fff" }}>
+              <div style={{ fontSize: 10, opacity: 0.6, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Founder dashboard · live data</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                {[
+                  { label: "Signups",    val: metrics.totalSignups,   sub: `+${metrics.newSignupsWeek} this week` },
+                  { label: "Activated",  val: metrics.totalActivated, sub: `${actRate}% rate` },
+                  { label: "WAU",        val: metrics.wau,            sub: `${metrics.dau} today` },
+                  { label: "Crops",      val: metrics.totalCrops,     sub: `${metrics.avgCropsPerUser} avg/user` },
+                  { label: "Tasks done", val: metrics.tasksCompleted, sub: `${taskRate}% rate` },
+                  { label: "Harvests",   val: metrics.harvestLogs,    sub: "logged" },
+                ].map(s => (
+                  <div key={s.label}>
+                    <div style={{ fontSize: 22, fontWeight: 800 }}>{s.val}</div>
+                    <div style={{ fontSize: 10, opacity: 0.85, fontWeight: 700, marginTop: 1 }}>{s.label}</div>
+                    <div style={{ fontSize: 10, opacity: 0.55, marginTop: 1 }}>{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Metric tabs */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
               {[
-                { label: "Signups",    val: metrics.totalSignups,       sub: `+${metrics.newSignupsWeek} this week` },
-                { label: "Activated",  val: metrics.totalActivated,     sub: `${metrics.activationRate}% rate` },
-                { label: "WAU",        val: metrics.wau,                sub: `${metrics.dau} today` },
-                { label: "Crops",      val: metrics.totalCrops,         sub: `${metrics.avgCropsPerUser} avg/user` },
-                { label: "Tasks done", val: metrics.tasksCompleted,     sub: `${metrics.taskCompletionRate}% rate` },
-                { label: "Harvests",   val: metrics.harvestLogs,        sub: "logged" },
-              ].map(s => (
-                <div key={s.label}>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{s.val}</div>
-                  <div style={{ fontSize: 10, opacity: 0.85, fontWeight: 700, marginTop: 1 }}>{s.label}</div>
-                  <div style={{ fontSize: 10, opacity: 0.55, marginTop: 1 }}>{s.sub}</div>
-                </div>
+                { id: "overview", label: "Overview" },
+                { id: "growth",   label: "Growth" },
+                { id: "usage",    label: "Usage" },
+                { id: "comms",    label: "Comms" },
+              ].map(t => (
+                <button key={t.id} onClick={() => setMetricTab(t.id)}
+                  style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${metricTab === t.id ? C.forest : C.border}`, background: metricTab === t.id ? C.forest : "transparent", color: metricTab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  {t.label}
+                </button>
               ))}
             </div>
+
+            {/* ── OVERVIEW ── */}
+            {metricTab === "overview" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Business health</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                  <MetricCard label="Activation rate" value={`${actRate}%`} sub="signup → first crop"
+                    status={status(actRate, 60, 40)}
+                    suggestion={actRate < 60 ? SUGGESTIONS.activation : null} />
+                  <MetricCard label="Week 1 retention" value={w1Ret ? `${w1Ret}%` : "—"} sub="back on day 7"
+                    status={w1Ret ? status(w1Ret, 30, 20) : null}
+                    suggestion={w1Ret && w1Ret < 30 ? SUGGESTIONS.week1retention : null} />
+                  <MetricCard label="Week 4 retention" value={w4Ret ? `${w4Ret}%` : "—"} sub="still active day 28"
+                    status={w4Ret ? status(w4Ret, 15, 10) : null}
+                    suggestion={w4Ret && w4Ret < 15 ? SUGGESTIONS.week4retention : null} />
+                  <MetricCard label="DAU / WAU" value={metrics.dauWauRatio || "—"} sub="stickiness ratio"
+                    status={dauWau ? status(dauWau, 0.25, 0.15) : null}
+                    suggestion={dauWau && dauWau < 0.25 ? SUGGESTIONS.dau_wau : null} />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Flags needing attention</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {[
+                    { condition: actRate < 60,  label: `Activation ${actRate}% — users dropping off before first crop`, sug: SUGGESTIONS.activation, severity: actRate < 40 ? "red" : "amber" },
+                    { condition: w4Ret && w4Ret < 15, label: `Week 4 retention ${w4Ret}% — habit not forming by day 28`, sug: SUGGESTIONS.week4retention, severity: "red" },
+                    { condition: dauWau && dauWau < 0.25, label: `DAU/WAU ${metrics.dauWauRatio} — daily check-in habit below target`, sug: SUGGESTIONS.dau_wau, severity: "amber" },
+                    { condition: taskRate < 40, label: `Task completion ${taskRate}% — users not completing tasks`, sug: SUGGESTIONS.taskcompletion, severity: "amber" },
+                  ].filter(f => f.condition).map((f, i, arr) => (
+                    <MetricRowWithFix key={i}
+                      label={f.label}
+                      status={f.severity}
+                      suggestion={f.sug}
+                      sub={null} val={null} />
+                  ))}
+                  {[actRate >= 60, !w4Ret || w4Ret >= 15, !dauWau || dauWau >= 0.25, taskRate >= 40].every(Boolean) && (
+                    <div style={{ padding: "16px 14px", fontSize: 13, color: C.forest, fontWeight: 600 }}>✓ All metrics on target</div>
+                  )}
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Investor snapshot</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                  <MetricRow label="MAU" val={metrics.wau} sub="monthly active users" />
+                  <MetricRow label="MAU growth" val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} sub="week on week" highlight={metrics.wowGrowth > 0} />
+                  <MetricRow label="DAU / MAU ratio" val={metrics.dauWauRatio || "—"} sub="stickiness · target 0.15+" highlight={dauWau >= 0.15} />
+                  <MetricRow label="Avg crops per user" val={metrics.avgCropsPerUser} sub="engagement depth · target 3+" highlight={parseFloat(metrics.avgCropsPerUser) >= 3} />
+                  <MetricRow label="NPS proxy" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} sub="avg feedback rating" />
+                </div>
+              </div>
+            )}
+
+            {/* ── GROWTH ── */}
+            {metricTab === "growth" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Acquisition</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <MetricRow label="Total signups" val={metrics.totalSignups} sub="everyone who registered" />
+                  <MetricRow label="New this week" val={metrics.newSignupsWeek} />
+                  <MetricRow label="Week-on-week growth" val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} highlight={metrics.wowGrowth > 0} />
+                  <MetricRowWithFix label="Waitlist → app conversion" val="—" sub="invited users who signed up"
+                    status="amber" suggestion={SUGGESTIONS.waitlist} />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Retention curve</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {[
+                    { label: "Week 1 retention", val: w1Ret ? `${w1Ret}%` : "—", pct: w1Ret, target: 30, sug: SUGGESTIONS.week1retention },
+                    { label: "Week 4 retention", val: w4Ret ? `${w4Ret}%` : "—", pct: w4Ret, target: 15, sug: SUGGESTIONS.week4retention },
+                  ].map((r, i) => (
+                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < 1 ? `1px solid ${C.border}` : "none" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{r.label}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700 }}>{r.val}</span>
+                          <span style={{ fontSize: 10, color: C.stone }}>target {r.target}%</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 6, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, r.pct || 0)}%`, background: (r.pct || 0) >= r.target ? C.forest : (r.pct || 0) >= r.target * 0.7 ? C.amber : C.red, borderRadius: 99 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Engagement</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                  <MetricRow label="Weekly active users (WAU)" val={metrics.wau} />
+                  <MetricRow label="Daily active users (DAU)" val={metrics.dau} />
+                  <MetricRowWithFix label="DAU / WAU ratio" val={metrics.dauWauRatio || "—"} sub="target 0.25+"
+                    status={status(dauWau, 0.25, 0.15)} suggestion={dauWau < 0.25 ? SUGGESTIONS.dau_wau : null} />
+                </div>
+              </div>
+            )}
+
+            {/* ── USAGE ── */}
+            {metricTab === "usage" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Engagement</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <MetricRow label="Activated users" val={metrics.totalActivated} sub="completed onboarding" />
+                  <MetricRowWithFix label="Activation rate" val={`${actRate}%`} sub="signup → first crop · target 60%"
+                    status={status(actRate, 60, 40)} suggestion={actRate < 60 ? SUGGESTIONS.activation : null} />
+                  <MetricRow label="Avg crops per user" val={metrics.avgCropsPerUser} sub="engagement depth · target 3+" highlight={parseFloat(metrics.avgCropsPerUser) >= 3} />
+                  <MetricRowWithFix label="Task completion rate" val={`${taskRate}%`} sub="done / (done + pending) · target 40%"
+                    status={status(taskRate, 40, 25)} suggestion={taskRate < 40 ? SUGGESTIONS.taskcompletion : null} />
+                  <MetricRow label="Tasks pending" val={metrics.tasksPending} />
+                  <MetricRow label="Tasks completed" val={metrics.tasksCompleted} sub="all time" />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Garden data</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <MetricRow label="Gardens created" val={metrics.totalLocations} />
+                  <MetricRow label="Growing areas" val={metrics.totalAreas} />
+                  <MetricRow label="Crop instances" val={metrics.totalCrops} />
+                  <MetricRow label="Crops sown" val={metrics.cropsSown} />
+                  <MetricRow label="Crops harvested" val={metrics.cropsHarvested} />
+                  <MetricRow label="Harvest logs" val={metrics.harvestLogs} />
+                  <MetricRow label="Feeds registered" val={metrics.totalFeeds} sub={`${metrics.avgFeedsPerUser} avg per user`} />
+                  <MetricRow label="Growth diary photos" val={metrics.totalPhotos} />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Dataset</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                  <MetricRow label="Crop varieties tracked" val={metrics.totalVarieties} />
+                  <MetricRow label="Yield data points" val={metrics.yieldDataPoints} />
+                </div>
+              </div>
+            )}
+
+            {/* ── COMMS ── */}
+            {metricTab === "comms" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Push notifications</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <MetricRowWithFix label="Push opt-in rate" val={metrics.pushOptIn ? `${metrics.pushOptIn}%` : "—"} sub="of activated users · target 60%"
+                    status={metrics.pushOptIn ? status(metrics.pushOptIn, 60, 40) : null}
+                    suggestion={SUGGESTIONS.pushenabled} />
+                  <MetricRow label="Push tokens active" val={metrics.pushTokens || "—"} />
+                  <MetricRow label="CTR" val="—" sub="tracking coming soon" />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email sequences</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <MetricRow label="Waitlist invites sent" val={metrics.emailWaitlistInvites || "—"} />
+                  <MetricRow label="Feedback day 3 sent" val={metrics.emailFeedbackDay3 || "—"} />
+                  <MetricRow label="Feedback day 7 sent" val={metrics.emailFeedbackDay7 || "—"} />
+                  <MetricRow label="Re-engagement day 14" val={metrics.emailReengageDay14 || "—"} />
+                  <MetricRow label="Re-engagement day 30" val={metrics.emailReengageDay30 || "—"} />
+                  <MetricRow label="Daily fallback emails" val={metrics.emailDailyFallback || "—"} />
+                  <MetricRow label="Open rates" val="—" sub="Resend webhook pending" />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Feedback</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                  <MetricRow label="Total submissions" val={metrics.totalFeedback || "—"} />
+                  <MetricRow label="Average rating" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} highlight={metrics.avgRating >= 4} />
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>Live data · refreshes on load</div>
           </div>
-
-          {/* User growth */}
-          <MetricSection title="📈 User Growth">
-            <MetricRow label="Total signups"        val={metrics.totalSignups} sub="everyone who registered" />
-            <MetricRow label="Activated users"      val={metrics.totalActivated} sub="completed onboarding" />
-            <MetricRow label="Activation rate"      val={`${metrics.activationRate}%`} sub="signups → completed onboarding" highlight={metrics.activationRate >= 70} />
-            <MetricRow label="New signups this week" val={metrics.newSignupsWeek} />
-            <MetricRow label="Week-on-week growth"  val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} highlight={metrics.wowGrowth > 0} />
-          </MetricSection>
-
-          {/* Engagement */}
-          <MetricSection title="🔥 Engagement">
-            <MetricRow label="Weekly active users (WAU)" val={metrics.wau} sub={`${metrics.totalUsers > 0 ? Math.round(metrics.wau/metrics.totalUsers*100) : 0}% of all users`} />
-            <MetricRow label="Daily active users (DAU)"  val={metrics.dau} />
-            <MetricRow label="DAU / WAU ratio"           val={metrics.dauWauRatio || "—"} sub="target: 0.3–0.5" highlight={parseFloat(metrics.dauWauRatio) >= 0.3} />
-          </MetricSection>
-
-          {/* Garden usage */}
-          <MetricSection title="🌱 Garden Usage">
-            <MetricRow label="Gardens created"     val={metrics.totalLocations} />
-            <MetricRow label="Growing areas"       val={metrics.totalAreas} />
-            <MetricRow label="Crops logged"        val={metrics.totalCrops} />
-            <MetricRow label="Avg crops per user"  val={metrics.avgCropsPerUser} sub="target: 5–15" highlight={parseFloat(metrics.avgCropsPerUser) >= 5} />
-            <MetricRow label="Crops sown"          val={metrics.cropsSown} />
-            <MetricRow label="Crops harvested"     val={metrics.cropsHarvested} />
-            <MetricRow label="Harvest logs"        val={metrics.harvestLogs} />
-          </MetricSection>
-
-          {/* Task engine */}
-          <MetricSection title="✅ Task Engine">
-            <MetricRow label="Tasks generated"     val={metrics.tasksGenerated} />
-            <MetricRow label="Tasks completed"     val={metrics.tasksCompleted} />
-            <MetricRow label="Completion rate"     val={`${metrics.taskCompletionRate}%`} sub="target: 40–60%" highlight={metrics.taskCompletionRate >= 40} />
-          </MetricSection>
-
-          {/* Retention */}
-          <MetricSection title="📅 Retention">
-            <MetricRow label="Week 1 retention"   val={metrics.week1Retention !== null ? `${metrics.week1Retention}%` : "—"} sub="target: 60%+" highlight={metrics.week1Retention >= 60} />
-            <MetricRow label="Week 4 retention"   val={metrics.week4Retention !== null ? `${metrics.week4Retention}%` : "—"} sub="target: 35–50%" highlight={metrics.week4Retention >= 35} />
-          </MetricSection>
-
-          {/* Feeds & photos */}
-          <MetricSection title="📷 Feeds & Photos">
-            <MetricRow label="Feeds logged"        val={metrics.totalFeeds} />
-            <MetricRow label="Avg feeds per user"  val={metrics.avgFeedsPerUser} />
-            <MetricRow label="Growth diary photos" val={metrics.totalPhotos} />
-          </MetricSection>
-
-          {/* Dataset moat */}
-          <MetricSection title="🧬 Dataset">
-            <MetricRow label="Crop varieties tracked" val={metrics.totalVarieties} />
-            <MetricRow label="Yield data points"      val={metrics.yieldDataPoints} />
-          </MetricSection>
-
-          <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
-            Live data — refreshes on load
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Crop queue ── */}
       {!loading && tab === "crops" && (
