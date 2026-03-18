@@ -3837,10 +3837,12 @@ function CropGrowthDiary({ crop, onClose }) {
 // ── Crop Timeline Sheet ───────────────────────────────────────────────────────
 
 function CropTimelineSheet({ crop, onClose }) {
-  const [timeline,     setTimeline]     = useState(null);
-  const [loading,      setLoading]      = useState(true);
-  const [confirming,   setConfirming]   = useState(null); // node key being confirmed
-  const [actionResult, setActionResult] = useState(null); // {key, result}
+  const [timeline,   setTimeline]   = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [adjusting,  setAdjusting]  = useState(false);
+  const [selected,   setSelected]   = useState(null);
+  const [confirmed,  setConfirmed]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
 
   useEffect(() => {
     apiFetch(`/crops/${crop.id}`)
@@ -3848,201 +3850,257 @@ function CropTimelineSheet({ crop, onClose }) {
       .catch(() => setLoading(false));
   }, [crop.id]);
 
-  const confirmStage = async (node) => {
-    if (!node.confirm_symptom_code) return;
-    setConfirming(node.key);
+  const STAGES = [
+    { key: "seed",       label: "Seed",      emoji: "🌰", symptom: null },
+    { key: "seedling",   label: "Seedling",  emoji: "🌱", symptom: "seedling_emerged" },
+    { key: "vegetative", label: "Veg",       emoji: "🍃", symptom: "vegetative_confirmed" },
+    { key: "flowering",  label: "Flower",    emoji: "🌸", symptom: "flowering_confirmed" },
+    { key: "fruiting",   label: "Fruiting",  emoji: "🍅", symptom: "fruit_set_confirmed" },
+    { key: "harvesting", label: "Harvest",   emoji: "🧺", symptom: "harvest_started" },
+  ];
+
+  const stageActions = {
+    seed:       ["Keep at 20-25°C for germination", "Keep compost moist but not soggy", "Expect shoots in 7-14 days"],
+    seedling:   ["Pot on when first true leaves appear", "Keep on a warm sunny windowsill", "Water from below to avoid damping off"],
+    vegetative: ["Pot on to final container if needed", "Begin fortnightly balanced feed", "Ensure good light and airflow"],
+    flowering:  ["Tap stems gently to aid pollination", "Switch to high potash feed", "Remove lower leaves for airflow"],
+    fruiting:   ["Feed weekly with high potash", "Water consistently to avoid blossom end rot", "Check regularly for pests and blight"],
+    harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"],
+  };
+
+  const confirmStage = async (stageKey) => {
+    const stage = STAGES.find(s => s.key === stageKey);
+    if (!stage?.symptom) { setConfirmed(true); return; }
+    setSaving(true);
     try {
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({
-          observation_type: "stage",
-          symptom_code: node.confirm_symptom_code,
-          confirmed_stage: node.key,
-        }),
+        body: JSON.stringify({ observation_type: "stage", symptom_code: stage.symptom, confirmed_stage: stageKey }),
       });
-      setActionResult({ key: node.key, result: "confirmed" });
-      // Reload timeline
+      setConfirmed(true);
       const d = await apiFetch(`/crops/${crop.id}`);
       setTimeline(d.timeline);
     } catch(e) { console.error(e); }
-    setConfirming(null);
+    setSaving(false);
   };
 
-  const notYet = (node) => {
-    setActionResult({ key: node.key, result: "not_yet" });
-  };
+  const currentStageKey = timeline?.nodes?.find(n => n.status === "current")?.key
+    || timeline?.nodes?.find(n => n.status === "upcoming")?.key
+    || "seed";
 
-  // Node dot colours
-  const nodeStyle = (status) => ({
-    completed: { dot: C.forest,   ring: "none",                    line: C.forest + "60" },
-    current:   { dot: C.leaf,     ring: `0 0 0 3px ${C.leaf}33`,  line: C.border },
-    upcoming:  { dot: "#fff",     ring: "none",                    line: C.border },
-  }[status] || { dot: C.border, ring: "none", line: C.border });
+  const sowDate      = crop.sown_date || crop.transplanted_date;
+  const harvestNode  = timeline?.nodes?.find(n => n.key === "harvesting" || n.key === "harvest");
+  const stageIdx     = STAGES.findIndex(s => s.key === currentStageKey);
+  const progressPct  = Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
+
+  const daysSown = sowDate
+    ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000)
+    : null;
+
+  const journeyNodes = timeline?.nodes?.filter(n => n.status === "completed" || n.status === "current") || [];
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "92vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
-            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Growth timeline</div>
+        {/* ── Header ── */}
+        <div style={{ background: C.forest, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
+          <button onClick={onClose}
+            style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            ×
+          </button>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>
+            {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.leaf, flexShrink: 0 }} />
+            <div style={{ fontSize: 19, fontWeight: 700, color: "#fff", fontFamily: "serif" }}>
+              {STAGES.find(s => s.key === currentStageKey)?.label || "Growing"} now
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+            {harvestNode?.formatted_date ? `Harvest expected ${harvestNode.formatted_date}` : "Tracking your crop's journey"}
+            {" · on track"}
+          </div>
         </div>
 
         {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
 
-        {!loading && !timeline && (
-          <div style={{ textAlign: "center", padding: "32px 0", color: C.stone }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Timeline not available</div>
-            <div style={{ fontSize: 13 }}>Add a sow date and variety to unlock a more accurate timeline.</div>
+        {!loading && confirmed && (
+          <div style={{ padding: "40px 20px", textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>✓</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Stage confirmed</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>Your task plan has been updated to match your plant's current stage.</div>
+            <button onClick={onClose}
+              style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+              Done
+            </button>
           </div>
         )}
 
-        {!loading && timeline && (() => {
-          const { nodes, current_stage_label, current_stage_description, next_stage_label, next_stage_date, confidence } = timeline;
+        {!loading && !confirmed && timeline && (() => {
+          const currentStage = STAGES.find(s => s.key === currentStageKey);
+          const actions = stageActions[currentStageKey] || [];
 
           return (
-            <>
-              {/* Current stage summary card */}
-              <div style={{ background: C.forest, borderRadius: 14, padding: "16px 18px", marginBottom: 24, color: "#fff" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, opacity: 0.75, marginBottom: 6 }}>Current stage</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", marginBottom: 8 }}>{current_stage_label}</div>
-                <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9 }}>{current_stage_description}</div>
-                {confidence === "low" && (
-                  <div style={{ marginTop: 10, fontSize: 11, opacity: 0.7, fontStyle: "italic" }}>
-                    Add a sow date and variety for more accurate predictions
-                  </div>
-                )}
+            <div style={{ padding: "16px 16px 40px" }}>
+
+              {/* ── Progress bar ── */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ fontSize: 10, color: C.stone }}>{sowDate ? new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Sow date unknown"}</span>
+                  <span style={{ fontSize: 10, color: C.stone }}>{harvestNode?.formatted_date || "Harvest"}</span>
+                </div>
+                <div style={{ position: "relative", height: 8, background: C.offwhite, borderRadius: 99, border: `1px solid ${C.border}` }}>
+                  <div style={{ position: "absolute", left: 0, width: `${progressPct}%`, height: "100%", background: C.forest, borderRadius: 99 }} />
+                  <div style={{ position: "absolute", left: `${progressPct}%`, top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, background: C.forest, border: "3px solid #fff", borderRadius: "50%", boxShadow: `0 0 0 2px ${C.forest}` }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                  <span style={{ fontSize: 10, color: C.stone }}>Sown</span>
+                  <span style={{ fontSize: 10, color: C.stone }}>Harvest</span>
+                </div>
               </div>
 
-              {/* Vertical timeline */}
-              <div style={{ position: "relative", paddingLeft: 28 }}>
-                {nodes.map((node, i) => {
-                  const { dot, ring, line } = nodeStyle(node.status);
-                  const isLast    = i === nodes.length - 1;
-                  const isCurrent = node.status === "current";
-                  const isUpcoming = node.status === "upcoming";
-                  const isDone    = node.status === "completed";
-                  const showAction = (isCurrent || isUpcoming) && node.can_confirm && i <= nodes.findIndex(n => n.status === "current") + 2;
-                  const actionDone = actionResult?.key === node.key;
-
+              {/* ── Stage tiles ── */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                {STAGES.map((s, i) => {
+                  const idx     = STAGES.findIndex(st => st.key === currentStageKey);
+                  const isPast  = i < idx;
+                  const isCurr  = i === idx;
+                  const isFuture = i > idx;
                   return (
-                    <div key={node.key} style={{ position: "relative", paddingBottom: isLast ? 0 : 24 }}>
-                      {/* Connecting line */}
-                      {!isLast && (
-                        <div style={{ position: "absolute", left: -20, top: 20, width: 2, bottom: 0, background: isDone ? C.forest + "60" : C.border }} />
-                      )}
-
-                      {/* Dot */}
-                      <div style={{
-                        position: "absolute", left: -26, top: 4,
-                        width: 14, height: 14, borderRadius: "50%",
-                        background: dot,
-                        border: isDone ? "none" : `2px solid ${isCurrent ? C.leaf : C.border}`,
-                        boxShadow: ring,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {isDone && (
-                          <svg width="8" height="8" viewBox="0 0 8 8">
-                            <path d="M1 4l2 2 4-4" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-
-                      {/* Node content */}
-                      <div style={{
-                        background: isCurrent ? C.forest + "08" : "#fff",
-                        border: `1px solid ${isCurrent ? C.forest + "30" : C.border}`,
-                        borderRadius: 12,
-                        padding: "12px 14px",
-                        opacity: isUpcoming && !node.display_date ? 0.6 : 1,
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: isCurrent ? C.forest : isDone ? "#1a1a1a" : C.stone, fontFamily: "serif" }}>
-                            {node.label}
-                          </div>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, marginLeft: 8 }}>
-                            {isCurrent && (
-                              <span style={{ background: C.forest, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Now
-                              </span>
-                            )}
-                            {node.source === "observation" && (
-                              <span style={{ background: C.leaf + "22", color: C.leaf, fontSize: 10, borderRadius: 20, padding: "2px 7px" }}>
-                                Confirmed
-                              </span>
-                            )}
-                            {node.source === "user" && isDone && (
-                              <span style={{ background: C.forest + "15", color: C.forest, fontSize: 10, borderRadius: 20, padding: "2px 7px" }}>
-                                Logged
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {node.formatted_date && (
-                          <div style={{ fontSize: 12, color: isDone ? C.stone : isCurrent ? C.forest : C.stone, marginBottom: node.description ? 6 : 0 }}>
-                            {isDone ? node.formatted_date : `Expected ${node.formatted_date}`}
-                            {node.harvest_window_label && (
-                              <span style={{ marginLeft: 6, fontSize: 11, color: C.amber, fontWeight: 600 }}>
-                                {node.harvest_window_label}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {(isCurrent || isDone) && node.description && (
-                          <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5, marginTop: 2 }}>
-                            {node.description}
-                          </div>
-                        )}
-
-                        {/* Confirm / not yet / problem buttons */}
-                        {showAction && !actionDone && (
-                          <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
-                            <button
-                              onClick={() => confirmStage(node)}
-                              disabled={confirming === node.key}
-                              style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "none", background: C.leaf, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                              {confirming === node.key ? "Saving…" : isCurrent ? "✓ Confirm" : "✓ Yes, started"}
-                            </button>
-                            <button
-                              onClick={() => notYet(node)}
-                              style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff", color: C.stone, fontSize: 12, cursor: "pointer" }}>
-                              Not yet
-                            </button>
-                          </div>
-                        )}
-
-                        {actionDone && actionResult.result === "confirmed" && (
-                          <div style={{ marginTop: 8, fontSize: 12, color: C.leaf, fontWeight: 600 }}>✓ Confirmed — timeline updated</div>
-                        )}
-                        {actionDone && actionResult.result === "not_yet" && (
-                          <div style={{ marginTop: 8, fontSize: 12, color: C.stone }}>OK — we'll keep this as upcoming</div>
-                        )}
+                    <div key={s.key}
+                      onClick={() => !adjusting && null}
+                      style={{
+                        padding: "10px 3px", textAlign: "center",
+                        borderRight: i < 5 ? `1px solid ${C.border}` : "none",
+                        background: isCurr ? C.forest : adjusting && selected === s.key ? "#EAF3DE" : "transparent",
+                        cursor: adjusting ? "pointer" : "default",
+                        opacity: isFuture && !adjusting ? 0.45 : 1,
+                        outline: adjusting && selected === s.key ? `2px solid ${C.forest}` : "none",
+                      }}
+                      onClick={adjusting ? () => setSelected(s.key) : undefined}>
+                      <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
+                      <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
+                      <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
+                        {isCurr ? "Now" : isPast ? "Done" : ""}
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Footer confidence note */}
-              <div style={{ marginTop: 20, padding: "12px 14px", background: C.offwhite, borderRadius: 10 }}>
-                <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.5 }}>
-                  {timeline.observation_offset_days !== 0 && Math.abs(timeline.observation_offset_days) > 0
-                    ? `Timeline adjusted ${Math.abs(timeline.observation_offset_days)} days ${timeline.observation_offset_days > 0 ? "later" : "earlier"} based on your observations.`
-                    : "Dates are estimated from your sow date and variety data. Confirm stages as they happen to improve accuracy."
-                  }
+              {/* ── What to do now ── */}
+              {!adjusting && actions.length > 0 && (
+                <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What to do right now</div>
+                  {actions.map((a, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < actions.length - 1 ? 6 : 0 }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
+                      <div style={{ fontSize: 12, color: "#27500A", lineHeight: 1.4 }}>{a}</div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </>
+              )}
+
+              {/* ── Stat cards ── */}
+              {!adjusting && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                  <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Next milestone</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+                      {STAGES[stageIdx + 1]?.label || "Harvest"}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.stone }}>
+                      {harvestNode?.formatted_date ? `By ${harvestNode.formatted_date}` : "Coming up"}
+                    </div>
+                  </div>
+                  <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Growing for</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+                      {daysSown !== null ? `${daysSown} days` : "—"}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.stone }}>
+                      {sowDate ? `since ${new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "add a sow date"}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Journey so far ── */}
+              {!adjusting && journeyNodes.length > 0 && (
+                <div style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Your journey so far</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                    {journeyNodes.map((n, i) => (
+                      <div key={n.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "current" ? C.leaf : C.forest, flexShrink: 0 }} />
+                        <div style={{ fontSize: 12, color: C.stone }}>
+                          {n.label}
+                          {n.formatted_date && (
+                            <span style={{ color: "#1a1a1a", fontWeight: 600, marginLeft: 6 }}>{n.formatted_date}</span>
+                          )}
+                          {n.status === "current" && <span style={{ color: C.leaf, fontWeight: 600, marginLeft: 6 }}>now</span>}
+                        </div>
+                      </div>
+                    ))}
+                    {harvestNode && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", border: `1.5px solid ${C.border}`, flexShrink: 0 }} />
+                        <div style={{ fontSize: 12, color: C.stone }}>
+                          Harvest expected
+                          <span style={{ color: C.stone, fontWeight: 600, marginLeft: 6 }}>{harvestNode.formatted_date}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Confirm / Adjust ── */}
+              {!adjusting ? (
+                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                  <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Is this stage right for your plant?</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => confirmStage(currentStageKey)} disabled={saving}
+                      style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                      {saving ? "Saving…" : "Yes — this looks right"}
+                    </button>
+                    <button onClick={() => { setAdjusting(true); setSelected(currentStageKey); }}
+                      style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                      No — adjust stage
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                  <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Tap the stage your plant is actually at:</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
+                      style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
+                      {saving ? "Saving…" : "Confirm stage"}
+                    </button>
+                    <button onClick={() => { setAdjusting(false); setSelected(null); }}
+                      style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
           );
         })()}
+
+        {!loading && !confirmed && !timeline && (
+          <div style={{ padding: "40px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop's growth timeline.</div>
+          </div>
+        )}
+
       </div>
     </div>
   );
