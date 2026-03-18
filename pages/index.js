@@ -6619,7 +6619,8 @@ function AdminScreen() {
   const [metrics,   setMetrics]  = useState(null);
   const [loading,   setLoading]  = useState(true);
   const [error,     setError]    = useState(null);
-  const [acting,    setActing]   = useState(null); // id of crop being approved/rejected
+  const [acting,    setActing]   = useState(null);
+  const [metricTab, setMetricTab] = useState("overview");
 
   useEffect(() => { loadAll(); }, [tab]);
 
@@ -6689,8 +6690,6 @@ function AdminScreen() {
 
       {/* ── Metrics dashboard ── */}
       {!loading && tab === "metrics" && metrics && (() => {
-        const [metricTab, setMetricTab] = useState("overview");
-
         const actRate  = metrics.activationRate || 0;
         const w1Ret    = metrics.week1Retention || 0;
         const w4Ret    = metrics.week4Retention || 0;
