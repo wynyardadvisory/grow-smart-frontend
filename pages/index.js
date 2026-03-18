@@ -6512,7 +6512,6 @@ const SUGGESTIONS = {
     ],
   },
 };
-}
 
 // ── Admin Tools ──────────────────────────────────────────────────────────────
 function InviteWaitlistButton() {
