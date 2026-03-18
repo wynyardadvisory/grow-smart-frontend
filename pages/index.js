@@ -2106,6 +2106,7 @@ function Dashboard({ onTabChange }) {
   const [showCelebration,    setShowCelebration]    = useState(false);
   const [showShareNudge,     setShowShareNudge]     = useState(false);
   const [showReferral,       setShowReferral]       = useState(false);
+  const [showAllToday,       setShowAllToday]       = useState(false);
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -2449,6 +2450,53 @@ function Dashboard({ onTabChange }) {
               </div>
             ))}
             </div>
+          </div>
+        )}
+
+        {/* See all — expandable full due task list */}
+        {thisWeekTasks.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <button onClick={() => setShowAllToday(p => !p)}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                See all ({thisWeekTasks.length + remainingToday.length + (focusItem ? 1 : 0)})
+              </span>
+              <span style={{ fontSize: 16, transition: "transform 0.2s", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
+            </button>
+
+            {showAllToday && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                {/* Show this week tasks in same card style */}
+                {thisWeekTasks.map(t => {
+                  const daysUntil = Math.ceil((new Date(t.due_date) - new Date()) / 86400000);
+                  const dueLabel  = daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`;
+                  return (
+                    <div key={t.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>{getCropEmoji(t.crop?.name || "")}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{t.crop?.name || "General"}</div>
+                          <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 6, padding: "1px 6px", flexShrink: 0 }}>{dueLabel}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.3 }}>{t.action}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {t.crop_instance_id && (
+                          <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
+                            style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", padding: "0 4px", textDecoration: "underline", flexShrink: 0 }}>
+                            Having problems?
+                          </button>
+                        )}
+                        <button onClick={() => completeTask(t)}
+                          style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                          ✓
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
