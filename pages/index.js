@@ -6327,7 +6327,10 @@ function AdminFeedbackList() {
           </div>
           <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 8 }}>{item.message}</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || item.profiles?.email || "Unknown user"}</span>
+            <div>
+              <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || "Unknown"}</span>
+              {item.user_email && <span style={{ fontSize: 11, color: C.stone, marginLeft: 6 }}>· {item.user_email}</span>}
+            </div>
             {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
           </div>
         </div>
