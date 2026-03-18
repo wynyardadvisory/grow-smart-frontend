@@ -2453,52 +2453,77 @@ function Dashboard({ onTabChange }) {
           </div>
         )}
 
-        {/* See all — expandable full due task list */}
-        {thisWeekTasks.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <button onClick={() => setShowAllToday(p => !p)}
-              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
-              <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
-                See all ({thisWeekTasks.length + remainingToday.length + (focusItem ? 1 : 0)})
-              </span>
-              <span style={{ fontSize: 16, transition: "transform 0.2s", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
-            </button>
+        {/* See all — expandable full due task list grouped by crop */}
+        {(() => {
+          // Build ungrouped list of all this-week tasks (no dedup — show all tasks per crop)
+          const allThisWeek = [...serverThisWeek].filter(t => !completed.has(t.id));
+          if (allThisWeek.length === 0) return null;
 
-            {showAllToday && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-                {/* Show this week tasks in same card style */}
-                {thisWeekTasks.map(t => {
-                  const daysUntil = Math.ceil((new Date(t.due_date) - new Date()) / 86400000);
-                  const dueLabel  = daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`;
-                  return (
-                    <div key={t.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 18, flexShrink: 0 }}>{getCropEmoji(t.crop?.name || "")}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{t.crop?.name || "General"}</div>
-                          <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 6, padding: "1px 6px", flexShrink: 0 }}>{dueLabel}</span>
+          // Group by crop name
+          const grouped = {};
+          for (const t of allThisWeek) {
+            const key = t.crop?.name || "General";
+            if (!grouped[key]) grouped[key] = { crop: t.crop, tasks: [] };
+            grouped[key].tasks.push(t);
+          }
+          const cropGroups = Object.values(grouped);
+          const totalCount = allThisWeek.length + remainingToday.length + (focusItem ? 1 : 0);
+
+          return (
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setShowAllToday(p => !p)}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                  See all ({totalCount})
+                </span>
+                <span style={{ fontSize: 16, transition: "transform 0.2s", display: "inline-block", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
+              </button>
+
+              {showAllToday && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                  {cropGroups.map((group, gi) => {
+                    const firstTask = group.tasks[0];
+                    const multiTask = group.tasks.length > 1;
+                    return (
+                      <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
+                        {/* Crop header */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderBottom: multiTask ? `1px solid ${C.border}` : "none" }}>
+                          <span style={{ fontSize: 18, flexShrink: 0 }}>{getCropEmoji(group.crop?.name || "")}</span>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>{group.crop?.name || "General"}</div>
+                          {group.tasks[0]?.due_date && (() => {
+                            const daysUntil = Math.ceil((new Date(group.tasks[0].due_date) - new Date()) / 86400000);
+                            const label = daysUntil <= 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`;
+                            return <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 6, padding: "1px 6px", marginLeft: "auto" }}>{label}</span>;
+                          })()}
                         </div>
-                        <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.3 }}>{t.action}</div>
+                        {/* Task rows */}
+                        {group.tasks.map((t, ti) => (
+                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderTop: ti > 0 ? `1px solid ${C.border}` : "none", background: ti % 2 === 0 ? "transparent" : C.offwhite + "80" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{t.action}</div>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                              {t.crop_instance_id && (
+                                <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
+                                  style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", padding: "0 4px", textDecoration: "underline" }}>
+                                  Problems?
+                                </button>
+                              )}
+                              <button onClick={() => completeTask(t)}
+                                style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                                ✓
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        {t.crop_instance_id && (
-                          <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
-                            style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", padding: "0 4px", textDecoration: "underline", flexShrink: 0 }}>
-                            Having problems?
-                          </button>
-                        )}
-                        <button onClick={() => completeTask(t)}
-                          style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
-                          ✓
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Recently done */}
         {recentlyDone.length > 0 && (
