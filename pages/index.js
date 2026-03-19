@@ -5792,34 +5792,28 @@ function TimeAwayScreen({ onClose }) {
 
   const LABEL_OPTIONS = ["Holiday", "Work trip", "Busy week", "Other"];
 
-  const heroStyle = {
-    background: "#2F5D50",
-    padding: "28px 20px 26px",
-    position: "relative",
-    overflow: "hidden",
-    marginBottom: 0,
-  };
-
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#fff", zIndex: 2000, overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "#F7FAF8", zIndex: 2000, overflowY: "auto" }}>
 
       {/* ── Dark green hero header ── */}
-      <div style={heroStyle}>
-        {/* Decorative circles */}
-        <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.055)", top: -50, right: -50 }} />
-        <div style={{ position: "absolute", width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.04)", bottom: -24, left: 16 }} />
+      <div style={{ background: "#2F5D50" }}>
+        <div style={{ maxWidth: 440, margin: "0 auto", padding: "28px 20px 26px", position: "relative", overflow: "hidden" }}>
+          {/* Decorative circles */}
+          <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.055)", top: -50, right: -50 }} />
+          <div style={{ position: "absolute", width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.04)", bottom: -24, left: 16 }} />
 
-        {/* Back button */}
-        <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.55)", fontSize: 12, padding: 0, marginBottom: 20, position: "relative" }}>
-          ← Profile
-        </button>
+          {/* Back button */}
+          <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.55)", fontSize: 12, padding: 0, marginBottom: 20, position: "relative" }}>
+            ← Profile
+          </button>
 
-        {/* Title block */}
-        <div style={{ position: "relative" }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>✈️</div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>Time away</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", lineHeight: 1.5, maxWidth: 280 }}>
-            Tell us when you're unavailable — we'll adjust your tasks automatically.
+          {/* Title block */}
+          <div style={{ position: "relative" }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>✈️</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>Time away</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", lineHeight: 1.5, maxWidth: 280 }}>
+              Tell us when you're unavailable — we'll adjust your tasks automatically.
+            </div>
           </div>
         </div>
       </div>
