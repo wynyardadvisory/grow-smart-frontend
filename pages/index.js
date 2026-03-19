@@ -6686,7 +6686,75 @@ function AdminTools() {
 // ── Admin Screen ─────────────────────────────────────────────────────────────
 // Only visible to mark@wynyardadvisory.co.uk
 
-function AdminScreen() {
+// ── Demo admin screen — marketing reset only ──────────────────────────────────
+function DemoAdminScreen() {
+  const [resetting, setResetting] = useState(false);
+  const [result,    setResult]    = useState(null);
+  const [confirm,   setConfirm]   = useState(false);
+
+  const runReset = async () => {
+    setResetting(true);
+    setResult(null);
+    try {
+      const data = await apiFetch("/demo/reset", { method: "POST" });
+      setResult({ ok: true, crops: data.crops, tasks: data.tasks });
+    } catch(e) {
+      setResult({ ok: false, error: e.message });
+    }
+    setResetting(false);
+    setConfirm(false);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 4, color: "#1a1a1a" }}>Demo tools</div>
+      <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>Reset this account back to the demo state</div>
+
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px" }}>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Marketing reset</div>
+        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 16 }}>
+          Wipes all crops, tasks and harvest logs and restores the demo garden to its default state. Use this before handing the phone to someone new.
+        </div>
+
+        {!confirm ? (
+          <button onClick={() => setConfirm(true)}
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+            Reset demo garden
+          </button>
+        ) : (
+          <div>
+            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: "#8a5c00", lineHeight: 1.5 }}>
+              ⚠️ This will wipe all current data and restore the demo garden. Are you sure?
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={runReset} disabled={resetting}
+                style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                {resetting ? "Resetting…" : "Yes, reset now"}
+              </button>
+              <button onClick={() => setConfirm(false)}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, color: "#666", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {result?.ok && (
+          <div style={{ marginTop: 14, background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.forest }}>
+            ✓ Demo garden reset — {result.crops} crops and {result.tasks} tasks restored
+          </div>
+        )}
+        {result?.ok === false && (
+          <div style={{ marginTop: 14, background: "#fff0f0", border: "1px solid #f5c6c6", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.red }}>
+            ✗ Reset failed: {result.error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminScreen({ isDemo = false }) {
   const [tab,       setAdminTab] = useState("metrics");
   const [crops,     setCrops]    = useState([]);
   const [users,     setUsers]    = useState([]);
@@ -6695,6 +6763,9 @@ function AdminScreen() {
   const [error,     setError]    = useState(null);
   const [acting,    setActing]   = useState(null);
   const [metricTab, setMetricTab] = useState("overview");
+
+  // ── Demo mode — restricted view ──────────────────────────────────────────
+  if (isDemo) return <DemoAdminScreen />;
 
   useEffect(() => { loadAll(); }, [tab]);
 
@@ -7323,6 +7394,15 @@ export default function GrowSmart() {
   }, [session]);
 
   const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
+  const [isDemo, setIsDemo] = useState(false);
+
+  // Fetch is_demo flag from profile
+  useEffect(() => {
+    if (!session) { setIsDemo(false); return; }
+    apiFetch("/auth/profile")
+      .then(p => setIsDemo(p?.is_demo === true))
+      .catch(() => setIsDemo(false));
+  }, [session]);
   const [showFeedback, setShowFeedback] = useState(false);
 
   // iOS install prompt — show if on iOS Safari and not installed as PWA
@@ -7366,7 +7446,7 @@ export default function GrowSmart() {
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} />}
-        {tab === "admin"     && isAdmin && <AdminScreen />}
+        {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
       </div>
 
       {/* iOS install banner */}
@@ -7385,7 +7465,7 @@ export default function GrowSmart() {
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
-        {[...TABS, ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
+        {[...TABS, ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
