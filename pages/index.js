@@ -2656,7 +2656,7 @@ function Dashboard({ onTabChange }) {
                 You have {upcomingCount} tasks coming up. Going anywhere? We can adjust your plan around it.
               </div>
               <button
-                onClick={() => onTabChange("profile")}
+                onClick={() => onTabChange("profile", { openTimeAway: true })}
                 style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", marginRight: 8 }}>
                 Plan time away →
               </button>
@@ -2674,7 +2674,7 @@ function Dashboard({ onTabChange }) {
       {!timeAwayDismissed && blockedPeriods.length === 0 && (
         <div
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 12, background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer" }}
-          onClick={() => onTabChange("profile")}>
+          onClick={() => onTabChange("profile", { openTimeAway: true })}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>✈️</span>
             <div>
@@ -5641,7 +5641,7 @@ function TimeAwayTodayBanner({ blockedPeriods, onTabChange }) {
 
   return (
     <div
-      onClick={() => onTabChange("profile")}
+      onClick={() => onTabChange("profile", { openTimeAway: true })}
       style={{
         background: isActive ? "#fff8ed" : "#f0f7f4",
         border: `1px solid ${isActive ? "#f59e0b" : "#86c9a0"}`,
@@ -5677,11 +5677,17 @@ function TimeAwayTodayBanner({ blockedPeriods, onTabChange }) {
 // TIME AWAY — COMPONENTS
 // =============================================================================
 
-function TimeAwaySection() {
+function TimeAwaySection({ openOnMount = false, onOpened }) {
   const [periods,    setPeriods]    = useState(null);
   const [showScreen, setShowScreen] = useState(false);
 
-  useEffect(() => { loadPeriods(); }, []);
+  useEffect(() => {
+    loadPeriods();
+    if (openOnMount) {
+      setShowScreen(true);
+      if (onOpened) onOpened();
+    }
+  }, []);
 
   const loadPeriods = async () => {
     try {
@@ -5980,7 +5986,7 @@ function TimeAwayScreen({ onClose }) {
   );
 }
 
-function ProfileScreen({ session, onTabChange }) {
+function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayOpened }) {
   const PROFILE_CACHE = "vercro_profile_v1";
   const _cachedProfile = (() => { try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {} return null; })();
   const [form,       setForm]      = useState(_cachedProfile || { name: "", postcode: "" });
@@ -6259,7 +6265,7 @@ function ProfileScreen({ session, onTabChange }) {
       <NotificationSettingsSection />
 
       {/* Time Away */}
-      <TimeAwaySection />
+      <TimeAwaySection openOnMount={openTimeAway} onOpened={onTimeAwayOpened} />
 
       {/* FAQ Section */}
       <FAQSection />
@@ -7890,6 +7896,7 @@ export default function GrowSmart() {
   const [addPrefill,  setAddPrefill]  = useState(null);
   const [prevTab,     setPrevTab]     = useState("dashboard");
   const [editCropFocus, setEditCropFocus] = useState(null);
+  const [openTimeAway,  setOpenTimeAway]  = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -7959,13 +7966,13 @@ export default function GrowSmart() {
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <Dashboard onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); setTab(newTab); }} />}
+        {tab === "dashboard" && <Dashboard onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
         {tab === "crops"     && <CropList onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && <FeedsScreen />}
-        {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} />}
+        {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
       </div>
 
