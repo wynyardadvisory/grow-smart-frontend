@@ -2175,6 +2175,9 @@ function Dashboard({ onTabChange }) {
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
+  const [showFirstRun,       setShowFirstRun]       = useState(() => {
+    try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
+  });
   const [timeAwayDismissed,  setTimeAwayDismissed]  = useState(() => {
     try { return localStorage.getItem("vercro_timeaway_dismissed") === "1"; } catch(e) { return false; }
   });
@@ -2453,6 +2456,28 @@ function Dashboard({ onTabChange }) {
           <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
         </div>
       </div>
+
+      {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
+      {showFirstRun && (
+        <div style={{ background: C.forest, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "serif", color: "#fff", marginBottom: 6 }}>
+            Here's your garden plan for today 👇
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, marginBottom: 14 }}>
+            We've set this up from the crops you added. You can add more anytime.
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} }}
+              style={{ background: "#fff", color: C.forest, border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+              Got it
+            </button>
+            <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} onTabChange("add"); }}
+              style={{ background: "transparent", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 8, padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Add another crop
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── NOTIFICATION PROMPT ────────────────────────────────────────────────── */}
       <NotificationDashboardPrompt onTabChange={onTabChange} />
@@ -7681,211 +7706,314 @@ const TABS = [
 // Runs once after sign-up. Three steps: profile → location → area.
 // Skipped entirely if the user already has at least one location.
 
-const ONBOARDING_STEPS = [
-  { id: "profile",  label: "About you",       hint: "So we can personalise your experience" },
-  { id: "location", label: "Your garden",      hint: "Where are you growing?" },
-  { id: "area",     label: "First growing area", hint: "A bed, greenhouse, or container" },
+// =============================================================================
+// ONBOARDING — Phase 1 rebuild
+// 4 steps: identity → crops → stage → area type
+// Calls /onboarding/complete which creates everything and runs rule engine.
+// User lands on Today with real tasks. Never an empty screen.
+// =============================================================================
+
+const ONBOARDING_CROPS = [
+  { name: "Tomatoes",     emoji: "🍅" },
+  { name: "Potatoes",     emoji: "🥔" },
+  { name: "Carrots",      emoji: "🥕" },
+  { name: "Lettuce",      emoji: "🥬" },
+  { name: "Onions",       emoji: "🧅" },
+  { name: "Peas",         emoji: "🫛" },
+  { name: "Beans",        emoji: "🫘" },
+  { name: "Garlic",       emoji: "🧄" },
+  { name: "Courgette",    emoji: "🥒" },
+  { name: "Strawberries", emoji: "🍓" },
+  { name: "Spinach",      emoji: "🥬" },
+  { name: "Cabbage",      emoji: "🥦" },
+];
+
+const STAGES = [
+  { id: "not_sown",    label: "Not sown yet",     desc: "I'm planning to grow this" },
+  { id: "just_sown",   label: "Just sown",         desc: "Sown in the last week or so" },
+  { id: "growing",     label: "Growing already",   desc: "Seedlings or plants are up" },
+  { id: "near_harvest",label: "Near harvest",      desc: "Almost ready to pick" },
+];
+
+const AREA_TYPES = [
+  { id: "raised_bed",   label: "Raised bed",        emoji: "🪴" },
+  { id: "container",    label: "Pots / containers",  emoji: "🪣" },
+  { id: "greenhouse",   label: "Greenhouse",         emoji: "🏠" },
+  { id: "open_ground",  label: "In-ground bed",      emoji: "🌱" },
 ];
 
 function OnboardingScreen({ onComplete }) {
-  const [step, setStep]     = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState(null);
+  const [step,          setStep]         = useState(0);
+  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = loading
+  const [name,          setName]         = useState("");
+  const [postcode,      setPostcode]     = useState("");
+  const [selectedCrops, setSelectedCrops]= useState([]); // [{name, emoji}]
+  const [stage,         setStage]        = useState(null);
+  const [areaType,      setAreaType]     = useState(null);
+  const [error,         setError]        = useState(null);
+  const [loadingMsg,    setLoadingMsg]   = useState("");
 
-  // Form state per step
-  const [profile,  setProfile]  = useState({ name: "", postcode: "" });
-  const [location, setLocation] = useState({ name: "", postcode: "" });
-  const [area,     setArea]     = useState({ name: "", type: "raised_bed" });
-
-  // Saved IDs — needed to link area → location
-  const [locationId, setLocationId] = useState(null);
-
-  // iOS detection — safe (runs client-side only inside component)
-  const isIOSSafari = typeof window !== "undefined"
-    && /iphone|ipad|ipod/i.test(navigator.userAgent)
-    && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    && !window.navigator.standalone;
-
-  const current = ONBOARDING_STEPS[step];
-  const isLast  = step === ONBOARDING_STEPS.length - 1;
+  const toggleCrop = (crop) => {
+    setSelectedCrops(prev =>
+      prev.find(c => c.name === crop.name)
+        ? prev.filter(c => c.name !== crop.name)
+        : [...prev, crop]
+    );
+  };
 
   const canAdvance = () => {
-    if (step === 0) return profile.name.trim() && profile.postcode.trim();
-    if (step === 1) return location.name.trim() && location.postcode.trim();
-    if (step === 2) return area.name.trim();
+    if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0;
+    if (step === 1) return selectedCrops.length > 0;
+    if (step === 2) return stage !== null;
+    if (step === 3) return areaType !== null;
     return false;
   };
 
-  const handleNext = async () => {
-    setSaving(true); setError(null);
-    try {
-      if (step === 0) {
-        await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify(profile) });
-        setStep(1);
-      } else if (step === 1) {
-        const loc = await apiFetch("/locations", { method: "POST", body: JSON.stringify({ name: location.name, postcode: location.postcode }) });
-        setLocationId(loc.id);
-        setStep(2);
-      } else if (step === 2) {
-        await apiFetch("/areas", { method: "POST", body: JSON.stringify({ location_id: locationId, name: area.name, type: area.type }) });
-        // Show iOS install prompt before completing, if on iOS Safari
-        if (isIOSSafari) { setStep(3); } else { onComplete(); }
-      } else if (step === 3) {
-        onComplete();
-      }
-    } catch (e) { setError(e.message); }
-    setSaving(false);
+  const next = () => {
+    setError(null);
+    if (step < 3) { setStep(s => s + 1); return; }
+    // Step 3 → submit
+    submit();
   };
 
-  const setP = (f, v) => setProfile(p  => ({ ...p, [f]: v }));
-  const setL = (f, v) => setLocation(p => ({ ...p, [f]: v }));
-  const setA = (f, v) => setArea(p     => ({ ...p, [f]: v }));
+  const submit = async () => {
+    setStep(4); // loading screen
+    const msgs = [
+      "Setting up your first crops...",
+      "Checking local weather...",
+      "Generating your tasks...",
+    ];
+    let i = 0;
+    setLoadingMsg(msgs[0]);
+    const interval = setInterval(() => {
+      i = (i + 1) % msgs.length;
+      setLoadingMsg(msgs[i]);
+    }, 900);
+
+    try {
+      // Look up crop_def_ids for selected crops
+      const defs = await apiFetch("/crop-definitions");
+      const cropsPayload = selectedCrops.map(c => {
+        const def = defs?.find(d => d.name.toLowerCase() === c.name.toLowerCase());
+        return { name: c.name, crop_def_id: def?.id || null, stage };
+      });
+
+      await apiFetch("/onboarding/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          postcode: postcode.trim().toUpperCase(),
+          crops: cropsPayload,
+          area_type: areaType,
+        }),
+      });
+
+      clearInterval(interval);
+      // Small deliberate pause so loading feels intentional
+      await new Promise(r => setTimeout(r, 600));
+      onComplete();
+    } catch (e) {
+      clearInterval(interval);
+      setError(e.message || "Something went wrong. Please try again.");
+      setStep(3);
+    }
+  };
+
+  // ── Loading screen ──────────────────────────────────────────────────────────
+  if (step === 4) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif" }}>
+        <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 12, textAlign: "center" }}>Building your garden plan...</div>
+        <div style={{ fontSize: 15, color: C.stone, textAlign: "center", minHeight: 24 }}>{loadingMsg}</div>
+      </div>
+    );
+  }
+
+  const stepLabels = ["About you", "Your crops", "Growth stage", "Where you're growing"];
+  const progress = ((step + 1) / 4) * 100;
 
   return (
-    <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto", padding: "0 0 40px" }}>
+    <div style={{ background: C.offwhite, minHeight: "100vh", maxWidth: 440, margin: "0 auto", fontFamily: "Georgia, serif", paddingBottom: 40 }}>
 
-      {/* iOS install step — full screen, no progress bar */}
-      {step === 3 && (
-        <div style={{ padding: "48px 28px 40px", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-          <div style={{ fontSize: 52, marginBottom: 20, textAlign: "center" }}>🌱</div>
-          <div style={{ fontSize: 26, fontWeight: 700, fontFamily: "serif", color: C.forest, marginBottom: 8, textAlign: "center" }}>
-            One last thing
-          </div>
-          <div style={{ fontSize: 15, color: C.stone, marginBottom: 32, textAlign: "center", lineHeight: 1.6 }}>
-            Add Vercro to your home screen to get the full experience — including taking photos of seed packets to identify crops instantly.
-          </div>
-
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", marginBottom: 28 }}>
-            <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.8 }}>
-              <div style={{ marginBottom: 10 }}>
-                <span style={{ fontWeight: 700, color: C.forest }}>1.</span> Tap the share button{" "}
-                <span style={{ display: "inline-block", background: "#e8e8e8", borderRadius: 6, padding: "1px 8px", fontSize: 16 }}>⎋</span>
-                {" "}at the bottom of Safari
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                <span style={{ fontWeight: 700, color: C.forest }}>2.</span> Scroll down and tap <span style={{ fontWeight: 700 }}>"Add to Home Screen"</span>
-              </div>
-              <div>
-                <span style={{ fontWeight: 700, color: C.forest }}>3.</span> Tap <span style={{ fontWeight: 700 }}>"Add"</span> — then open Vercro from your home screen
-              </div>
-            </div>
-          </div>
-
-          <div style={{ fontSize: 12, color: C.stone, textAlign: "center", marginBottom: 28 }}>
-            No App Store needed. Works like a normal app once installed.
-          </div>
-
-          <button onClick={handleNext}
-            style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: "serif", marginBottom: 12 }}>
-            Got it — take me to my garden →
-          </button>
-          <button onClick={onComplete}
-            style={{ width: "100%", padding: "12px", borderRadius: 14, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-            Skip for now
-          </button>
-        </div>
-      )}
-
-      {step < 3 && <>
       {/* Progress bar */}
       <div style={{ height: 3, background: C.border }}>
-        <div style={{ height: "100%", width: `${((step + 1) / ONBOARDING_STEPS.length) * 100}%`, background: C.forest, transition: "width 0.4s ease" }} />
+        <div style={{ height: "100%", width: `${progress}%`, background: C.forest, transition: "width 0.35s ease" }} />
       </div>
 
-      {/* Header */}
       <div style={{ padding: "28px 24px 0" }}>
-        <div style={{ fontSize: 11, color: C.stone, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
-          {step + 1} of {ONBOARDING_STEPS.length}
+        <div style={{ fontSize: 11, color: C.stone, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
+          Step {step + 1} of 4
         </div>
-        <div style={{ fontSize: 26, fontWeight: 700, fontFamily: "serif", color: C.forest }}>{current.label}</div>
-        <div style={{ fontSize: 13, color: C.stone, marginTop: 4 }}>{current.hint}</div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: C.forest, marginBottom: 4 }}>
+          {stepLabels[step]}
+        </div>
+
+        {error && (
+          <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 10, padding: "10px 14px", marginTop: 12, fontSize: 13, color: C.red }}>
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Fields */}
-      <div style={{ padding: "28px 24px 0", display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ padding: "24px 24px 0" }}>
 
-        {error && <ErrorMsg msg={error} />}
-
-        {step === 0 && <>
-          <div>
-            <label style={labelStyle}>Your name</label>
-            <input value={profile.name} onChange={e => setP("name", e.target.value)} style={inputStyle} placeholder="e.g. Sarah" autoFocus />
-          </div>
-          <div>
-            <label style={labelStyle}>Your postcode</label>
-            <input value={profile.postcode} onChange={e => setP("postcode", e.target.value.toUpperCase())} style={inputStyle} placeholder="e.g. TS22" />
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used for weather and frost alerts</div>
-          </div>
-        </>}
-
-        {step === 1 && <>
-          <div>
-            <label style={labelStyle}>Location name</label>
-            <input value={location.name} onChange={e => setL("name", e.target.value)} style={inputStyle} placeholder="e.g. Back garden, Allotment plot 14" autoFocus />
-          </div>
-          <div>
-            <label style={labelStyle}>Postcode</label>
-            <input value={location.postcode} onChange={e => setL("postcode", e.target.value.toUpperCase())} style={inputStyle} placeholder="e.g. TS22" />
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
-          </div>
-
-          {/* What counts as a location */}
-          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>What is a location?</div>
-            {["Your home garden", "An allotment plot", "A community garden", "A friend's garden you help with"].map(ex => (
-              <div key={ex} style={{ fontSize: 13, color: C.stone, paddingBottom: 4 }}>· {ex}</div>
-            ))}
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 6, fontStyle: "italic" }}>You can add more locations later.</div>
-          </div>
-        </>}
-
-        {step === 2 && <>
-          <div>
-            <label style={labelStyle}>Area name</label>
-            <input value={area.name} onChange={e => setA("name", e.target.value)} style={inputStyle} placeholder="e.g. Main raised bed, Greenhouse" autoFocus />
-          </div>
-          <div>
-            <label style={labelStyle}>Type</label>
-            <select value={area.type} onChange={e => setA("type", e.target.value)} style={inputStyle}>
-              <option value="raised_bed">Raised bed</option>
-              <option value="open_ground">Open ground</option>
-              <option value="greenhouse">Greenhouse</option>
-              <option value="polytunnel">Polytunnel</option>
-              <option value="container">Container / pots</option>
-            </select>
-          </div>
-
-          {/* Area type context */}
-          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Why this matters</div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
-              A greenhouse or polytunnel gets earlier planting dates and no frost alerts. Containers get more frequent watering reminders. You can add more areas after setup.
+        {/* ── Step 0: Identity ─────────────────────────────────────────────── */}
+        {step === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.5, marginBottom: 4 }}>
+              We'll use your postcode for local weather and task timing.
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>First name</label>
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g. Sarah"
+                autoFocus
+                style={{ ...inputStyle, width: "100%" }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Postcode</label>
+              <input
+                value={postcode}
+                onChange={e => setPostcode(e.target.value.toUpperCase())}
+                placeholder="e.g. TS22"
+                style={{ ...inputStyle, width: "100%" }}
+              />
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>First part only — e.g. TS22, not TS22 5BQ</div>
             </div>
           </div>
-        </>}
+        )}
 
+        {/* ── Step 1: Crop selection ───────────────────────────────────────── */}
+        {step === 1 && (
+          <div>
+            <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
+              Pick at least one — you can add more later.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {ONBOARDING_CROPS.map(crop => {
+                const selected = selectedCrops.find(c => c.name === crop.name);
+                return (
+                  <button key={crop.name} onClick={() => toggleCrop(crop)}
+                    style={{
+                      background: selected ? C.forest : "#fff",
+                      border: `2px solid ${selected ? C.forest : C.border}`,
+                      borderRadius: 12,
+                      padding: "14px 12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      transition: "all 0.15s",
+                    }}>
+                    <span style={{ fontSize: 24 }}>{crop.emoji}</span>
+                    <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "serif", color: selected ? "#fff" : "#1a1a1a" }}>
+                      {crop.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2: Growth stage (one answer for all crops) ──────────────── */}
+        {step === 2 && (
+          <div>
+            <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
+              A rough answer is fine — we'll build your plan from this.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {STAGES.map(s => (
+                <button key={s.id} onClick={() => setStage(s.id)}
+                  style={{
+                    background: stage === s.id ? C.forest : "#fff",
+                    border: `2px solid ${stage === s.id ? C.forest : C.border}`,
+                    borderRadius: 12,
+                    padding: "16px 18px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: stage === s.id ? "#fff" : "#1a1a1a", marginBottom: 3 }}>
+                    {s.label}
+                  </div>
+                  <div style={{ fontSize: 13, color: stage === s.id ? "rgba(255,255,255,0.7)" : C.stone }}>
+                    {s.desc}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: Area type ────────────────────────────────────────────── */}
+        {step === 3 && (
+          <div>
+            <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
+              This helps us tailor watering, frost alerts and planting timings.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {AREA_TYPES.map(a => (
+                <button key={a.id} onClick={() => setAreaType(a.id)}
+                  style={{
+                    background: areaType === a.id ? C.forest : "#fff",
+                    border: `2px solid ${areaType === a.id ? C.forest : C.border}`,
+                    borderRadius: 12,
+                    padding: "18px 14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "all 0.15s",
+                  }}>
+                  <span style={{ fontSize: 28 }}>{a.emoji}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, fontFamily: "serif", color: areaType === a.id ? "#fff" : "#1a1a1a", textAlign: "center" }}>
+                    {a.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Continue / Submit button ─────────────────────────────────────── */}
         <button
-          onClick={handleNext}
-          disabled={saving || !canAdvance()}
-          style={{ background: !canAdvance() ? C.border : C.forest, color: !canAdvance() ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 16, fontSize: 16, fontWeight: 700, cursor: !canAdvance() ? "not-allowed" : "pointer", fontFamily: "serif", marginTop: 8, transition: "background 0.2s" }}
-        >
-          {saving ? "Saving…" : isLast ? "Take me to my garden 🌱" : "Continue →"}
+          onClick={next}
+          disabled={!canAdvance()}
+          style={{
+            width: "100%",
+            marginTop: 28,
+            padding: 16,
+            background: canAdvance() ? C.forest : C.border,
+            color: canAdvance() ? "#fff" : C.stone,
+            border: "none",
+            borderRadius: 12,
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: canAdvance() ? "pointer" : "not-allowed",
+            fontFamily: "serif",
+            transition: "background 0.2s",
+          }}>
+          {step === 3 ? "Build my plan 🌱" : "Continue →"}
         </button>
 
         {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)} style={{ background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+          <button onClick={() => { setStep(s => s - 1); setError(null); }}
+            style={{ background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", textDecoration: "underline", marginTop: 14, display: "block" }}>
             ← Back
           </button>
         )}
       </div>
-      </>}
     </div>
   );
 }
 
-// ── Root app ──────────────────────────────────────────────────────────────────
-// ── iOS Install Banner ────────────────────────────────────────────────────────
+
 function IOSInstallBanner({ onDismiss }) {
   return (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 408, background: "#1a2e28", borderRadius: 16, padding: "16px 18px", zIndex: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.25)", display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -7927,9 +8055,10 @@ export default function GrowSmart() {
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
     if (!session) { setOnboarding(null); return; }
+    // Show onboarding if user has no locations yet
     apiFetch("/locations")
       .then(locs => setOnboarding(locs.length === 0))
-      .catch(() => setOnboarding(false)); // if check fails, don't block the app
+      .catch(() => setOnboarding(false));
   }, [session]);
 
   const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
