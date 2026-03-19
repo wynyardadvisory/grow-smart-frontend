@@ -3413,10 +3413,12 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginTop: 2, lineHeight: 1.4 }}>{task.action}</div>
 
-            {/* Upcoming date label */}
-            {isUpcoming && task.due_date && (
-              <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 4 }}>
-                📅 Due {new Date(task.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            {/* Upcoming date label — uses effective_due_date if adjusted */}
+            {isUpcoming && (task.effective_due_date || task.due_date) && (
+              <div style={{ fontSize: 11, color: task.adjustment_type ? "#b45309" : C.forest, fontWeight: 600, marginTop: 4 }}>
+                📅 Due {new Date(task.effective_due_date || task.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                {task.adjustment_type === "moved_earlier" && " · brought forward"}
+                {task.adjustment_type === "moved_later"   && " · moved back"}
               </div>
             )}
 
@@ -3443,6 +3445,22 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
               {isEstimated && (
                 <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.amber }}>
                   ~estimated
+                </span>
+              )}
+              {/* Time away adjustment badge */}
+              {task.adjustment_type === "moved_earlier" && !completed && (
+                <span style={{ background: "#e8f5ee", border: "1px solid #86c9a0", borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, fontWeight: 600 }}>
+                  ⬆ Moved earlier
+                </span>
+              )}
+              {task.adjustment_type === "moved_later" && !completed && (
+                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: "#b45309", fontWeight: 600 }}>
+                  ⬇ Moved later
+                </span>
+              )}
+              {task.adjustment_type === "at_risk" && !completed && (
+                <span style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.red, fontWeight: 600 }}>
+                  ⚠ At risk
                 </span>
               )}
               {/* Expand why */}
@@ -5530,6 +5548,248 @@ function NotificationSettingsSection() {
   );
 }
 
+
+// =============================================================================
+// TIME AWAY — COMPONENTS
+// =============================================================================
+
+function TimeAwaySection() {
+  const [periods,    setPeriods]    = useState(null);
+  const [showScreen, setShowScreen] = useState(false);
+
+  useEffect(() => { loadPeriods(); }, []);
+
+  const loadPeriods = async () => {
+    try {
+      const data = await apiFetch("/blocked-periods");
+      setPeriods(data || []);
+    } catch (e) { setPeriods([]); }
+  };
+
+  const activePeriods = (periods || []).filter(p => p.status === "active");
+
+  return (
+    <>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: activePeriods.length > 0 ? 12 : 0 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Time away</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
+              {activePeriods.length === 0
+                ? "Going away? We'll adjust your tasks."
+                : `${activePeriods.length} period${activePeriods.length > 1 ? "s" : ""} active`}
+            </div>
+          </div>
+          <button onClick={() => setShowScreen(true)}
+            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            {activePeriods.length > 0 ? "Manage" : "+ Add"}
+          </button>
+        </div>
+        {activePeriods.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {activePeriods.slice(0, 2).map(p => (
+              <div key={p.id} style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
+                <span style={{ fontWeight: 700, color: "#1a1a1a" }}>{p.label || "Time away"}</span>
+                <span style={{ color: C.stone, marginLeft: 6 }}>
+                  {new Date(p.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} –{" "}
+                  {new Date(p.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showScreen && (
+        <TimeAwayScreen onClose={() => { setShowScreen(false); loadPeriods(); }} />
+      )}
+    </>
+  );
+}
+
+function TimeAwayScreen({ onClose }) {
+  const [periods,     setPeriods]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [showAdd,     setShowAdd]     = useState(false);
+  const [summary,     setSummary]     = useState(null); // shown after add
+  const [form,        setForm]        = useState({ start_date: "", end_date: "", label: "" });
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState(null);
+  const [deleting,    setDeleting]    = useState(null);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch("/blocked-periods");
+      setPeriods(data || []);
+    } catch (e) {}
+    setLoading(false);
+  };
+
+  const save = async () => {
+    if (!form.start_date || !form.end_date) { setError("Please set both dates"); return; }
+    if (form.end_date < form.start_date) { setError("End date must be on or after start date"); return; }
+    setSaving(true); setError(null);
+    try {
+      const result = await apiFetch("/blocked-periods", {
+        method: "POST",
+        body: JSON.stringify({ start_date: form.start_date, end_date: form.end_date, label: form.label || null }),
+      });
+      setSummary(result.summary);
+      setForm({ start_date: "", end_date: "", label: "" });
+      setShowAdd(false);
+      load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const remove = async (id) => {
+    setDeleting(id);
+    try {
+      await apiFetch("/blocked-periods/" + id, { method: "DELETE" });
+      setPeriods(p => p.filter(x => x.id !== id));
+      setSummary(null);
+    } catch (e) {}
+    setDeleting(null);
+  };
+
+  const LABEL_OPTIONS = ["Holiday", "Work trip", "Busy week", "Other"];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#fff", zIndex: 2000, overflowY: "auto" }}>
+      <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 20px 60px" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0 16px", borderBottom: `1px solid ${C.border}`, marginBottom: 20 }}>
+          <button onClick={onClose}
+            style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, padding: 0, lineHeight: 1 }}>←</button>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Time away</div>
+        </div>
+
+        <div style={{ fontSize: 13, color: C.stone, marginBottom: 20, lineHeight: 1.5 }}>
+          Tell us when you're unavailable and Vercro will adjust tasks where possible — bringing them forward or back, and flagging anything that can't safely move.
+        </div>
+
+        {/* Summary strip after add */}
+        {summary && (
+          <div style={{ background: "#f0f7f4", border: `1px solid #c4ddd2`, borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 8 }}>✓ Your plan has been updated</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {summary.movedEarlier > 0 && (
+                <span style={{ fontSize: 12, color: C.forest, background: "#e8f5ee", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
+                  ⬆ {summary.movedEarlier} moved earlier
+                </span>
+              )}
+              {summary.movedLater > 0 && (
+                <span style={{ fontSize: 12, color: "#b45309", background: "#fff8ed", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
+                  ⬇ {summary.movedLater} moved later
+                </span>
+              )}
+              {summary.atRisk > 0 && (
+                <span style={{ fontSize: 12, color: C.red, background: "#fff0f0", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
+                  ⚠ {summary.atRisk} at risk
+                </span>
+              )}
+              {summary.total === 0 && (
+                <span style={{ fontSize: 12, color: C.stone }}>No tasks fell in this date range.</span>
+              )}
+            </div>
+            {summary.atRisk > 0 && (
+              <div style={{ fontSize: 12, color: C.stone, marginTop: 8, lineHeight: 1.4 }}>
+                At-risk tasks could not safely be moved outside your unavailable dates. They may still need attention while you're away.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Existing periods */}
+        {loading ? <Spinner /> : (
+          <>
+            {periods.length === 0 && !showAdd && (
+              <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>🏖️</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>No time away added</div>
+                <div style={{ fontSize: 13 }}>Going on holiday or have a busy week? Add dates and Vercro will adjust tasks where possible.</div>
+              </div>
+            )}
+
+            {periods.map(p => (
+              <div key={p.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", fontFamily: "serif" }}>{p.label || "Time away"}</div>
+                  <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>
+                    {new Date(p.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "long" })} –{" "}
+                    {new Date(p.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                  </div>
+                </div>
+                <button onClick={() => remove(p.id)} disabled={deleting === p.id}
+                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
+                  {deleting === p.id ? "..." : "Remove"}
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Add form */}
+        {showAdd ? (
+          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginTop: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 14 }}>Add time away</div>
+
+            {error && <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.red, marginBottom: 12 }}>{error}</div>}
+
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.stone, display: "block", marginBottom: 4 }}>FROM</label>
+                <input type="date" value={form.start_date}
+                  onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
+                  style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 13, boxSizing: "border-box" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.stone, display: "block", marginBottom: 4 }}>TO</label>
+                <input type="date" value={form.end_date}
+                  onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
+                  style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 13, boxSizing: "border-box" }} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: C.stone, display: "block", marginBottom: 6 }}>REASON (optional)</label>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {LABEL_OPTIONS.map(opt => (
+                  <button key={opt} onClick={() => setForm(f => ({ ...f, label: f.label === opt ? "" : opt }))}
+                    style={{ background: form.label === opt ? C.forest : C.offwhite, color: form.label === opt ? "#fff" : C.stone, border: `1px solid ${form.label === opt ? C.forest : C.border}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { setShowAdd(false); setError(null); }}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px", fontWeight: 600, fontSize: 13, cursor: "pointer", color: C.stone }}>
+                Cancel
+              </button>
+              <button onClick={save} disabled={saving}
+                style={{ flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                {saving ? "Adjusting plan..." : "Adjust my plan"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => { setShowAdd(true); setSummary(null); }}
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif", marginTop: 16 }}>
+            + Add time away
+          </button>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
 function ProfileScreen({ session, onTabChange }) {
   const PROFILE_CACHE = "vercro_profile_v1";
   const _cachedProfile = (() => { try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {} return null; })();
@@ -5807,6 +6067,9 @@ function ProfileScreen({ session, onTabChange }) {
 
       {/* Notification Settings */}
       <NotificationSettingsSection />
+
+      {/* Time Away */}
+      <TimeAwaySection />
 
       {/* FAQ Section */}
       <FAQSection />
