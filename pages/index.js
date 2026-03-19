@@ -283,12 +283,123 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
   );
 }
 
-// ── Planting Suggestions Sheet ────────────────────────────────────────────────
+// ── Area Optimiser Sheet ───────────────────────────────────────────────────────
+// Works for every area — empty or populated.
+// Empty: "what to plant". Populated: "what to add / boost with".
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Planting Suggestions Sheet ────────────────────────────────────────────────
+const BENEFIT_TAG_STYLE = {
+  display: "inline-block",
+  fontSize: 10,
+  fontWeight: 600,
+  color: C.forest,
+  background: "#e8f5ee",
+  borderRadius: 20,
+  padding: "2px 7px",
+  marginRight: 4,
+  marginBottom: 4,
+};
+
+const CONFIDENCE_BADGE = {
+  high:   { label: "Best fit",        bg: "#e8f5ee", color: C.forest },
+  medium: { label: "Good option",     bg: "#fdf8ec", color: "#b45309" },
+};
+
+function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
+  const isCompanionType = s.type === "companion" || s.type === "beneficial";
+  const accentColor     = isCompanionType ? "#7b5ea7" : C.forest;
+  const bgColor         = isCompanionType ? "#faf5ff" : C.cardBg;
+  const borderColor     = isCompanionType ? "#d4b8e8" : C.border;
+  const conf            = CONFIDENCE_BADGE[s.confidence] || CONFIDENCE_BADGE.medium;
+
+  return (
+    <div style={{
+      background: bgColor,
+      border: `1px solid ${borderColor}`,
+      borderLeft: `3px solid ${accentColor}`,
+      borderRadius: 12,
+      padding: "14px 16px",
+      marginBottom: 10,
+    }}>
+      {/* Header row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(s.crop)}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{s.crop}</div>
+            {s.variety && (
+              <div style={{ fontSize: 12, color: accentColor, fontWeight: 600, marginTop: 1 }}>{s.variety}</div>
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0, marginLeft: 8 }}>
+          {isPrimary && (
+            <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: 20, padding: "2px 7px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {isCompanionType ? (s.type === "companion" ? "Companion" : "Beneficial") : "Top pick"}
+            </span>
+          )}
+          <span style={{ fontSize: 9, fontWeight: 700, color: conf.color, background: conf.bg, borderRadius: 20, padding: "2px 7px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            {conf.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Reason */}
+      <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.45, marginBottom: 8 }}>{s.reason}</div>
+
+      {/* Companion note — highlighted */}
+      {s.companion_note && (
+        <div style={{ fontSize: 12, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: 8, padding: "6px 10px", marginBottom: 8, lineHeight: 1.4 }}>
+          🌿 {s.companion_note}
+        </div>
+      )}
+
+      {/* Sow note */}
+      {s.sow_note && (
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 6, lineHeight: 1.4 }}>🗓 {s.sow_note}</div>
+      )}
+
+      {/* Placement note */}
+      {s.placement_note && (
+        <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginBottom: 8, lineHeight: 1.4 }}>📍 {s.placement_note}</div>
+      )}
+
+      {/* Benefit tags */}
+      {s.benefit_tags?.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          {s.benefit_tags.map((tag, i) => (
+            <span key={i} style={BENEFIT_TAG_STYLE}>{tag}</span>
+          ))}
+        </div>
+      )}
+
+      {/* CTA */}
+      <button
+        onClick={() => onAdd(s)}
+        style={{
+          width: "100%",
+          background: accentColor,
+          color: "#fff",
+          border: "none",
+          borderRadius: 8,
+          padding: "10px",
+          fontWeight: 700,
+          fontSize: 13,
+          cursor: "pointer",
+          fontFamily: "serif",
+          letterSpacing: 0.2,
+        }}>
+        + Add {s.crop} to this area
+      </button>
+    </div>
+  );
+}
+
 function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }) {
   const [state,       setState]       = useState("loading"); // loading | generating | ready | error
   const [suggestions, setSuggestions] = useState([]);
+  const [summary,     setSummary]     = useState(null);
+  const [isEmptyArea, setIsEmptyArea] = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
 
   useEffect(() => { loadOrGenerate(); }, []);
@@ -299,6 +410,8 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
       const existing = await apiFetch("/areas/" + area.id + "/suggestions");
       if (existing?.suggestions?.length) {
         setSuggestions(existing.suggestions);
+        setSummary(existing.summary || null);
+        setIsEmptyArea(existing.is_empty_area || false);
         setGeneratedAt(existing.generated_at);
         setState("ready");
       } else {
@@ -311,167 +424,121 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
     setState("generating");
     try {
       const result = await apiFetch("/areas/" + area.id + "/suggestions/generate", { method: "POST" });
-      setSuggestions(result.suggestions);
+      setSuggestions(result.suggestions || []);
+      setSummary(result.summary || null);
+      setIsEmptyArea(result.is_empty_area || false);
       setGeneratedAt(result.generated_at);
       setState("ready");
     } catch (e) {
-      // 400 = area has crops, no suggestions generated yet — show empty state
-      if (e.message?.includes("400") || e.message?.includes("not empty")) {
-        setSuggestions([]);
-        setState("ready");
-      } else {
-        console.error(e);
-        setState("error");
-      }
+      console.error(e);
+      setState("error");
     }
   };
 
-  // Split suggestions — handle both empty-bed and populated-bed types
-  const cropSuggestions    = suggestions.filter(s => s.type === "crop" || s.type === "interplant");
+  // Primary crop is first suggestion of type crop/primary_crop
+  // Companion/beneficial suggestions follow
+  const primarySuggestion    = suggestions.find(s => s.type === "crop" || s.type === "primary_crop");
   const companionSuggestions = suggestions.filter(s => s.type === "companion" || s.type === "beneficial");
-  const prepSuggestion     = suggestions.find(s => s.type === "prep");
-  const hasExistingCrops   = cropSuggestions.length === 0 && companionSuggestions.length > 0;
 
-  // Tapping a crop/companion card closes the sheet and pre-fills the Add Crop form
-  const handleCropTap = (s) => {
-    onClose({ prefill: { name: s.crop, variety: s.variety, is_companion: s.is_companion || false } });
+  const handleAdd = (s) => {
+    onClose({ prefill: {
+      name:         s.crop,
+      variety:      s.variety,
+      is_companion: s.type === "companion" || s.type === "beneficial",
+    }});
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "85vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "88vh", overflowY: "auto" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{hasExistingCrops ? "Companion suggestions" : "What to plant?"}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Boost this area</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{area.name}</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
         </div>
 
+        {/* Loading */}
         {state === "loading" && (
-          <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>
+          <div style={{ textAlign: "center", padding: "48px 0" }}><Spinner /></div>
         )}
 
+        {/* Generating */}
         {state === "generating" && (
           <div style={{ textAlign: "center", padding: "40px 20px", color: C.stone }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Thinking about your bed...</div>
-            <div style={{ fontSize: 12 }}>Checking rotation, season, and your garden</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Checking your garden...</div>
+            <div style={{ fontSize: 12 }}>Looking at what's growing, the season, and what works together</div>
           </div>
         )}
 
+        {/* Error */}
         {state === "error" && (
           <div style={{ textAlign: "center", padding: "32px 20px" }}>
-            <div style={{ fontSize: 13, color: C.red, marginBottom: 12 }}>Something went wrong generating suggestions.</div>
-            <button onClick={generate} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>Try again</button>
+            <div style={{ fontSize: 13, color: C.red, marginBottom: 12 }}>Something went wrong. Try again?</div>
+            <button onClick={generate} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>
+              Try again
+            </button>
           </div>
         )}
 
+        {/* Ready */}
         {state === "ready" && (
           <>
-            {generatedAt && (
-              <div style={{ fontSize: 11, color: C.stone, marginBottom: 16, marginTop: 4 }}>
-                Based on your garden in {new Date(generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+            {/* Summary strip */}
+            {summary && (
+              <div style={{
+                background: "#f0f7f4",
+                border: `1px solid #c4ddd2`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginTop: 12,
+                marginBottom: 18,
+                fontSize: 13,
+                color: "#1a1a1a",
+                lineHeight: 1.45,
+              }}>
+                💡 {summary}
               </div>
             )}
+
+            {/* No suggestions fallback */}
             {suggestions.length === 0 && (
               <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>No suggestions yet</div>
-                <div style={{ fontSize: 13 }}>Suggestions are generated for empty beds. Add crops to get companion planting ideas.</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Nothing strong to suggest right now</div>
+                <div style={{ fontSize: 13 }}>Check back as the season progresses — or add a crop first to get companion ideas.</div>
               </div>
             )}
 
-            {/* Crop suggestions — tappable, go to Add Crop pre-filled */}
-            {cropSuggestions.length > 0 && (
+            {/* Primary crop suggestion */}
+            {primarySuggestion && (
               <>
-                <SectionLabel>Crops to plant</SectionLabel>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-                  {cropSuggestions.map((s, i) => (
-                    <div key={i} onClick={() => handleCropTap(s)}
-                      style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.forest}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "background 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "#f0f7f4"}
-                      onMouseLeave={e => e.currentTarget.style.background = C.cardBg}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 22 }}>{getCropEmoji(s.crop)}</span>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{s.crop}</div>
-                            {s.variety && (
-                              <div style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginTop: 1 }}>{s.variety}</div>
-                            )}
-                          </div>
-                        </div>
-                        <div style={{ background: C.forest, color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>
-                          Add →
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 13, color: C.stone, marginBottom: s.sow_note || s.companion_note ? 8 : 0, lineHeight: 1.4 }}>{s.reason}</div>
-                      {s.sow_note && <div style={{ fontSize: 12, color: C.forest, marginBottom: 4 }}>🗓 {s.sow_note}</div>}
-                      {s.companion_note && <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>🤝 {s.companion_note}</div>}
-                    </div>
-                  ))}
-                </div>
+                <SectionLabel>{isEmptyArea ? "Best crop to start with" : "Best crop to add"}</SectionLabel>
+                <AreaOptimiserSuggestionCard s={primarySuggestion} onAdd={handleAdd} isPrimary={true} />
               </>
             )}
 
-            {/* Companion / beneficial suggestions for populated beds */}
+            {/* Companion / beneficial suggestions */}
             {companionSuggestions.length > 0 && (
               <>
-                <SectionLabel>{hasExistingCrops ? "Companions & beneficials" : "Companion plants"}</SectionLabel>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-                  {companionSuggestions.map((s, i) => (
-                    <div key={i} style={{ background: "#faf5ff", border: `1px solid #d4b8e8`, borderLeft: `3px solid #7b5ea7`, borderRadius: 12, padding: "14px 16px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 22 }}>{getCropEmoji(s.crop)}</span>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{s.crop}</div>
-                            {s.variety && <div style={{ fontSize: 12, color: "#7b5ea7", fontWeight: 600, marginTop: 1 }}>{s.variety}</div>}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: "#7b5ea7", background: "#f0ebf8", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
-                          {s.type === "companion" ? "Companion" : "Beneficial"}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 13, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.4 }}>{s.reason}</div>
-                      {s.companion_note && (
-                        <div style={{ fontSize: 12, color: "#7b5ea7", background: "#f0ebf8", borderRadius: 8, padding: "6px 10px", marginBottom: 6, lineHeight: 1.4 }}>
-                          🌿 {s.companion_note}
-                        </div>
-                      )}
-                      {s.sow_note && <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginBottom: 6 }}>📅 {s.sow_note}</div>}
-                      <button onClick={() => handleCropTap({ ...s, is_companion: true })}
-                        style={{ width: "100%", background: "#7b5ea7", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "serif" }}>
-                        + Add {s.crop} to this bed
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <SectionLabel>Companion suggestions</SectionLabel>
+                {companionSuggestions.map((s, i) => (
+                  <AreaOptimiserSuggestionCard key={i} s={s} onAdd={handleAdd} isPrimary={false} />
+                ))}
               </>
             )}
 
-            {/* Prep / companion suggestion — info only */}
-            {prepSuggestion && (
-              <>
-                <SectionLabel>Bed prep</SectionLabel>
-                <div style={{ background: "#fdf8ec", border: `1px solid ${C.amber}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
-                    🌿 {prepSuggestion.title}
-                  </div>
-                  <div style={{ fontSize: 13, color: C.stone, marginBottom: prepSuggestion.timing_note ? 8 : 0, lineHeight: 1.4 }}>
-                    {prepSuggestion.reason}
-                  </div>
-                  {prepSuggestion.timing_note && (
-                    <div style={{ fontSize: 12, color: C.amber, fontWeight: 600 }}>⏱ {prepSuggestion.timing_note}</div>
-                  )}
-                </div>
-                <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic", marginBottom: 4 }}>
-                  Tap a crop card above to add it to your garden.
-                </div>
-              </>
+            {/* Footer context */}
+            {generatedAt && (
+              <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+                Based on your garden · {new Date(generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              </div>
             )}
           </>
         )}
@@ -3772,7 +3839,7 @@ function GardenView({ onNavigateAdd }) {
                     )}
                     <button onClick={() => setSuggestArea(area)}
                       style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                      {areaCrops.length === 0 ? "🌱 What should I plant here?" : "💡 Companion & planting suggestions"}
+                      🌱 Boost this area
                     </button>
                   </>
                 )}
