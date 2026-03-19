@@ -2174,6 +2174,7 @@ function Dashboard({ onTabChange }) {
   const [showShareNudge,     setShowShareNudge]     = useState(false);
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
+  const [blockedPeriods,     setBlockedPeriods]     = useState([]);
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -2202,8 +2203,12 @@ function Dashboard({ onTabChange }) {
 
     // Always fetch fresh in background
     try {
-      const d = await apiFetch("/dashboard");
+      const [d, bp] = await Promise.all([
+        apiFetch("/dashboard"),
+        apiFetch("/blocked-periods").catch(() => []),
+      ]);
       setData(d);
+      setBlockedPeriods(bp || []);
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
     } catch (e) {
       if (!isBackground) setError(e.message);
@@ -2448,6 +2453,9 @@ function Dashboard({ onTabChange }) {
 
       {/* ── NOTIFICATION PROMPT ────────────────────────────────────────────────── */}
       <NotificationDashboardPrompt onTabChange={onTabChange} />
+
+      {/* ── TIME AWAY BANNER ─────────────────────────────────────────────────── */}
+      <TimeAwayTodayBanner blockedPeriods={blockedPeriods} onTabChange={onTabChange} />
 
       {/* ── BADGES PILL ────────────────────────────────────────────────────── */}
       <TodayBadgeCard onViewBadges={() => onTabChange("badges")} />
@@ -5549,6 +5557,65 @@ function NotificationSettingsSection() {
 }
 
 
+
+// ── Time Away — Today screen banner ──────────────────────────────────────────
+function TimeAwayTodayBanner({ blockedPeriods, onTabChange }) {
+  const today = new Date().toISOString().split("T")[0];
+
+  if (!blockedPeriods?.length) return null;
+
+  // Find the most relevant period: active now, or starting within 7 days
+  const active = blockedPeriods.find(p => p.start_date <= today && p.end_date >= today);
+  const upcoming = blockedPeriods.find(p => {
+    const daysUntil = Math.round((new Date(p.start_date) - new Date(today)) / 86400000);
+    return daysUntil > 0 && daysUntil <= 7;
+  });
+
+  const period = active || upcoming;
+  if (!period) return null;
+
+  const isActive = active != null;
+  const daysUntil = isActive ? 0 : Math.round((new Date(period.start_date) - new Date(today)) / 86400000);
+  const daysLeft  = isActive ? Math.round((new Date(period.end_date) - new Date(today)) / 86400000) : null;
+
+  const label = period.label || "Time away";
+  const endStr = new Date(period.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const startStr = new Date(period.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+  return (
+    <div
+      onClick={() => onTabChange("profile")}
+      style={{
+        background: isActive ? "#fff8ed" : "#f0f7f4",
+        border: `1px solid ${isActive ? "#f59e0b" : "#86c9a0"}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+        marginBottom: 12,
+        cursor: "pointer",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 20 }}>{isActive ? "✈️" : "🗓️"}</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+            {isActive
+              ? `You're marked away until ${endStr}`
+              : `${label} starts in ${daysUntil} day${daysUntil !== 1 ? "s" : ""} (${startStr})`}
+          </div>
+          <div style={{ fontSize: 11, color: isActive ? "#b45309" : "#2d7a28", marginTop: 2 }}>
+            {isActive
+              ? (daysLeft != null && daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining — tasks have been adjusted` : "Last day away — tasks have been adjusted")
+              : "Tasks have been adjusted around these dates"}
+          </div>
+        </div>
+      </div>
+      <span style={{ fontSize: 11, color: isActive ? "#b45309" : C.forest, fontWeight: 600, flexShrink: 0 }}>View →</span>
+    </div>
+  );
+}
+
 // =============================================================================
 // TIME AWAY — COMPONENTS
 // =============================================================================
@@ -5612,6 +5679,7 @@ function TimeAwayScreen({ onClose }) {
   const [loading,     setLoading]     = useState(true);
   const [showAdd,     setShowAdd]     = useState(false);
   const [summary,     setSummary]     = useState(null); // shown after add
+  const [adjustments, setAdjustments] = useState(null); // detailed task list
   const [form,        setForm]        = useState({ start_date: "", end_date: "", label: "" });
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState(null);
@@ -5638,6 +5706,11 @@ function TimeAwayScreen({ onClose }) {
         body: JSON.stringify({ start_date: form.start_date, end_date: form.end_date, label: form.label || null }),
       });
       setSummary(result.summary);
+      // Fetch full adjustment detail for the new period
+      if (result.blockedPeriod?.id) {
+        const detail = await apiFetch("/blocked-periods/" + result.blockedPeriod.id + "/adjustments").catch(() => null);
+        if (detail) setAdjustments(detail.grouped);
+      }
       setForm({ start_date: "", end_date: "", label: "" });
       setShowAdd(false);
       load();
@@ -5672,33 +5745,93 @@ function TimeAwayScreen({ onClose }) {
           Tell us when you're unavailable and Vercro will adjust tasks where possible — bringing them forward or back, and flagging anything that can't safely move.
         </div>
 
-        {/* Summary strip after add */}
+        {/* Summary strip after add — with full task detail */}
         {summary && (
-          <div style={{ background: "#f0f7f4", border: `1px solid #c4ddd2`, borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 8 }}>✓ Your plan has been updated</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {summary.movedEarlier > 0 && (
-                <span style={{ fontSize: 12, color: C.forest, background: "#e8f5ee", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
-                  ⬆ {summary.movedEarlier} moved earlier
-                </span>
-              )}
-              {summary.movedLater > 0 && (
-                <span style={{ fontSize: 12, color: "#b45309", background: "#fff8ed", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
-                  ⬇ {summary.movedLater} moved later
-                </span>
-              )}
-              {summary.atRisk > 0 && (
-                <span style={{ fontSize: 12, color: C.red, background: "#fff0f0", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
-                  ⚠ {summary.atRisk} at risk
-                </span>
-              )}
-              {summary.total === 0 && (
-                <span style={{ fontSize: 12, color: C.stone }}>No tasks fell in this date range.</span>
-              )}
-            </div>
-            {summary.atRisk > 0 && (
-              <div style={{ fontSize: 12, color: C.stone, marginTop: 8, lineHeight: 1.4 }}>
-                At-risk tasks could not safely be moved outside your unavailable dates. They may still need attention while you're away.
+          <div style={{ background: "#f0f7f4", border: `1px solid #c4ddd2`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 10 }}>✓ Your plan has been updated</div>
+
+            {summary.total === 0 && (
+              <div style={{ fontSize: 13, color: C.stone }}>No tasks fell in this date range.</div>
+            )}
+
+            {/* Moved earlier */}
+            {adjustments?.moved_earlier?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                  ⬆ {adjustments.moved_earlier.length} task{adjustments.moved_earlier.length !== 1 ? "s" : ""} brought forward
+                </div>
+                {adjustments.moved_earlier.map((a, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < adjustments.moved_earlier.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                        {a.task?.crop?.name ? getCropEmoji(a.task.crop.name) + " " + a.task.crop.name : "Garden task"}
+                      </span>
+                      <span style={{ fontSize: 12, color: C.stone }}> · {a.task?.action || a.task?.task_type}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
+                      {new Date(a.original_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      {" → "}
+                      {new Date(a.adjusted_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Moved later */}
+            {adjustments?.moved_later?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                  ⬇ {adjustments.moved_later.length} task{adjustments.moved_later.length !== 1 ? "s" : ""} moved back
+                </div>
+                {adjustments.moved_later.map((a, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < adjustments.moved_later.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                        {a.task?.crop?.name ? getCropEmoji(a.task.crop.name) + " " + a.task.crop.name : "Garden task"}
+                      </span>
+                      <span style={{ fontSize: 12, color: C.stone }}> · {a.task?.action || a.task?.task_type}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#b45309", fontWeight: 600, textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
+                      {new Date(a.original_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      {" → "}
+                      {new Date(a.adjusted_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* At risk */}
+            {adjustments?.at_risk?.length > 0 && (
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                  ⚠ {adjustments.at_risk.length} task{adjustments.at_risk.length !== 1 ? "s" : ""} may need attention
+                </div>
+                {adjustments.at_risk.map((a, i) => (
+                  <div key={i} style={{ padding: "5px 0", borderBottom: i < adjustments.at_risk.length - 1 ? "1px solid #fee2e2" : "none" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                      {a.task?.crop?.name ? getCropEmoji(a.task.crop.name) + " " + a.task.crop.name : "Garden task"}
+                      <span style={{ fontWeight: 400, color: C.stone }}> · {a.task?.action || a.task?.task_type}</span>
+                      <span style={{ color: C.stone }}> · {new Date(a.original_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                    </div>
+                    {a.metadata?.explanation && (
+                      <div style={{ fontSize: 11, color: C.red, marginTop: 3, lineHeight: 1.4 }}>{a.metadata.explanation}</div>
+                    )}
+                  </div>
+                ))}
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 8, lineHeight: 1.4 }}>
+                  These tasks could not safely be moved. They may still need attention while you're away.
+                </div>
+              </div>
+            )}
+
+            {/* Summary counts if no detail loaded */}
+            {!adjustments && summary.total > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {summary.movedEarlier > 0 && <span style={{ fontSize: 12, color: C.forest, background: "#e8f5ee", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬆ {summary.movedEarlier} moved earlier</span>}
+                {summary.movedLater   > 0 && <span style={{ fontSize: 12, color: "#b45309", background: "#fff8ed", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬇ {summary.movedLater} moved later</span>}
+                {summary.atRisk       > 0 && <span style={{ fontSize: 12, color: C.red, background: "#fff0f0", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⚠ {summary.atRisk} at risk</span>}
               </div>
             )}
           </div>
