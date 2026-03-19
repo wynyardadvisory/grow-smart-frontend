@@ -2175,6 +2175,9 @@ function Dashboard({ onTabChange }) {
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
+  const [timeAwayDismissed,  setTimeAwayDismissed]  = useState(() => {
+    try { return localStorage.getItem("vercro_timeaway_dismissed") === "1"; } catch(e) { return false; }
+  });
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -2633,6 +2636,60 @@ function Dashboard({ onTabChange }) {
           </div>
         )}
       </div>
+
+      {/* ── TIME AWAY ENTRY POINTS ──────────────────────────────────────────── */}
+
+      {/* Dense tasks nudge — shown when 5+ tasks due this week and no active blocked period */}
+      {(() => {
+        const upcomingCount = [...thisWeekTasks, ...todayTasks].length;
+        const hasActivePeriod = blockedPeriods.some(p => {
+          const t = new Date().toISOString().split("T")[0];
+          return p.start_date <= t && p.end_date >= t;
+        });
+        if (upcomingCount < 5 || hasActivePeriod || timeAwayDismissed) return null;
+        return (
+          <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>🗓️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Busy week ahead</div>
+              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: 8 }}>
+                You have {upcomingCount} tasks coming up. Going anywhere? We can adjust your plan around it.
+              </div>
+              <button
+                onClick={() => onTabChange("profile")}
+                style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", marginRight: 8 }}>
+                Plan time away →
+              </button>
+              <button
+                onClick={() => { setTimeAwayDismissed(true); try { localStorage.setItem("vercro_timeaway_dismissed", "1"); } catch(e) {} }}
+                style={{ background: "none", border: "none", fontSize: 12, color: C.stone, cursor: "pointer" }}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Persistent entry point — always visible, clears once user has added a blocked period */}
+      {!timeAwayDismissed && blockedPeriods.length === 0 && (
+        <div
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 12, background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer" }}
+          onClick={() => onTabChange("profile")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 18 }}>✈️</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>Going away?</div>
+              <div style={{ fontSize: 11, color: C.stone }}>We'll adjust your tasks around it automatically</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: C.forest, fontWeight: 700 }}>Set dates →</span>
+            <button
+              onClick={e => { e.stopPropagation(); setTimeAwayDismissed(true); try { localStorage.setItem("vercro_timeaway_dismissed", "1"); } catch(e) {} }}
+              style={{ background: "none", border: "none", fontSize: 16, color: C.stone, cursor: "pointer", padding: 0, lineHeight: 1 }}>×</button>
+          </div>
+        </div>
+      )}
 
       {/* ── 2. QUICK CROP CHECKS ───────────────────────────────────────────── */}
       <QuickCropCheck
