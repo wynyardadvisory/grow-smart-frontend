@@ -3621,6 +3621,7 @@ function GardenView({ onNavigateAdd }) {
   const [editAreaForm,   setEditAreaForm]   = useState({ name: "", type: "" });
   const [confirmArea,    setConfirmArea]    = useState(null);
   const [suggestArea,    setSuggestArea]    = useState(null);
+  const [timelineCrop,   setTimelineCrop]   = useState(null);
   const [collapsedLocs,  setCollapsedLocs]  = useState({});
 
   const saveEditArea = async (areaId) => {
@@ -3910,7 +3911,8 @@ function GardenView({ onNavigateAdd }) {
                           const chipColor  = isPlanned ? C.amber  : isIndoors ? "#2d4fc0" : "#1a1a1a";
                           const statusIcon = isPlanned ? "🗓 " : isIndoors ? "🪟 " : "";
                           return (
-                            <span key={c.id} style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: chipColor }}>
+                            <span key={c.id} onClick={() => setTimelineCrop(c)}
+                              style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
                               {statusIcon}{c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
                             </span>
                           );
@@ -3932,6 +3934,7 @@ function GardenView({ onNavigateAdd }) {
           </div>)}
         </div>
       ))}
+    {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} />}
     </div>
   );
 }
