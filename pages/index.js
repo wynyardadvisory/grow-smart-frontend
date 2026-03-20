@@ -3012,7 +3012,7 @@ function Dashboard({ onTabChange }) {
         <HarvestModal
           item={pendingHarvest}
           onClose={() => setPendingHarvest(null)}
-          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); setPendingHarvest(null); loadAllHarvestsForShare(); }}
+          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); loadAllHarvestsForShare(); }}
           allHarvests={allHarvestsForShare}
         />
       )}
