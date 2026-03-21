@@ -934,6 +934,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(null); // harvest log entry id
+  const [saveError,    setSaveError]    = useState(null);
   const [undone,       setUndone]       = useState(false);
   const [showShare,    setShowShare]    = useState(false);
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
@@ -968,6 +969,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
 
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const entry = await apiFetch("/harvest-log", {
         method: "POST",
@@ -988,6 +990,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       onSaved(item.crop_instance_id);
     } catch (e) {
       console.error(e);
+      setSaveError(e.message || "Something went wrong. Please try again.");
     }
     setSaving(false);
   };
@@ -1116,6 +1119,11 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               )}
             </div>
 
+            {saveError && (
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: C.red }}>
+                {saveError}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
               <button onClick={save} disabled={saving}
@@ -2582,10 +2590,10 @@ function Dashboard({ onTabChange }) {
           }
           Object.keys(tempGrouped).slice(0, 3).forEach(k => shownCropNames.add(k));
 
-          // Overflow = today tasks whose crop isn't in Also Today + all this-week tasks
+          // Overflow = today tasks whose crop isn't in Also Today
+          // This-week tasks are shown in Coming Up Next only — not here
           const todayOverflow = remainingToday.filter(t => !shownCropNames.has(t.crop?.name || "General") && !completed.has(t.id));
-          const allThisWeek = [...serverThisWeek].filter(t => !completed.has(t.id));
-          const allItems = [...todayOverflow, ...allThisWeek];
+          const allItems = [...todayOverflow];
           if (allItems.length === 0) return null;
 
           // Group by crop name
