@@ -3976,7 +3976,7 @@ function GardenView({ onNavigateAdd }) {
           </div>)}
         </div>
       ))}
-    {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={() => load()} />}
+    {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
     </div>
   );
 }
@@ -4143,7 +4143,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey }),
       });
       setConfirmed(true);
-      if (onCropUpdated) onCropUpdated();
+      if (onCropUpdated) await onCropUpdated();
       setTimeout(() => onClose(), 1500);
     } catch(e) { console.error(e); }
     setSaving(false);
@@ -4523,7 +4523,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
-      {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={() => load()} />}
+      {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
       {/* Header + filter/sort controls */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
