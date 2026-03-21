@@ -4237,7 +4237,6 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   const isDisabledInAdjust = adjusting && (isPast || isCurr);
                   return (
                     <div key={s.key}
-                      onClick={() => !adjusting && null}
                       style={{
                         padding: "10px 3px", textAlign: "center",
                         borderRight: i < 5 ? `1px solid ${C.border}` : "none",
