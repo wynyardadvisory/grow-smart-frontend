@@ -4127,16 +4127,16 @@ function CropTimelineSheet({ crop, onClose }) {
 
   const confirmStage = async (stageKey) => {
     const stage = STAGES.find(s => s.key === stageKey);
-    if (!stage?.symptom) { setConfirmed(true); return; }
     setSaving(true);
     try {
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: "stage", symptom_code: stage.symptom, confirmed_stage: stageKey }),
+        body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey }),
       });
       setConfirmed(true);
       const d = await apiFetch(`/crops/${crop.id}`);
       setTimeline(d.timeline);
+      if (onCropUpdated) onCropUpdated();
     } catch(e) { console.error(e); }
     setSaving(false);
   };
@@ -4226,6 +4226,7 @@ function CropTimelineSheet({ crop, onClose }) {
                   const isPast  = i < idx;
                   const isCurr  = i === idx;
                   const isFuture = i > idx;
+                  const isDisabledInAdjust = adjusting && (isPast || isCurr);
                   return (
                     <div key={s.key}
                       onClick={() => !adjusting && null}
@@ -4233,11 +4234,11 @@ function CropTimelineSheet({ crop, onClose }) {
                         padding: "10px 3px", textAlign: "center",
                         borderRight: i < 5 ? `1px solid ${C.border}` : "none",
                         background: isCurr ? C.forest : adjusting && selected === s.key ? "#EAF3DE" : "transparent",
-                        cursor: adjusting ? "pointer" : "default",
-                        opacity: isFuture && !adjusting ? 0.45 : 1,
+                        cursor: adjusting && !isDisabledInAdjust ? "pointer" : "default",
+                        opacity: (isFuture && !adjusting) || isDisabledInAdjust ? 0.35 : 1,
                         outline: adjusting && selected === s.key ? `2px solid ${C.forest}` : "none",
                       }}
-                      onClick={adjusting ? () => setSelected(s.key) : undefined}>
+                      onClick={adjusting && !isDisabledInAdjust ? () => setSelected(s.key) : undefined}>
                       <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
                       <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
                       <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
