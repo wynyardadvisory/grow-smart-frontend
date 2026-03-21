@@ -3976,7 +3976,7 @@ function GardenView({ onNavigateAdd }) {
           </div>)}
         </div>
       ))}
-    {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} />}
+    {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={() => load()} />}
     </div>
   );
 }
@@ -4102,7 +4102,7 @@ function CropGrowthDiary({ crop, onClose }) {
 
 // ── Crop Timeline Sheet ───────────────────────────────────────────────────────
 
-function CropTimelineSheet({ crop, onClose }) {
+function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const [timeline,   setTimeline]   = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [adjusting,  setAdjusting]  = useState(false);
@@ -4143,9 +4143,8 @@ function CropTimelineSheet({ crop, onClose }) {
         body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey }),
       });
       setConfirmed(true);
-      const d = await apiFetch(`/crops/${crop.id}`);
-      setTimeline(d.timeline);
       if (onCropUpdated) onCropUpdated();
+      setTimeout(() => onClose(), 1500);
     } catch(e) { console.error(e); }
     setSaving(false);
   };
@@ -4334,7 +4333,7 @@ function CropTimelineSheet({ crop, onClose }) {
                       style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
                       {saving ? "Saving…" : "Yes — this looks right"}
                     </button>
-                    <button onClick={() => { setAdjusting(true); setSelected(currentStageKey); }}
+                    <button onClick={() => { setAdjusting(true); setSelected(null); }}
                       style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
                       No — adjust stage
                     </button>
@@ -4525,7 +4524,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
-      {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} />}
+      {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={() => load()} />}
       {/* Header + filter/sort controls */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
