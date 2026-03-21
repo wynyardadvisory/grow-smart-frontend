@@ -2376,9 +2376,20 @@ function Dashboard({ onTabChange }) {
 
   // Today's focus — single most important item
   const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id));
-  const todayTasks     = grouped.today.filter(t => !completed.has(t.id));
-  const thisWeekTasks  = grouped.this_week.filter(t => !completed.has(t.id));
-  const comingUpTasks  = (grouped.coming_up || []).filter(t => !completed.has(t.id));
+  // Deduplicate tasks with identical action text — handles users with multiple instances
+  // of the same crop (e.g. 2 x Lettuce generating 2 x feed tasks)
+  const dedupeByAction = (tasks) => {
+    const seen = new Set();
+    return tasks.filter(t => {
+      const key = (t.action?.trim().toLowerCase() || "") + "|"+  (t.crop?.name?.toLowerCase() || "");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  const todayTasks     = dedupeByAction(grouped.today.filter(t => !completed.has(t.id)));
+  const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id)));
+  const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
 
   // Hero focus: critical alert > high task > medium task > first check
   const focusItem = (() => {
@@ -2416,11 +2427,20 @@ function Dashboard({ onTabChange }) {
       if (!byName.has(name)) byName.set(name, []);
       byName.get(name).push(t);
     }
-    return [...byName.entries()].map(([name, tasks]) => ({
-      name,
-      emoji: getCropEmoji(name),
-      tasks: tasks.sort((a,b) => (a.due_date||"").localeCompare(b.due_date||"")),
-    })).sort((a,b) => (a.tasks[0]?.due_date||"").localeCompare(b.tasks[0]?.due_date||""));
+    return [...byName.entries()].map(([name, tasks]) => {
+      // Deduplicate tasks with identical action text within the same crop group
+      // This handles users with multiple instances of the same crop (e.g. 2 x Lettuce)
+      const seen = new Set();
+      const dedupedTasks = tasks
+        .sort((a,b) => (a.due_date||"").localeCompare(b.due_date||""))
+        .filter(t => {
+          const key = t.action?.trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      return { name, emoji: getCropEmoji(name), tasks: dedupedTasks };
+    }).sort((a,b) => (a.tasks[0]?.due_date||"").localeCompare(b.tasks[0]?.due_date||""));
   })();
 
   // Garden progress counts
