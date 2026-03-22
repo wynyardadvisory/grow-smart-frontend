@@ -122,12 +122,26 @@ function ErrorMsg({ msg }) {
 
 // ── Auth screen ───────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
-  const [sent, setSent]         = useState(false);
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
+  const [isSignUp, setIsSignUp]   = useState(false);
+  const [isForgot, setIsForgot]   = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
+  const [sent, setSent]           = useState(false);
+
+  const handleForgot = async () => {
+    if (!email) { setError("Please enter your email address first"); return; }
+    setLoading(true); setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://app.vercro.com",
+      });
+      if (error) throw error;
+      setSent(true);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
 
   const handle = async () => {
     setLoading(true); setError(null);
@@ -160,7 +174,15 @@ function AuthScreen({ onAuth }) {
     <div style={{ padding: 32, textAlign: "center" }}>
       <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
       <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700 }}>Check your email</div>
-      <div style={{ color: C.stone, marginTop: 8, fontSize: 14 }}>We sent a confirmation link to {email}</div>
+      <div style={{ color: C.stone, marginTop: 8, fontSize: 14 }}>
+        {isForgot
+          ? <>We sent a password reset link to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.</>
+          : <>We sent a confirmation link to <strong>{email}</strong></>
+        }
+      </div>
+      <button onClick={() => { setSent(false); setIsForgot(false); }} style={{ marginTop: 20, background: "none", border: "none", color: C.forest, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+        Back to sign in
+      </button>
     </div>
   );
 
@@ -198,6 +220,11 @@ function AuthScreen({ onAuth }) {
         <button onClick={() => setIsSignUp(!isSignUp)} style={{ background: "none", border: "none", color: C.forest, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
           {isSignUp ? "Already have an account? Sign in" : "No account? Sign up"}
         </button>
+        {!isSignUp && (
+          <button onClick={handleForgot} disabled={loading} style={{ background: "none", border: "none", color: C.stone, fontSize: 12, cursor: "pointer", textDecoration: "underline", marginTop: -8 }}>
+            Forgot your password?
+          </button>
+        )}
       </div>
     </div>
   );
