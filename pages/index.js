@@ -2364,13 +2364,6 @@ function Dashboard({ onTabChange }) {
     try { return localStorage.getItem("vercro_timeaway_dismissed") === "1"; } catch(e) { return false; }
   });
 
-  const loadAllHarvestsForShare = async () => {
-    try {
-      const d = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
-      setAllHarvestsForShare(d);
-    } catch(e) {}
-  };
-
   const CACHE_KEY = "vercro_dashboard_v1";
 
   const load = useCallback(async (isBackground = false) => {
