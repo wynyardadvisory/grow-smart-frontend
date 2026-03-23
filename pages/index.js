@@ -2038,6 +2038,95 @@ What's on your list this month?
 }
 
 // ── Garden Status Card ───────────────────────────────────────────────────────
+// ── Today Harvest Card — 3 states ────────────────────────────────────────────
+function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLogHarvest, onViewAll }) {
+  const scoreColor = (v) => v >= 7 ? C.leaf : v >= 4 ? C.amber : C.red;
+
+  // Crops ready to harvest right now
+  const today = todayISO();
+  const readyNow = (harvestForecast || []).filter(h =>
+    !harvestedIds.has(h.crop_instance_id) &&
+    h.window_start <= today && h.window_end >= today
+  );
+
+  // Most recent harvest logged
+  const lastHarvest = recentHarvests?.length > 0 ? recentHarvests[0] : null;
+  const lastEntry   = lastHarvest?.entries?.[0] || null;
+
+  // State 1 — crops ready right now → show CTA
+  if (readyNow.length > 0) {
+    return (
+      <div style={{ background: `linear-gradient(135deg, #2d5a27 0%, #1e3d20 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
+        <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Ready to harvest</div>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", marginBottom: 4 }}>
+          🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
+        </div>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 14 }}>
+          {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
+        </div>
+        <button onClick={() => onLogHarvest(readyNow[0])}
+          style={{ background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+          🌾 Log harvest
+        </button>
+      </div>
+    );
+  }
+
+  // State 2 — recent harvest logged → show latest
+  if (lastHarvest && lastEntry) {
+    const totalHarvests = recentHarvests.reduce((sum, c) => sum + c.harvest_count, 0);
+    return (
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Latest harvest</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+              {getCropEmoji(lastHarvest.crop_name)} {lastHarvest.crop_name}
+              {lastHarvest.variety ? ` — ${lastHarvest.variety}` : ""}
+            </div>
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+              {new Date(lastEntry.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              {lastHarvest.harvest_count > 1 ? ` · ${lastHarvest.harvest_count} harvests this season` : ""}
+              {totalHarvests > 1 ? ` · ${totalHarvests} total` : ""}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {lastEntry.yield_score && (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(lastEntry.yield_score) }}>{lastEntry.yield_score}</div>
+                <div style={{ fontSize: 9, color: C.stone }}>Yield</div>
+              </div>
+            )}
+            {lastEntry.quality && (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(lastEntry.quality) }}>{lastEntry.quality}</div>
+                <div style={{ fontSize: 9, color: C.stone }}>Quality</div>
+              </div>
+            )}
+          </div>
+        </div>
+        <button onClick={onViewAll}
+          style={{ fontSize: 12, fontWeight: 600, color: C.forest, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}>
+          View all harvests →
+        </button>
+      </div>
+    );
+  }
+
+  // State 3 — nothing yet
+  if (recentHarvests !== null && recentHarvests.length === 0) {
+    return (
+      <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
+        <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
+      </div>
+    );
+  }
+
+  // Loading state — return nothing while fetching
+  return null;
+}
+
 function GardenStatusCard({ data }) {
   if (!data) return null;
 
@@ -2245,7 +2334,22 @@ function Dashboard({ onTabChange }) {
   const [harvestedIds,        setHarvestedIds]        = useState(new Set());
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
+  const [recentHarvests,      setRecentHarvests]      = useState(null); // null = not loaded yet
   const [showShareGarden,    setShowShareGarden]    = useState(false);
+
+  const loadAllHarvestsForShare = async () => {
+    try {
+      const d = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
+      setAllHarvestsForShare(d);
+    } catch(e) {}
+  };
+
+  const loadRecentHarvests = async () => {
+    try {
+      const d = await apiFetch("/harvest-log/summary?year=" + new Date().getFullYear());
+      setRecentHarvests(d);
+    } catch(e) { setRecentHarvests([]); }
+  };
   const [strugglingCrop,     setStrugglingCrop]     = useState(null);
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
@@ -2303,6 +2407,7 @@ function Dashboard({ onTabChange }) {
   useEffect(() => {
     load();
     checkPendingUnlocks();
+    loadRecentHarvests();
   }, [load]);
 
   const checkPendingUnlocks = async () => {
@@ -2932,6 +3037,15 @@ function Dashboard({ onTabChange }) {
         </div>
       </div>
 
+      {/* ── HARVEST CARD ────────────────────────────────────────────────────── */}
+      <TodayHarvestCard
+        recentHarvests={recentHarvests}
+        harvestForecast={data.harvest_forecast}
+        harvestedIds={harvestedIds}
+        onLogHarvest={(h) => setPendingHarvest(h)}
+        onViewAll={() => onTabChange("profile")}
+      />
+
       {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
       {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -3110,7 +3224,7 @@ function Dashboard({ onTabChange }) {
         <HarvestModal
           item={pendingHarvest}
           onClose={() => setPendingHarvest(null)}
-          onSaved={(id, isFinal) => { if (isFinal) setHarvestedIds(s => new Set([...s, id])); loadAllHarvestsForShare(); }}
+          onSaved={(id, isFinal) => { if (isFinal) setHarvestedIds(s => new Set([...s, id])); loadAllHarvestsForShare(); loadRecentHarvests(); }}
           allHarvests={allHarvestsForShare}
         />
       )}
