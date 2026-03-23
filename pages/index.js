@@ -6224,7 +6224,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
   const loadAllHarvests = async () => {
     try {
-      const data = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
+      const data = await apiFetch("/harvest-log/summary?year=" + new Date().getFullYear());
       setAllHarvests(data);
     } catch (e) { console.error(e); }
   };
@@ -6334,26 +6334,15 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {/* Yield Summary */}
       {allHarvests.length > 0 && (() => {
         const year = new Date().getFullYear();
-        const total = allHarvests.length;
+        // allHarvests is now the grouped summary format
+        const totalHarvests = allHarvests.reduce((sum, crop) => sum + crop.harvest_count, 0);
+        const best = [...allHarvests].sort((a, b) => (b.avg_yield_score || 0) - (a.avg_yield_score || 0))[0];
 
-        // Best crop by average yield score
-        const byName = {};
-        allHarvests.forEach(h => {
-          if (!byName[h.crop_name]) byName[h.crop_name] = { name: h.crop_name, yield: [], quality: [] };
-          if (h.yield_score)   byName[h.crop_name].yield.push(h.yield_score);
-          if (h.quality_score) byName[h.crop_name].quality.push(h.quality_score);
-        });
-        const crops = Object.values(byName).map(c => ({
-          name:    c.name,
-          avgYield:   c.yield.length   ? Math.round(c.yield.reduce((a,b) => a+b,0)   / c.yield.length * 10) / 10   : null,
-          avgQuality: c.quality.length ? Math.round(c.quality.reduce((a,b) => a+b,0) / c.quality.length * 10) / 10 : null,
-        }));
-        const best = crops.sort((a,b) => (b.avgYield||0) - (a.avgYield||0))[0];
-
-        // Overall averages
-        const allYields   = allHarvests.filter(h => h.yield_score).map(h => h.yield_score);
-        const allQualities = allHarvests.filter(h => h.quality_score).map(h => h.quality_score);
-        const avgYield   = allYields.length   ? Math.round(allYields.reduce((a,b) => a+b,0)   / allYields.length * 10) / 10   : null;
+        // Overall averages across all entries
+        const allEntries = allHarvests.flatMap(c => c.entries);
+        const allYields    = allEntries.map(e => e.yield_score).filter(Boolean);
+        const allQualities = allEntries.map(e => e.quality).filter(Boolean);
+        const avgYield   = allYields.length    ? Math.round(allYields.reduce((a,b) => a+b,0)    / allYields.length * 10) / 10    : null;
         const avgQuality = allQualities.length ? Math.round(allQualities.reduce((a,b) => a+b,0) / allQualities.length * 10) / 10 : null;
 
         const scoreColor = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;
@@ -6367,7 +6356,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {/* Stats row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
               <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{total}</div>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{totalHarvests}</div>
                 <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Harvests</div>
               </div>
               <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
@@ -6383,12 +6372,12 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {/* Best crop */}
             {best && (
               <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontSize: 28 }}>{getCropEmoji(best.name)}</div>
+                <div style={{ fontSize: 28 }}>{getCropEmoji(best.crop_name)}</div>
                 <div>
                   <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{best.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{best.crop_name}</div>
                   <div style={{ fontSize: 11, opacity: 0.75 }}>
-                    Yield {best.avgYield || "—"} · Quality {best.avgQuality || "—"} out of 10
+                    Yield {best.avg_yield_score || "—"} · Quality {best.avg_quality_score || "—"} out of 10
                   </div>
                 </div>
               </div>
