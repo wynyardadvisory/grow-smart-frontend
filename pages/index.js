@@ -5107,13 +5107,13 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     { value: "growing",       label: "✅ Already growing",     hint: "Established and growing — add sow date below" },
   ];
 
-  const showSowDate        = form.entry_mode !== "established" && ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
-  const showTransplantDate = form.entry_mode !== "established" && form.status === "transplanted";
+  const showSowDate        = ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
+  const showTransplantDate = form.status === "transplanted";
   const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
                            : form.status === "sown_outdoors" ? "Date sown outdoors"
                            : "Sow date";
   const isEstablished      = form.entry_mode === "established";
-  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.entry_mode && (isEstablished || form.status);
+  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
 
   // ── Step 1: user hits "Review & Add" → fetch profile or generate for unknown ──
   const handleReview = async () => {
