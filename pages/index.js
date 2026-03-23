@@ -5053,6 +5053,8 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
     status: "", sown_date: "", transplant_date: "", notes: "",
+    entry_mode: "", // 'seed' | 'young_plant' | 'established'
+    seasonal_stage: "", // for established plants
   });
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
@@ -5105,12 +5107,13 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     { value: "growing",       label: "✅ Already growing",     hint: "Established and growing — add sow date below" },
   ];
 
-  const showSowDate        = ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
-  const showTransplantDate = form.status === "transplanted";
+  const showSowDate        = form.entry_mode !== "established" && ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
+  const showTransplantDate = form.entry_mode !== "established" && form.status === "transplanted";
   const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
                            : form.status === "sown_outdoors" ? "Date sown outdoors"
                            : "Sow date";
-  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
+  const isEstablished      = form.entry_mode === "established";
+  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.entry_mode && (isEstablished || form.status);
 
   // ── Step 1: user hits "Review & Add" → fetch profile or generate for unknown ──
   const handleReview = async () => {
@@ -5506,7 +5509,11 @@ const FAQ_DATA = [
       },
       {
         q: "How do I edit or delete a crop?",
-        a: "Go to the Crops tab and swipe left on the crop card. This reveals an Edit button and a Delete button. Tap Edit to update the variety, status, sow date, area or notes. Tap Delete to remove it — you'll be asked to confirm first.",
+        a: "Go to the Crops tab and tap on a crop card to open it. To delete it, tap the X button at the top of the crop detail screen — you'll be asked to confirm before anything is removed. To edit, tap the edit icon to update variety, status, sow date, area or notes.",
+      },
+      {
+        q: "Can I log a partial harvest?",
+        a: "Yes — when you tap 'Harvest Now' on a crop, choose 'More to come' at the top of the screen instead of 'Final harvest'. This logs the harvest (yield, quality, quantity, photo) but keeps the crop active so you can harvest again later. Each harvest is recorded individually and your season averages are shown in your harvest log.",
       },
       {
         q: "What does each crop status mean?",
