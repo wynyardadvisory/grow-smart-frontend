@@ -974,6 +974,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [undone,       setUndone]       = useState(false);
   const [showShare,    setShowShare]    = useState(false);
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
+  const [isFinal,      setIsFinal]      = useState(true); // true = final harvest, false = partial
 
   const trafficColor = (val) => {
     if (val <= 3) return C.red;
@@ -1018,12 +1019,13 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
           quantity_value:   quantity ? parseFloat(quantity) : null,
           quantity_unit:    quantity ? unit : null,
           notes:            notes.trim() || null,
+          partial:          !isFinal,
         }),
       });
       setSaved(entry.id);
       setSavedEntry({ ...entry, photo_url: photoPreview || null });
       if (photo) await uploadPhoto(entry.id);
-      onSaved(item.crop_instance_id);
+      onSaved(item.crop_instance_id, isFinal);
     } catch (e) {
       console.error(e);
       setSaveError(e.message || "Something went wrong. Please try again.");
@@ -1061,32 +1063,64 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
           </div>
         ) : saved ? (
           <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Harvest logged!</div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
-            {/* Share prompt */}
-            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px", marginBottom: 16, textAlign: "left" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>Share your harvest? 🌱</div>
-              <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Save a card to share with your allotment group or on social media.</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setShowShare(true)}
-                  style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                  Share harvest card
-                </button>
-                <button onClick={onClose}
-                  style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-                  Skip
-                </button>
-              </div>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>{isFinal ? "🎉" : "🌾"}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+              {isFinal ? "Harvest logged!" : "Partial harvest logged!"}
             </div>
-            <button onClick={undo} style={{ width: "100%", padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-              Undo harvest
-            </button>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            {!isFinal && (
+              <div style={{ fontSize: 12, color: C.leaf, marginBottom: 16, fontWeight: 600 }}>
+                ✓ Crop stays active — more harvests to come
+              </div>
+            )}
+            {/* Share prompt — only for final harvests */}
+            {isFinal && (
+              <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px", marginBottom: 16, textAlign: "left" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>Share your harvest? 🌱</div>
+                <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Save a card to share with your allotment group or on social media.</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setShowShare(true)}
+                    style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    Share harvest card
+                  </button>
+                  <button onClick={onClose}
+                    style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                    Skip
+                  </button>
+                </div>
+              </div>
+            )}
+            {isFinal ? (
+              <button onClick={undo} style={{ width: "100%", padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                Undo harvest
+              </button>
+            ) : (
+              <button onClick={onClose} style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                Done
+              </button>
+            )}
           </div>
         ) : (
           <>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+
+            {/* Final vs Partial toggle */}
+            <div style={{ background: "#f5f5f0", borderRadius: 12, padding: 4, display: "flex", marginBottom: 20, gap: 4 }}>
+              <button
+                onClick={() => setIsFinal(true)}
+                style={{ flex: 1, padding: "10px 8px", borderRadius: 9, border: "none", background: isFinal ? "#fff" : "transparent", color: isFinal ? "#1a1a1a" : C.stone, fontWeight: isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+                🧺 Final harvest
+              </button>
+              <button
+                onClick={() => setIsFinal(false)}
+                style={{ flex: 1, padding: "10px 8px", borderRadius: 9, border: "none", background: !isFinal ? "#fff" : "transparent", color: !isFinal ? "#1a1a1a" : C.stone, fontWeight: !isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: !isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+                🔄 More to come
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 20, textAlign: "center" }}>
+              {isFinal ? "Crop will be marked as done after saving." : "Crop stays active — you can log more harvests later."}
+            </div>
 
             {/* Yield score */}
             <div style={{ marginBottom: 20 }}>
@@ -2004,6 +2038,95 @@ What's on your list this month?
 }
 
 // ── Garden Status Card ───────────────────────────────────────────────────────
+// ── Today Harvest Card — 3 states ────────────────────────────────────────────
+function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLogHarvest, onViewAll }) {
+  const scoreColor = (v) => v >= 7 ? C.leaf : v >= 4 ? C.amber : C.red;
+
+  // Crops ready to harvest right now
+  const today = todayISO();
+  const readyNow = (harvestForecast || []).filter(h =>
+    !harvestedIds.has(h.crop_instance_id) &&
+    h.window_start <= today && h.window_end >= today
+  );
+
+  // Most recent harvest logged
+  const lastHarvest = recentHarvests?.length > 0 ? recentHarvests[0] : null;
+  const lastEntry   = lastHarvest?.entries?.[0] || null;
+
+  // State 1 — crops ready right now → show CTA
+  if (readyNow.length > 0) {
+    return (
+      <div style={{ background: `linear-gradient(135deg, #2d5a27 0%, #1e3d20 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
+        <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Ready to harvest</div>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", marginBottom: 4 }}>
+          🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
+        </div>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 14 }}>
+          {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
+        </div>
+        <button onClick={() => onLogHarvest(readyNow[0])}
+          style={{ background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+          🌾 Log harvest
+        </button>
+      </div>
+    );
+  }
+
+  // State 2 — recent harvest logged → show latest
+  if (lastHarvest && lastEntry) {
+    const totalHarvests = recentHarvests.reduce((sum, c) => sum + c.harvest_count, 0);
+    return (
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Latest harvest</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+              {getCropEmoji(lastHarvest.crop_name)} {lastHarvest.crop_name}
+              {lastHarvest.variety ? ` — ${lastHarvest.variety}` : ""}
+            </div>
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+              {new Date(lastEntry.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              {lastHarvest.harvest_count > 1 ? ` · ${lastHarvest.harvest_count} harvests this season` : ""}
+              {totalHarvests > 1 ? ` · ${totalHarvests} total` : ""}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {lastEntry.yield_score && (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(lastEntry.yield_score) }}>{lastEntry.yield_score}</div>
+                <div style={{ fontSize: 9, color: C.stone }}>Yield</div>
+              </div>
+            )}
+            {lastEntry.quality && (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(lastEntry.quality) }}>{lastEntry.quality}</div>
+                <div style={{ fontSize: 9, color: C.stone }}>Quality</div>
+              </div>
+            )}
+          </div>
+        </div>
+        <button onClick={onViewAll}
+          style={{ fontSize: 12, fontWeight: 600, color: C.forest, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}>
+          View all harvests →
+        </button>
+      </div>
+    );
+  }
+
+  // State 3 — nothing yet
+  if (recentHarvests !== null && recentHarvests.length === 0) {
+    return (
+      <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
+        <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
+      </div>
+    );
+  }
+
+  // Loading state — return nothing while fetching
+  return null;
+}
+
 function GardenStatusCard({ data }) {
   if (!data) return null;
 
@@ -2211,7 +2334,22 @@ function Dashboard({ onTabChange }) {
   const [harvestedIds,        setHarvestedIds]        = useState(new Set());
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
+  const [recentHarvests,      setRecentHarvests]      = useState(null); // null = not loaded yet
   const [showShareGarden,    setShowShareGarden]    = useState(false);
+
+  const loadAllHarvestsForShare = async () => {
+    try {
+      const d = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
+      setAllHarvestsForShare(d);
+    } catch(e) {}
+  };
+
+  const loadRecentHarvests = async () => {
+    try {
+      const d = await apiFetch("/harvest-log/summary?year=" + new Date().getFullYear());
+      setRecentHarvests(d);
+    } catch(e) { setRecentHarvests([]); }
+  };
   const [strugglingCrop,     setStrugglingCrop]     = useState(null);
   const [pendingUnlocks,     setPendingUnlocks]     = useState([]);
   const [showCelebration,    setShowCelebration]    = useState(false);
@@ -2225,13 +2363,6 @@ function Dashboard({ onTabChange }) {
   const [timeAwayDismissed,  setTimeAwayDismissed]  = useState(() => {
     try { return localStorage.getItem("vercro_timeaway_dismissed") === "1"; } catch(e) { return false; }
   });
-
-  const loadAllHarvestsForShare = async () => {
-    try {
-      const d = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
-      setAllHarvestsForShare(d);
-    } catch(e) {}
-  };
 
   const CACHE_KEY = "vercro_dashboard_v1";
 
@@ -2269,6 +2400,7 @@ function Dashboard({ onTabChange }) {
   useEffect(() => {
     load();
     checkPendingUnlocks();
+    loadRecentHarvests();
   }, [load]);
 
   const checkPendingUnlocks = async () => {
@@ -2898,6 +3030,15 @@ function Dashboard({ onTabChange }) {
         </div>
       </div>
 
+      {/* ── HARVEST CARD ────────────────────────────────────────────────────── */}
+      <TodayHarvestCard
+        recentHarvests={recentHarvests}
+        harvestForecast={data.harvest_forecast}
+        harvestedIds={harvestedIds}
+        onLogHarvest={(h) => setPendingHarvest(h)}
+        onViewAll={() => onTabChange("profile")}
+      />
+
       {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
       {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -3076,7 +3217,7 @@ function Dashboard({ onTabChange }) {
         <HarvestModal
           item={pendingHarvest}
           onClose={() => setPendingHarvest(null)}
-          onSaved={(id) => { setHarvestedIds(s => new Set([...s, id])); loadAllHarvestsForShare(); }}
+          onSaved={(id, isFinal) => { if (isFinal) setHarvestedIds(s => new Set([...s, id])); loadAllHarvestsForShare(); loadRecentHarvests(); }}
           allHarvests={allHarvestsForShare}
         />
       )}
@@ -6087,6 +6228,80 @@ function TimeAwayScreen({ onClose }) {
   );
 }
 
+// ── Harvest Summary Card — grouped by crop with expandable individual records ──
+function HarvestSummaryCard({ crop }) {
+  const [expanded, setExpanded] = useState(false);
+  const scoreColor = (v) => v >= 7 ? C.leaf : v >= 4 ? C.amber : C.red;
+
+  const totalQty = crop.total_quantity_g;
+  const qtyDisplay = totalQty ? (totalQty >= 1000 ? (totalQty / 1000).toFixed(1) + "kg" : totalQty + "g") : null;
+
+  return (
+    <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 14, marginBottom: 14 }}>
+      {/* Crop summary row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>
+            {getCropEmoji(crop.crop_name)} {crop.crop_name}{crop.variety ? ` — ${crop.variety}` : ""}
+          </div>
+          <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+            {crop.harvest_count === 1 ? "1 harvest" : `${crop.harvest_count} harvests`}
+            {qtyDisplay ? ` · ${qtyDisplay} total` : ""}
+            {crop.harvest_count > 1 ? " · season averages shown" : ""}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {crop.avg_yield_score && (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: scoreColor(crop.avg_yield_score) }}>{crop.avg_yield_score}</div>
+              <div style={{ fontSize: 9, color: C.stone }}>Yield</div>
+            </div>
+          )}
+          {crop.avg_quality_score && (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: scoreColor(crop.avg_quality_score) }}>{crop.avg_quality_score}</div>
+              <div style={{ fontSize: 9, color: C.stone }}>Quality</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Expand/collapse individual harvests — only if more than 1 */}
+      {crop.harvest_count > 1 && (
+        <button onClick={() => setExpanded(e => !e)}
+          style={{ background: "none", border: "none", padding: 0, fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", marginBottom: expanded ? 8 : 0 }}>
+          {expanded ? "▲ Hide individual harvests" : `▼ Show ${crop.harvest_count} individual harvests`}
+        </button>
+      )}
+
+      {/* Individual harvest entries */}
+      {(expanded || crop.harvest_count === 1) && crop.entries.map((e, i) => (
+        <div key={e.id} style={{ background: "#f9f9f7", borderRadius: 8, padding: "10px 12px", marginTop: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 11, color: C.stone }}>
+                {new Date(e.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                {e.partial ? <span style={{ marginLeft: 6, color: C.amber, fontWeight: 600 }}>· partial</span> : ""}
+              </div>
+              {e.quantity_g && (
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+                  {e.quantity_g >= 1000 ? (e.quantity_g / 1000).toFixed(1) + "kg" : e.quantity_g + "g"}
+                </div>
+              )}
+              {e.notes && <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontStyle: "italic" }}>{e.notes}</div>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {e.yield_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreColor(e.yield_score) }}>{e.yield_score}</div><div style={{ fontSize: 9, color: C.stone }}>Yield</div></div>}
+              {e.quality && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreColor(e.quality) }}>{e.quality}</div><div style={{ fontSize: 9, color: C.stone }}>Quality</div></div>}
+            </div>
+          </div>
+          {e.photo_url && <img src={e.photo_url} alt="harvest" style={{ width: "100%", borderRadius: 6, marginTop: 8, maxHeight: 140, objectFit: "cover" }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayOpened }) {
   const PROFILE_CACHE = "vercro_profile_v1";
   const _cachedProfile = (() => { try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {} return null; })();
@@ -6108,7 +6323,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   const loadHarvests = async (year) => {
     setLogLoading(true);
     try {
-      const data = await apiFetch("/harvest-log?year=" + year);
+      const data = await apiFetch("/harvest-log/summary?year=" + year);
       setHarvests(data);
     } catch (e) { console.error(e); }
     setLogLoading(false);
@@ -6116,7 +6331,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
   const loadAllHarvests = async () => {
     try {
-      const data = await apiFetch("/harvest-log?year=" + new Date().getFullYear());
+      const data = await apiFetch("/harvest-log/summary?year=" + new Date().getFullYear());
       setAllHarvests(data);
     } catch (e) { console.error(e); }
   };
@@ -6226,26 +6441,15 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {/* Yield Summary */}
       {allHarvests.length > 0 && (() => {
         const year = new Date().getFullYear();
-        const total = allHarvests.length;
+        // allHarvests is now the grouped summary format
+        const totalHarvests = allHarvests.reduce((sum, crop) => sum + crop.harvest_count, 0);
+        const best = [...allHarvests].sort((a, b) => (b.avg_yield_score || 0) - (a.avg_yield_score || 0))[0];
 
-        // Best crop by average yield score
-        const byName = {};
-        allHarvests.forEach(h => {
-          if (!byName[h.crop_name]) byName[h.crop_name] = { name: h.crop_name, yield: [], quality: [] };
-          if (h.yield_score)   byName[h.crop_name].yield.push(h.yield_score);
-          if (h.quality_score) byName[h.crop_name].quality.push(h.quality_score);
-        });
-        const crops = Object.values(byName).map(c => ({
-          name:    c.name,
-          avgYield:   c.yield.length   ? Math.round(c.yield.reduce((a,b) => a+b,0)   / c.yield.length * 10) / 10   : null,
-          avgQuality: c.quality.length ? Math.round(c.quality.reduce((a,b) => a+b,0) / c.quality.length * 10) / 10 : null,
-        }));
-        const best = crops.sort((a,b) => (b.avgYield||0) - (a.avgYield||0))[0];
-
-        // Overall averages
-        const allYields   = allHarvests.filter(h => h.yield_score).map(h => h.yield_score);
-        const allQualities = allHarvests.filter(h => h.quality_score).map(h => h.quality_score);
-        const avgYield   = allYields.length   ? Math.round(allYields.reduce((a,b) => a+b,0)   / allYields.length * 10) / 10   : null;
+        // Overall averages across all entries
+        const allEntries = allHarvests.flatMap(c => c.entries);
+        const allYields    = allEntries.map(e => e.yield_score).filter(Boolean);
+        const allQualities = allEntries.map(e => e.quality).filter(Boolean);
+        const avgYield   = allYields.length    ? Math.round(allYields.reduce((a,b) => a+b,0)    / allYields.length * 10) / 10    : null;
         const avgQuality = allQualities.length ? Math.round(allQualities.reduce((a,b) => a+b,0) / allQualities.length * 10) / 10 : null;
 
         const scoreColor = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;
@@ -6259,7 +6463,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {/* Stats row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
               <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{total}</div>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{totalHarvests}</div>
                 <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Harvests</div>
               </div>
               <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
@@ -6275,12 +6479,12 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {/* Best crop */}
             {best && (
               <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontSize: 28 }}>{getCropEmoji(best.name)}</div>
+                <div style={{ fontSize: 28 }}>{getCropEmoji(best.crop_name)}</div>
                 <div>
                   <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{best.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{best.crop_name}</div>
                   <div style={{ fontSize: 11, opacity: 0.75 }}>
-                    Yield {best.avgYield || "—"} · Quality {best.avgQuality || "—"} out of 10
+                    Yield {best.avg_yield_score || "—"} · Quality {best.avg_quality_score || "—"} out of 10
                   </div>
                 </div>
               </div>
@@ -6327,22 +6531,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {logLoading ? <Spinner /> : harvests.length === 0 ? (
               <div style={{ fontSize: 13, color: C.stone, textAlign: "center", padding: "16px 0" }}>No harvests logged for {logYear}</div>
             ) : (
-              harvests.map(h => (
-                <div key={h.id} style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 12, marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{h.crop_name}{h.variety ? ` — ${h.variety}` : ""}</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{new Date(h.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      {h.yield_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: h.yield_score >= 7 ? C.leaf : h.yield_score >= 4 ? C.amber : C.red }}>{h.yield_score}</div><div style={{ fontSize: 9, color: C.stone }}>Yield</div></div>}
-                      {h.quality_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: h.quality_score >= 7 ? C.leaf : h.quality_score >= 4 ? C.amber : C.red }}>{h.quality_score}</div><div style={{ fontSize: 9, color: C.stone }}>Quality</div></div>}
-                    </div>
-                  </div>
-                  {h.quantity_value && <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{h.quantity_value} {h.quantity_unit}</div>}
-                  {h.notes && <div style={{ fontSize: 12, color: C.stone, marginTop: 4, fontStyle: "italic" }}>{h.notes}</div>}
-                  {h.photo_url && <img src={h.photo_url} alt="harvest" style={{ width: "100%", borderRadius: 8, marginTop: 8, maxHeight: 160, objectFit: "cover" }} />}
-                </div>
+              harvests.map((crop, ci) => (
+                <HarvestSummaryCard key={crop.crop_instance_id || crop.crop_name + ci} crop={crop} />
               ))
             )}
           </div>
