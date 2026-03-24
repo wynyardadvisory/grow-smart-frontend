@@ -7583,6 +7583,7 @@ function AdminScreen({ isDemo = false }) {
   const [crops,     setCrops]    = useState([]);
   const [users,     setUsers]    = useState([]);
   const [metrics,   setMetrics]  = useState(null);
+  const [funnel,    setFunnel]   = useState(null);
   const [loading,   setLoading]  = useState(true);
   const [error,     setError]    = useState(null);
   const [acting,    setActing]   = useState(null);
@@ -7603,8 +7604,12 @@ function AdminScreen({ isDemo = false }) {
         const data = await apiFetch("/admin/users");
         setUsers(data);
       } else if (tab === "metrics") {
-        const data = await apiFetch("/admin/metrics");
-        setMetrics(data);
+        const [metricsData, funnelData] = await Promise.all([
+          apiFetch("/admin/metrics"),
+          apiFetch("/admin/metrics/funnel"),
+        ]);
+        setMetrics(metricsData);
+        setFunnel(funnelData);
       }
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -7695,6 +7700,7 @@ function AdminScreen({ isDemo = false }) {
             <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
               {[
                 { id: "overview", label: "Overview" },
+                { id: "funnel",   label: "Funnel" },
                 { id: "growth",   label: "Growth" },
                 { id: "usage",    label: "Usage" },
                 { id: "comms",    label: "Comms" },
@@ -7705,6 +7711,92 @@ function AdminScreen({ isDemo = false }) {
                 </button>
               ))}
             </div>
+
+            {/* ── FUNNEL ── */}
+            {metricTab === "funnel" && (
+              <div>
+                {/* Activation funnel */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Activation funnel</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {funnel ? funnel.funnel.map((step, i) => (
+                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < funnel.funnel.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{step.step}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13, color: C.stone }}>{step.count}</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: step.pct >= 70 ? C.forest : step.pct >= 40 ? "#92600A" : "#8B1A1A", minWidth: 40, textAlign: "right" }}>{step.pct}%</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${step.pct}%`, background: step.pct >= 70 ? C.forest : step.pct >= 40 ? C.amber : C.red, borderRadius: 99, transition: "width 0.4s" }} />
+                      </div>
+                    </div>
+                  )) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading funnel data…</div>}
+                </div>
+
+                {/* Push vs no-push */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Push vs no-push — 7-day retention</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {funnel?.pushRetention ? (
+                    <>
+                      <div style={{ padding: "12px 14px", borderBottom: `1px solid ${C.border}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: "#1a1a1a" }}>With push enabled</div>
+                            <div style={{ fontSize: 11, color: C.stone }}>{funnel.pushRetention.withPush.users} users</div>
+                          </div>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: C.forest }}>{funnel.pushRetention.withPush.retention7day ?? "—"}%</span>
+                        </div>
+                        <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${funnel.pushRetention.withPush.retention7day || 0}%`, background: C.forest, borderRadius: 99 }} />
+                        </div>
+                      </div>
+                      <div style={{ padding: "12px 14px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: "#1a1a1a" }}>Without push</div>
+                            <div style={{ fontSize: 11, color: C.stone }}>{funnel.pushRetention.withoutPush.users} users</div>
+                          </div>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: C.stone }}>{funnel.pushRetention.withoutPush.retention7day ?? "—"}%</span>
+                        </div>
+                        <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${funnel.pushRetention.withoutPush.retention7day || 0}%`, background: C.stone, borderRadius: 99 }} />
+                        </div>
+                      </div>
+                    </>
+                  ) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
+                </div>
+
+                {/* Cohort table */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>14-day cohort table</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                  {/* Header */}
+                  <div style={{ display: "grid", gridTemplateColumns: "80px 44px 60px 60px 44px 44px 44px", gap: 0, padding: "8px 10px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
+                    {["Date", "New", "Activated", "1st task", "D1", "D3", "D7"].map(h => (
+                      <div key={h} style={{ fontSize: 9, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "right" }}>{h}</div>
+                    ))}
+                  </div>
+                  {funnel ? funnel.cohorts.slice().reverse().map((row, i) => {
+                    const dateLabel = new Date(row.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                    const cell = (val, good, ok) => {
+                      const color = val === null ? C.stone : val >= good ? C.forest : val >= ok ? "#92600A" : "#8B1A1A";
+                      return <div style={{ fontSize: 12, fontWeight: val !== null ? 700 : 400, color, textAlign: "right" }}>{val !== null ? `${val}%` : "—"}</div>;
+                    };
+                    return (
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "80px 44px 60px 60px 44px 44px 44px", gap: 0, padding: "7px 10px", borderBottom: i < funnel.cohorts.length - 1 ? `1px solid ${C.border}` : "none", background: i % 2 === 0 ? "#fff" : C.offwhite }}>
+                        <div style={{ fontSize: 11, color: "#1a1a1a" }}>{dateLabel}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>{row.signups || "—"}</div>
+                        {cell(row.activated, 70, 50)}
+                        {cell(row.completedTask, 40, 20)}
+                        {cell(row.day1, 40, 20)}
+                        {cell(row.day3, 30, 15)}
+                        {cell(row.day7, 20, 10)}
+                      </div>
+                    );
+                  }) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading cohort data…</div>}
+                </div>
+              </div>
+            )}
 
             {/* ── OVERVIEW ── */}
             {metricTab === "overview" && (
@@ -7842,7 +7934,25 @@ function AdminScreen({ isDemo = false }) {
                     status={metrics.pushOptIn ? status(metrics.pushOptIn, 60, 40) : null}
                     suggestion={SUGGESTIONS.pushenabled} />
                   <MetricRow label="Push tokens active" val={metrics.pushTokens || "—"} />
-                  <MetricRow label="CTR" val="—" sub="tracking coming soon" />
+                  {funnel?.pushRetention && (
+                    <>
+                      <div style={{ padding: "8px 14px 4px", borderTop: `1px solid ${C.border}` }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>7-day retention: push vs no push</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                          <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: C.forest }}>{funnel.pushRetention.withPush.retention7day ?? "—"}%</div>
+                            <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>With push</div>
+                            <div style={{ fontSize: 10, color: C.stone }}>{funnel.pushRetention.withPush.users} users</div>
+                          </div>
+                          <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: C.stone }}>{funnel.pushRetention.withoutPush.retention7day ?? "—"}%</div>
+                            <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>Without push</div>
+                            <div style={{ fontSize: 10, color: C.stone }}>{funnel.pushRetention.withoutPush.users} users</div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email sequences</div>
