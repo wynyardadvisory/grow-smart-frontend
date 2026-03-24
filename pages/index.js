@@ -2376,6 +2376,21 @@ function Dashboard({ onTabChange }) {
           const age = Date.now() - ts;
           if (age < 5 * 60 * 1000) { // under 5 minutes — show immediately
             setData(cachedData);
+            // Restore completed Set from cached task data so completed tasks
+            // stay hidden when returning to dashboard within the cache window
+            const allCachedTasks = [
+              ...(cachedData.tasks?.focus     ? [cachedData.tasks.focus] : []),
+              ...(cachedData.tasks?.today     || []),
+              ...(cachedData.tasks?.this_week || []),
+              ...(cachedData.tasks?.coming_up || []),
+              ...(cachedData.tasks?.alerts    || []),
+            ].flat();
+            const completedIds = allCachedTasks
+              .filter(t => t?.completed_at)
+              .map(t => t.id);
+            if (completedIds.length > 0) {
+              setCompleted(prev => new Set([...prev, ...completedIds]));
+            }
             setLoading(false);
           }
         }
