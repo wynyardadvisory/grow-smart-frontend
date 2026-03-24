@@ -7732,6 +7732,7 @@ function AdminScreen({ isDemo = false }) {
             <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
               {[
                 { id: "overview", label: "Overview" },
+                { id: "funnel",   label: "Funnel" },
                 { id: "growth",   label: "Growth" },
                 { id: "usage",    label: "Usage" },
                 { id: "comms",    label: "Comms" },
@@ -7746,6 +7747,39 @@ function AdminScreen({ isDemo = false }) {
             {/* ── OVERVIEW ── */}
             {metricTab === "overview" && (
               <div>
+                {/* Health check strip — always visible, catches data integrity issues */}
+                {funnel?.healthChecks && (() => {
+                  const hc = funnel.healthChecks;
+                  const noCropsOk = hc.usersNoCropsPct <= 2;
+                  const noTasksOk = hc.usersNoTasksPct <= 2;
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>System health</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div style={{ background: noCropsOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${noCropsOk ? "#b8ddb8" : "#fca5a5"}` }}>
+                          <div style={{ fontSize: 11, color: noCropsOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
+                            {noCropsOk ? "✓" : "⚠"} Users with 0 crops
+                          </div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: noCropsOk ? C.forest : "#8B1A1A" }}>{hc.usersNoCrops}</div>
+                          <div style={{ fontSize: 10, color: noCropsOk ? "#3B6D11" : "#8B1A1A" }}>{hc.usersNoCropsPct}% of onboarded · target &lt;2%</div>
+                        </div>
+                        <div style={{ background: noTasksOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${noTasksOk ? "#b8ddb8" : "#fca5a5"}` }}>
+                          <div style={{ fontSize: 11, color: noTasksOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
+                            {noTasksOk ? "✓" : "⚠"} Users with 0 tasks
+                          </div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: noTasksOk ? C.forest : "#8B1A1A" }}>{hc.usersNoTasks}</div>
+                          <div style={{ fontSize: 10, color: noTasksOk ? "#3B6D11" : "#8B1A1A" }}>{hc.usersNoTasksPct}% of onboarded · target &lt;2%</div>
+                        </div>
+                      </div>
+                      {(!noCropsOk || !noTasksOk) && (
+                        <div style={{ marginTop: 8, padding: "8px 12px", background: "#FFF0F0", borderRadius: 8, fontSize: 12, color: "#8B1A1A", border: "1px solid #fca5a5" }}>
+                          ⚠ Data integrity issue detected — investigate onboarding flow immediately
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Business health</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
                   <MetricCard label="Activation rate" value={`${actRate}%`} sub="signup → first crop"
@@ -7788,6 +7822,122 @@ function AdminScreen({ isDemo = false }) {
                   <MetricRow label="DAU / MAU ratio" val={metrics.dauWauRatio || "—"} sub="stickiness · target 0.15+" highlight={dauWau >= 0.15} />
                   <MetricRow label="Avg crops per user" val={metrics.avgCropsPerUser} sub="engagement depth · target 3+" highlight={parseFloat(metrics.avgCropsPerUser) >= 3} />
                   <MetricRow label="NPS proxy" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} sub="avg feedback rating" />
+                </div>
+              </div>
+            )}
+
+            {/* ── FUNNEL ── */}
+            {metricTab === "funnel" && (
+              <div>
+                {/* Activation funnel */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Activation funnel</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {funnel ? funnel.funnel.map((step, i) => (
+                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < funnel.funnel.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{step.step}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13, color: C.stone }}>{step.count}</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: step.pct >= 70 ? C.forest : step.pct >= 40 ? "#92600A" : "#8B1A1A", minWidth: 40, textAlign: "right" }}>{step.pct}%</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${step.pct}%`, background: step.pct >= 70 ? C.forest : step.pct >= 40 ? C.amber : C.red, borderRadius: 99, transition: "width 0.4s" }} />
+                      </div>
+                    </div>
+                  )) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
+                </div>
+
+                {/* Behaviour → retention correlation */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Behaviour → retention</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 56px", gap: 0, padding: "8px 14px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
+                    {["Behaviour", "D1", "D7"].map(h => (
+                      <div key={h} style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, textAlign: h === "Behaviour" ? "left" : "right" }}>{h}</div>
+                    ))}
+                  </div>
+                  {funnel?.behaviourRetention ? funnel.behaviourRetention.map((row, i) => (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 56px 56px", gap: 0, padding: "10px 14px", borderBottom: i < 2 ? `1px solid ${C.border}` : "none" }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{row.label}</div>
+                        <div style={{ fontSize: 11, color: C.stone }}>{row.count} users</div>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: row.d1 === null ? C.stone : row.d1 >= 30 ? C.forest : row.d1 >= 15 ? "#92600A" : "#8B1A1A", textAlign: "right" }}>
+                        {row.d1 !== null ? `${row.d1}%` : "—"}
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: row.d7 === null ? C.stone : row.d7 >= 25 ? C.forest : row.d7 >= 10 ? "#92600A" : "#8B1A1A", textAlign: "right" }}>
+                        {row.d7 !== null ? `${row.d7}%` : "—"}
+                      </div>
+                    </div>
+                  )) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
+                </div>
+
+                {/* Push vs no-push */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Push vs no-push — 7-day retention</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {funnel?.pushRetention ? (
+                    <>
+                      <div style={{ padding: "12px 14px", borderBottom: `1px solid ${C.border}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: "#1a1a1a" }}>With push enabled</div>
+                            <div style={{ fontSize: 11, color: C.stone }}>{funnel.pushRetention.withPush.users} users</div>
+                          </div>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: C.forest }}>{funnel.pushRetention.withPush.retention7day ?? "—"}%</span>
+                        </div>
+                        <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${funnel.pushRetention.withPush.retention7day || 0}%`, background: C.forest, borderRadius: 99 }} />
+                        </div>
+                      </div>
+                      <div style={{ padding: "12px 14px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: "#1a1a1a" }}>Without push</div>
+                            <div style={{ fontSize: 11, color: C.stone }}>{funnel.pushRetention.withoutPush.users} users</div>
+                          </div>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: C.stone }}>{funnel.pushRetention.withoutPush.retention7day ?? "—"}%</span>
+                        </div>
+                        <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${funnel.pushRetention.withoutPush.retention7day || 0}%`, background: C.stone, borderRadius: 99 }} />
+                        </div>
+                      </div>
+                    </>
+                  ) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
+                </div>
+
+                {/* Cohort table with bug fix marker */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>14-day cohort table</div>
+                <div style={{ background: "#FFF8E7", border: "1px solid #F5C842", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12, color: "#92600A" }}>
+                  ⚠ Bug fix deployed 24 Mar 2026 — cohorts before this date had broken onboarding. Use post-fix cohorts as your real product baseline.
+                </div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "80px 44px 60px 60px 44px 44px 44px", gap: 0, padding: "8px 10px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
+                    {["Date", "New", "Activated", "1st task", "D1", "D3", "D7"].map(h => (
+                      <div key={h} style={{ fontSize: 9, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "right" }}>{h}</div>
+                    ))}
+                  </div>
+                  {funnel ? funnel.cohorts.slice().reverse().map((row, i) => {
+                    const dateLabel = new Date(row.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                    const isPostFix = row.date >= (funnel.bugFixDate || "2026-03-24");
+                    const cell = (val, good, ok) => {
+                      const color = val === null ? C.stone : val >= good ? C.forest : val >= ok ? "#92600A" : "#8B1A1A";
+                      return <div style={{ fontSize: 12, fontWeight: val !== null ? 700 : 400, color, textAlign: "right" }}>{val !== null ? `${val}%` : "—"}</div>;
+                    };
+                    return (
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "80px 44px 60px 60px 44px 44px 44px", gap: 0, padding: "7px 10px", borderBottom: i < funnel.cohorts.length - 1 ? `1px solid ${C.border}` : "none", background: isPostFix ? "#f0f8f0" : i % 2 === 0 ? "#fff" : C.offwhite }}>
+                        <div style={{ fontSize: 11, color: "#1a1a1a", display: "flex", alignItems: "center", gap: 4 }}>
+                          {isPostFix && <span style={{ fontSize: 8, color: C.forest, fontWeight: 700 }}>✓</span>}
+                          {dateLabel}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>{row.signups || "—"}</div>
+                        {cell(row.activated, 70, 50)}
+                        {cell(row.completedTask, 40, 20)}
+                        {cell(row.day1, 40, 20)}
+                        {cell(row.day3, 30, 15)}
+                        {cell(row.day7, 20, 10)}
+                      </div>
+                    );
+                  }) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading cohort data…</div>}
                 </div>
               </div>
             )}
