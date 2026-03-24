@@ -2356,6 +2356,7 @@ function Dashboard({ onTabChange }) {
   const [showShareNudge,     setShowShareNudge]     = useState(false);
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
+  const [firstActionDone,    setFirstActionDone]    = useState(false);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -3261,12 +3262,92 @@ function Dashboard({ onTabChange }) {
       )}
 
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>You're all caught up</div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No garden jobs right now.</div>
-        </div>
+        data?.first_action && !firstActionDone ? (
+          <FirstActionCard
+            firstAction={data.first_action}
+            onComplete={async (action) => {
+              setFirstActionDone(true);
+              try {
+                await apiFetch("/first-action/complete", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    source_key:  action.source_key,
+                    crop_id:     action.crop_id || null,
+                    prompt_type: action.prompt_type || null,
+                  }),
+                });
+                load(true);
+              } catch(e) { console.error("[FirstAction]", e); }
+            }}
+          />
+        ) : (
+          <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+              {firstActionDone ? "Nice work 🌱" : "You're all caught up"}
+            </div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+              {firstActionDone ? "Check back tomorrow for your next tasks" : "Nothing urgent today — one quick check recommended"}
+            </div>
+          </div>
+        )
       )}
+    </div>
+  );
+}
+
+// ── First Action Card ─────────────────────────────────────────────────────────
+// Shown when the engine returns 0 tasks — guarantees every new user
+// has one useful action to complete in their first session.
+// One action only. Calm. Completable in under 30 seconds.
+
+function FirstActionCard({ firstAction, onComplete }) {
+  const [tapping, setTapping] = useState(false);
+
+  if (!firstAction) return null;
+
+  const handleDone = async () => {
+    if (tapping) return;
+    setTapping(true);
+    await onComplete(firstAction);
+    // parent sets firstActionDone=true which unmounts this card
+  };
+
+  return (
+    <div style={{ margin: "0 0 16px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, padding: "14px 18px" }}>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4, fontFamily: "sans-serif" }}>
+          Nothing urgent today — one quick check recommended
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: "serif", lineHeight: 1.4 }}>
+          {firstAction.crop_name ? `${getCropEmoji(firstAction.crop_name)} ${firstAction.action}` : `🌱 ${firstAction.action}`}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div style={{ padding: "14px 18px", display: "flex", gap: 10, alignItems: "center" }}>
+        <button
+          onClick={handleDone}
+          disabled={tapping}
+          style={{
+            flex: 1,
+            background: tapping ? C.border : C.forest,
+            color: tapping ? C.stone : "#fff",
+            border: "none",
+            borderRadius: 10,
+            padding: "12px",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: tapping ? "default" : "pointer",
+            fontFamily: "serif",
+          }}>
+          {tapping ? "Saving…" : "✓ Done"}
+        </button>
+        <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.4, flex: 1 }}>
+          Takes about 30 seconds
+        </div>
+      </div>
     </div>
   );
 }
