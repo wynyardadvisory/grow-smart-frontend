@@ -7620,6 +7620,7 @@ function AdminScreen({ isDemo = false }) {
   const [crops,     setCrops]    = useState([]);
   const [users,     setUsers]    = useState([]);
   const [metrics,   setMetrics]  = useState(null);
+  const [funnel,    setFunnel]   = useState(null);
   const [loading,   setLoading]  = useState(true);
   const [error,     setError]    = useState(null);
   const [acting,    setActing]   = useState(null);
@@ -7640,8 +7641,12 @@ function AdminScreen({ isDemo = false }) {
         const data = await apiFetch("/admin/users");
         setUsers(data);
       } else if (tab === "metrics") {
-        const data = await apiFetch("/admin/metrics");
-        setMetrics(data);
+        const [metricsData, funnelData] = await Promise.all([
+          apiFetch("/admin/metrics"),
+          apiFetch("/admin/metrics/funnel"),
+        ]);
+        setMetrics(metricsData);
+        setFunnel(funnelData);
       }
     } catch (e) { setError(e.message); }
     setLoading(false);
