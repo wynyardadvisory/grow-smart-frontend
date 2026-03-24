@@ -2417,6 +2417,29 @@ function Dashboard({ onTabChange }) {
     // Increment local week count immediately
     setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
 
+    // Update cache immediately so returning to this screen doesn't resurrect the task
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data: cachedData, ts } = JSON.parse(cached);
+        const completedAt = new Date().toISOString();
+        // Mark task as completed in every task list in the cache
+        const markDone = (tasks) => (tasks || []).map(t => t.id === task.id ? { ...t, completed_at: completedAt } : t);
+        const updated = {
+          ...cachedData,
+          tasks: cachedData.tasks ? {
+            ...cachedData.tasks,
+            focus:     markDone(cachedData.tasks.focus),
+            today:     markDone(cachedData.tasks.today),
+            this_week: markDone(cachedData.tasks.this_week),
+            coming_up: markDone(cachedData.tasks.coming_up),
+            alerts:    markDone(cachedData.tasks.alerts),
+          } : cachedData.tasks,
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, ts }));
+      }
+    } catch(e) {}
+
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
       // Nudge to share after 5th task — high-emotion moment
