@@ -7898,39 +7898,33 @@ function AdminScreen({ isDemo = false }) {
             {/* ── OVERVIEW ── */}
             {metricTab === "overview" && (
               <div>
-                {/* Health check strip — post-fix users only (actionable) */}
                 {funnel?.healthChecks && (() => {
                   const hc = funnel.healthChecks;
-                  const noCropsOk = hc.postFixNoCropsPct <= 2;
-                  const noTasksOk = hc.postFixNoTasksPct <= 2;
+                  const cropsOk = hc.postFixNoCrops === 0;
+                  const tasksOk = hc.postFixNoTasks === 0;
                   return (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>System health</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>New users since bug fix (24 Mar) — this is the number that matters</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>Post-fix activated signups ({hc.totalPostFix} users) — both should always be 0</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        <div style={{ background: noCropsOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${noCropsOk ? "#b8ddb8" : "#fca5a5"}` }}>
-                          <div style={{ fontSize: 11, color: noCropsOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
-                            {noCropsOk ? "✓" : "⚠"} No crops (post-fix)
+                        <div style={{ background: cropsOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${cropsOk ? "#b8ddb8" : "#fca5a5"}` }}>
+                          <div style={{ fontSize: 11, color: cropsOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
+                            {cropsOk ? "✓" : "⚠"} Activated with no crops
                           </div>
-                          <div style={{ fontSize: 20, fontWeight: 800, color: noCropsOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoCrops}</div>
-                          <div style={{ fontSize: 10, color: noCropsOk ? "#3B6D11" : "#8B1A1A" }}>{hc.postFixNoCropsPct}% of {hc.totalPostFix} post-fix · target &lt;2%</div>
+                          <div style={{ fontSize: 28, fontWeight: 800, color: cropsOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoCrops}</div>
+                          <div style={{ fontSize: 10, color: cropsOk ? "#3B6D11" : "#8B1A1A" }}>target: 0</div>
                         </div>
-                        <div style={{ background: noTasksOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${noTasksOk ? "#b8ddb8" : "#fca5a5"}` }}>
-                          <div style={{ fontSize: 11, color: noTasksOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
-                            {noTasksOk ? "✓" : "⚠"} No tasks (post-fix)
+                        <div style={{ background: tasksOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${tasksOk ? "#b8ddb8" : "#fca5a5"}` }}>
+                          <div style={{ fontSize: 11, color: tasksOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
+                            {tasksOk ? "✓" : "⚠"} Activated with no tasks
                           </div>
-                          <div style={{ fontSize: 20, fontWeight: 800, color: noTasksOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoTasks}</div>
-                          <div style={{ fontSize: 10, color: noTasksOk ? "#3B6D11" : "#8B1A1A" }}>{hc.postFixNoTasksPct}% of {hc.totalPostFix} post-fix · target &lt;2%</div>
+                          <div style={{ fontSize: 28, fontWeight: 800, color: tasksOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoTasks}</div>
+                          <div style={{ fontSize: 10, color: tasksOk ? "#3B6D11" : "#8B1A1A" }}>target: 0</div>
                         </div>
                       </div>
-                      {(!noCropsOk || !noTasksOk) && (
+                      {(!cropsOk || !tasksOk) && (
                         <div style={{ marginTop: 8, padding: "8px 12px", background: "#FFF0F0", borderRadius: 8, fontSize: 12, color: "#8B1A1A", border: "1px solid #fca5a5" }}>
-                          ⚠ New users still failing onboarding — investigate immediately
-                        </div>
-                      )}
-                      {(noCropsOk && noTasksOk) && (
-                        <div style={{ marginTop: 8, padding: "8px 12px", background: "#EAF3DE", borderRadius: 8, fontSize: 12, color: "#3B6D11", border: "1px solid #b8ddb8" }}>
-                          ✓ New onboarding is clean — historical users ({hc.totalNoCrops} with no crops) are pre-fix affected users
+                          ⚠ New users completing onboarding without crops or tasks — investigate immediately
                         </div>
                       )}
                     </div>
