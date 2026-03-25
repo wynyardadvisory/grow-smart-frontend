@@ -4381,18 +4381,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const harvestNode  = timeline?.nodes?.find(n => n.key === "harvesting" || n.key === "harvest");
   const stageIdx     = STAGES.findIndex(s => s.key === currentStageKey);
 
-  // Progress bar uses DTM-based percentage — accounts for timeline_offset_days
-  // so the bar position moves when the user adjusts stage
-  const progressPct = (() => {
-    const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-    const basePct = STAGE_PCT[currentStageKey] ?? (stageIdx / STAGES.length);
-    // Apply offset: offset pushes crop backwards in its journey
-    const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
-    const offsetDays = crop.timeline_offset_days || 0;
-    const offsetPct = dtm > 0 ? offsetDays / dtm : 0;
-    const adjustedPct = Math.max(0, Math.min(1, basePct - offsetPct + 0.04));
-    return Math.round(adjustedPct * 100);
-  })();
+  // Progress bar: use STAGE_PCT so it matches the timeline logic in buildTimeline
+  const STAGE_PCT_FE = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
+  const progressPct  = Math.round(((STAGE_PCT_FE[currentStageKey] ?? (stageIdx / STAGES.length)) + 0.04) * 100);
 
   const daysSown = sowDate
     ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000)
