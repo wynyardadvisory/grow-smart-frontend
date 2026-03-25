@@ -5157,11 +5157,15 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   }
                 } else if (!crop.sown_date) {
                   pct = 0;
-                } else if ((crop.stage_adjusted_sow_date || crop.sown_date) && crop.crop_def?.days_to_maturity_max) {
-                  const delay = crop.stage_delay_days || 0;
-                  const effectiveSowDate = crop.stage_adjusted_sow_date || crop.sown_date;
-                  const daysSinceSown = Math.max(0, Math.floor((Date.now() - new Date(effectiveSowDate)) / 86400000) - delay);
-                  pct = Math.min(100, Math.max(0, Math.round((daysSinceSown / crop.crop_def.days_to_maturity_max) * 100)));
+                } else if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
+                  // Simple: days since sow ÷ DTM
+                  // timeline_offset_days shifts sow date forward (positive = behind = harvest later)
+                  const offsetDays = crop.timeline_offset_days || 0;
+                  const effectiveSowDate = new Date(crop.sown_date);
+                  effectiveSowDate.setDate(effectiveSowDate.getDate() + offsetDays);
+                  const totalDays = crop.crop_def.days_to_maturity_max;
+                  const daysSinceSown = Math.max(0, Math.floor((Date.now() - effectiveSowDate.getTime()) / 86400000));
+                  pct = Math.min(100, Math.max(0, Math.round((daysSinceSown / totalDays) * 100)));
                 } else {
                   // No maturity data — fall back to stage index but skip if no sow date
                   const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
