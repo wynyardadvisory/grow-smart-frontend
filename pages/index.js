@@ -7667,6 +7667,33 @@ function AdminTools() {
 // Only visible to mark@wynyardadvisory.co.uk
 
 // ── Demo admin screen — marketing reset only ──────────────────────────────────
+// ── Viewer Admin Screen — total signups only ──────────────────────────────────
+function ViewerAdminScreen() {
+  const [signups, setSignups] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/admin/metrics/viewer")
+      .then(d => { setSignups(d.totalSignups); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 4, color: "#1a1a1a" }}>Overview</div>
+      <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>Live data</div>
+      <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "28px 24px", color: "#fff", textAlign: "center" }}>
+        <div style={{ fontSize: 12, opacity: 0.6, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Total signups</div>
+        {loading
+          ? <div style={{ fontSize: 48, fontWeight: 800 }}>—</div>
+          : <div style={{ fontSize: 64, fontWeight: 800, lineHeight: 1 }}>{signups?.toLocaleString()}</div>
+        }
+        <div style={{ fontSize: 13, opacity: 0.6, marginTop: 8 }}>UK growers on Vercro</div>
+      </div>
+    </div>
+  );
+}
+
 function DemoAdminScreen() {
   const [resetting, setResetting] = useState(false);
   const [result,    setResult]    = useState(null);
@@ -7871,33 +7898,39 @@ function AdminScreen({ isDemo = false }) {
             {/* ── OVERVIEW ── */}
             {metricTab === "overview" && (
               <div>
-                {/* Health check strip — always visible, catches data integrity issues */}
+                {/* Health check strip — post-fix users only (actionable) */}
                 {funnel?.healthChecks && (() => {
                   const hc = funnel.healthChecks;
-                  const noCropsOk = hc.usersNoCropsPct <= 2;
-                  const noTasksOk = hc.usersNoTasksPct <= 2;
+                  const noCropsOk = hc.postFixNoCropsPct <= 2;
+                  const noTasksOk = hc.postFixNoTasksPct <= 2;
                   return (
                     <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>System health</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>System health</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>New users since bug fix (24 Mar) — this is the number that matters</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div style={{ background: noCropsOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${noCropsOk ? "#b8ddb8" : "#fca5a5"}` }}>
                           <div style={{ fontSize: 11, color: noCropsOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
-                            {noCropsOk ? "✓" : "⚠"} Users with 0 crops
+                            {noCropsOk ? "✓" : "⚠"} No crops (post-fix)
                           </div>
-                          <div style={{ fontSize: 20, fontWeight: 800, color: noCropsOk ? C.forest : "#8B1A1A" }}>{hc.usersNoCrops}</div>
-                          <div style={{ fontSize: 10, color: noCropsOk ? "#3B6D11" : "#8B1A1A" }}>{hc.usersNoCropsPct}% of onboarded · target &lt;2%</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: noCropsOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoCrops}</div>
+                          <div style={{ fontSize: 10, color: noCropsOk ? "#3B6D11" : "#8B1A1A" }}>{hc.postFixNoCropsPct}% of {hc.totalPostFix} post-fix · target &lt;2%</div>
                         </div>
                         <div style={{ background: noTasksOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${noTasksOk ? "#b8ddb8" : "#fca5a5"}` }}>
                           <div style={{ fontSize: 11, color: noTasksOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
-                            {noTasksOk ? "✓" : "⚠"} Users with 0 tasks
+                            {noTasksOk ? "✓" : "⚠"} No tasks (post-fix)
                           </div>
-                          <div style={{ fontSize: 20, fontWeight: 800, color: noTasksOk ? C.forest : "#8B1A1A" }}>{hc.usersNoTasks}</div>
-                          <div style={{ fontSize: 10, color: noTasksOk ? "#3B6D11" : "#8B1A1A" }}>{hc.usersNoTasksPct}% of onboarded · target &lt;2%</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: noTasksOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoTasks}</div>
+                          <div style={{ fontSize: 10, color: noTasksOk ? "#3B6D11" : "#8B1A1A" }}>{hc.postFixNoTasksPct}% of {hc.totalPostFix} post-fix · target &lt;2%</div>
                         </div>
                       </div>
                       {(!noCropsOk || !noTasksOk) && (
                         <div style={{ marginTop: 8, padding: "8px 12px", background: "#FFF0F0", borderRadius: 8, fontSize: 12, color: "#8B1A1A", border: "1px solid #fca5a5" }}>
-                          ⚠ Data integrity issue detected — investigate onboarding flow immediately
+                          ⚠ New users still failing onboarding — investigate immediately
+                        </div>
+                      )}
+                      {(noCropsOk && noTasksOk) && (
+                        <div style={{ marginTop: 8, padding: "8px 12px", background: "#EAF3DE", borderRadius: 8, fontSize: 12, color: "#3B6D11", border: "1px solid #b8ddb8" }}>
+                          ✓ New onboarding is clean — historical users ({hc.totalNoCrops} with no crops) are pre-fix affected users
                         </div>
                       )}
                     </div>
@@ -7973,24 +8006,40 @@ function AdminScreen({ isDemo = false }) {
                 </div>
 
                 {/* Behaviour → retention correlation */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Behaviour → retention</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Behaviour → retention</div>
+                <div style={{ fontSize: 11, color: C.stone, marginBottom: 10, lineHeight: 1.5 }}>
+                  D1 = active on day 1 after signup · D7 = active on day 7 after signup · cohort-gated
+                </div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 56px", gap: 0, padding: "8px 14px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
-                    {["Behaviour", "D1", "D7"].map(h => (
-                      <div key={h} style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, textAlign: h === "Behaviour" ? "left" : "right" }}>{h}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px", gap: 0, padding: "8px 14px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
+                    {[
+                      { label: "Behaviour", sub: null },
+                      { label: "D1", sub: "day 1" },
+                      { label: "D7", sub: "day 7" },
+                    ].map((h, i) => (
+                      <div key={i} style={{ textAlign: i === 0 ? "left" : "right" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5 }}>{h.label}</div>
+                        {h.sub && <div style={{ fontSize: 9, color: C.stone, opacity: 0.7 }}>{h.sub}</div>}
+                      </div>
                     ))}
                   </div>
                   {funnel?.behaviourRetention ? funnel.behaviourRetention.map((row, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 56px 56px", gap: 0, padding: "10px 14px", borderBottom: i < 2 ? `1px solid ${C.border}` : "none" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px", gap: 0, padding: "10px 14px", borderBottom: i < 2 ? `1px solid ${C.border}` : "none" }}>
                       <div>
                         <div style={{ fontSize: 13, color: "#1a1a1a" }}>{row.label}</div>
-                        <div style={{ fontSize: 11, color: C.stone }}>{row.count} users</div>
+                        <div style={{ fontSize: 11, color: C.stone }}>{row.count} total users</div>
                       </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: row.d1 === null ? C.stone : row.d1 >= 30 ? C.forest : row.d1 >= 15 ? "#92600A" : "#8B1A1A", textAlign: "right" }}>
-                        {row.d1 !== null ? `${row.d1}%` : "—"}
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: row.d1 === null ? C.stone : row.d1 >= 30 ? C.forest : row.d1 >= 15 ? "#92600A" : "#8B1A1A" }}>
+                          {row.d1 !== null ? `${row.d1}%` : "—"}
+                        </div>
+                        {row.d1_eligible !== undefined && <div style={{ fontSize: 9, color: C.stone }}>of {row.d1_eligible}</div>}
                       </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: row.d7 === null ? C.stone : row.d7 >= 25 ? C.forest : row.d7 >= 10 ? "#92600A" : "#8B1A1A", textAlign: "right" }}>
-                        {row.d7 !== null ? `${row.d7}%` : "—"}
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: row.d7 === null ? C.stone : row.d7 >= 25 ? C.forest : row.d7 >= 10 ? "#92600A" : "#8B1A1A" }}>
+                          {row.d7 !== null ? `${row.d7}%` : "—"}
+                        </div>
+                        {row.d7_eligible !== undefined && <div style={{ fontSize: 9, color: C.stone }}>of {row.d7_eligible}</div>}
                       </div>
                     </div>
                   )) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
@@ -8633,7 +8682,8 @@ export default function GrowSmart() {
       .catch(() => setOnboarding(false));
   }, [session]);
 
-  const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
+  const isAdmin  = session?.user?.email === "mark@wynyardadvisory.co.uk";
+  const isViewer = session?.user?.id    === "448095f2-d379-4232-90f2-6ac7cebe1c70";
   const [isDemo, setIsDemo] = useState(false);
 
   // Fetch is_demo flag from profile
@@ -8687,6 +8737,7 @@ export default function GrowSmart() {
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
+        {tab === "admin"     && isViewer && !isAdmin && !isDemo && <ViewerAdminScreen />}
       </div>
 
       {/* iOS install banner */}
@@ -8705,7 +8756,7 @@ export default function GrowSmart() {
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
-        {[...TABS, ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
+        {[...TABS, ...((isAdmin || isDemo || isViewer) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
