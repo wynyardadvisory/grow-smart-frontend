@@ -4343,27 +4343,37 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     const STAGE_ORDER = ["seed", "seedling", "vegetative", "flowering", "fruiting", "harvesting"];
     const currentIdx  = STAGE_ORDER.indexOf(currentStageKey);
     const selectedIdx = STAGE_ORDER.indexOf(stageKey);
-    const isGoingBack = selectedIdx < currentIdx;
     setSaving(true);
     try {
-      let timelineOffsetDays = null;
-      if (isGoingBack && crop.sown_date) {
+      // Calculate absolute timeline_offset_days
+      // = how many days behind schedule the crop is, based on real sow date vs selected stage
+      // Uses DTM percentages to work out where the crop SHOULD be vs where user says it is
+      let timelineOffsetDays = 0;
+      const sowDateRaw = crop.sown_date || crop.transplanted_date;
+      if (sowDateRaw) {
         const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
         const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-        const currentPct  = STAGE_PCT[currentStageKey] || 0;
-        const selectedPct = STAGE_PCT[stageKey] || 0;
-        timelineOffsetDays = Math.round((currentPct - selectedPct) * dtm);
+        // Days since real sow date
+        const realDaysSown = Math.floor((Date.now() - new Date(sowDateRaw).getTime()) / 86400000);
+        // Days the crop SHOULD have been growing to reach the selected stage
+        const expectedDaysForStage = Math.round((STAGE_PCT[stageKey] || 0) * dtm);
+        // Positive = behind (crop took longer to reach this stage than expected)
+        // Negative = ahead (crop reached this stage faster than expected)
+        timelineOffsetDays = realDaysSown - expectedDaysForStage;
+        // Clamp to 0 if confirming current or future stage (no offset needed)
+        if (selectedIdx >= currentIdx && timelineOffsetDays < 0) timelineOffsetDays = 0;
       }
+
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
         body: JSON.stringify({
-          observation_type:    "stage",
-          symptom_code:        stage?.symptom || null,
-          confirmed_stage:     stageKey,
-          ...(timelineOffsetDays !== null ? { timeline_offset_days: timelineOffsetDays } : {}),
+          observation_type: "stage",
+          symptom_code:     stage?.symptom || null,
+          confirmed_stage:  stageKey,
+          timeline_offset_days: timelineOffsetDays,
         }),
       });
-      // Reload timeline to get updated harvest date before showing confirmed state
+      // Reload timeline to get updated harvest date and progress_pct
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
       setConfirmed(true);
