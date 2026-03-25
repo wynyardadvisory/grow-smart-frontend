@@ -2709,7 +2709,7 @@ function Dashboard({ onTabChange }) {
                   </button>
                 </div>
                 {focusItem.crop_instance_id && (
-                  <button onClick={() => setShowLogForCrop({ id: focusItem.crop_instance_id, name: focusItem.crop?.name || "crop" })}
+                  <button onClick={() => setShowLogForCrop({ id: focusItem.crop_instance_id, name: focusItem.crop?.name || "crop", task_type: focusItem.task_type })}
                     style={{ marginTop: 8, background: "none", border: "none", padding: 0, fontSize: 11, color: C.stone, cursor: "pointer", textDecoration: "underline" }}>
                     Did something different? Log it
                   </button>
@@ -4633,12 +4633,12 @@ function LogActionSheet({ crop, onClose, onLogged }) {
   const [showNote, setShowNote] = useState(false);
 
   const ACTIONS = [
-    { type: "watered", emoji: "💧", label: "Watered",     desc: "Reset watering schedule from today" },
-    { type: "fed",     emoji: "🌱", label: "Fed",         desc: "Reset feeding schedule from today" },
-    { type: "pruned",  emoji: "✂️",  label: "Pruned",      desc: "Log pruning or trimming" },
-    { type: "weeded",  emoji: "🌿", label: "Weeded",      desc: "Log weeding around this crop" },
-    { type: "note",    emoji: "📝", label: "Add a note",  desc: "Record something you noticed" },
-  ];
+    { type: "watered", emoji: "💧", label: "Watered",     desc: "Reset watering schedule from today", conflicts: ["water"] },
+    { type: "fed",     emoji: "🌱", label: "Fed",         desc: "Reset feeding schedule from today",  conflicts: ["feed"] },
+    { type: "pruned",  emoji: "✂️",  label: "Pruned",      desc: "Log pruning or trimming",            conflicts: ["prune"] },
+    { type: "weeded",  emoji: "🌿", label: "Weeded",      desc: "Log weeding around this crop",       conflicts: [] },
+    { type: "note",    emoji: "📝", label: "Add a note",  desc: "Record something you noticed",       conflicts: [] },
+  ].filter(a => !a.conflicts.includes(crop?.task_type));
 
   const logAction = async (actionType) => {
     if (saving) return;
