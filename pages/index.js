@@ -2708,8 +2708,8 @@ function Dashboard({ onTabChange }) {
                     Later
                   </button>
                 </div>
-                {focusItem.crop?.name && (
-                  <button onClick={() => setShowLogForCrop(focusItem.crop)}
+                {focusItem.crop_instance_id && (
+                  <button onClick={() => setShowLogForCrop({ id: focusItem.crop_instance_id, name: focusItem.crop?.name || "crop" })}
                     style={{ marginTop: 8, background: "none", border: "none", padding: 0, fontSize: 11, color: C.stone, cursor: "pointer", textDecoration: "underline" }}>
                     Did something different? Log it
                   </button>
@@ -4346,16 +4346,12 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     const isGoingBack = selectedIdx < currentIdx;
     setSaving(true);
     try {
-      // Calculate timeline_offset_days if going backwards
-      // e.g. crop is at flowering (idx 3) but user says seedling (idx 1) = 2 stages behind
-      // We estimate offset by stages × average stage length based on DTM
       let timelineOffsetDays = null;
       if (isGoingBack && crop.sown_date) {
         const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
         const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
         const currentPct  = STAGE_PCT[currentStageKey] || 0;
         const selectedPct = STAGE_PCT[stageKey] || 0;
-        // Positive offset = behind schedule (harvest pushed out)
         timelineOffsetDays = Math.round((currentPct - selectedPct) * dtm);
       }
       await apiFetch(`/crops/${crop.id}/observe`, {
@@ -4367,9 +4363,12 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
           ...(timelineOffsetDays !== null ? { timeline_offset_days: timelineOffsetDays } : {}),
         }),
       });
+      // Reload timeline to get updated harvest date before showing confirmed state
+      const updated = await apiFetch(`/crops/${crop.id}`);
+      if (updated?.timeline) setTimeline(updated.timeline);
       setConfirmed(true);
       if (onCropUpdated) await onCropUpdated();
-      setTimeout(() => onClose(), 1500);
+      setTimeout(() => onClose(), 2500);
     } catch(e) { console.error(e); }
     setSaving(false);
   };
@@ -4420,8 +4419,14 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         {!loading && confirmed && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
             <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>✓</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Stage confirmed</div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>Your task plan has been updated to match your plant's current stage.</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Stage updated</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan has been updated to match your plant's current stage.</div>
+            {harvestNode?.formatted_date && (
+              <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Harvest now expected</div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
+              </div>
+            )}
             <button onClick={onClose}
               style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
               Done
