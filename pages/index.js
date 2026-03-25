@@ -4340,36 +4340,28 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
   const confirmStage = async (stageKey) => {
     const stage = STAGES.find(s => s.key === stageKey);
-    const STAGE_ORDER = ["seed", "seedling", "vegetative", "flowering", "fruiting", "harvesting"];
-    const currentIdx  = STAGE_ORDER.indexOf(currentStageKey);
-    const selectedIdx = STAGE_ORDER.indexOf(stageKey);
     setSaving(true);
     try {
-      // Calculate absolute timeline_offset_days
-      // = how many days behind schedule the crop is, based on real sow date vs selected stage
-      // Uses DTM percentages to work out where the crop SHOULD be vs where user says it is
+      // Calculate absolute timeline_offset_days from real sow date
+      // = how many days the crop is behind or ahead of where it should be
+      // positive = behind (harvest later), negative = ahead (harvest sooner)
       let timelineOffsetDays = 0;
       const sowDateRaw = crop.sown_date || crop.transplanted_date;
       if (sowDateRaw) {
         const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
         const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-        // Days since real sow date
         const realDaysSown = Math.floor((Date.now() - new Date(sowDateRaw).getTime()) / 86400000);
-        // Days the crop SHOULD have been growing to reach the selected stage
         const expectedDaysForStage = Math.round((STAGE_PCT[stageKey] || 0) * dtm);
-        // Positive = behind (crop took longer to reach this stage than expected)
-        // Negative = ahead (crop reached this stage faster than expected)
+        // Crop took longer to reach this stage than expected = behind = positive offset
         timelineOffsetDays = realDaysSown - expectedDaysForStage;
-        // Clamp to 0 if confirming current or future stage (no offset needed)
-        if (selectedIdx >= currentIdx && timelineOffsetDays < 0) timelineOffsetDays = 0;
       }
 
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
         body: JSON.stringify({
-          observation_type: "stage",
-          symptom_code:     stage?.symptom || null,
-          confirmed_stage:  stageKey,
+          observation_type:     "stage",
+          symptom_code:         stage?.symptom || null,
+          confirmed_stage:      stageKey,
           timeline_offset_days: timelineOffsetDays,
         }),
       });
