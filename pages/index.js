@@ -4381,9 +4381,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const harvestNode  = timeline?.nodes?.find(n => n.key === "harvesting" || n.key === "harvest");
   const stageIdx     = STAGES.findIndex(s => s.key === currentStageKey);
 
-  // Progress bar: use STAGE_PCT so it matches the timeline logic in buildTimeline
-  const STAGE_PCT_FE = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-  const progressPct  = Math.round(((STAGE_PCT_FE[currentStageKey] ?? (stageIdx / STAGES.length)) + 0.04) * 100);
+  // Use progress_pct from API — calculated as daysSown/DTM using offset-adjusted sow date
+  // This is the single source of truth so bar and harvest date always use same calculation
+  const progressPct = timeline?.progress_pct ?? Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
 
   const daysSown = sowDate
     ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000)
