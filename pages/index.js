@@ -2356,6 +2356,7 @@ function Dashboard({ onTabChange }) {
   const [showShareNudge,     setShowShareNudge]     = useState(false);
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
+  const [showLogForCrop,     setShowLogForCrop]     = useState(null); // crop object for LogActionSheet
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -2707,6 +2708,12 @@ function Dashboard({ onTabChange }) {
                     Later
                   </button>
                 </div>
+                {focusItem.crop?.name && (
+                  <button onClick={() => setShowLogForCrop(focusItem.crop)}
+                    style={{ marginTop: 8, background: "none", border: "none", padding: 0, fontSize: 11, color: C.stone, cursor: "pointer", textDecoration: "underline" }}>
+                    Did something different? Log it
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -3219,6 +3226,14 @@ function Dashboard({ onTabChange }) {
           onClose={() => setPendingHarvest(null)}
           onSaved={(id, isFinal) => { if (isFinal) setHarvestedIds(s => new Set([...s, id])); loadAllHarvestsForShare(); loadRecentHarvests(); }}
           allHarvests={allHarvestsForShare}
+        />
+      )}
+
+      {showLogForCrop && (
+        <LogActionSheet
+          crop={showLogForCrop}
+          onClose={() => setShowLogForCrop(null)}
+          onLogged={() => { setShowLogForCrop(null); load(true); }}
         />
       )}
 
@@ -4291,12 +4306,13 @@ function CropGrowthDiary({ crop, onClose }) {
 // ── Crop Timeline Sheet ───────────────────────────────────────────────────────
 
 function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
-  const [timeline,   setTimeline]   = useState(null);
-  const [loading,    setLoading]    = useState(true);
-  const [adjusting,  setAdjusting]  = useState(false);
-  const [selected,   setSelected]   = useState(null);
-  const [confirmed,  setConfirmed]  = useState(false);
-  const [saving,     setSaving]     = useState(false);
+  const [timeline,      setTimeline]      = useState(null);
+  const [loading,       setLoading]       = useState(true);
+  const [adjusting,     setAdjusting]     = useState(false);
+  const [selected,      setSelected]      = useState(null);
+  const [confirmed,     setConfirmed]     = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [showLogAction, setShowLogAction] = useState(false);
 
   useEffect(() => {
     apiFetch(`/crops/${crop.id}`)
@@ -4324,11 +4340,32 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
   const confirmStage = async (stageKey) => {
     const stage = STAGES.find(s => s.key === stageKey);
+    const STAGE_ORDER = ["seed", "seedling", "vegetative", "flowering", "fruiting", "harvesting"];
+    const currentIdx  = STAGE_ORDER.indexOf(currentStageKey);
+    const selectedIdx = STAGE_ORDER.indexOf(stageKey);
+    const isGoingBack = selectedIdx < currentIdx;
     setSaving(true);
     try {
+      // Calculate timeline_offset_days if going backwards
+      // e.g. crop is at flowering (idx 3) but user says seedling (idx 1) = 2 stages behind
+      // We estimate offset by stages × average stage length based on DTM
+      let timelineOffsetDays = null;
+      if (isGoingBack && crop.sown_date) {
+        const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
+        const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
+        const currentPct  = STAGE_PCT[currentStageKey] || 0;
+        const selectedPct = STAGE_PCT[stageKey] || 0;
+        // Positive offset = behind schedule (harvest pushed out)
+        timelineOffsetDays = Math.round((currentPct - selectedPct) * dtm);
+      }
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey }),
+        body: JSON.stringify({
+          observation_type:    "stage",
+          symptom_code:        stage?.symptom || null,
+          confirmed_stage:     stageKey,
+          ...(timelineOffsetDays !== null ? { timeline_offset_days: timelineOffsetDays } : {}),
+        }),
       });
       setConfirmed(true);
       if (onCropUpdated) await onCropUpdated();
@@ -4422,7 +4459,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   const isPast  = i < idx;
                   const isCurr  = i === idx;
                   const isFuture = i > idx;
-                  const isDisabledInAdjust = adjusting && (isPast || isCurr);
+                  // Only disable the current stage itself when adjusting — allow past AND future
+                  const isDisabledInAdjust = adjusting && isCurr;
+                  const isBackward = adjusting && isPast;
                   return (
                     <div key={s.key}
                       style={{
@@ -4432,12 +4471,13 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                         cursor: adjusting && !isDisabledInAdjust ? "pointer" : "default",
                         opacity: (isFuture && !adjusting) || isDisabledInAdjust ? 0.35 : 1,
                         outline: adjusting && selected === s.key ? `2px solid ${C.forest}` : "none",
+                        position: "relative",
                       }}
                       onClick={adjusting && !isDisabledInAdjust ? () => setSelected(s.key) : undefined}>
                       <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
                       <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
                       <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
-                        {isCurr ? "Now" : isPast ? "Done" : ""}
+                        {isCurr ? "Now" : isPast && !adjusting ? "Done" : isBackward ? "← behind" : ""}
                       </div>
                     </div>
                   );
@@ -4525,10 +4565,20 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       No — adjust stage
                     </button>
                   </div>
+                  {/* Log something button */}
+                  <button onClick={() => setShowLogAction(true)}
+                    style={{ width: "100%", marginTop: 10, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "center" }}>
+                    + Log something you did
+                  </button>
                 </div>
               ) : (
                 <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-                  <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Tap the stage your plant is actually at:</div>
+                  <div style={{ fontSize: 12, color: C.stone, marginBottom: 6 }}>
+                    Tap the stage your plant is actually at:
+                  </div>
+                  <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>
+                    Stages before current will push your harvest date out.
+                  </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
                       style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
@@ -4554,6 +4604,113 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
           </div>
         )}
 
+        {showLogAction && (
+          <LogActionSheet
+            crop={crop}
+            onClose={() => setShowLogAction(false)}
+            onLogged={() => { setShowLogAction(false); if (onCropUpdated) onCropUpdated(); }}
+          />
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// ── Log Action Sheet ──────────────────────────────────────────────────────────
+// Quick bottom sheet for logging manual actions (watered, fed, pruned etc.)
+// Primary entry: crop timeline sheet. Secondary: Today screen task cards.
+
+function LogActionSheet({ crop, onClose, onLogged }) {
+  const [saving,   setSaving]   = useState(false);
+  const [done,     setDone]     = useState(null); // { action_type, next_action_hint }
+  const [note,     setNote]     = useState("");
+  const [showNote, setShowNote] = useState(false);
+
+  const ACTIONS = [
+    { type: "watered", emoji: "💧", label: "Watered",     desc: "Reset watering schedule from today" },
+    { type: "fed",     emoji: "🌱", label: "Fed",         desc: "Reset feeding schedule from today" },
+    { type: "pruned",  emoji: "✂️",  label: "Pruned",      desc: "Log pruning or trimming" },
+    { type: "weeded",  emoji: "🌿", label: "Weeded",      desc: "Log weeding around this crop" },
+    { type: "note",    emoji: "📝", label: "Add a note",  desc: "Record something you noticed" },
+  ];
+
+  const logAction = async (actionType) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const result = await apiFetch(`/crops/${crop.id}/log-action`, {
+        method: "POST",
+        body: JSON.stringify({ action_type: actionType, notes: note || null }),
+      });
+      setDone({ action_type: actionType, hint: result.next_action_hint });
+      setTimeout(() => onLogged(), 2000);
+    } catch(e) { console.error(e); setSaving(false); }
+  };
+
+  const cropName = crop?.name || "crop";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px" }}>
+
+        {done ? (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>
+              {ACTIONS.find(a => a.type === done.action_type)?.emoji || "✓"}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+              Logged
+            </div>
+            {done.hint && (
+              <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+                Log something for {cropName}
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: showNote ? 12 : 0 }}>
+              {ACTIONS.map(a => (
+                <button key={a.type}
+                  onClick={() => {
+                    if (a.type === "note") { setShowNote(true); return; }
+                    logAction(a.type);
+                  }}
+                  disabled={saving}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left" }}>
+                  <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
+                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {showNote && (
+              <div style={{ marginTop: 8 }}>
+                <textarea
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder={`What did you notice about your ${cropName}?`}
+                  style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, fontFamily: "serif", resize: "none", height: 80, boxSizing: "border-box" }}
+                  autoFocus
+                />
+                <button onClick={() => logAction("note")} disabled={saving || !note.trim()}
+                  style={{ width: "100%", marginTop: 8, background: note.trim() ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: note.trim() ? "pointer" : "default", fontFamily: "serif" }}>
+                  {saving ? "Saving…" : "Save note"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
