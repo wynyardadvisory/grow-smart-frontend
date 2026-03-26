@@ -7629,6 +7629,168 @@ function AdminTools() {
 // ── Admin Screen ─────────────────────────────────────────────────────────────
 // Only visible to mark@wynyardadvisory.co.uk
 
+// ── Funnel tab component ───────────────────────────────────────────────────────
+function FunnelTab({ data }) {
+  const { funnel, retention, push_retention, cohort_days, health_check } = data;
+
+  const FunnelBar = ({ label, value, total, color }) => {
+    const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 13, color: C.forest }}>{label}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{value.toLocaleString()} <span style={{ fontWeight: 400, color: C.stone }}>({pct}%)</span></span>
+        </div>
+        <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: color || C.forest, borderRadius: 4, transition: "width 0.4s ease" }} />
+        </div>
+      </div>
+    );
+  };
+
+  const RetCell = ({ rate, eligible }) => {
+    if (rate === null || eligible === 0) return <td style={{ padding: "8px 12px", color: C.stone, fontSize: 13 }}>—</td>;
+    const color = rate >= 50 ? "#2F5D50" : rate >= 25 ? "#92600A" : "#8B1A1A";
+    return (
+      <td style={{ padding: "8px 12px", textAlign: "center" }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color }}>{rate}%</span>
+        <div style={{ fontSize: 11, color: C.stone }}>of {eligible}</div>
+      </td>
+    );
+  };
+
+  const noCropsOk = health_check.no_crops_post_fix === 0;
+  const noTasksOk = health_check.no_tasks_post_fix === 0;
+
+  return (
+    <div style={{ padding: "16px 14px" }}>
+
+      {/* ── Post-fix health check strip ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        {[
+          { label: "Activated with no crops (post-fix)", value: health_check.no_crops_post_fix, ok: noCropsOk },
+          { label: "Activated with no tasks (post-fix)",  value: health_check.no_tasks_post_fix, ok: noTasksOk },
+        ].map(({ label, value, ok }) => (
+          <div key={label} style={{ flex: 1, background: ok ? "#EAF5EE" : "#FFF0F0", border: `1px solid ${ok ? "#B8DEC7" : "#F5C6C6"}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ fontSize: 11, color: ok ? "#2F5D50" : "#8B1A1A", fontWeight: 600, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: ok ? "#2F5D50" : "#8B1A1A" }}>{value}</div>
+            <div style={{ fontSize: 11, color: ok ? "#2F5D50" : "#8B1A1A" }}>{ok ? "✓ Target: 0" : "⚠ Target: 0"}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Activation funnel ── */}
+      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 14 }}>Activation funnel</div>
+        <FunnelBar label="Signed up"        value={funnel.signed_up}       total={funnel.signed_up}   color="#2F5D50" />
+        <FunnelBar label="Onboarded"         value={funnel.onboarded}       total={funnel.signed_up}   color="#3B7A65" />
+        <FunnelBar label="Tasks generated"   value={funnel.tasks_generated} total={funnel.signed_up}   color="#4A9478" />
+        <FunnelBar label="First task done"   value={funnel.first_task_done} total={funnel.signed_up}   color="#5BAF8C" />
+        <FunnelBar label="Active crops"      value={funnel.active_crops}    total={funnel.signed_up}   color="#76C9A5" />
+      </div>
+
+      {/* ── Behaviour → retention table ── */}
+      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16, overflowX: "auto" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Behaviour → retention</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${C.sage}` }}>
+              <th style={{ padding: "8px 12px", textAlign: "left", color: C.stone, fontWeight: 600 }}>Group</th>
+              <th style={{ padding: "8px 12px", textAlign: "center", color: C.stone, fontWeight: 600 }}>D1 — day after signup</th>
+              <th style={{ padding: "8px 12px", textAlign: "center", color: C.stone, fontWeight: 600 }}>D7 — day 7 after signup</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: `1px solid ${C.sage}` }}>
+              <td style={{ padding: "8px 12px", color: C.forest, fontWeight: 600 }}>✅ Completed a task</td>
+              <RetCell rate={retention.with_task.d1_rate}    eligible={retention.with_task.d1_eligible} />
+              <RetCell rate={retention.with_task.d7_rate}    eligible={retention.with_task.d7_eligible} />
+            </tr>
+            <tr>
+              <td style={{ padding: "8px 12px", color: C.stone }}>❌ No task completed</td>
+              <RetCell rate={retention.without_task.d1_rate} eligible={retention.without_task.d1_eligible} />
+              <RetCell rate={retention.without_task.d7_rate} eligible={retention.without_task.d7_eligible} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Push vs no-push 7-day retention ── */}
+      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Push vs no-push — D7 retention</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {[
+            { label: "Push enabled",  ...push_retention.push },
+            { label: "No push",       ...push_retention.no_push },
+          ].map(({ label, rate, eligible }) => (
+            <div key={label} style={{ flex: 1, background: "#F5FAF7", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: C.stone, marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: rate !== null && rate >= 30 ? "#2F5D50" : "#92600A" }}>
+                {rate !== null ? `${rate}%` : "—"}
+              </div>
+              <div style={{ fontSize: 11, color: C.stone }}>of {eligible} eligible</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 14-day cohort table ── */}
+      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>14-day signup cohort</div>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {(cohort_days || []).map(day => (
+            <div key={day.date} style={{
+              flex: "0 0 calc(14.28% - 4px)",
+              minWidth: 40,
+              background: day.is_fix_date ? "#FFF8E1" : day.signups > 0 ? "#EAF5EE" : "#F5F5F5",
+              border: `1px solid ${day.is_fix_date ? "#F5C842" : day.signups > 0 ? "#B8DEC7" : "#E0E0E0"}`,
+              borderRadius: 8,
+              padding: "8px 4px",
+              textAlign: "center",
+            }}>
+              <div style={{ fontSize: 10, color: C.stone }}>{day.date.slice(5)}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: day.signups > 0 ? C.forest : C.stone }}>{day.signups}</div>
+              {day.is_fix_date && <div style={{ fontSize: 9, color: "#92600A" }}>fix</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>Live data · refreshes on load</div>
+    </div>
+  );
+}
+
+// ── Viewer admin screen — signup count only ────────────────────────────────────
+function ViewerAdminScreen() {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+
+  useEffect(() => {
+    apiFetch("/admin/metrics/viewer")
+      .then(d => { setData(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, []);
+
+  return (
+    <div style={{ padding: "24px 16px", maxWidth: 480, margin: "0 auto" }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 20 }}>
+        Vercro — Overview
+      </div>
+      {loading && <div style={{ color: C.stone, fontSize: 14 }}>Loading…</div>}
+      {error   && <div style={{ color: "#8B1A1A", fontSize: 14 }}>Error: {error}</div>}
+      {data && (
+        <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.sage}`, padding: "32px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 13, color: C.stone, marginBottom: 8 }}>Total signups</div>
+          <div style={{ fontSize: 56, fontWeight: 900, color: C.forest, lineHeight: 1 }}>{data.totalSignups.toLocaleString()}</div>
+          <div style={{ fontSize: 13, color: C.stone, marginTop: 8 }}>registered users</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Demo admin screen — marketing reset only ──────────────────────────────────
 function DemoAdminScreen() {
   const [resetting, setResetting] = useState(false);
@@ -7702,6 +7864,7 @@ function AdminScreen({ isDemo = false }) {
   const [crops,     setCrops]    = useState([]);
   const [users,     setUsers]    = useState([]);
   const [metrics,   setMetrics]  = useState(null);
+  const [funnel,    setFunnel]   = useState(null);
   const [loading,   setLoading]  = useState(true);
   const [error,     setError]    = useState(null);
   const [acting,    setActing]   = useState(null);
@@ -7724,6 +7887,9 @@ function AdminScreen({ isDemo = false }) {
       } else if (tab === "metrics") {
         const data = await apiFetch("/admin/metrics");
         setMetrics(data);
+      } else if (tab === "funnel") {
+        const data = await apiFetch("/admin/metrics/funnel");
+        setFunnel(data);
       }
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -7756,6 +7922,7 @@ function AdminScreen({ isDemo = false }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
         {[
           { id: "metrics",  label: "📊 Metrics" },
+          { id: "funnel",   label: "🔬 Funnel" },
           { id: "crops",    label: "🌱 Crop queue" },
           { id: "users",    label: "👤 Users" },
           { id: "feedback", label: "💬 Feedback" },
@@ -7987,6 +8154,9 @@ function AdminScreen({ isDemo = false }) {
           </div>
         );
       })()}
+
+      {/* ── Funnel tab ── */}
+      {!loading && tab === "funnel" && funnel && <FunnelTab data={funnel} />}
 
       {/* ── Crop queue ── */}
       {!loading && tab === "crops" && (
@@ -8441,7 +8611,8 @@ export default function GrowSmart() {
       .catch(() => setOnboarding(false));
   }, [session]);
 
-  const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
+  const isAdmin  = session?.user?.email === "mark@wynyardadvisory.co.uk";
+  const isViewer = session?.user?.id === "448095f2-d379-4232-90f2-6ac7cebe1c70";
   const [isDemo, setIsDemo] = useState(false);
 
   // Fetch is_demo flag from profile
@@ -8495,6 +8666,7 @@ export default function GrowSmart() {
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
+        {tab === "admin"     && isViewer && !isAdmin && !isDemo && <ViewerAdminScreen />}
       </div>
 
       {/* iOS install banner */}
@@ -8513,7 +8685,7 @@ export default function GrowSmart() {
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
-        {[...TABS, ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
+        {[...TABS, ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []), ...(isViewer && !isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
