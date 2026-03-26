@@ -2356,7 +2356,6 @@ function Dashboard({ onTabChange }) {
   const [showShareNudge,     setShowShareNudge]     = useState(false);
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
-  const [firstActionDone,    setFirstActionDone]    = useState(false);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -2377,21 +2376,6 @@ function Dashboard({ onTabChange }) {
           const age = Date.now() - ts;
           if (age < 5 * 60 * 1000) { // under 5 minutes — show immediately
             setData(cachedData);
-            // Restore completed Set from cached task data so completed tasks
-            // stay hidden when returning to dashboard within the cache window
-            const allCachedTasks = [
-              ...(cachedData.tasks?.focus     ? [cachedData.tasks.focus] : []),
-              ...(cachedData.tasks?.today     || []),
-              ...(cachedData.tasks?.this_week || []),
-              ...(cachedData.tasks?.coming_up || []),
-              ...(cachedData.tasks?.alerts    || []),
-            ].flat();
-            const completedIds = allCachedTasks
-              .filter(t => t?.completed_at)
-              .map(t => t.id);
-            if (completedIds.length > 0) {
-              setCompleted(prev => new Set([...prev, ...completedIds]));
-            }
             setLoading(false);
           }
         }
@@ -2432,29 +2416,6 @@ function Dashboard({ onTabChange }) {
     setUndone(prev => prev.filter(t => t.id !== task.id));
     // Increment local week count immediately
     setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
-
-    // Update cache immediately so returning to this screen doesn't resurrect the task
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { data: cachedData, ts } = JSON.parse(cached);
-        const completedAt = new Date().toISOString();
-        // Mark task as completed in every task list in the cache
-        const markDone = (tasks) => (tasks || []).map(t => t.id === task.id ? { ...t, completed_at: completedAt } : t);
-        const updated = {
-          ...cachedData,
-          tasks: cachedData.tasks ? {
-            ...cachedData.tasks,
-            focus:     markDone(cachedData.tasks.focus),
-            today:     markDone(cachedData.tasks.today),
-            this_week: markDone(cachedData.tasks.this_week),
-            coming_up: markDone(cachedData.tasks.coming_up),
-            alerts:    markDone(cachedData.tasks.alerts),
-          } : cachedData.tasks,
-        };
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, ts }));
-      }
-    } catch(e) {}
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
@@ -3262,92 +3223,12 @@ function Dashboard({ onTabChange }) {
       )}
 
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
-        data?.first_action && !firstActionDone ? (
-          <FirstActionCard
-            firstAction={data.first_action}
-            onComplete={async (action) => {
-              setFirstActionDone(true);
-              try {
-                await apiFetch("/first-action/complete", {
-                  method: "POST",
-                  body: JSON.stringify({
-                    source_key:  action.source_key,
-                    crop_id:     action.crop_id || null,
-                    prompt_type: action.prompt_type || null,
-                  }),
-                });
-                load(true);
-              } catch(e) { console.error("[FirstAction]", e); }
-            }}
-          />
-        ) : (
-          <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
-              {firstActionDone ? "Nice work 🌱" : "You're all caught up"}
-            </div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
-              {firstActionDone ? "Check back tomorrow for your next tasks" : "Nothing urgent today — one quick check recommended"}
-            </div>
-          </div>
-        )
+        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>You're all caught up</div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No garden jobs right now.</div>
+        </div>
       )}
-    </div>
-  );
-}
-
-// ── First Action Card ─────────────────────────────────────────────────────────
-// Shown when the engine returns 0 tasks — guarantees every new user
-// has one useful action to complete in their first session.
-// One action only. Calm. Completable in under 30 seconds.
-
-function FirstActionCard({ firstAction, onComplete }) {
-  const [tapping, setTapping] = useState(false);
-
-  if (!firstAction) return null;
-
-  const handleDone = async () => {
-    if (tapping) return;
-    setTapping(true);
-    await onComplete(firstAction);
-    // parent sets firstActionDone=true which unmounts this card
-  };
-
-  return (
-    <div style={{ margin: "0 0 16px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
-      {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, padding: "14px 18px" }}>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4, fontFamily: "sans-serif" }}>
-          Nothing urgent today — one quick check recommended
-        </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: "serif", lineHeight: 1.4 }}>
-          {firstAction.crop_name ? `${getCropEmoji(firstAction.crop_name)} ${firstAction.action}` : `🌱 ${firstAction.action}`}
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div style={{ padding: "14px 18px", display: "flex", gap: 10, alignItems: "center" }}>
-        <button
-          onClick={handleDone}
-          disabled={tapping}
-          style={{
-            flex: 1,
-            background: tapping ? C.border : C.forest,
-            color: tapping ? C.stone : "#fff",
-            border: "none",
-            borderRadius: 10,
-            padding: "12px",
-            fontWeight: 700,
-            fontSize: 14,
-            cursor: tapping ? "default" : "pointer",
-            fontFamily: "serif",
-          }}>
-          {tapping ? "Saving…" : "✓ Done"}
-        </button>
-        <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.4, flex: 1 }}>
-          Takes about 30 seconds
-        </div>
-      </div>
     </div>
   );
 }
@@ -5172,8 +5053,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
     status: "", sown_date: "", transplant_date: "", notes: "",
-    entry_mode: "", // 'seed' | 'young_plant' | 'established'
-    seasonal_stage: "", // for established plants
   });
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
@@ -5231,7 +5110,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
                            : form.status === "sown_outdoors" ? "Date sown outdoors"
                            : "Sow date";
-  const isEstablished      = form.entry_mode === "established";
   const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
 
   // ── Step 1: user hits "Review & Add" → fetch profile or generate for unknown ──
@@ -5628,11 +5506,7 @@ const FAQ_DATA = [
       },
       {
         q: "How do I edit or delete a crop?",
-        a: "Go to the Crops tab and tap on a crop card to open it. To delete it, tap the X button at the top of the crop detail screen — you'll be asked to confirm before anything is removed. To edit, tap the edit icon to update variety, status, sow date, area or notes.",
-      },
-      {
-        q: "Can I log a partial harvest?",
-        a: "Yes — when you tap 'Harvest Now' on a crop, choose 'More to come' at the top of the screen instead of 'Final harvest'. This logs the harvest (yield, quality, quantity, photo) but keeps the crop active so you can harvest again later. Each harvest is recorded individually and your season averages are shown in your harvest log.",
+        a: "Go to the Crops tab and swipe left on the crop card. This reveals an Edit button and a Delete button. Tap Edit to update the variety, status, sow date, area or notes. Tap Delete to remove it — you'll be asked to confirm first.",
       },
       {
         q: "What does each crop status mean?",
@@ -7566,10 +7440,8 @@ function InviteWaitlistButton() {
 }
 
 function AdminTools() {
-  const [backfillStatus,  setBackfillStatus]  = useState(null);
-  const [recoveryStatus,  setRecoveryStatus]  = useState(null);
-  const [running,         setRunning]         = useState(false);
-  const [recoveryRunning, setRecoveryRunning] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState(null);
+  const [running,        setRunning]        = useState(false);
 
   const runBackfill = async () => {
     if (!confirm("This will backfill badge progress for all users from their existing data. Run it?")) return;
@@ -7584,19 +7456,6 @@ function AdminTools() {
     setRunning(false);
   };
 
-  const runRecovery = async () => {
-    if (!confirm("This will send a personal recovery email to all users who completed onboarding but have no crops due to the setup bug. Each user is only emailed once. Continue?")) return;
-    setRecoveryRunning(true);
-    setRecoveryStatus(null);
-    try {
-      const result = await apiFetch("/admin/onboarding-recovery-email", { method: "POST" });
-      setRecoveryStatus({ ok: true, sent: result.sent, skipped: result.skipped, total: result.total });
-    } catch (e) {
-      setRecoveryStatus({ ok: false, error: e.message });
-    }
-    setRecoveryRunning(false);
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Invite waitlist */}
@@ -7606,28 +7465,6 @@ function AdminTools() {
           Emails everyone on the waitlist telling them access is now open. Each user is only emailed once. Also updates their status to accepted.
         </div>
         <InviteWaitlistButton />
-      </div>
-
-      {/* Recovery email */}
-      <div style={{ background: "#FFF8E7", border: `1px solid #F5C842`, borderRadius: 12, padding: "18px" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>🔧 Send Onboarding Recovery Email</div>
-        <div style={{ fontSize: 13, color: C.stone, marginBottom: 4, lineHeight: 1.5 }}>
-          Sends a personal recovery email from Mark to all users who completed onboarding but have no crops — affected by the setup bug fixed on 24 March 2026.
-        </div>
-        <div style={{ fontSize: 12, color: "#92600A", marginBottom: 16, fontWeight: 600 }}>
-          Safe to run multiple times — each user is only ever sent this email once.
-        </div>
-        <button onClick={runRecovery} disabled={recoveryRunning}
-          style={{ background: recoveryRunning ? C.border : "#92600A", color: recoveryRunning ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: recoveryRunning ? "default" : "pointer", opacity: recoveryRunning ? 0.7 : 1 }}>
-          {recoveryRunning ? "Sending…" : "Send Recovery Emails"}
-        </button>
-        {recoveryStatus && (
-          <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: recoveryStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${recoveryStatus.ok ? "#b8ddb8" : "#f4b8b8"}`, fontSize: 13 }}>
-            {recoveryStatus.ok
-              ? `✅ Sent ${recoveryStatus.sent} recovery emails · ${recoveryStatus.skipped} skipped · ${recoveryStatus.total} total affected`
-              : `❌ Error: ${recoveryStatus.error}`}
-          </div>
-        )}
       </div>
 
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
@@ -7667,33 +7504,6 @@ function AdminTools() {
 // Only visible to mark@wynyardadvisory.co.uk
 
 // ── Demo admin screen — marketing reset only ──────────────────────────────────
-// ── Viewer Admin Screen — total signups only ──────────────────────────────────
-function ViewerAdminScreen() {
-  const [signups, setSignups] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiFetch("/admin/metrics/viewer")
-      .then(d => { setSignups(d.totalSignups); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  return (
-    <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 4, color: "#1a1a1a" }}>Overview</div>
-      <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>Live data</div>
-      <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "28px 24px", color: "#fff", textAlign: "center" }}>
-        <div style={{ fontSize: 12, opacity: 0.6, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Total signups</div>
-        {loading
-          ? <div style={{ fontSize: 48, fontWeight: 800 }}>—</div>
-          : <div style={{ fontSize: 64, fontWeight: 800, lineHeight: 1 }}>{signups?.toLocaleString()}</div>
-        }
-        <div style={{ fontSize: 13, opacity: 0.6, marginTop: 8 }}>UK growers on Vercro</div>
-      </div>
-    </div>
-  );
-}
-
 function DemoAdminScreen() {
   const [resetting, setResetting] = useState(false);
   const [result,    setResult]    = useState(null);
@@ -7766,7 +7576,6 @@ function AdminScreen({ isDemo = false }) {
   const [crops,     setCrops]    = useState([]);
   const [users,     setUsers]    = useState([]);
   const [metrics,   setMetrics]  = useState(null);
-  const [funnel,    setFunnel]   = useState(null);
   const [loading,   setLoading]  = useState(true);
   const [error,     setError]    = useState(null);
   const [acting,    setActing]   = useState(null);
@@ -7787,12 +7596,8 @@ function AdminScreen({ isDemo = false }) {
         const data = await apiFetch("/admin/users");
         setUsers(data);
       } else if (tab === "metrics") {
-        const [metricsData, funnelData] = await Promise.all([
-          apiFetch("/admin/metrics"),
-          apiFetch("/admin/metrics/funnel"),
-        ]);
-        setMetrics(metricsData);
-        setFunnel(funnelData);
+        const data = await apiFetch("/admin/metrics");
+        setMetrics(data);
       }
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -7883,7 +7688,6 @@ function AdminScreen({ isDemo = false }) {
             <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
               {[
                 { id: "overview", label: "Overview" },
-                { id: "funnel",   label: "Funnel" },
                 { id: "growth",   label: "Growth" },
                 { id: "usage",    label: "Usage" },
                 { id: "comms",    label: "Comms" },
@@ -7898,39 +7702,6 @@ function AdminScreen({ isDemo = false }) {
             {/* ── OVERVIEW ── */}
             {metricTab === "overview" && (
               <div>
-                {funnel?.healthChecks && (() => {
-                  const hc = funnel.healthChecks;
-                  const cropsOk = hc.postFixNoCrops === 0;
-                  const tasksOk = hc.postFixNoTasks === 0;
-                  return (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>System health</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>Post-fix activated signups ({hc.totalPostFix} users) — both should always be 0</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        <div style={{ background: cropsOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${cropsOk ? "#b8ddb8" : "#fca5a5"}` }}>
-                          <div style={{ fontSize: 11, color: cropsOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
-                            {cropsOk ? "✓" : "⚠"} Activated with no crops
-                          </div>
-                          <div style={{ fontSize: 28, fontWeight: 800, color: cropsOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoCrops}</div>
-                          <div style={{ fontSize: 10, color: cropsOk ? "#3B6D11" : "#8B1A1A" }}>target: 0</div>
-                        </div>
-                        <div style={{ background: tasksOk ? "#EAF3DE" : "#FFF0F0", borderRadius: 10, padding: "10px 14px", border: `1px solid ${tasksOk ? "#b8ddb8" : "#fca5a5"}` }}>
-                          <div style={{ fontSize: 11, color: tasksOk ? "#3B6D11" : "#8B1A1A", fontWeight: 700, marginBottom: 2 }}>
-                            {tasksOk ? "✓" : "⚠"} Activated with no tasks
-                          </div>
-                          <div style={{ fontSize: 28, fontWeight: 800, color: tasksOk ? C.forest : "#8B1A1A" }}>{hc.postFixNoTasks}</div>
-                          <div style={{ fontSize: 10, color: tasksOk ? "#3B6D11" : "#8B1A1A" }}>target: 0</div>
-                        </div>
-                      </div>
-                      {(!cropsOk || !tasksOk) && (
-                        <div style={{ marginTop: 8, padding: "8px 12px", background: "#FFF0F0", borderRadius: 8, fontSize: 12, color: "#8B1A1A", border: "1px solid #fca5a5" }}>
-                          ⚠ New users completing onboarding without crops or tasks — investigate immediately
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Business health</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
                   <MetricCard label="Activation rate" value={`${actRate}%`} sub="signup → first crop"
@@ -7973,138 +7744,6 @@ function AdminScreen({ isDemo = false }) {
                   <MetricRow label="DAU / MAU ratio" val={metrics.dauWauRatio || "—"} sub="stickiness · target 0.15+" highlight={dauWau >= 0.15} />
                   <MetricRow label="Avg crops per user" val={metrics.avgCropsPerUser} sub="engagement depth · target 3+" highlight={parseFloat(metrics.avgCropsPerUser) >= 3} />
                   <MetricRow label="NPS proxy" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} sub="avg feedback rating" />
-                </div>
-              </div>
-            )}
-
-            {/* ── FUNNEL ── */}
-            {metricTab === "funnel" && (
-              <div>
-                {/* Activation funnel */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Activation funnel</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  {funnel ? funnel.funnel.map((step, i) => (
-                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < funnel.funnel.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{step.step}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 13, color: C.stone }}>{step.count}</span>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: step.pct >= 70 ? C.forest : step.pct >= 40 ? "#92600A" : "#8B1A1A", minWidth: 40, textAlign: "right" }}>{step.pct}%</span>
-                        </div>
-                      </div>
-                      <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${step.pct}%`, background: step.pct >= 70 ? C.forest : step.pct >= 40 ? C.amber : C.red, borderRadius: 99, transition: "width 0.4s" }} />
-                      </div>
-                    </div>
-                  )) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
-                </div>
-
-                {/* Behaviour → retention correlation */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Behaviour → retention</div>
-                <div style={{ fontSize: 11, color: C.stone, marginBottom: 10, lineHeight: 1.5 }}>
-                  D1 = active on day 1 after signup · D7 = active on day 7 after signup · cohort-gated
-                </div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px", gap: 0, padding: "8px 14px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
-                    {[
-                      { label: "Behaviour", sub: null },
-                      { label: "D1", sub: "day 1" },
-                      { label: "D7", sub: "day 7" },
-                    ].map((h, i) => (
-                      <div key={i} style={{ textAlign: i === 0 ? "left" : "right" }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5 }}>{h.label}</div>
-                        {h.sub && <div style={{ fontSize: 9, color: C.stone, opacity: 0.7 }}>{h.sub}</div>}
-                      </div>
-                    ))}
-                  </div>
-                  {funnel?.behaviourRetention ? funnel.behaviourRetention.map((row, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px", gap: 0, padding: "10px 14px", borderBottom: i < 2 ? `1px solid ${C.border}` : "none" }}>
-                      <div>
-                        <div style={{ fontSize: 13, color: "#1a1a1a" }}>{row.label}</div>
-                        <div style={{ fontSize: 11, color: C.stone }}>{row.count} total users</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: row.d1 === null ? C.stone : row.d1 >= 30 ? C.forest : row.d1 >= 15 ? "#92600A" : "#8B1A1A" }}>
-                          {row.d1 !== null ? `${row.d1}%` : "—"}
-                        </div>
-                        {row.d1_eligible !== undefined && <div style={{ fontSize: 9, color: C.stone }}>of {row.d1_eligible}</div>}
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: row.d7 === null ? C.stone : row.d7 >= 25 ? C.forest : row.d7 >= 10 ? "#92600A" : "#8B1A1A" }}>
-                          {row.d7 !== null ? `${row.d7}%` : "—"}
-                        </div>
-                        {row.d7_eligible !== undefined && <div style={{ fontSize: 9, color: C.stone }}>of {row.d7_eligible}</div>}
-                      </div>
-                    </div>
-                  )) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
-                </div>
-
-                {/* Push vs no-push */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Push vs no-push — 7-day retention</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  {funnel?.pushRetention ? (
-                    <>
-                      <div style={{ padding: "12px 14px", borderBottom: `1px solid ${C.border}` }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                          <div>
-                            <div style={{ fontSize: 13, color: "#1a1a1a" }}>With push enabled</div>
-                            <div style={{ fontSize: 11, color: C.stone }}>{funnel.pushRetention.withPush.users} users</div>
-                          </div>
-                          <span style={{ fontSize: 20, fontWeight: 800, color: C.forest }}>{funnel.pushRetention.withPush.retention7day ?? "—"}%</span>
-                        </div>
-                        <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${funnel.pushRetention.withPush.retention7day || 0}%`, background: C.forest, borderRadius: 99 }} />
-                        </div>
-                      </div>
-                      <div style={{ padding: "12px 14px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                          <div>
-                            <div style={{ fontSize: 13, color: "#1a1a1a" }}>Without push</div>
-                            <div style={{ fontSize: 11, color: C.stone }}>{funnel.pushRetention.withoutPush.users} users</div>
-                          </div>
-                          <span style={{ fontSize: 20, fontWeight: 800, color: C.stone }}>{funnel.pushRetention.withoutPush.retention7day ?? "—"}%</span>
-                        </div>
-                        <div style={{ height: 5, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${funnel.pushRetention.withoutPush.retention7day || 0}%`, background: C.stone, borderRadius: 99 }} />
-                        </div>
-                      </div>
-                    </>
-                  ) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading…</div>}
-                </div>
-
-                {/* Cohort table with bug fix marker */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>14-day cohort table</div>
-                <div style={{ background: "#FFF8E7", border: "1px solid #F5C842", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12, color: "#92600A" }}>
-                  ⚠ Bug fix deployed 24 Mar 2026 — cohorts before this date had broken onboarding. Use post-fix cohorts as your real product baseline.
-                </div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "80px 44px 60px 60px 44px 44px 44px", gap: 0, padding: "8px 10px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
-                    {["Date", "New", "Activated", "1st task", "D1", "D3", "D7"].map(h => (
-                      <div key={h} style={{ fontSize: 9, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "right" }}>{h}</div>
-                    ))}
-                  </div>
-                  {funnel ? funnel.cohorts.slice().reverse().map((row, i) => {
-                    const dateLabel = new Date(row.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-                    const isPostFix = row.date >= (funnel.bugFixDate || "2026-03-24");
-                    const cell = (val, good, ok) => {
-                      const color = val === null ? C.stone : val >= good ? C.forest : val >= ok ? "#92600A" : "#8B1A1A";
-                      return <div style={{ fontSize: 12, fontWeight: val !== null ? 700 : 400, color, textAlign: "right" }}>{val !== null ? `${val}%` : "—"}</div>;
-                    };
-                    return (
-                      <div key={i} style={{ display: "grid", gridTemplateColumns: "80px 44px 60px 60px 44px 44px 44px", gap: 0, padding: "7px 10px", borderBottom: i < funnel.cohorts.length - 1 ? `1px solid ${C.border}` : "none", background: isPostFix ? "#f0f8f0" : i % 2 === 0 ? "#fff" : C.offwhite }}>
-                        <div style={{ fontSize: 11, color: "#1a1a1a", display: "flex", alignItems: "center", gap: 4 }}>
-                          {isPostFix && <span style={{ fontSize: 8, color: C.forest, fontWeight: 700 }}>✓</span>}
-                          {dateLabel}
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>{row.signups || "—"}</div>
-                        {cell(row.activated, 70, 50)}
-                        {cell(row.completedTask, 40, 20)}
-                        {cell(row.day1, 40, 20)}
-                        {cell(row.day3, 30, 15)}
-                        {cell(row.day7, 20, 10)}
-                      </div>
-                    );
-                  }) : <div style={{ padding: "16px 14px", fontSize: 13, color: C.stone }}>Loading cohort data…</div>}
                 </div>
               </div>
             )}
@@ -8676,8 +8315,7 @@ export default function GrowSmart() {
       .catch(() => setOnboarding(false));
   }, [session]);
 
-  const isAdmin  = session?.user?.email === "mark@wynyardadvisory.co.uk";
-  const isViewer = session?.user?.id    === "448095f2-d379-4232-90f2-6ac7cebe1c70";
+  const isAdmin = session?.user?.email === "mark@wynyardadvisory.co.uk";
   const [isDemo, setIsDemo] = useState(false);
 
   // Fetch is_demo flag from profile
@@ -8731,7 +8369,6 @@ export default function GrowSmart() {
         {tab === "feeds"     && <FeedsScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
-        {tab === "admin"     && isViewer && !isAdmin && !isDemo && <ViewerAdminScreen />}
       </div>
 
       {/* iOS install banner */}
@@ -8750,7 +8387,7 @@ export default function GrowSmart() {
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
-        {[...TABS, ...((isAdmin || isDemo || isViewer) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
+        {[...TABS, ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
