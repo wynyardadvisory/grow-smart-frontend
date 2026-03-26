@@ -7914,7 +7914,7 @@ function AdminScreen({ isDemo = false }) {
   // ── Demo mode — restricted view ──────────────────────────────────────────
   if (isDemo) return <DemoAdminScreen />;
 
-  useEffect(() => { loadAll(); }, [tab]);
+  useEffect(() => { loadAll(); }, [tab, metricTab]);
 
   const loadAll = async () => {
     setLoading(true); setError(null);
@@ -7926,11 +7926,13 @@ function AdminScreen({ isDemo = false }) {
         const data = await apiFetch("/admin/users");
         setUsers(data);
       } else if (tab === "metrics") {
-        const data = await apiFetch("/admin/metrics");
-        setMetrics(data);
-      } else if (tab === "funnel") {
-        const data = await apiFetch("/admin/metrics/funnel");
-        setFunnel(data);
+        if (metricTab === "funnel") {
+          const data = await apiFetch("/admin/metrics/funnel");
+          setFunnel(data);
+        } else {
+          const data = await apiFetch("/admin/metrics");
+          setMetrics(data);
+        }
       }
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -7963,7 +7965,6 @@ function AdminScreen({ isDemo = false }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
         {[
           { id: "metrics",  label: "📊 Metrics" },
-          { id: "funnel",   label: "🔬 Funnel" },
           { id: "crops",    label: "🌱 Crop queue" },
           { id: "users",    label: "👤 Users" },
           { id: "feedback", label: "💬 Feedback" },
@@ -8022,6 +8023,7 @@ function AdminScreen({ isDemo = false }) {
             <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
               {[
                 { id: "overview", label: "Overview" },
+                { id: "funnel",   label: "Funnel" },
                 { id: "growth",   label: "Growth" },
                 { id: "usage",    label: "Usage" },
                 { id: "comms",    label: "Comms" },
@@ -8161,6 +8163,8 @@ function AdminScreen({ isDemo = false }) {
             )}
 
             {/* ── COMMS ── */}
+            {metricTab === "funnel" && funnel && <FunnelTab data={funnel} />}
+
             {metricTab === "comms" && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Push notifications</div>
@@ -8196,8 +8200,6 @@ function AdminScreen({ isDemo = false }) {
         );
       })()}
 
-      {/* ── Funnel tab ── */}
-      {!loading && tab === "funnel" && funnel && <FunnelTab data={funnel} />}
 
       {/* ── Crop queue ── */}
       {!loading && tab === "crops" && (
