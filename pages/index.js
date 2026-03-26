@@ -7633,31 +7633,31 @@ function AdminTools() {
 function FunnelTab({ data }) {
   const { funnel, retention, push_retention, cohort_days, health_check } = data;
 
-  const FunnelBar = ({ label, value, total, color }) => {
-    const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-    return (
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 13, color: C.forest }}>{label}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{value.toLocaleString()} <span style={{ fontWeight: 400, color: C.stone }}>({pct}%)</span></span>
-        </div>
-        <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: color || C.forest, borderRadius: 4, transition: "width 0.4s ease" }} />
-        </div>
-      </div>
-    );
+  const rateColor = (r) => {
+    if (r === null || r === undefined) return C.stone;
+    if (r >= 30) return "#2F5D50";
+    if (r >= 15) return "#92600A";
+    return "#8B1A1A";
   };
 
-  const RetCell = ({ rate, eligible }) => {
-    if (rate === null || eligible === 0) return <td style={{ padding: "8px 12px", color: C.stone, fontSize: 13 }}>—</td>;
-    const color = rate >= 50 ? "#2F5D50" : rate >= 25 ? "#92600A" : "#8B1A1A";
+  const RateCell = ({ d, label }) => {
+    if (!d) return <td style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontSize: 12 }}>—</td>;
     return (
-      <td style={{ padding: "8px 12px", textAlign: "center" }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color }}>{rate}%</span>
-        <div style={{ fontSize: 11, color: C.stone }}>of {eligible}</div>
+      <td style={{ padding: "8px 10px", textAlign: "center" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: rateColor(d.rate) }}>{d.rate}%</div>
+        <div style={{ fontSize: 10, color: C.stone }}>of {d.eligible}</div>
       </td>
     );
   };
+
+  const RetRow = ({ label, group }) => (
+    <tr style={{ borderBottom: `1px solid ${C.sage}` }}>
+      <td style={{ padding: "8px 10px", color: C.forest, fontWeight: 600, fontSize: 13 }}>{label}</td>
+      <RateCell d={{ rate: group.d1_rate, eligible: group.d1_eligible }} />
+      <RateCell d={{ rate: group.d3_rate, eligible: group.d3_eligible }} />
+      <RateCell d={{ rate: group.d7_rate, eligible: group.d7_eligible }} />
+    </tr>
+  );
 
   const noCropsOk = health_check.no_crops_post_fix === 0;
   const noTasksOk = health_check.no_tasks_post_fix === 0;
@@ -7665,7 +7665,7 @@ function FunnelTab({ data }) {
   return (
     <div style={{ padding: "16px 14px" }}>
 
-      {/* ── Post-fix health check strip ── */}
+      {/* ── Post-fix health check ── */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         {[
           { label: "Activated with no crops (post-fix)", value: health_check.no_crops_post_fix, ok: noCropsOk },
@@ -7682,77 +7682,118 @@ function FunnelTab({ data }) {
       {/* ── Activation funnel ── */}
       <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 14 }}>Activation funnel</div>
-        <FunnelBar label="Signed up"        value={funnel.signed_up}       total={funnel.signed_up}   color="#2F5D50" />
-        <FunnelBar label="Onboarded"         value={funnel.onboarded}       total={funnel.signed_up}   color="#3B7A65" />
-        <FunnelBar label="Tasks generated"   value={funnel.tasks_generated} total={funnel.signed_up}   color="#4A9478" />
-        <FunnelBar label="First task done"   value={funnel.first_task_done} total={funnel.signed_up}   color="#5BAF8C" />
-        <FunnelBar label="Active crops"      value={funnel.active_crops}    total={funnel.signed_up}   color="#76C9A5" />
-      </div>
-
-      {/* ── Behaviour → retention table ── */}
-      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16, overflowX: "auto" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Behaviour → retention</div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${C.sage}` }}>
-              <th style={{ padding: "8px 12px", textAlign: "left", color: C.stone, fontWeight: 600 }}>Group</th>
-              <th style={{ padding: "8px 12px", textAlign: "center", color: C.stone, fontWeight: 600 }}>D1 — day after signup</th>
-              <th style={{ padding: "8px 12px", textAlign: "center", color: C.stone, fontWeight: 600 }}>D7 — day 7 after signup</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={{ borderBottom: `1px solid ${C.sage}` }}>
-              <td style={{ padding: "8px 12px", color: C.forest, fontWeight: 600 }}>✅ Completed a task</td>
-              <RetCell rate={retention.with_task.d1_rate}    eligible={retention.with_task.d1_eligible} />
-              <RetCell rate={retention.with_task.d7_rate}    eligible={retention.with_task.d7_eligible} />
-            </tr>
-            <tr>
-              <td style={{ padding: "8px 12px", color: C.stone }}>❌ No task completed</td>
-              <RetCell rate={retention.without_task.d1_rate} eligible={retention.without_task.d1_eligible} />
-              <RetCell rate={retention.without_task.d7_rate} eligible={retention.without_task.d7_eligible} />
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Push vs no-push 7-day retention ── */}
-      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Push vs no-push — D7 retention</div>
-        <div style={{ display: "flex", gap: 10 }}>
-          {[
-            { label: "Push enabled",  ...push_retention.push },
-            { label: "No push",       ...push_retention.no_push },
-          ].map(({ label, rate, eligible }) => (
-            <div key={label} style={{ flex: 1, background: "#F5FAF7", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-              <div style={{ fontSize: 12, color: C.stone, marginBottom: 6 }}>{label}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: rate !== null && rate >= 30 ? "#2F5D50" : "#92600A" }}>
-                {rate !== null ? `${rate}%` : "—"}
-              </div>
-              <div style={{ fontSize: 11, color: C.stone }}>of {eligible} eligible</div>
+        {[
+          { label: "Signed up",      value: funnel.signed_up,       pct: 100 },
+          { label: "Onboarded",      value: funnel.onboarded,       pct: funnel.signed_up > 0 ? Math.round(funnel.onboarded / funnel.signed_up * 100) : 0 },
+          { label: "Tasks generated",value: funnel.tasks_generated, pct: funnel.signed_up > 0 ? Math.round(funnel.tasks_generated / funnel.signed_up * 100) : 0 },
+          { label: "First task done",value: funnel.first_task_done, pct: funnel.signed_up > 0 ? Math.round(funnel.first_task_done / funnel.signed_up * 100) : 0 },
+          { label: "Active crops",   value: funnel.active_crops,    pct: funnel.signed_up > 0 ? Math.round(funnel.active_crops / funnel.signed_up * 100) : 0 },
+        ].map(({ label, value, pct }) => (
+          <div key={label} style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 13, color: C.forest }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{(value||0).toLocaleString()} <span style={{ fontWeight: 400, color: C.stone }}>({pct}%)</span></span>
             </div>
-          ))}
+            <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: C.forest, borderRadius: 4 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Behaviour → retention ── */}
+      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Behaviour → retention</div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: `2px solid ${C.sage}` }}>
+                <th style={{ padding: "8px 10px", textAlign: "left",   color: C.stone, fontWeight: 600, fontSize: 12 }}>Group</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 600, fontSize: 12 }}>D1</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 600, fontSize: 12 }}>D3</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 600, fontSize: 12 }}>D7</th>
+              </tr>
+            </thead>
+            <tbody>
+              <RetRow label="✅ Completed a task" group={retention.with_task} />
+              <RetRow label="❌ No task"          group={retention.without_task} />
+            </tbody>
+          </table>
         </div>
+      </div>
+
+      {/* ── Push vs no-push ── */}
+      <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Push notifications — D7 retention</div>
+        {[
+          { label: "With push",    ...push_retention.push },
+          { label: "Without push", ...push_retention.no_push },
+        ].map(({ label, rate, eligible }) => (
+          <div key={label} style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 13, color: C.forest }}>{label} <span style={{ color: C.stone, fontWeight: 400 }}>({eligible} users)</span></span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: rateColor(rate) }}>{rate !== null ? `${rate}%` : "—"}</span>
+            </div>
+            {rate !== null && (
+              <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${rate}%`, background: rate >= 30 ? C.forest : "#92600A", borderRadius: 4 }} />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* ── 14-day cohort table ── */}
       <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>14-day signup cohort</div>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {(cohort_days || []).map(day => (
-            <div key={day.date} style={{
-              flex: "0 0 calc(14.28% - 4px)",
-              minWidth: 40,
-              background: day.is_fix_date ? "#FFF8E1" : day.signups > 0 ? "#EAF5EE" : "#F5F5F5",
-              border: `1px solid ${day.is_fix_date ? "#F5C842" : day.signups > 0 ? "#B8DEC7" : "#E0E0E0"}`,
-              borderRadius: 8,
-              padding: "8px 4px",
-              textAlign: "center",
-            }}>
-              <div style={{ fontSize: 10, color: C.stone }}>{day.date.slice(5)}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: day.signups > 0 ? C.forest : C.stone }}>{day.signups}</div>
-              {day.is_fix_date && <div style={{ fontSize: 9, color: "#92600A" }}>fix</div>}
-            </div>
-          ))}
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>14-day cohort table</div>
+
+        {/* Bug fix banner */}
+        <div style={{ background: "#FFFBE6", border: "1px solid #F5C842", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: "#92600A", lineHeight: 1.5 }}>
+          ⚠️ Bug fix deployed 24 Mar 2026 — cohorts before this date had broken onboarding. Use post-fix cohorts as your real product baseline.
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: `2px solid ${C.sage}`, background: "#F5FAF7" }}>
+                <th style={{ padding: "8px 10px", textAlign: "left",   color: C.stone, fontWeight: 700 }}>Date</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>New</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>Activated</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>1st Task</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>D1</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>D3</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>D7</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(cohort_days || []).map((day, i) => {
+                const dateLabel = new Date(day.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                const rowBg = day.is_post_fix ? "#F5FAF7" : "transparent";
+                const CohortCell = ({ d }) => {
+                  if (!d) return <td style={{ padding: "8px 10px", textAlign: "center", color: "#ccc", fontSize: 11 }}>—</td>;
+                  return <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 700, color: rateColor(d.rate) }}>{d.rate}%</td>;
+                };
+                return (
+                  <tr key={day.date} style={{ borderBottom: `1px solid ${C.sage}`, background: rowBg }}>
+                    <td style={{ padding: "8px 10px", color: C.forest, fontWeight: day.is_post_fix ? 700 : 400, whiteSpace: "nowrap" }}>
+                      {day.is_post_fix && <span style={{ color: "#2F5D50", marginRight: 4 }}>✓</span>}
+                      {dateLabel}
+                    </td>
+                    <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 700, color: C.forest }}>{day.signups}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "center", color: day.activation_pct >= 70 ? "#2F5D50" : "#92600A" }}>
+                      {day.activation_pct !== null ? `${day.activation_pct}%` : "—"}
+                    </td>
+                    <td style={{ padding: "8px 10px", textAlign: "center", color: rateColor(day.first_task_pct) }}>
+                      {day.first_task_pct !== null ? `${day.first_task_pct}%` : "—"}
+                    </td>
+                    <CohortCell d={day.d1} />
+                    <CohortCell d={day.d3} />
+                    <CohortCell d={day.d7} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
