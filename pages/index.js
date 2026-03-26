@@ -7715,8 +7715,9 @@ function FunnelTab({ data }) {
               </tr>
             </thead>
             <tbody>
-              <RetRow label="✅ Completed a task" group={retention.with_task} />
-              <RetRow label="❌ No task"          group={retention.without_task} />
+              <RetRow label="❌ No task completed" group={retention.no_task} />
+              <RetRow label="✅ 1 task completed"  group={retention.one_task} />
+              <RetRow label="🔥 2+ tasks completed" group={retention.two_plus} />
             </tbody>
           </table>
         </div>
