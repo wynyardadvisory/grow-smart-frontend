@@ -9,7 +9,7 @@
  * All API calls send the Supabase JWT as Bearer token.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -5176,13 +5176,13 @@ function CropSearchInput({ cropDefs, value, onChange }) {
   const [query,        setQuery]        = useState(value?.name || "");
   const [showDropdown, setShowDropdown] = useState(false);
   const [focused,      setFocused]      = useState(false);
-  const containerRef = React.useRef(null);
+  const containerRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (value?.name !== undefined) setQuery(value?.name || "");
   }, [value?.name]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     function handleClick(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setShowDropdown(false);
@@ -5194,7 +5194,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 
   const norm = s => s.toLowerCase().trim().replace(/s$/i, "");
 
-  const filtered = React.useMemo(() => {
+  const filtered = useMemo(() => {
     if (!query || query.length < 1) return [];
     const q = query.toLowerCase().trim();
     const qn = norm(query);
