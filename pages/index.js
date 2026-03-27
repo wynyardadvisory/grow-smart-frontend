@@ -9,7 +9,7 @@
  * All API calls send the Supabase JWT as Bearer token.
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -2357,6 +2357,7 @@ function Dashboard({ onTabChange }) {
   const [showReferral,       setShowReferral]       = useState(false);
   const [showAllToday,       setShowAllToday]       = useState(false);
   const [showLogForCrop,     setShowLogForCrop]     = useState(null);
+  const [showLogActivity,    setShowLogActivity]    = useState(false);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -3231,11 +3232,28 @@ function Dashboard({ onTabChange }) {
 
       {showLogForCrop && (
         <LogActionSheet
-          crop={showLogForCrop}
+          scope={{ type: "crop", id: showLogForCrop.id, name: showLogForCrop.name }}
+          conflictTaskType={showLogForCrop.task_type}
           onClose={() => setShowLogForCrop(null)}
           onLogged={() => { setShowLogForCrop(null); load(true); }}
         />
       )}
+
+      {showLogActivity && (
+        <LogActionSheet
+          scope={null}
+          onClose={() => setShowLogActivity(false)}
+          onLogged={() => { setShowLogActivity(false); load(true); }}
+        />
+      )}
+
+      {/* Standalone log activity button — always visible at bottom of Today */}
+      <div style={{ padding: "12px 0 4px" }}>
+        <button onClick={() => setShowLogActivity(true)}
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <span style={{ fontSize: 16 }}>📋</span> Log activity
+        </button>
+      </div>
 
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
@@ -3824,6 +3842,7 @@ function GardenView({ onNavigateAdd }) {
   const [saving,          setSaving]          = useState(false);
   const [deleteLocationTarget, setDeleteLocationTarget] = useState(null); // location to confirm delete
   const [deletingLocation,     setDeletingLocation]     = useState(false);
+  const [logScope,             setLogScope]             = useState(null); // { type, id, name } for LogActionSheet
 
   const load = useCallback(async () => {
     // Fetch fresh
@@ -3992,6 +4011,14 @@ function GardenView({ onNavigateAdd }) {
         </div>
       )}
 
+      {logScope && (
+        <LogActionSheet
+          scope={logScope}
+          onClose={() => setLogScope(null)}
+          onLogged={() => { setLogScope(null); load(); }}
+        />
+      )}
+
       {suggestArea && (
         <PlantingSuggestionsSheet
           area={suggestArea}
@@ -4022,10 +4049,16 @@ function GardenView({ onNavigateAdd }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {!collapsedLocs[loc.id] && (
-                <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-                  style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                  + Add area
-                </button>
+                <>
+                  <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
+                    style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                    + Add area
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); setLogScope({ type: "location", id: loc.id, name: loc.name }); }}
+                    style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                    📋 Log
+                  </button>
+                </>
               )}
               <button onClick={e => { e.stopPropagation(); setDeleteLocationTarget(loc); }}
                 style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.red, fontSize: 13, flexShrink: 0 }}>
@@ -4135,6 +4168,10 @@ function GardenView({ onNavigateAdd }) {
                         <button onClick={() => onNavigateAdd({ area_id: area.id })}
                           style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                           + Add
+                        </button>
+                        <button onClick={() => setLogScope({ type: "area", id: area.id, name: area.name })}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          📋 Log
                         </button>
                         <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type }); }}
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
@@ -4594,7 +4631,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
         {showLogAction && (
           <LogActionSheet
-            crop={crop}
+            scope={{ type: "crop", id: crop.id, name: crop.name }}
             onClose={() => setShowLogAction(false)}
             onLogged={() => { setShowLogAction(false); if (onCropUpdated) onCropUpdated(); }}
           />
@@ -4605,57 +4642,140 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   );
 }
 
-function LogActionSheet({ crop, onClose, onLogged }) {
-  const [saving,   setSaving]   = useState(false);
-  const [done,     setDone]     = useState(null);
-  const [note,     setNote]     = useState("");
-  const [showNote, setShowNote] = useState(false);
+// ── Log activity sheet ────────────────────────────────────────────────────────
+// Reusable bottom sheet for logging manual garden activity.
+// Props:
+//   scope      — { type: 'crop'|'area'|'location', id, name } | null
+//                null = Today entry point, user chooses scope from their locations/areas
+//   onClose    — called on dismiss
+//   onLogged   — called after successful save (triggers parent refresh)
+//   conflictTaskType — optional string, hides conflicting action buttons (e.g. "feed")
+function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
+  // Legacy prop support — old callers pass { crop } object
+  crop }) {
 
-  const ACTIONS = [
-    { type: "watered", emoji: "💧", label: "Watered",    desc: "Reset watering schedule from today", conflicts: ["water"] },
-    { type: "fed",     emoji: "🌱", label: "Fed",        desc: "Reset feeding schedule from today",  conflicts: ["feed"] },
-    { type: "pruned",  emoji: "✂️",  label: "Pruned",     desc: "Log pruning or trimming",            conflicts: ["prune"] },
-    { type: "weeded",  emoji: "🌿", label: "Weeded",     desc: "Log weeding around this crop",       conflicts: [] },
-    { type: "note",    emoji: "📝", label: "Add a note", desc: "Record something you noticed",       conflicts: [] },
-  ].filter(a => !a.conflicts.includes(crop?.task_type));
+  // Normalise legacy crop prop
+  const resolvedScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
+  const resolvedConflict = conflictTaskType || crop?.task_type || null;
+
+  const [saving,      setSaving]      = useState(false);
+  const [done,        setDone]        = useState(null);
+  const [otherLabel,  setOtherLabel]  = useState("");
+  const [notes,       setNotes]       = useState("");
+  const [showOther,   setShowOther]   = useState(false);
+  const [dateChoice,  setDateChoice]  = useState("today"); // "today"|"yesterday"|"custom"
+  const [customDate,  setCustomDate]  = useState(() => new Date().toISOString().split("T")[0]);
+
+  const todayISO     = new Date().toISOString().split("T")[0];
+  const yesterdayISO = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  const performedAt = dateChoice === "today"     ? new Date().toISOString()
+                    : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
+                    : new Date(customDate + "T12:00:00").toISOString();
+
+  // Actions vary by scope type — feed is crop-only
+  const ALL_ACTIONS = [
+    { type: "watered",        emoji: "💧", label: "Watered",         desc: "Update watering schedule",         scopes: ["crop","area","location"], conflicts: ["water"] },
+    { type: "fed",            emoji: "🌿", label: "Fed",             desc: "Reset feeding schedule from today", scopes: ["crop"],                   conflicts: ["feed"] },
+    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching",          scopes: ["crop","area","location"], conflicts: ["prune","mulch"] },
+    { type: "weeded",         emoji: "🌱", label: "Weeded",          desc: "Log weeding",                       scopes: ["crop","area","location"], conflicts: [] },
+    { type: "other",          emoji: "📝", label: "Other",           desc: "Record something else",             scopes: ["crop","area","location"], conflicts: [] },
+  ];
+
+  const scopeType = resolvedScope?.type || "crop";
+  const ACTIONS = ALL_ACTIONS
+    .filter(a => a.scopes.includes(scopeType))
+    .filter(a => !a.conflicts.includes(resolvedConflict));
 
   const logAction = async (actionType) => {
     if (saving) return;
+    if (actionType === "other" && !otherLabel.trim()) return;
     setSaving(true);
     try {
-      const result = await apiFetch(`/crops/${crop.id}/log-action`, {
-        method: "POST",
-        body: JSON.stringify({ action_type: actionType, notes: note || null }),
-      });
-      setDone({ action_type: actionType, hint: result.next_action_hint });
+      let result;
+      if (scopeType === "crop") {
+        // Use existing crop endpoint for crop scope (backward compat)
+        result = await apiFetch(`/crops/${resolvedScope.id}/log-action`, {
+          method: "POST",
+          body: JSON.stringify({
+            action_type:  actionType,
+            notes:        notes || null,
+            custom_label: actionType === "other" ? otherLabel.trim() : null,
+            performed_at: performedAt,
+          }),
+        });
+      } else {
+        // Use generic endpoint for area/location scope
+        result = await apiFetch("/activity/log", {
+          method: "POST",
+          body: JSON.stringify({
+            activity_type: actionType,
+            scope_type:    scopeType,
+            scope_id:      resolvedScope.id,
+            notes:         notes || null,
+            custom_label:  actionType === "other" ? otherLabel.trim() : null,
+            performed_at:  performedAt,
+          }),
+        });
+      }
+      const hint = result?.next_action_hint || null;
+      setDone({ action_type: actionType, hint });
       setTimeout(() => onLogged(), 2000);
     } catch(e) { console.error(e); setSaving(false); }
   };
 
-  const cropName = crop?.name || "crop";
+  const scopeLabel = resolvedScope?.name || "garden";
+  const actionDefs = { watered: "💧", fed: "🌿", pruned_mulched: "✂️", weeded: "🌱", other: "📝" };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px" }}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
         {done ? (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{ACTIONS.find(a => a.type === done.action_type)?.emoji || "✓"}</div>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
             <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
             {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
           </div>
         ) : (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log something for {cropName}</div>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
               <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: showNote ? 12 : 0 }}>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
+              {scopeType === "crop"     && `For: ${scopeLabel}`}
+              {scopeType === "area"     && `Area: ${scopeLabel}`}
+              {scopeType === "location" && `Location: ${scopeLabel}`}
+            </div>
+
+            {/* Date selector */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {[["today","Today"],["yesterday","Yesterday"],["custom","Choose date"]].map(([val, lbl]) => (
+                <button key={val} onClick={() => setDateChoice(val)}
+                  style={{ flex: 1, padding: "7px 4px", fontSize: 12, fontWeight: dateChoice === val ? 700 : 400,
+                    background: dateChoice === val ? C.forest : C.offwhite,
+                    color: dateChoice === val ? "#fff" : C.stone,
+                    border: `1px solid ${dateChoice === val ? C.forest : C.border}`,
+                    borderRadius: 8, cursor: "pointer" }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {dateChoice === "custom" && (
+              <input type="date" value={customDate} max={todayISO}
+                onChange={e => setCustomDate(e.target.value)}
+                style={{ ...inputStyle, marginBottom: 14 }} />
+            )}
+
+            {/* Activity buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
               {ACTIONS.map(a => (
                 <button key={a.type}
-                  onClick={() => { if (a.type === "note") { setShowNote(true); return; } logAction(a.type); }}
+                  onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
                   disabled={saving}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left" }}>
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
                   <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
@@ -4664,15 +4784,21 @@ function LogActionSheet({ crop, onClose, onLogged }) {
                 </button>
               ))}
             </div>
-            {showNote && (
-              <div style={{ marginTop: 8 }}>
-                <textarea value={note} onChange={e => setNote(e.target.value)}
-                  placeholder={`What did you notice about your ${cropName}?`}
-                  style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, fontFamily: "serif", resize: "none", height: 80, boxSizing: "border-box" }}
+
+            {/* Other expanded form */}
+            {showOther && (
+              <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
+                <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
+                  placeholder="e.g. Applied copper fungicide, staked tomatoes…"
+                  style={{ ...inputStyle, marginBottom: 8 }}
                   autoFocus />
-                <button onClick={() => logAction("note")} disabled={saving || !note.trim()}
-                  style={{ width: "100%", marginTop: 8, background: note.trim() ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: note.trim() ? "pointer" : "default", fontFamily: "serif" }}>
-                  {saving ? "Saving…" : "Save note"}
+                <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
+                <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
+                  style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
+                  {saving ? "Saving…" : "Save"}
                 </button>
               </div>
             )}
@@ -5171,151 +5297,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   );
 }
 
-// ── Crop search autocomplete ──────────────────────────────────────────────────
-function CropSearchInput({ cropDefs, value, onChange }) {
-  const [query,        setQuery]        = useState(value?.name || "");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [focused,      setFocused]      = useState(false);
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    if (value?.name !== undefined) setQuery(value?.name || "");
-  }, [value?.name]);
-
-  useEffect(() => {
-    function handleClick(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const norm = s => s.toLowerCase().trim().replace(/s$/i, "");
-
-  const filtered = useMemo(() => {
-    if (!query || query.length < 1) return [];
-    const q = query.toLowerCase().trim();
-    const qn = norm(query);
-    const results = cropDefs.filter(d => {
-      const name = d.name.toLowerCase();
-      return name.includes(q) || norm(d.name).includes(qn);
-    });
-    results.sort((a, b) => {
-      const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
-      const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
-      if (aStarts !== bStarts) return aStarts - bStarts;
-      return a.name.localeCompare(b.name);
-    });
-    return results.slice(0, 8);
-  }, [query, cropDefs]);
-
-  const showOther  = query.length >= 2;
-  const hasResults = filtered.length > 0 || showOther;
-
-  function select(def) {
-    setQuery(def.name);
-    setShowDropdown(false);
-    onChange({ id: def.id, name: def.name });
-  }
-
-  function selectOther() {
-    setShowDropdown(false);
-    onChange({ id: "__other__", name: query });
-  }
-
-  function handleChange(e) {
-    const val = e.target.value;
-    setQuery(val);
-    if (val.length === 0) onChange(null);
-    setShowDropdown(val.length >= 1);
-  }
-
-  function handleFocus() {
-    setFocused(true);
-    if (query.length >= 1) setShowDropdown(true);
-  }
-
-  function handleBlur() {
-    setFocused(false);
-    setTimeout(() => setShowDropdown(false), 150);
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === "Escape") { setShowDropdown(false); e.target.blur(); }
-  }
-
-  return (
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <input
-        type="text"
-        value={query}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        placeholder="Start typing a crop…"
-        autoComplete="off"
-        style={{
-          ...inputStyle,
-          border: `1px solid ${focused ? C.forest : C.border}`,
-          transition: "border-color 0.15s",
-        }}
-      />
-      {showDropdown && hasResults && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-          background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200,
-          overflow: "hidden",
-        }}>
-          {filtered.map(def => (
-            <div
-              key={def.id}
-              onMouseDown={() => select(def)}
-              style={{
-                padding: "11px 14px", fontSize: 14, cursor: "pointer",
-                color: "#1a1a1a", borderBottom: `1px solid ${C.border}`,
-                display: "flex", alignItems: "center", gap: 8,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f5f9f7"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: 18, lineHeight: 1 }}>{getCropEmoji(def.name)}</span>
-              <span>{def.name}</span>
-            </div>
-          ))}
-          {showOther && (
-            <div
-              onMouseDown={selectOther}
-              style={{
-                padding: "11px 14px", fontSize: 13, cursor: "pointer",
-                color: C.stone, display: "flex", alignItems: "center", gap: 8,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f5f9f7"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: 16 }}>&#128269;</span>
-              <span>"{query}" — not in list, identify with AI</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
-  const [cropDefs,      setCropDefs]      = useState([]);
-  const [varieties,     setVarieties]     = useState([]);
-  const [areas,         setAreas]         = useState([]);
-  const [cropSelection, setCropSelection] = useState(null);
+  const [cropDefs,  setCropDefs]  = useState([]);
+  const [varieties, setVarieties] = useState([]);
+  const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
-    variety_id: "", variety: "", area_id: "",
+    crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
     status: "", sown_date: "", transplant_date: "", notes: "",
-    starting_form: "", barcode: "", is_companion: false,
   });
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
@@ -5325,28 +5314,21 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [showScanner, setShowScanner] = useState(false);
   const [cropProfile, setCropProfile] = useState(null);
 
-  const isOtherCrop    = cropSelection?.id === "__other__";
-  const selectedCrop   = cropDefs.find(d => d.id === cropSelection?.id);
-  const isOtherVariety = form.variety_id === "__other__";
-  const cropName       = isOtherCrop ? cropSelection?.name : selectedCrop?.name;
-  const canSave        = cropSelection && form.area_id && form.status;
-
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
       .then(([defs, areasData]) => {
         setCropDefs(defs);
         setAreas(areasData);
+        // Apply prefill from planting suggestions if present
         if (prefill) {
           const matched = defs.find(d => d.name.toLowerCase() === prefill.name?.toLowerCase());
-          setCropSelection(matched
-            ? { id: matched.id, name: matched.name }
-            : { id: "__other__", name: prefill.name || "" }
-          );
           setForm(f => ({
             ...f,
-            variety:      prefill.variety || "",
-            variety_id:   prefill.variety ? "__other__" : "",
-            area_id:      prefill.area_id || "",
+            crop_def_id: matched ? matched.id : "__other__",
+            crop_other:  matched ? "" : (prefill.name || ""),
+            variety:     prefill.variety || "",
+            variety_id:  prefill.variety ? "__other__" : "",
+            area_id:     prefill.area_id || "",
             is_companion: prefill.is_companion || false,
           }));
           if (onPrefillConsumed) onPrefillConsumed();
@@ -5356,13 +5338,16 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   }, []);
 
   useEffect(() => {
-    if (!cropSelection || isOtherCrop) { setVarieties([]); return; }
-    apiFetch(`/varieties?crop_def_id=${cropSelection.id}`)
+    if (!form.crop_def_id || form.crop_def_id === "__other__") { setVarieties([]); return; }
+    apiFetch(`/varieties?crop_def_id=${form.crop_def_id}`)
       .then(setVarieties).catch(() => setVarieties([]));
     setForm(f => ({ ...f, variety_id: "", variety: "" }));
-  }, [cropSelection?.id]);
+  }, [form.crop_def_id]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+  const isOtherCrop    = form.crop_def_id === "__other__";
+  const isOtherVariety = form.variety_id  === "__other__";
+  const selectedCrop   = cropDefs.find(d => d.id === form.crop_def_id);
 
   const STATUS_OPTIONS = [
     { value: "planned",       label: "🗓 Planned",             hint: "I plan to grow this — not started yet" },
@@ -5377,10 +5362,12 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
                            : form.status === "sown_outdoors" ? "Date sown outdoors"
                            : "Sow date";
+  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
 
   // ── Step 1: user hits "Review & Add" → fetch profile or generate for unknown ──
   const handleReview = async () => {
     setError(null);
+    const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
     if (!cropName || !form.area_id || !form.status) return;
 
     if (isOtherCrop) {
@@ -5426,6 +5413,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
   // ── Step 2: user confirms → actually save ─────────────────────────────────
   const handleSave = async () => {
+    const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
     setSaving(true); setError(null);
     try {
       const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
@@ -5437,7 +5425,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         method: "POST",
         body: JSON.stringify({
           name:             cropName,
-          crop_def_id:      isOtherCrop ? null : (cropSelection?.id || null),
+          crop_def_id:      isOtherCrop ? null : (form.crop_def_id || null),
           variety_id:       realVarietyId,
           variety:          realVariety,
           area_id:          form.area_id,
@@ -5451,7 +5439,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
-          starting_form:    form.starting_form || null,
         }),
       });
 
@@ -5461,8 +5448,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setCropSelection(null);
-        setForm({ variety_id: "", variety: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", starting_form: "", barcode: "", is_companion: false });
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -5477,7 +5463,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setCropSelection(null); setForm({ variety_id: "", variety: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", starting_form: "", barcode: "", is_companion: false }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
@@ -5491,7 +5477,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
         <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
-        <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {cropName}</div>
+        <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {form.crop_other}</div>
       </div>
     );
   }
@@ -5614,16 +5600,10 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           onResult={r => {
             setShowScanner(false);
             if (r.found) {
-              // Backend has already canonicalised the name and resolved to canonical def
-              if (r.crop_def_id) {
-                const def = cropDefs.find(d => d.id === r.crop_def_id);
-                setCropSelection({ id: r.crop_def_id, name: def?.name || r.name });
-              } else {
-                setCropSelection({ id: "__other__", name: r.name });
-              }
-              if (r.variety)       set("variety",       r.variety);
-              if (r.starting_form) set("starting_form", r.starting_form);
-              if (r.barcode)       set("barcode",       r.barcode);
+              if (r.crop_def_id) set("crop_def_id", r.crop_def_id);
+              else { set("crop_def_id", "__other__"); set("crop_other", r.name); }
+              if (r.variety) set("variety", r.variety);
+              if (r.barcode) set("barcode", r.barcode);
             }
             // Not found — user fills in manually, Claude will enrich as usual
           }}
@@ -5652,17 +5632,14 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               📷 Scan packet
             </button>
           </div>
-          <CropSearchInput
-            cropDefs={cropDefs}
-            value={cropSelection}
-            onChange={setCropSelection}
-          />
-          {cropSelection && (
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>
-              {isOtherCrop
-                ? "🔍 Not in library — we’ll identify it automatically"
-                : `✓ ${selectedCrop?.name || cropSelection.name}`}
-            </div>
+          <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
+            <option value="">Select crop…</option>
+            {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            <option value="__other__">Other — type my own</option>
+          </select>
+          {isOtherCrop && (
+            <input type="text" value={form.crop_other} onChange={e => set("crop_other", e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }} placeholder="e.g. Tomatillo, Okra, Pak Choi…" autoFocus />
           )}
         </div>
 
@@ -5675,7 +5652,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               if (e.target.value === "__other__") { set("variety_id", "__other__"); set("variety", ""); }
               else { set("variety_id", e.target.value); set("variety", ""); }
             }}
-            style={inputStyle} disabled={!cropSelection}>
+            style={inputStyle} disabled={!form.crop_def_id}>
             <option value="">Unknown / not sure</option>
             {varieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
             <option value="__other__">Other — type my own</option>
