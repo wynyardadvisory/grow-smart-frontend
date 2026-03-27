@@ -5171,14 +5171,151 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   );
 }
 
+// ── Crop search autocomplete ──────────────────────────────────────────────────
+function CropSearchInput({ cropDefs, value, onChange }) {
+  const [query,        setQuery]        = useState(value?.name || "");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [focused,      setFocused]      = useState(false);
+  const containerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (value?.name !== undefined) setQuery(value?.name || "");
+  }, [value?.name]);
+
+  React.useEffect(() => {
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const norm = s => s.toLowerCase().trim().replace(/s$/i, "");
+
+  const filtered = React.useMemo(() => {
+    if (!query || query.length < 1) return [];
+    const q = query.toLowerCase().trim();
+    const qn = norm(query);
+    const results = cropDefs.filter(d => {
+      const name = d.name.toLowerCase();
+      return name.includes(q) || norm(d.name).includes(qn);
+    });
+    results.sort((a, b) => {
+      const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+      const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      return a.name.localeCompare(b.name);
+    });
+    return results.slice(0, 8);
+  }, [query, cropDefs]);
+
+  const showOther  = query.length >= 2;
+  const hasResults = filtered.length > 0 || showOther;
+
+  function select(def) {
+    setQuery(def.name);
+    setShowDropdown(false);
+    onChange({ id: def.id, name: def.name });
+  }
+
+  function selectOther() {
+    setShowDropdown(false);
+    onChange({ id: "__other__", name: query });
+  }
+
+  function handleChange(e) {
+    const val = e.target.value;
+    setQuery(val);
+    if (val.length === 0) onChange(null);
+    setShowDropdown(val.length >= 1);
+  }
+
+  function handleFocus() {
+    setFocused(true);
+    if (query.length >= 1) setShowDropdown(true);
+  }
+
+  function handleBlur() {
+    setFocused(false);
+    setTimeout(() => setShowDropdown(false), 150);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Escape") { setShowDropdown(false); e.target.blur(); }
+  }
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      <input
+        type="text"
+        value={query}
+        onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        placeholder="Start typing a crop…"
+        autoComplete="off"
+        style={{
+          ...inputStyle,
+          border: `1px solid ${focused ? C.forest : C.border}`,
+          transition: "border-color 0.15s",
+        }}
+      />
+      {showDropdown && hasResults && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200,
+          overflow: "hidden",
+        }}>
+          {filtered.map(def => (
+            <div
+              key={def.id}
+              onMouseDown={() => select(def)}
+              style={{
+                padding: "11px 14px", fontSize: 14, cursor: "pointer",
+                color: "#1a1a1a", borderBottom: `1px solid ${C.border}`,
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f5f9f7"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{getCropEmoji(def.name)}</span>
+              <span>{def.name}</span>
+            </div>
+          ))}
+          {showOther && (
+            <div
+              onMouseDown={selectOther}
+              style={{
+                padding: "11px 14px", fontSize: 13, cursor: "pointer",
+                color: C.stone, display: "flex", alignItems: "center", gap: 8,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f5f9f7"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: 16 }}>&#128269;</span>
+              <span>"{query}" — not in list, identify with AI</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
-  const [cropDefs,  setCropDefs]  = useState([]);
-  const [varieties, setVarieties] = useState([]);
-  const [areas,     setAreas]     = useState([]);
+  const [cropDefs,      setCropDefs]      = useState([]);
+  const [varieties,     setVarieties]     = useState([]);
+  const [areas,         setAreas]         = useState([]);
+  const [cropSelection, setCropSelection] = useState(null);
   const [form, setForm] = useState({
-    crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
+    variety_id: "", variety: "", area_id: "",
     status: "", sown_date: "", transplant_date: "", notes: "",
+    starting_form: "", barcode: "", is_companion: false,
   });
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
@@ -5188,21 +5325,28 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [showScanner, setShowScanner] = useState(false);
   const [cropProfile, setCropProfile] = useState(null);
 
+  const isOtherCrop    = cropSelection?.id === "__other__";
+  const selectedCrop   = cropDefs.find(d => d.id === cropSelection?.id);
+  const isOtherVariety = form.variety_id === "__other__";
+  const cropName       = isOtherCrop ? cropSelection?.name : selectedCrop?.name;
+  const canSave        = cropSelection && form.area_id && form.status;
+
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
       .then(([defs, areasData]) => {
         setCropDefs(defs);
         setAreas(areasData);
-        // Apply prefill from planting suggestions if present
         if (prefill) {
           const matched = defs.find(d => d.name.toLowerCase() === prefill.name?.toLowerCase());
+          setCropSelection(matched
+            ? { id: matched.id, name: matched.name }
+            : { id: "__other__", name: prefill.name || "" }
+          );
           setForm(f => ({
             ...f,
-            crop_def_id: matched ? matched.id : "__other__",
-            crop_other:  matched ? "" : (prefill.name || ""),
-            variety:     prefill.variety || "",
-            variety_id:  prefill.variety ? "__other__" : "",
-            area_id:     prefill.area_id || "",
+            variety:      prefill.variety || "",
+            variety_id:   prefill.variety ? "__other__" : "",
+            area_id:      prefill.area_id || "",
             is_companion: prefill.is_companion || false,
           }));
           if (onPrefillConsumed) onPrefillConsumed();
@@ -5212,16 +5356,13 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   }, []);
 
   useEffect(() => {
-    if (!form.crop_def_id || form.crop_def_id === "__other__") { setVarieties([]); return; }
-    apiFetch(`/varieties?crop_def_id=${form.crop_def_id}`)
+    if (!cropSelection || isOtherCrop) { setVarieties([]); return; }
+    apiFetch(`/varieties?crop_def_id=${cropSelection.id}`)
       .then(setVarieties).catch(() => setVarieties([]));
     setForm(f => ({ ...f, variety_id: "", variety: "" }));
-  }, [form.crop_def_id]);
+  }, [cropSelection?.id]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
-  const isOtherCrop    = form.crop_def_id === "__other__";
-  const isOtherVariety = form.variety_id  === "__other__";
-  const selectedCrop   = cropDefs.find(d => d.id === form.crop_def_id);
 
   const STATUS_OPTIONS = [
     { value: "planned",       label: "🗓 Planned",             hint: "I plan to grow this — not started yet" },
@@ -5236,12 +5377,10 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const sowDateLabel       = form.status === "sown_indoors" ? "Date sown indoors"
                            : form.status === "sown_outdoors" ? "Date sown outdoors"
                            : "Sow date";
-  const canSave = (form.crop_def_id || (isOtherCrop && form.crop_other)) && form.area_id && form.status;
 
   // ── Step 1: user hits "Review & Add" → fetch profile or generate for unknown ──
   const handleReview = async () => {
     setError(null);
-    const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
     if (!cropName || !form.area_id || !form.status) return;
 
     if (isOtherCrop) {
@@ -5287,7 +5426,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
   // ── Step 2: user confirms → actually save ─────────────────────────────────
   const handleSave = async () => {
-    const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
     setSaving(true); setError(null);
     try {
       const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
@@ -5299,7 +5437,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         method: "POST",
         body: JSON.stringify({
           name:             cropName,
-          crop_def_id:      isOtherCrop ? null : (form.crop_def_id || null),
+          crop_def_id:      isOtherCrop ? null : (cropSelection?.id || null),
           variety_id:       realVarietyId,
           variety:          realVariety,
           area_id:          form.area_id,
@@ -5313,6 +5451,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
+          starting_form:    form.starting_form || null,
         }),
       });
 
@@ -5322,7 +5461,8 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+        setCropSelection(null);
+        setForm({ variety_id: "", variety: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", starting_form: "", barcode: "", is_companion: false });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -5337,7 +5477,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setCropSelection(null); setForm({ variety_id: "", variety: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", starting_form: "", barcode: "", is_companion: false }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
@@ -5351,7 +5491,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
         <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
-        <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {form.crop_other}</div>
+        <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {cropName}</div>
       </div>
     );
   }
@@ -5474,10 +5614,16 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           onResult={r => {
             setShowScanner(false);
             if (r.found) {
-              if (r.crop_def_id) set("crop_def_id", r.crop_def_id);
-              else { set("crop_def_id", "__other__"); set("crop_other", r.name); }
-              if (r.variety) set("variety", r.variety);
-              if (r.barcode) set("barcode", r.barcode);
+              // Backend has already canonicalised the name and resolved to canonical def
+              if (r.crop_def_id) {
+                const def = cropDefs.find(d => d.id === r.crop_def_id);
+                setCropSelection({ id: r.crop_def_id, name: def?.name || r.name });
+              } else {
+                setCropSelection({ id: "__other__", name: r.name });
+              }
+              if (r.variety)       set("variety",       r.variety);
+              if (r.starting_form) set("starting_form", r.starting_form);
+              if (r.barcode)       set("barcode",       r.barcode);
             }
             // Not found — user fills in manually, Claude will enrich as usual
           }}
@@ -5506,14 +5652,17 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               📷 Scan packet
             </button>
           </div>
-          <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
-            <option value="">Select crop…</option>
-            {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            <option value="__other__">Other — type my own</option>
-          </select>
-          {isOtherCrop && (
-            <input type="text" value={form.crop_other} onChange={e => set("crop_other", e.target.value)}
-              style={{ ...inputStyle, marginTop: 8 }} placeholder="e.g. Tomatillo, Okra, Pak Choi…" autoFocus />
+          <CropSearchInput
+            cropDefs={cropDefs}
+            value={cropSelection}
+            onChange={setCropSelection}
+          />
+          {cropSelection && (
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>
+              {isOtherCrop
+                ? "🔍 Not in library — we’ll identify it automatically"
+                : `✓ ${selectedCrop?.name || cropSelection.name}`}
+            </div>
           )}
         </div>
 
@@ -5526,7 +5675,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               if (e.target.value === "__other__") { set("variety_id", "__other__"); set("variety", ""); }
               else { set("variety_id", e.target.value); set("variety", ""); }
             }}
-            style={inputStyle} disabled={!form.crop_def_id}>
+            style={inputStyle} disabled={!cropSelection}>
             <option value="">Unknown / not sure</option>
             {varieties.map(v => <option key={v.id} value={v.id}>{v.name}{v.classification ? ` (${v.classification})` : ""}</option>)}
             <option value="__other__">Other — type my own</option>
