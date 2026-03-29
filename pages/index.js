@@ -3837,12 +3837,14 @@ function GardenView({ onNavigateAdd }) {
   // Add area form state
   const [showAddArea,     setShowAddArea]     = useState(false);
   const [showAddLocation, setShowAddLocation] = useState(false);
-  const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "" });
-  const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "" });
+  const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
+  const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "", width_m: "", length_m: "" });
   const [saving,          setSaving]          = useState(false);
-  const [deleteLocationTarget, setDeleteLocationTarget] = useState(null); // location to confirm delete
+  const [deleteLocationTarget, setDeleteLocationTarget] = useState(null);
   const [deletingLocation,     setDeletingLocation]     = useState(false);
-  const [logScope,             setLogScope]             = useState(null); // { type, id, name } for LogActionSheet
+  const [logScope,             setLogScope]             = useState(null);
+  const [editingLocation,      setEditingLocation]      = useState(null);
+  const [editLocationForm,     setEditLocationForm]     = useState({ name: "", postcode: "", width_m: "", length_m: "" });
 
   const load = useCallback(async () => {
     // Fetch fresh
@@ -3861,7 +3863,7 @@ function GardenView({ onNavigateAdd }) {
     setSaving(true);
     try {
       await apiFetch("/areas", { method: "POST", body: JSON.stringify(newArea) });
-      setNewArea({ name: "", type: "raised_bed", location_id: "" });
+      setNewArea({ name: "", type: "raised_bed", location_id: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
       setShowAddArea(false);
       try { localStorage.removeItem("vercro_garden_v1"); } catch(e) {}
       await load();
@@ -3874,7 +3876,7 @@ function GardenView({ onNavigateAdd }) {
     setSaving(true);
     try {
       await apiFetch("/locations", { method: "POST", body: JSON.stringify(newLocation) });
-      setNewLocation({ name: "", postcode: "" });
+      setNewLocation({ name: "", postcode: "", width_m: "", length_m: "" });
       setShowAddLocation(false);
       await load();
     } catch (e) { setError(e.message); }
@@ -3882,7 +3884,7 @@ function GardenView({ onNavigateAdd }) {
   };
 
   const [editingArea,    setEditingArea]    = useState(null);
-  const [editAreaForm,   setEditAreaForm]   = useState({ name: "", type: "" });
+  const [editAreaForm,   setEditAreaForm]   = useState({ name: "", type: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
   const [confirmArea,    setConfirmArea]    = useState(null);
   const [suggestArea,    setSuggestArea]    = useState(null);
   const [timelineCrop,   setTimelineCrop]   = useState(null);
@@ -3896,6 +3898,19 @@ function GardenView({ onNavigateAdd }) {
         body: JSON.stringify(editAreaForm),
       });
       setEditingArea(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const saveEditLocation = async (locId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/locations/${locId}`, {
+        method: "PUT",
+        body: JSON.stringify(editLocationForm),
+      });
+      setEditingLocation(null);
       await load();
     } catch (e) { setError(e.message); }
     setSaving(false);
@@ -3991,6 +4006,13 @@ function GardenView({ onNavigateAdd }) {
               <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
               <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
             </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, useful for future planning</span></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div><label style={labelStyle}>Width (m)</label>
+                <input value={newLocation.width_m} onChange={e => setNewLocation(l => ({ ...l, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 10" /></div>
+              <div><label style={labelStyle}>Length (m)</label>
+                <input value={newLocation.length_m} onChange={e => setNewLocation(l => ({ ...l, length_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 5" /></div>
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveLocation} disabled={saving || !newLocation.name}
                 style={{ flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -4044,7 +4066,14 @@ function GardenView({ onNavigateAdd }) {
               onClick={() => setCollapsedLocs(c => ({ ...c, [loc.id]: !c[loc.id] }))}>
               <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
                 onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
+                {(loc.width_m || loc.length_m) && (
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>
+                    {loc.width_m && loc.length_m ? `${loc.width_m}m × ${loc.length_m}m` : loc.width_m ? `Width ${loc.width_m}m` : `Length ${loc.length_m}m`}
+                  </div>
+                )}
+              </div>
               <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{collapsedLocs[loc.id] ? "▶" : "▼"}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -4058,6 +4087,10 @@ function GardenView({ onNavigateAdd }) {
                     style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                     📋 Log
                   </button>
+                  <button onClick={e => { e.stopPropagation(); setEditingLocation(loc.id); setEditLocationForm({ name: loc.name || "", postcode: loc.postcode || "", width_m: loc.width_m ?? "", length_m: loc.length_m ?? "" }); }}
+                    style={{ background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer" }}>
+                    Edit
+                  </button>
                 </>
               )}
               <button onClick={e => { e.stopPropagation(); setDeleteLocationTarget(loc); }}
@@ -4066,6 +4099,38 @@ function GardenView({ onNavigateAdd }) {
               </button>
             </div>
           </div>
+
+          {/* Edit location inline form */}
+          {editingLocation === loc.id && (
+            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", marginBottom: 10 }}>Edit location</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div><label style={labelStyle}>Name</label>
+                  <input value={editLocationForm.name} onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} /></div>
+                <div><label style={labelStyle}>Postcode</label>
+                  <input value={editLocationForm.postcode} onChange={e => setEditLocationForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} />
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong></div>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div><label style={labelStyle}>Width (m)</label>
+                    <input value={editLocationForm.width_m} onChange={e => setEditLocationForm(f => ({ ...f, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 10" /></div>
+                  <div><label style={labelStyle}>Length (m)</label>
+                    <input value={editLocationForm.length_m} onChange={e => setEditLocationForm(f => ({ ...f, length_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 5" /></div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => saveEditLocation(loc.id)} disabled={saving || !editLocationForm.name}
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                  <button onClick={() => setEditingLocation(null)}
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {!collapsedLocs[loc.id] && (<div>
 
@@ -4084,6 +4149,20 @@ function GardenView({ onNavigateAdd }) {
                     <option value="polytunnel">Polytunnel</option>
                     <option value="container">Container / pots</option>
                   </select></div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, supports future planning</span></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div><label style={labelStyle}>Width (m)</label>
+                    <input value={newArea.width_m} onChange={e => setNewArea(a => ({ ...a, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 2.4" /></div>
+                  <div><label style={labelStyle}>Length (m)</label>
+                    <input value={newArea.length_m} onChange={e => setNewArea(a => ({ ...a, length_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 1.2" /></div>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Soil <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, improves recommendations</span></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div><label style={labelStyle}>Soil pH</label>
+                    <input value={newArea.soil_ph} onChange={e => setNewArea(a => ({ ...a, soil_ph: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 6.5" /></div>
+                  <div><label style={labelStyle}>Soil temp (°C)</label>
+                    <input value={newArea.soil_temperature_c} onChange={e => setNewArea(a => ({ ...a, soil_temperature_c: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 12" /></div>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={saveArea} disabled={saving || !newArea.name}
                     style={{ flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -4139,6 +4218,20 @@ function GardenView({ onNavigateAdd }) {
                         <option value="container">Container / pots</option>
                       </select>
                     </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div><label style={labelStyle}>Width (m)</label>
+                        <input value={editAreaForm.width_m} onChange={e => setEditAreaForm(f => ({ ...f, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 2.4" /></div>
+                      <div><label style={labelStyle}>Length (m)</label>
+                        <input value={editAreaForm.length_m} onChange={e => setEditAreaForm(f => ({ ...f, length_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 1.2" /></div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Soil <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div><label style={labelStyle}>Soil pH</label>
+                        <input value={editAreaForm.soil_ph} onChange={e => setEditAreaForm(f => ({ ...f, soil_ph: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 6.5" /></div>
+                      <div><label style={labelStyle}>Soil temp (°C)</label>
+                        <input value={editAreaForm.soil_temperature_c} onChange={e => setEditAreaForm(f => ({ ...f, soil_temperature_c: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 12" /></div>
+                    </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => saveEditArea(area.id)} disabled={saving || !editAreaForm.name}
                         style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
@@ -4158,7 +4251,14 @@ function GardenView({ onNavigateAdd }) {
                           onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
-                          <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{area.type.replace(/_/g, " ")}</div>
+                          <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+                            {[
+                              area.type.replace(/_/g, " "),
+                              area.width_m && area.length_m ? `${area.width_m}m × ${area.length_m}m` : area.width_m ? `${area.width_m}m wide` : area.length_m ? `${area.length_m}m long` : null,
+                              area.soil_ph != null ? `pH ${area.soil_ph}` : null,
+                              area.soil_temperature_c != null ? `${area.soil_temperature_c}°C` : null,
+                            ].filter(Boolean).join(" · ")}
+                          </div>
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -4173,7 +4273,7 @@ function GardenView({ onNavigateAdd }) {
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
                           📋 Log
                         </button>
-                        <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type }); }}
+                        <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type, width_m: area.width_m ?? "", length_m: area.length_m ?? "", soil_ph: area.soil_ph ?? "", soil_temperature_c: area.soil_temperature_c ?? "" }); }}
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
                           Edit
                         </button>
