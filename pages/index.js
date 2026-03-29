@@ -5781,6 +5781,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
     // ── Succession path ───────────────────────────────────────────────────
     if (successionMode) {
+      if (saving) return;
       try {
         const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
         const realVariety   = isOtherVariety
@@ -6153,9 +6154,9 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           </div>
         )}
 
-        <button onClick={successionMode ? handleSave : handleReview} disabled={!canSave}
-          style={{ background: !canSave ? C.border : C.forest, color: !canSave ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: !canSave ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
-          {successionMode ? "Create succession →" : "Review & Add →"}
+        <button onClick={successionMode ? handleSave : handleReview} disabled={!canSave || saving}
+          style={{ background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: (!canSave || saving) ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
+          {saving ? "Saving…" : successionMode ? "Create succession →" : "Review & Add →"}
         </button>
       </div>
     </div>
