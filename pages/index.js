@@ -5185,7 +5185,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
           </div>
         )}
       </div>
-      </div>
       {crops.length === 0 && successionGroups.length === 0 && (
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
       )}
