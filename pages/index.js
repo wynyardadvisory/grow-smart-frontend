@@ -4916,6 +4916,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const [error,    setError]   = useState(null);
   const [editing,       setEditing]      = useState(null);
 
+  // Succession group state
+  const [successionGroups,   setSuccessionGroups]   = useState([]);
+  const [addingSowingFor,    setAddingSowingFor]    = useState(null); // group id
+  const [newSowingForm,      setNewSowingForm]      = useState({ sown_date: "", status: "growing" });
+  const [expandedGroups,     setExpandedGroups]     = useState({});
+  const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(null);
+
   // Auto-open edit for a specific crop (from QuickCropCheck)
   useEffect(() => {
     if (editCropId && crops.length > 0) {
@@ -4944,8 +4951,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const load = useCallback(async () => {
     // Fetch fresh
     try {
-      const [cropsData, areasData] = await Promise.all([apiFetch("/crops"), apiFetch("/areas")]);
-      setCrops(cropsData); setAreas(areasData);
+      const [cropsData, areasData, groupsData] = await Promise.all([
+        apiFetch("/crops"),
+        apiFetch("/areas"),
+        apiFetch("/succession-groups"),
+      ]);
+      setCrops(cropsData); setAreas(areasData); setSuccessionGroups(groupsData || []);
       try { localStorage.setItem(CROPS_CACHE, JSON.stringify({ cropsData, areasData, ts: Date.now() })); } catch(e) {}
       // Load photos in background — non-blocking
       const photoMap = {};
@@ -5013,6 +5024,30 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     setSaving(false);
   };
 
+  const deleteGroup = async (groupId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/succession-groups/${groupId}`, { method: "DELETE" });
+      setConfirmDeleteGroup(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const addNextSowing = async (groupId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/succession-groups/${groupId}/sowings`, {
+        method: "POST",
+        body: JSON.stringify(newSowingForm),
+      });
+      setAddingSowingFor(null);
+      setNewSowingForm({ sown_date: "", status: "growing" });
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
   const STAGE_COLOR = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone };
 
   // Infer crop type from name for type filter
@@ -5026,8 +5061,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     return "veg";
   };
 
-  // Apply filters
+  // Succession group IDs with active sowings — exclude those crop instances from solo list
+  const successionCropIds = new Set(
+    successionGroups.flatMap(g => (g.sowings || []).map(s => s.id))
+  );
+
+  // Apply filters — exclude crops that belong to a succession group
   let visibleCrops = crops.filter(crop => {
+    if (crop.succession_group_id) return false; // shown in grouped card instead
     if (filterStatus && crop.status !== filterStatus) return false;
     if (filterArea   && crop.area_id !== filterArea)  return false;
     if (filterType   && inferCropType(crop.name) !== filterType) return false;
@@ -5144,12 +5185,233 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
           </div>
         )}
       </div>
-      {crops.length === 0 && (
+      </div>
+      {crops.length === 0 && successionGroups.length === 0 && (
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
       )}
-      {crops.length > 0 && visibleCrops.length === 0 && (
+      {crops.length > 0 && visibleCrops.length === 0 && successionGroups.length === 0 && (
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops match your filters.</div>
       )}
+
+      {/* ── Succession group cards ── */}
+      {successionGroups.map(group => {
+        const isExpanded = expandedGroups[group.id] !== false; // default expanded
+        const sowings    = group.sowings || [];
+        const nextIdx    = sowings.length + 1;
+        const canAddMore = sowings.length < group.target_sowings;
+
+        // Next harvest from earliest active sowing
+        const harvests = sowings
+          .filter(s => s.sown_date && (s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max))
+          .map(s => {
+            const dtm = s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max;
+            const d = new Date(s.sown_date);
+            d.setDate(d.getDate() + dtm);
+            return d;
+          })
+          .sort((a, b) => a - b);
+        const nextHarvest = harvests[0];
+        const latestHarvest = harvests[harvests.length - 1];
+
+        return (
+          <div key={group.id} style={{ background: C.cardBg, border: `1px solid ${C.forest}44`, borderRadius: 12, marginBottom: 12, overflow: "hidden" }}>
+
+            {/* Confirm delete group */}
+            {confirmDeleteGroup === group.id && (
+              <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", margin: "12px 14px 0" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 10 }}>
+                  Remove all {group.crop_name} sowings? This will remove {sowings.length} sowing{sowings.length !== 1 ? "s" : ""} and their tasks.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => deleteGroup(group.id)} disabled={saving}
+                    style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    {saving ? "Removing…" : "Yes, remove all"}
+                  </button>
+                  <button onClick={() => setConfirmDeleteGroup(null)}
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Group header */}
+            <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setExpandedGroups(e => ({ ...e, [group.id]: !isExpanded }))}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                  <span style={{ fontSize: 18 }}>{getCropEmoji(group.crop_name)}</span>
+                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>
+                    {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
+                  </div>
+                  <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>
+                    Succession
+                  </span>
+                  <span style={{ fontSize: 11, color: C.stone }}>{isExpanded ? "▼" : "▶"}</span>
+                </div>
+                <div style={{ fontSize: 11, color: C.stone }}>
+                  {sowings.length} of {group.target_sowings} sowing{group.target_sowings !== 1 ? "s" : ""}
+                  {group.interval_days ? ` · every ${group.interval_days} days` : ""}
+                  {nextHarvest ? ` · first harvest ~${nextHarvest.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                </div>
+              </div>
+              <button onClick={() => setConfirmDeleteGroup(group.id)}
+                style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 8px", fontSize: 11, color: C.red, cursor: "pointer", flexShrink: 0 }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Expanded sowings list */}
+            {isExpanded && (
+              <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 16px 14px" }}>
+                {sowings.map(sowing => {
+                  const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
+                  const stageKey   = sowing.stage || "seed";
+                  const stageColor = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone }[stageKey] || C.stone;
+
+                  let pct = 0;
+                  if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min)) {
+                    const offsetDays = sowing.timeline_offset_days || 0;
+                    const effectiveSow = new Date(sowing.sown_date);
+                    effectiveSow.setDate(effectiveSow.getDate() + offsetDays);
+                    const dtm = sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min;
+                    const daysSown = Math.max(0, Math.floor((Date.now() - effectiveSow.getTime()) / 86400000));
+                    pct = Math.min(100, Math.max(0, Math.round((daysSown / dtm) * 100)));
+                  }
+
+                  // Estimated harvest date for this sowing
+                  let harvestStr = null;
+                  if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max)) {
+                    const dtm = sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max;
+                    const h = new Date(sowing.sown_date);
+                    h.setDate(h.getDate() + dtm);
+                    harvestStr = h.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                  }
+
+                  return (
+                    <div key={sowing.id} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>
+                            Sow {sowing.succession_index}
+                            {sowing.sown_date && (
+                              <span style={{ fontWeight: 400, color: C.stone, marginLeft: 8 }}>
+                                sown {new Date(sowing.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "1px 7px" }}>
+                              {STAGE_LABEL[stageKey] || stageKey}
+                            </span>
+                            {harvestStr && <span style={{ fontSize: 11, color: C.stone }}>harvest ~{harvestStr}</span>}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => setTimelineCrop(sowing)}
+                            style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "3px 9px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+                            Timeline
+                          </button>
+                          <button onClick={() => setConfirm(sowing.id)}
+                            style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.red, cursor: "pointer" }}>
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      {/* Per-sowing progress bar */}
+                      {sowing.sown_date && (
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                            <span style={{ fontSize: 10, color: stageColor, fontWeight: 600 }}>{pct}% grown</span>
+                          </div>
+                          <div style={{ height: 5, background: C.border, borderRadius: 99, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99 }} />
+                          </div>
+                        </div>
+                      )}
+                      {/* Confirm delete this sowing */}
+                      {confirm === sowing.id && (
+                        <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px" }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove Sow {sowing.succession_index}?</div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => deleteCrop(sowing.id)} disabled={saving}
+                              style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "7px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                              {saving ? "Removing…" : "Yes, remove"}
+                            </button>
+                            <button onClick={() => setConfirm(null)}
+                              style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Placeholder rows for unstarted sowings */}
+                {Array.from({ length: Math.max(0, group.target_sowings - sowings.length) }).map((_, i) => {
+                  const idx = sowings.length + i + 1;
+                  const isNext = i === 0;
+                  return (
+                    <div key={`placeholder-${idx}`} style={{ background: "transparent", border: `1px dashed ${C.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 13, color: C.stone }}>
+                        Sow {idx} <span style={{ fontSize: 11 }}>— not yet added</span>
+                      </div>
+                      {isNext && canAddMore && (
+                        <button onClick={() => { setAddingSowingFor(group.id); setNewSowingForm({ sown_date: "", status: "growing" }); }}
+                          style={{ background: C.forest, border: "none", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          + Add Sow {idx}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Add next sowing form */}
+                {addingSowingFor === group.id && (
+                  <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", marginTop: 4 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", marginBottom: 10 }}>Add Sow {nextIdx}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div>
+                        <label style={labelStyle}>Sow date</label>
+                        <input type="date" value={newSowingForm.sown_date} onChange={e => setNewSowingForm(f => ({ ...f, sown_date: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Status</label>
+                        <select value={newSowingForm.status} onChange={e => setNewSowingForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
+                          <option value="planned">🗓 Planned</option>
+                          <option value="sown_indoors">🪟 Sowing indoors</option>
+                          <option value="sown_outdoors">🌱 Sowing outdoors</option>
+                          <option value="growing">✅ Already growing</option>
+                        </select>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => addNextSowing(group.id)} disabled={saving}
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: "serif" }}>
+                          {saving ? "Saving…" : `Save Sow ${nextIdx}`}
+                        </button>
+                        <button onClick={() => setAddingSowingFor(null)}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add beyond target */}
+                {!canAddMore && !addingSowingFor && (
+                  <button onClick={() => { setAddingSowingFor(group.id); setNewSowingForm({ sown_date: "", status: "growing" }); }}
+                    style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 12, color: C.stone, cursor: "pointer", marginTop: 4 }}>
+                    + Add another sowing
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
       {visibleCrops.map(crop => (
         <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
 
@@ -5405,13 +5667,16 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
     status: "", sown_date: "", transplant_date: "", notes: "",
   });
-  const [saving,      setSaving]      = useState(false);
-  const [saved,       setSaved]       = useState(false);
-  const [enriching,   setEnriching]   = useState(false);
-  const [error,       setError]       = useState(null);
-  const [step,        setStep]        = useState("form");
-  const [showScanner, setShowScanner] = useState(false);
-  const [cropProfile, setCropProfile] = useState(null);
+  const [saving,          setSaving]          = useState(false);
+  const [saved,           setSaved]           = useState(false);
+  const [enriching,       setEnriching]       = useState(false);
+  const [error,           setError]           = useState(null);
+  const [step,            setStep]            = useState("form");
+  const [showScanner,     setShowScanner]     = useState(false);
+  const [cropProfile,     setCropProfile]     = useState(null);
+  // Succession mode
+  const [successionMode,  setSuccessionMode]  = useState(false);
+  const [succForm,        setSuccForm]        = useState({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
 
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
@@ -5514,6 +5779,42 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const handleSave = async () => {
     const cropName = isOtherCrop ? form.crop_other : selectedCrop?.name;
     setSaving(true); setError(null);
+
+    // ── Succession path ───────────────────────────────────────────────────
+    if (successionMode) {
+      try {
+        const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
+        const realVariety   = isOtherVariety
+          ? (form.variety || null)
+          : (varieties.find(v => v.id === form.variety_id)?.name || null);
+        await apiFetch("/succession-groups", {
+          method: "POST",
+          body: JSON.stringify({
+            crop_name:       cropName,
+            crop_def_id:     isOtherCrop ? null : (form.crop_def_id || null),
+            variety_id:      realVarietyId,
+            variety_name:    realVariety,
+            area_id:         form.area_id,
+            target_sowings:  Number(succForm.target_sowings) || 3,
+            interval_days:   Number(succForm.interval_days)  || null,
+            first_sown_date: succForm.first_sown_date || null,
+            first_status:    succForm.first_sown_date ? "growing" : "planned",
+          }),
+        });
+        try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
+        setStep("done");
+        setTimeout(() => {
+          setStep("form"); setSaved(false); setEnriching(false); setCropProfile(null);
+          setSuccessionMode(false);
+          setSuccForm({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
+          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+        }, 5000);
+      } catch (e) { setError(e.message); setStep("previewing"); }
+      setSaving(false);
+      return;
+    }
+
+    // ── Single crop path (existing) ───────────────────────────────────────
     try {
       const realVarietyId = isOtherVariety ? null : (form.variety_id || null);
       const realVariety   = isOtherVariety
@@ -5810,9 +6111,52 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
         </div>
 
-        <button onClick={handleReview} disabled={!canSave}
+        {/* Succession sowing toggle */}
+        {form.area_id && (
+          <div style={{ border: `1px solid ${successionMode ? C.forest : C.border}`, borderRadius: 12, padding: "12px 14px", background: successionMode ? "#f0f5f3" : "transparent" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+              onClick={() => setSuccessionMode(v => !v)}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: successionMode ? C.forest : "#1a1a1a" }}>🔁 Succession sowing</div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>Sow in batches for a continuous harvest — carrots, salads, beetroot</div>
+              </div>
+              <div style={{ width: 36, height: 20, borderRadius: 10, background: successionMode ? C.forest : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
+                <div style={{ position: "absolute", top: 2, left: successionMode ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+              </div>
+            </div>
+            {successionMode && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <label style={labelStyle}>Planned sowings</label>
+                    <input type="number" min="2" max="12" value={succForm.target_sowings}
+                      onChange={e => setSuccForm(f => ({ ...f, target_sowings: e.target.value }))}
+                      style={inputStyle} inputMode="numeric" />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Sow every (days)</label>
+                    <input type="number" min="7" max="90" value={succForm.interval_days}
+                      onChange={e => setSuccForm(f => ({ ...f, interval_days: e.target.value }))}
+                      style={inputStyle} inputMode="numeric" />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>First sow date <span style={{ fontWeight: 400, color: C.stone }}>(optional)</span></label>
+                  <input type="date" value={succForm.first_sown_date}
+                    onChange={e => setSuccForm(f => ({ ...f, first_sown_date: e.target.value }))}
+                    style={inputStyle} />
+                </div>
+                <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic" }}>
+                  Sow 1 is created now. Add Sow 2, 3 etc. later when you're ready.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button onClick={successionMode ? handleSave : handleReview} disabled={!canSave}
           style={{ background: !canSave ? C.border : C.forest, color: !canSave ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: !canSave ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
-          Review & Add →
+          {successionMode ? "Create succession →" : "Review & Add →"}
         </button>
       </div>
     </div>
