@@ -4934,7 +4934,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
       }
     }
   }, [editCropId, crops.length]);
-  const [editingArea,    setEditingArea]    = useState(null);
   const [editForm,      setEditForm]      = useState({});
   const [editVarieties, setEditVarieties] = useState([]);
   const [areas,         setAreas]         = useState([]);
@@ -4976,14 +4975,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const startEdit = async (crop) => {
     setEditing(crop.id);
     setEditForm({
-      variety_id:     crop.variety_id || "",
-      variety:        varietyName(crop.variety) || "",
-      sown_date:      crop.sown_date || "",
-      area_id:        crop.area_id || "",
-      notes:          crop.notes || "",
-      status:         crop.status || "growing",
-      grown_from:     crop.grown_from || "",
-      lifecycle_mode: crop.lifecycle_mode || "seasonal",
+      variety_id:  crop.variety_id || "",
+      variety:     varietyName(crop.variety) || "",
+      sown_date:   crop.sown_date || "",
+      area_id:     crop.area_id || "",
+      notes:       crop.notes || "",
+      status:      crop.status || "growing",
+      grown_from:  crop.grown_from || "",
     });
     if (crop.crop_def_id) {
       try {
@@ -5031,6 +5029,26 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     try {
       await apiFetch(`/succession-groups/${groupId}`, { method: "DELETE" });
       setConfirmDeleteGroup(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const [convertingCrop,  setConvertingCrop]  = useState(null); // crop.id being converted
+  const [convertForm,     setConvertForm]     = useState({ target_sowings: 3, interval_days: 14 });
+
+  const convertToSuccession = async (cropId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/crops/${cropId}/convert-to-succession`, {
+        method: "POST",
+        body: JSON.stringify({
+          target_sowings: Number(convertForm.target_sowings) || 3,
+          interval_days:  Number(convertForm.interval_days)  || 14,
+        }),
+      });
+      setConvertingCrop(null);
+      setConvertForm({ target_sowings: 3, interval_days: 14 });
       await load();
     } catch (e) { setError(e.message); }
     setSaving(false);
@@ -5505,14 +5523,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   <option value="cane">Cane</option>
                 </select>
               </div>
-              <div>
-                <label style={labelStyle}>Lifecycle</label>
-                <select value={editForm.lifecycle_mode || "seasonal"} onChange={e => setEditForm(f => ({ ...f, lifecycle_mode: e.target.value }))} style={inputStyle}>
-                  <option value="seasonal">This season — from seed or young plant</option>
-                  <option value="established">Already established — tree, bush, mature plant</option>
-                  <option value="overwintered">Overwintered — started last season, still growing</option>
-                </select>
-              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
                   style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -5523,6 +5533,47 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   Cancel
                 </button>
               </div>
+
+              {/* Convert to succession — only for solo crops not already in a group */}
+              {!crop.succession_group_id && (
+                <div style={{ marginTop: 10 }}>
+                  {convertingCrop !== crop.id ? (
+                    <button onClick={() => { setConvertingCrop(crop.id); setConvertForm({ target_sowings: 3, interval_days: 14 }); }}
+                      style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer", textAlign: "left" }}>
+                      🔁 Convert to succession sowing
+                    </button>
+                  ) : (
+                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", background: "#f0f5f3" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                        <div>
+                          <label style={labelStyle}>Planned sowings</label>
+                          <input type="number" min="2" max="12" value={convertForm.target_sowings}
+                            onChange={e => setConvertForm(f => ({ ...f, target_sowings: e.target.value }))}
+                            style={inputStyle} inputMode="numeric" />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Sow every (days)</label>
+                          <input type="number" min="7" max="90" value={convertForm.interval_days}
+                            onChange={e => setConvertForm(f => ({ ...f, interval_days: e.target.value }))}
+                            style={inputStyle} inputMode="numeric" />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => convertToSuccession(crop.id)} disabled={saving}
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: "serif" }}>
+                          {saving ? "Converting…" : "Convert"}
+                        </button>
+                        <button onClick={() => setConvertingCrop(null)}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             /* Normal view */
@@ -5642,8 +5693,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                 {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>🗓 Planned</span>}
                 {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
                 {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
-                {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>🌳 Established</span>}
-                {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>❄️ Overwintered</span>}
               </div>
 
               {/* Missed task note */}
@@ -5669,6 +5718,141 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   );
 }
 
+// ── CropSearchInput — typeahead crop picker ───────────────────────────────────
+// Props:
+//   cropDefs  — array of { id, name } from /crop-definitions
+//   value     — currently selected { id, name } | null
+//   onChange  — called with { id, name } | { id: '__other__', name } | null
+function CropSearchInput({ cropDefs, value, onChange }) {
+  const [query,   setQuery]   = useState("");
+  const [open,    setOpen]    = useState(false);
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Display text: if a value is selected and not in edit mode, show the name
+  const displayText = focused ? query : (value?.name || query);
+
+  const filtered = (() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return cropDefs.slice(0, 8);
+    // Strip trailing 's' for simple plural matching (carrots → carrot)
+    const singular = q.endsWith("s") ? q.slice(0, -1) : q;
+    const matches = cropDefs.filter(d => {
+      const n = d.name.toLowerCase();
+      return n.includes(q) || n.includes(singular);
+    });
+    // Starts-with first, then contains
+    matches.sort((a, b) => {
+      const an = a.name.toLowerCase();
+      const bn = b.name.toLowerCase();
+      const aStarts = an.startsWith(q) || an.startsWith(singular);
+      const bStarts = bn.startsWith(q) || bn.startsWith(singular);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return an.localeCompare(bn);
+    });
+    return matches.slice(0, 8);
+  })();
+
+  const handleFocus = () => {
+    setFocused(true);
+    setQuery(value?.name || "");
+    setOpen(true);
+  };
+
+  const handleBlur = () => {
+    // Delay so click on option fires first
+    setTimeout(() => {
+      setFocused(false);
+      setOpen(false);
+      // If they typed something that doesn't match a def and there's text, treat as other
+      if (query.trim() && !value) {
+        onChange({ id: "__other__", name: query.trim() });
+      }
+    }, 150);
+  };
+
+  const handleChange = e => {
+    setQuery(e.target.value);
+    setOpen(true);
+    // Clear selection while typing
+    if (value) onChange(null);
+  };
+
+  const handleSelect = (def) => {
+    onChange(def);
+    setQuery(def.name);
+    setOpen(false);
+    setFocused(false);
+    inputRef.current?.blur();
+  };
+
+  const handleKeyDown = e => {
+    if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
+    if (e.key === "Enter" && filtered.length > 0) {
+      e.preventDefault();
+      handleSelect(filtered[0]);
+    }
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={displayText}
+        onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        style={{ ...inputStyle, background: value && value.id !== "__other__" ? "#f0f5f3" : undefined }}
+        placeholder="Search crops — e.g. Carrot, Tomato…"
+        autoComplete="off"
+      />
+      {value && value.id !== "__other__" && (
+        <button
+          type="button"
+          onClick={() => { onChange(null); setQuery(""); setTimeout(() => inputRef.current?.focus(), 50); }}
+          style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.stone, padding: 0, lineHeight: 1 }}>
+          ×
+        </button>
+      )}
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
+          {filtered.map(def => (
+            <div key={def.id}
+              onMouseDown={() => handleSelect(def)}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              {getCropEmoji(def.name)} {def.name}
+            </div>
+          ))}
+          {query.trim() && (
+            <div
+              onMouseDown={() => handleSelect({ id: "__other__", name: query.trim() })}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              🔍 Not in list — identify "{query.trim()}" with AI
+            </div>
+          )}
+          {!query.trim() && (
+            <div
+              onMouseDown={() => { setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              🔍 Not in list — identify with AI
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [cropDefs,  setCropDefs]  = useState([]);
@@ -5676,7 +5860,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal",
+    status: "", sown_date: "", transplant_date: "", notes: "",
   });
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
@@ -5819,7 +6003,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           setStep("form"); setSaved(false); setEnriching(false); setCropProfile(null);
           setSuccessionMode(false);
           setSuccForm({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
-          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
+          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
         }, 5000);
       } catch (e) { setError(e.message); setStep("previewing"); }
       setSaving(false);
@@ -5851,7 +6035,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
-          lifecycle_mode:   form.lifecycle_mode || "seasonal",
         }),
       });
 
@@ -5861,7 +6044,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -5876,7 +6059,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
@@ -6045,15 +6228,19 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               📷 Scan packet
             </button>
           </div>
-          <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
-            <option value="">Select crop…</option>
-            {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            <option value="__other__">Other — type my own</option>
-          </select>
-          {isOtherCrop && (
-            <input type="text" value={form.crop_other} onChange={e => set("crop_other", e.target.value)}
-              style={{ ...inputStyle, marginTop: 8 }} placeholder="e.g. Tomatillo, Okra, Pak Choi…" autoFocus />
-          )}
+          <CropSearchInput
+            cropDefs={cropDefs}
+            value={form.crop_def_id === "__other__" ? { id: "__other__", name: form.crop_other } : (cropDefs.find(d => d.id === form.crop_def_id) || null)}
+            onChange={selection => {
+              if (!selection) {
+                set("crop_def_id", ""); set("crop_other", "");
+              } else if (selection.id === "__other__") {
+                set("crop_def_id", "__other__"); set("crop_other", selection.name);
+              } else {
+                set("crop_def_id", selection.id); set("crop_other", "");
+              }
+            }}
+          />
         </div>
 
         {/* Variety */}
@@ -6122,24 +6309,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <label style={labelStyle}>Notes (optional)</label>
           <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
             style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
-        </div>
-
-        {/* Lifecycle mode */}
-        <div>
-          <label style={labelStyle}>How are you growing this?</label>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              { value: "seasonal",     label: "This season",        hint: "Growing from seed or young plant this season" },
-              { value: "established",  label: "Already established", hint: "Long-term plant already in the ground — tree, bush, established herb" },
-              { value: "overwintered", label: "Overwintered",        hint: "Started last season and still growing — overwintered pepper, PSB, autumn onions" },
-            ].map(opt => (
-              <div key={opt.value} onClick={() => set("lifecycle_mode", opt.value)}
-                style={{ border: `2px solid ${form.lifecycle_mode === opt.value ? C.forest : C.border}`, borderRadius: 10, padding: "9px 12px", cursor: "pointer", background: form.lifecycle_mode === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: form.lifecycle_mode === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
-                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Succession sowing toggle */}
