@@ -2730,20 +2730,13 @@ function Dashboard({ onTabChange }) {
           </div>
         )}
 
-        {/* Also today — grouped by crop/succession group, max 3 groups, rest in See all */}
+        {/* Also today — grouped by crop, max 3 crops, rest in See all */}
         {remainingToday.length > 0 && (() => {
-          // Group by succession_group_id if set, else by crop name
+          // Group by crop, show max 3 crop groups
           const alsoGrouped = {};
           for (const t of remainingToday) {
-            const isSuccession = !!t.crop?.succession_group_id;
-            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            if (!alsoGrouped[key]) alsoGrouped[key] = {
-              crop: t.crop,
-              isSuccession,
-              // Base name strips "(Sow N)" suffix for the header
-              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
-              tasks: [],
-            };
+            const key = t.crop?.name || "General";
+            if (!alsoGrouped[key]) alsoGrouped[key] = { crop: t.crop, tasks: [] };
             alsoGrouped[key].tasks.push(t);
           }
           const alsoGroups = Object.values(alsoGrouped).slice(0, 3);
@@ -2754,11 +2747,8 @@ function Dashboard({ onTabChange }) {
                 {alsoGroups.map((group, gi) => (
                   <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName)}</span>
-                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName}</span>
-                      {group.isSuccession && (
-                        <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
-                      )}
+                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || "")}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.crop?.name || "General"}</span>
                     </div>
                     {group.tasks.map((t, ti) => (
                       <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
@@ -2785,36 +2775,28 @@ function Dashboard({ onTabChange }) {
           );
         })()}
 
-        {/* See all — expandable full due task list grouped by crop/succession */}
+        {/* See all — expandable full due task list grouped by crop */}
         {(() => {
-          // Get the keys already shown in Also Today (first 3 groups) — use same key logic
-          const shownKeys = new Set();
+          // Get the crop names already shown in Also Today (first 3 crop groups)
+          const shownCropNames = new Set();
           const tempGrouped = {};
           for (const t of remainingToday) {
-            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            const key = t.crop?.name || "General";
             if (!tempGrouped[key]) tempGrouped[key] = true;
           }
-          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownKeys.add(k));
+          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownCropNames.add(k));
 
-          // Overflow = today tasks whose group key isn't in Also Today
-          const todayOverflow = remainingToday.filter(t => {
-            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            return !shownKeys.has(key) && !completed.has(t.id);
-          });
+          // Overflow = today tasks whose crop isn't in Also Today
+          // This-week tasks are shown in Coming Up Next only — not here
+          const todayOverflow = remainingToday.filter(t => !shownCropNames.has(t.crop?.name || "General") && !completed.has(t.id));
           const allItems = [...todayOverflow];
           if (allItems.length === 0) return null;
 
-          // Group by succession_group_id or crop name
+          // Group by crop name
           const grouped = {};
           for (const t of allItems) {
-            const isSuccession = !!t.crop?.succession_group_id;
-            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            if (!grouped[key]) grouped[key] = {
-              crop: t.crop,
-              isSuccession,
-              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
-              tasks: [],
-            };
+            const key = t.crop?.name || "General";
+            if (!grouped[key]) grouped[key] = { crop: t.crop, tasks: [] };
             grouped[key].tasks.push(t);
           }
           const cropGroups = Object.values(grouped);
@@ -2831,16 +2813,13 @@ function Dashboard({ onTabChange }) {
                 <span style={{ fontSize: 16, transition: "transform 0.2s", display: "inline-block", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
               </button>
 
-              {showAllToday && (
+                            {showAllToday && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
                   {cropGroups.map((group, gi) => (
                     <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName)}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName}</span>
-                        {group.isSuccession && (
-                          <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
-                        )}
+                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || "")}</span>
+                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.crop?.name || "General"}</span>
                       </div>
                       {group.tasks.map((t, ti) => (
                         <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
@@ -4467,10 +4446,505 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const [timeline,      setTimeline]      = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [adjusting,     setAdjusting]     = useState(false);
+  const [adjustMode,    setAdjustMode]    = useState("stage"); // "stage" | "date" | "days"
   const [selected,      setSelected]      = useState(null);
+  const [dateInput,     setDateInput]     = useState("");
+  const [daysInput,     setDaysInput]     = useState("");
   const [confirmed,     setConfirmed]     = useState(false);
   const [saving,        setSaving]        = useState(false);
   const [showLogAction, setShowLogAction] = useState(false);
+
+  useEffect(() => {
+    apiFetch(`/crops/${crop.id}`)
+      .then(d => { setTimeline(d.timeline); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [crop.id]);
+
+  const STAGES = [
+    { key: "seed",       label: "Seed",      emoji: "🌰", symptom: null },
+    { key: "seedling",   label: "Seedling",  emoji: "🌱", symptom: "seedling_emerged" },
+    { key: "vegetative", label: "Veg",       emoji: "🍃", symptom: "vegetative_confirmed" },
+    { key: "flowering",  label: "Flower",    emoji: "🌸", symptom: "flowering_confirmed" },
+    { key: "fruiting",   label: "Fruiting",  emoji: "🍅", symptom: "fruit_set_confirmed" },
+    { key: "harvesting", label: "Harvest",   emoji: "🧺", symptom: "harvest_started" },
+  ];
+
+  const stageActions = {
+    seed:       ["Keep at 20-25°C for germination", "Keep compost moist but not soggy", "Expect shoots in 7-14 days"],
+    seedling:   ["Pot on when first true leaves appear", "Keep on a warm sunny windowsill", "Water from below to avoid damping off"],
+    vegetative: ["Pot on to final container if needed", "Begin fortnightly balanced feed", "Ensure good light and airflow"],
+    flowering:  ["Tap stems gently to aid pollination", "Switch to high potash feed", "Remove lower leaves for airflow"],
+    fruiting:   ["Feed weekly with high potash", "Water consistently to avoid blossom end rot", "Check regularly for pests and blight"],
+    harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"],
+  };
+
+  // ── Calculate offset from a target harvest date ───────────────────────────
+  const calcOffsetFromHarvestDate = (targetDateStr) => {
+    const rawSowDate = crop.sown_date || crop.transplanted_date;
+    if (!rawSowDate) return 0;
+    const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
+    // newOffset = (targetHarvest - rawSow) - dtm
+    const targetMs  = new Date(targetDateStr).getTime();
+    const rawSowMs  = new Date(rawSowDate).getTime();
+    const newOffset = Math.round((targetMs - rawSowMs) / 86400000) - dtm;
+    return newOffset;
+  };
+
+  // ── Save: stage adjustment ────────────────────────────────────────────────
+  const confirmStage = async (stageKey) => {
+    const stage = STAGES.find(s => s.key === stageKey);
+    setSaving(true);
+    try {
+      let timelineOffsetDays = 0;
+      const sowDateRaw = crop.sown_date || crop.transplanted_date;
+      if (sowDateRaw) {
+        const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
+        const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
+        const realDaysSown = Math.floor((Date.now() - new Date(sowDateRaw).getTime()) / 86400000);
+        const expectedDaysForStage = Math.round((STAGE_PCT[stageKey] || 0) * dtm);
+        timelineOffsetDays = realDaysSown - expectedDaysForStage;
+      }
+      await apiFetch(`/crops/${crop.id}/observe`, {
+        method: "POST",
+        body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey, timeline_offset_days: timelineOffsetDays }),
+      });
+      const updated = await apiFetch(`/crops/${crop.id}`);
+      if (updated?.timeline) setTimeline(updated.timeline);
+      setConfirmed(true);
+      if (onCropUpdated) await onCropUpdated();
+      setTimeout(() => onClose(), 2500);
+    } catch(e) { console.error(e); }
+    setSaving(false);
+  };
+
+  // ── Save: harvest date adjustment ────────────────────────────────────────
+  const confirmHarvestDate = async () => {
+    if (!dateInput) return;
+    setSaving(true);
+    try {
+      const timelineOffsetDays = calcOffsetFromHarvestDate(dateInput);
+      await apiFetch(`/crops/${crop.id}/observe`, {
+        method: "POST",
+        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: timelineOffsetDays }),
+      });
+      const updated = await apiFetch(`/crops/${crop.id}`);
+      if (updated?.timeline) setTimeline(updated.timeline);
+      setConfirmed(true);
+      if (onCropUpdated) await onCropUpdated();
+      setTimeout(() => onClose(), 2500);
+    } catch(e) { console.error(e); }
+    setSaving(false);
+  };
+
+  // ── Save: days offset adjustment ─────────────────────────────────────────
+  const confirmDaysOffset = async () => {
+    const days = parseInt(daysInput, 10);
+    if (isNaN(days)) return;
+    setSaving(true);
+    try {
+      await apiFetch(`/crops/${crop.id}/observe`, {
+        method: "POST",
+        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: days }),
+      });
+      const updated = await apiFetch(`/crops/${crop.id}`);
+      if (updated?.timeline) setTimeline(updated.timeline);
+      setConfirmed(true);
+      if (onCropUpdated) await onCropUpdated();
+      setTimeout(() => onClose(), 2500);
+    } catch(e) { console.error(e); }
+    setSaving(false);
+  };
+
+  // ── Save: reset offset ────────────────────────────────────────────────────
+  const resetOffset = async () => {
+    setSaving(true);
+    try {
+      await apiFetch(`/crops/${crop.id}/observe`, {
+        method: "POST",
+        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: 0 }),
+      });
+      const updated = await apiFetch(`/crops/${crop.id}`);
+      if (updated?.timeline) setTimeline(updated.timeline);
+      setConfirmed(true);
+      if (onCropUpdated) await onCropUpdated();
+      setTimeout(() => onClose(), 2500);
+    } catch(e) { console.error(e); }
+    setSaving(false);
+  };
+
+  const currentStageKey = timeline?.nodes?.find(n => n.status === "current")?.key
+    || timeline?.nodes?.find(n => n.status === "upcoming")?.key
+    || "seed";
+
+  const sowDate      = crop.sown_date || crop.transplanted_date;
+  const harvestNode  = timeline?.nodes?.find(n => n.key === "harvesting" || n.key === "harvest");
+  const stageIdx     = STAGES.findIndex(s => s.key === currentStageKey);
+  const progressPct  = timeline?.progress_pct ?? Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
+  const currentOffset = crop.timeline_offset_days || 0;
+
+  const daysSown = sowDate
+    ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000)
+    : null;
+
+  const journeyNodes = timeline?.nodes?.filter(n => n.status === "completed" || n.status === "current") || [];
+
+  // Pre-fill date input with current harvest date when opening date mode
+  const openAdjustMode = (mode) => {
+    setAdjustMode(mode);
+    setAdjusting(true);
+    setSelected(null);
+    if (mode === "date" && timeline?.harvest_date_iso) {
+      setDateInput(timeline.harvest_date_iso);
+    }
+    if (mode === "days") {
+      setDaysInput(String(currentOffset));
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
+
+        {/* ── Header ── */}
+        <div style={{ background: C.forest, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
+          <button onClick={onClose}
+            style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            ×
+          </button>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>
+            {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.leaf, flexShrink: 0 }} />
+            <div style={{ fontSize: 19, fontWeight: 700, color: "#fff", fontFamily: "serif" }}>
+              {STAGES.find(s => s.key === currentStageKey)?.label || "Growing"} now
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+            {harvestNode?.formatted_date ? `Harvest expected ${harvestNode.formatted_date}` : "Tracking your crop's journey"}
+            {currentOffset !== 0 && (
+              <span style={{ marginLeft: 6, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                · adjusted {currentOffset > 0 ? `+${currentOffset}` : currentOffset}d
+              </span>
+            )}
+          </div>
+        </div>
+
+        {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
+
+        {/* ── Confirmed state ── */}
+        {!loading && confirmed && (
+          <div style={{ padding: "40px 20px", textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>✓</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline updated</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
+            {harvestNode?.formatted_date && (
+              <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Harvest now expected</div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
+              </div>
+            )}
+            <button onClick={onClose}
+              style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+              Done
+            </button>
+          </div>
+        )}
+
+        {/* ── Main content ── */}
+        {!loading && !confirmed && timeline && (() => {
+          const currentStage = STAGES.find(s => s.key === currentStageKey);
+          const actions = stageActions[currentStageKey] || [];
+
+          return (
+            <div style={{ padding: "16px 16px 40px" }}>
+
+              {/* ── Progress bar ── */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ fontSize: 10, color: C.stone }}>{sowDate ? new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Sow date unknown"}</span>
+                  <span style={{ fontSize: 10, color: C.stone }}>{harvestNode?.formatted_date || "Harvest"}</span>
+                </div>
+                <div style={{ position: "relative", height: 8, background: C.offwhite, borderRadius: 99, border: `1px solid ${C.border}` }}>
+                  <div style={{ position: "absolute", left: 0, width: `${progressPct}%`, height: "100%", background: C.forest, borderRadius: 99 }} />
+                  <div style={{ position: "absolute", left: `${progressPct}%`, top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, background: C.forest, border: "3px solid #fff", borderRadius: "50%", boxShadow: `0 0 0 2px ${C.forest}` }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                  <span style={{ fontSize: 10, color: C.stone }}>Sown</span>
+                  <span style={{ fontSize: 10, color: C.stone }}>Harvest</span>
+                </div>
+              </div>
+
+              {/* ── Adjust mode UI ── */}
+              {adjusting ? (
+                <div>
+                  {/* Mode tabs */}
+                  <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                    {[
+                      { key: "stage", label: "By stage" },
+                      { key: "date",  label: "By harvest date" },
+                      { key: "days",  label: "By days" },
+                    ].map(tab => (
+                      <button key={tab.key} onClick={() => { setAdjustMode(tab.key); setSelected(null); if (tab.key === "date" && timeline?.harvest_date_iso) setDateInput(timeline.harvest_date_iso); if (tab.key === "days") setDaysInput(String(currentOffset)); }}
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${adjustMode === tab.key ? C.forest : C.border}`, background: adjustMode === tab.key ? C.forest : "transparent", color: adjustMode === tab.key ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* By stage */}
+                  {adjustMode === "stage" && (
+                    <div>
+                      <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>Tap the stage your plant is actually at:</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Running behind? Move it back. Further ahead? Move it forward. We'll update your harvest timing, progress and tasks.</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                        {STAGES.map((s, i) => {
+                          const idx     = STAGES.findIndex(st => st.key === currentStageKey);
+                          const isPast  = i < idx;
+                          const isCurr  = i === idx;
+                          const isFuture = i > idx;
+                          const isDisabledInAdjust = adjusting && isCurr;
+                          return (
+                            <div key={s.key}
+                              style={{
+                                padding: "10px 3px", textAlign: "center",
+                                borderRight: i < 5 ? `1px solid ${C.border}` : "none",
+                                background: isCurr ? C.forest : adjusting && selected === s.key ? "#EAF3DE" : "transparent",
+                                cursor: adjusting && !isDisabledInAdjust ? "pointer" : "default",
+                                opacity: isDisabledInAdjust ? 0.35 : 1,
+                                outline: adjusting && selected === s.key ? `2px solid ${C.forest}` : "none",
+                              }}
+                              onClick={adjusting && !isDisabledInAdjust ? () => setSelected(s.key) : undefined}>
+                              <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
+                              <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
+                              <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
+                                {isCurr ? "Now" : isPast && !adjusting ? "Done" : isPast && adjusting ? "← behind" : adjusting ? "ahead →" : ""}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
+                          style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
+                          {saving ? "Saving…" : "Confirm stage"}
+                        </button>
+                        <button onClick={() => { setAdjusting(false); setSelected(null); }}
+                          style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* By harvest date */}
+                  {adjustMode === "date" && (
+                    <div>
+                      <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>When do you expect to harvest?</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>We'll work backwards to adjust your timeline. Your tasks and forecast will update to match.</div>
+                      <input type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
+                        style={{ ...inputStyle, marginBottom: 12 }} />
+                      {dateInput && (
+                        <div style={{ background: "#EAF3DE", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#2D5016" }}>
+                          {(() => {
+                            const newOffset = calcOffsetFromHarvestDate(dateInput);
+                            if (newOffset === 0) return "No change from original schedule";
+                            return newOffset > 0
+                              ? `${newOffset} days behind original schedule — harvest moved later`
+                              : `${Math.abs(newOffset)} days ahead of original schedule — harvest moved earlier`;
+                          })()}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={confirmHarvestDate} disabled={!dateInput || saving}
+                          style={{ flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: dateInput ? "pointer" : "default", fontFamily: "serif" }}>
+                          {saving ? "Saving…" : "Update harvest date"}
+                        </button>
+                        <button onClick={() => { setAdjusting(false); }}
+                          style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* By days */}
+                  {adjustMode === "days" && (
+                    <div>
+                      <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>How many days off schedule?</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Positive = behind schedule (harvest later). Negative = ahead (harvest sooner).</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) - 7))}
+                          style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.border}`, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>−</button>
+                        <input type="number" value={daysInput} onChange={e => setDaysInput(e.target.value)}
+                          style={{ ...inputStyle, textAlign: "center", flex: 1 }} inputMode="numeric" />
+                        <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) + 7))}
+                          style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.border}`, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>+</button>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, textAlign: "center" }}>
+                        {parseInt(daysInput, 10) === 0 ? "No adjustment — original schedule" :
+                         parseInt(daysInput, 10) > 0 ? `${daysInput} days behind — harvest pushed later` :
+                         `${Math.abs(parseInt(daysInput, 10))} days ahead — harvest pulled earlier`}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={confirmDaysOffset} disabled={saving}
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                          {saving ? "Saving…" : "Apply adjustment"}
+                        </button>
+                        <button onClick={() => { setAdjusting(false); }}
+                          style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reset to original — only if offset is currently set */}
+                  {currentOffset !== 0 && (
+                    <button onClick={resetOffset} disabled={saving}
+                      style={{ width: "100%", marginTop: 10, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
+                      Reset to original schedule
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Stage tiles — normal view */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                    {STAGES.map((s, i) => {
+                      const idx     = STAGES.findIndex(st => st.key === currentStageKey);
+                      const isPast  = i < idx;
+                      const isCurr  = i === idx;
+                      const isFuture = i > idx;
+                      return (
+                        <div key={s.key}
+                          style={{
+                            padding: "10px 3px", textAlign: "center",
+                            borderRight: i < 5 ? `1px solid ${C.border}` : "none",
+                            background: isCurr ? C.forest : "transparent",
+                            opacity: isFuture ? 0.35 : 1,
+                          }}>
+                          <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
+                          <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
+                          <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
+                            {isCurr ? "Now" : isPast ? "Done" : ""}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* What to do now */}
+                  {actions.length > 0 && (
+                    <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What to do right now</div>
+                      {actions.map((a, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < actions.length - 1 ? 6 : 0 }}>
+                          <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
+                          <div style={{ fontSize: 12, color: "#27500A", lineHeight: 1.4 }}>{a}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Stat cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                    <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Next milestone</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+                        {STAGES[stageIdx + 1]?.label || "Harvest"}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.stone }}>
+                        {harvestNode?.formatted_date ? `By ${harvestNode.formatted_date}` : "Coming up"}
+                      </div>
+                    </div>
+                    <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Growing for</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+                        {daysSown !== null ? `${daysSown} days` : "—"}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.stone }}>
+                        {sowDate ? `since ${new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "add a sow date"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Journey so far */}
+                  {journeyNodes.length > 0 && (
+                    <div style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Your journey so far</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                        {journeyNodes.map((n, i) => (
+                          <div key={n.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "current" ? C.leaf : C.forest, flexShrink: 0 }} />
+                            <div style={{ fontSize: 12, color: C.stone }}>
+                              {n.label}
+                              {n.formatted_date && (
+                                <span style={{ color: "#1a1a1a", fontWeight: 600, marginLeft: 6 }}>{n.formatted_date}</span>
+                              )}
+                              {n.status === "current" && <span style={{ color: C.leaf, fontWeight: 600, marginLeft: 6 }}>now</span>}
+                            </div>
+                          </div>
+                        ))}
+                        {harvestNode && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", border: `1.5px solid ${C.border}`, flexShrink: 0 }} />
+                            <div style={{ fontSize: 12, color: C.stone }}>
+                              Harvest expected
+                              <span style={{ color: C.stone, fontWeight: 600, marginLeft: 6 }}>{harvestNode.formatted_date}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirm / Adjust buttons */}
+                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                    <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Is this timeline right for your plant?</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => confirmStage(currentStageKey)} disabled={saving}
+                        style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                        {saving ? "Saving…" : "Yes — looks right"}
+                      </button>
+                      <button onClick={() => openAdjustMode("stage")}
+                        style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                        No — adjust
+                      </button>
+                    </div>
+                    <button onClick={() => setShowLogAction(true)}
+                      style={{ width: "100%", marginTop: 10, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "center" }}>
+                      + Log something you did
+                    </button>
+                  </div>
+                </>
+              )}
+
+            </div>
+          );
+        })()}
+
+        {!loading && !confirmed && !timeline && (
+          <div style={{ padding: "40px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop's growth timeline.</div>
+          </div>
+        )}
+
+        {showLogAction && (
+          <LogActionSheet
+            scope={{ type: "crop", id: crop.id, name: crop.name }}
+            onClose={() => setShowLogAction(false)}
+            onLogged={() => { setShowLogAction(false); if (onCropUpdated) onCropUpdated(); }}
+          />
+        )}
+
+      </div>
+    </div>
+  );
+}
 
   useEffect(() => {
     apiFetch(`/crops/${crop.id}`)
