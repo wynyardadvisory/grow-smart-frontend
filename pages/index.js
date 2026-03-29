@@ -2730,13 +2730,20 @@ function Dashboard({ onTabChange }) {
           </div>
         )}
 
-        {/* Also today — grouped by crop, max 3 crops, rest in See all */}
+        {/* Also today — grouped by crop/succession group, max 3 groups, rest in See all */}
         {remainingToday.length > 0 && (() => {
-          // Group by crop, show max 3 crop groups
+          // Group by succession_group_id if set, else by crop name
           const alsoGrouped = {};
           for (const t of remainingToday) {
-            const key = t.crop?.name || "General";
-            if (!alsoGrouped[key]) alsoGrouped[key] = { crop: t.crop, tasks: [] };
+            const isSuccession = !!t.crop?.succession_group_id;
+            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            if (!alsoGrouped[key]) alsoGrouped[key] = {
+              crop: t.crop,
+              isSuccession,
+              // Base name strips "(Sow N)" suffix for the header
+              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
+              tasks: [],
+            };
             alsoGrouped[key].tasks.push(t);
           }
           const alsoGroups = Object.values(alsoGrouped).slice(0, 3);
@@ -2747,8 +2754,11 @@ function Dashboard({ onTabChange }) {
                 {alsoGroups.map((group, gi) => (
                   <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || "")}</span>
-                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.crop?.name || "General"}</span>
+                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName)}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName}</span>
+                      {group.isSuccession && (
+                        <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                      )}
                     </div>
                     {group.tasks.map((t, ti) => (
                       <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
@@ -2775,28 +2785,36 @@ function Dashboard({ onTabChange }) {
           );
         })()}
 
-        {/* See all — expandable full due task list grouped by crop */}
+        {/* See all — expandable full due task list grouped by crop/succession */}
         {(() => {
-          // Get the crop names already shown in Also Today (first 3 crop groups)
-          const shownCropNames = new Set();
+          // Get the keys already shown in Also Today (first 3 groups) — use same key logic
+          const shownKeys = new Set();
           const tempGrouped = {};
           for (const t of remainingToday) {
-            const key = t.crop?.name || "General";
+            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
             if (!tempGrouped[key]) tempGrouped[key] = true;
           }
-          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownCropNames.add(k));
+          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownKeys.add(k));
 
-          // Overflow = today tasks whose crop isn't in Also Today
-          // This-week tasks are shown in Coming Up Next only — not here
-          const todayOverflow = remainingToday.filter(t => !shownCropNames.has(t.crop?.name || "General") && !completed.has(t.id));
+          // Overflow = today tasks whose group key isn't in Also Today
+          const todayOverflow = remainingToday.filter(t => {
+            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            return !shownKeys.has(key) && !completed.has(t.id);
+          });
           const allItems = [...todayOverflow];
           if (allItems.length === 0) return null;
 
-          // Group by crop name
+          // Group by succession_group_id or crop name
           const grouped = {};
           for (const t of allItems) {
-            const key = t.crop?.name || "General";
-            if (!grouped[key]) grouped[key] = { crop: t.crop, tasks: [] };
+            const isSuccession = !!t.crop?.succession_group_id;
+            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            if (!grouped[key]) grouped[key] = {
+              crop: t.crop,
+              isSuccession,
+              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
+              tasks: [],
+            };
             grouped[key].tasks.push(t);
           }
           const cropGroups = Object.values(grouped);
@@ -2813,13 +2831,16 @@ function Dashboard({ onTabChange }) {
                 <span style={{ fontSize: 16, transition: "transform 0.2s", display: "inline-block", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
               </button>
 
-                            {showAllToday && (
+              {showAllToday && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
                   {cropGroups.map((group, gi) => (
                     <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || "")}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.crop?.name || "General"}</span>
+                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName)}</span>
+                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName}</span>
+                        {group.isSuccession && (
+                          <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                        )}
                       </div>
                       {group.tasks.map((t, ti) => (
                         <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
@@ -5034,26 +5055,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     setSaving(false);
   };
 
-  const [convertingCrop,  setConvertingCrop]  = useState(null); // crop.id being converted
-  const [convertForm,     setConvertForm]     = useState({ target_sowings: 3, interval_days: 14 });
-
-  const convertToSuccession = async (cropId) => {
-    setSaving(true);
-    try {
-      await apiFetch(`/crops/${cropId}/convert-to-succession`, {
-        method: "POST",
-        body: JSON.stringify({
-          target_sowings: Number(convertForm.target_sowings) || 3,
-          interval_days:  Number(convertForm.interval_days)  || 14,
-        }),
-      });
-      setConvertingCrop(null);
-      setConvertForm({ target_sowings: 3, interval_days: 14 });
-      await load();
-    } catch (e) { setError(e.message); }
-    setSaving(false);
-  };
-
   const addNextSowing = async (groupId) => {
     setSaving(true);
     try {
@@ -5533,47 +5534,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   Cancel
                 </button>
               </div>
-
-              {/* Convert to succession — only for solo crops not already in a group */}
-              {!crop.succession_group_id && (
-                <div style={{ marginTop: 10 }}>
-                  {convertingCrop !== crop.id ? (
-                    <button onClick={() => { setConvertingCrop(crop.id); setConvertForm({ target_sowings: 3, interval_days: 14 }); }}
-                      style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer", textAlign: "left" }}>
-                      🔁 Convert to succession sowing
-                    </button>
-                  ) : (
-                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", background: "#f0f5f3" }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                        <div>
-                          <label style={labelStyle}>Planned sowings</label>
-                          <input type="number" min="2" max="12" value={convertForm.target_sowings}
-                            onChange={e => setConvertForm(f => ({ ...f, target_sowings: e.target.value }))}
-                            style={inputStyle} inputMode="numeric" />
-                        </div>
-                        <div>
-                          <label style={labelStyle}>Sow every (days)</label>
-                          <input type="number" min="7" max="90" value={convertForm.interval_days}
-                            onChange={e => setConvertForm(f => ({ ...f, interval_days: e.target.value }))}
-                            style={inputStyle} inputMode="numeric" />
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => convertToSuccession(crop.id)} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: "serif" }}>
-                          {saving ? "Converting…" : "Convert"}
-                        </button>
-                        <button onClick={() => setConvertingCrop(null)}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ) : (
             /* Normal view */
@@ -5714,141 +5674,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
           )}
         </div>
       ))}
-    </div>
-  );
-}
-
-// ── CropSearchInput — typeahead crop picker ───────────────────────────────────
-// Props:
-//   cropDefs  — array of { id, name } from /crop-definitions
-//   value     — currently selected { id, name } | null
-//   onChange  — called with { id, name } | { id: '__other__', name } | null
-function CropSearchInput({ cropDefs, value, onChange }) {
-  const [query,   setQuery]   = useState("");
-  const [open,    setOpen]    = useState(false);
-  const [focused, setFocused] = useState(false);
-  const inputRef = useRef(null);
-  const containerRef = useRef(null);
-
-  // Display text: if a value is selected and not in edit mode, show the name
-  const displayText = focused ? query : (value?.name || query);
-
-  const filtered = (() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return cropDefs.slice(0, 8);
-    // Strip trailing 's' for simple plural matching (carrots → carrot)
-    const singular = q.endsWith("s") ? q.slice(0, -1) : q;
-    const matches = cropDefs.filter(d => {
-      const n = d.name.toLowerCase();
-      return n.includes(q) || n.includes(singular);
-    });
-    // Starts-with first, then contains
-    matches.sort((a, b) => {
-      const an = a.name.toLowerCase();
-      const bn = b.name.toLowerCase();
-      const aStarts = an.startsWith(q) || an.startsWith(singular);
-      const bStarts = bn.startsWith(q) || bn.startsWith(singular);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return an.localeCompare(bn);
-    });
-    return matches.slice(0, 8);
-  })();
-
-  const handleFocus = () => {
-    setFocused(true);
-    setQuery(value?.name || "");
-    setOpen(true);
-  };
-
-  const handleBlur = () => {
-    // Delay so click on option fires first
-    setTimeout(() => {
-      setFocused(false);
-      setOpen(false);
-      // If they typed something that doesn't match a def and there's text, treat as other
-      if (query.trim() && !value) {
-        onChange({ id: "__other__", name: query.trim() });
-      }
-    }, 150);
-  };
-
-  const handleChange = e => {
-    setQuery(e.target.value);
-    setOpen(true);
-    // Clear selection while typing
-    if (value) onChange(null);
-  };
-
-  const handleSelect = (def) => {
-    onChange(def);
-    setQuery(def.name);
-    setOpen(false);
-    setFocused(false);
-    inputRef.current?.blur();
-  };
-
-  const handleKeyDown = e => {
-    if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
-    if (e.key === "Enter" && filtered.length > 0) {
-      e.preventDefault();
-      handleSelect(filtered[0]);
-    }
-  };
-
-  return (
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <input
-        ref={inputRef}
-        type="text"
-        value={displayText}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        style={{ ...inputStyle, background: value && value.id !== "__other__" ? "#f0f5f3" : undefined }}
-        placeholder="Search crops — e.g. Carrot, Tomato…"
-        autoComplete="off"
-      />
-      {value && value.id !== "__other__" && (
-        <button
-          type="button"
-          onClick={() => { onChange(null); setQuery(""); setTimeout(() => inputRef.current?.focus(), 50); }}
-          style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.stone, padding: 0, lineHeight: 1 }}>
-          ×
-        </button>
-      )}
-      {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
-          {filtered.map(def => (
-            <div key={def.id}
-              onMouseDown={() => handleSelect(def)}
-              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              {getCropEmoji(def.name)} {def.name}
-            </div>
-          ))}
-          {query.trim() && (
-            <div
-              onMouseDown={() => handleSelect({ id: "__other__", name: query.trim() })}
-              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              🔍 Not in list — identify "{query.trim()}" with AI
-            </div>
-          )}
-          {!query.trim() && (
-            <div
-              onMouseDown={() => { setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
-              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              🔍 Not in list — identify with AI
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -6228,19 +6053,15 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               📷 Scan packet
             </button>
           </div>
-          <CropSearchInput
-            cropDefs={cropDefs}
-            value={form.crop_def_id === "__other__" ? { id: "__other__", name: form.crop_other } : (cropDefs.find(d => d.id === form.crop_def_id) || null)}
-            onChange={selection => {
-              if (!selection) {
-                set("crop_def_id", ""); set("crop_other", "");
-              } else if (selection.id === "__other__") {
-                set("crop_def_id", "__other__"); set("crop_other", selection.name);
-              } else {
-                set("crop_def_id", selection.id); set("crop_other", "");
-              }
-            }}
-          />
+          <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
+            <option value="">Select crop…</option>
+            {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            <option value="__other__">Other — type my own</option>
+          </select>
+          {isOtherCrop && (
+            <input type="text" value={form.crop_other} onChange={e => set("crop_other", e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }} placeholder="e.g. Tomatillo, Okra, Pak Choi…" autoFocus />
+          )}
         </div>
 
         {/* Variety */}
