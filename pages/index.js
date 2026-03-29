@@ -4934,6 +4934,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
       }
     }
   }, [editCropId, crops.length]);
+  const [editingArea,    setEditingArea]    = useState(null);
   const [editForm,      setEditForm]      = useState({});
   const [editVarieties, setEditVarieties] = useState([]);
   const [areas,         setAreas]         = useState([]);
@@ -4975,13 +4976,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const startEdit = async (crop) => {
     setEditing(crop.id);
     setEditForm({
-      variety_id:  crop.variety_id || "",
-      variety:     varietyName(crop.variety) || "",
-      sown_date:   crop.sown_date || "",
-      area_id:     crop.area_id || "",
-      notes:       crop.notes || "",
-      status:      crop.status || "growing",
-      grown_from:  crop.grown_from || "",
+      variety_id:     crop.variety_id || "",
+      variety:        varietyName(crop.variety) || "",
+      sown_date:      crop.sown_date || "",
+      area_id:        crop.area_id || "",
+      notes:          crop.notes || "",
+      status:         crop.status || "growing",
+      grown_from:     crop.grown_from || "",
+      lifecycle_mode: crop.lifecycle_mode || "seasonal",
     });
     if (crop.crop_def_id) {
       try {
@@ -5503,6 +5505,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   <option value="cane">Cane</option>
                 </select>
               </div>
+              <div>
+                <label style={labelStyle}>Lifecycle</label>
+                <select value={editForm.lifecycle_mode || "seasonal"} onChange={e => setEditForm(f => ({ ...f, lifecycle_mode: e.target.value }))} style={inputStyle}>
+                  <option value="seasonal">This season — from seed or young plant</option>
+                  <option value="established">Already established — tree, bush, mature plant</option>
+                  <option value="overwintered">Overwintered — started last season, still growing</option>
+                </select>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
                   style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -5632,6 +5642,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                 {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>🗓 Planned</span>}
                 {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
                 {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
+                {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>🌳 Established</span>}
+                {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>❄️ Overwintered</span>}
               </div>
 
               {/* Missed task note */}
@@ -5664,7 +5676,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    status: "", sown_date: "", transplant_date: "", notes: "",
+    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal",
   });
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
@@ -5807,7 +5819,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           setStep("form"); setSaved(false); setEnriching(false); setCropProfile(null);
           setSuccessionMode(false);
           setSuccForm({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
-          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
         }, 5000);
       } catch (e) { setError(e.message); setStep("previewing"); }
       setSaving(false);
@@ -5839,6 +5851,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
+          lifecycle_mode:   form.lifecycle_mode || "seasonal",
         }),
       });
 
@@ -5848,7 +5861,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -5863,7 +5876,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
@@ -6109,6 +6122,24 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <label style={labelStyle}>Notes (optional)</label>
           <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
             style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
+        </div>
+
+        {/* Lifecycle mode */}
+        <div>
+          <label style={labelStyle}>How are you growing this?</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              { value: "seasonal",     label: "This season",        hint: "Growing from seed or young plant this season" },
+              { value: "established",  label: "Already established", hint: "Long-term plant already in the ground — tree, bush, established herb" },
+              { value: "overwintered", label: "Overwintered",        hint: "Started last season and still growing — overwintered pepper, PSB, autumn onions" },
+            ].map(opt => (
+              <div key={opt.value} onClick={() => set("lifecycle_mode", opt.value)}
+                style={{ border: `2px solid ${form.lifecycle_mode === opt.value ? C.forest : C.border}`, borderRadius: 10, padding: "9px 12px", cursor: "pointer", background: form.lifecycle_mode === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: form.lifecycle_mode === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Succession sowing toggle */}
