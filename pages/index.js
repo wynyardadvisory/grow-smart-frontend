@@ -4438,7 +4438,6 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
             {harvestNode?.formatted_date ? `Harvest expected ${harvestNode.formatted_date}` : "Tracking your crop's journey"}
-            {" · on track"}
           </div>
         </div>
 
@@ -4507,7 +4506,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
                       <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
                       <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
-                        {isCurr ? "Now" : isPast && !adjusting ? "Done" : isPast && adjusting ? "← behind" : ""}
+                        {isCurr ? "Now" : isPast && !adjusting ? "Done" : isPast && adjusting ? "← behind" : adjusting ? "ahead →" : ""}
                       </div>
                     </div>
                   );
@@ -4603,7 +4602,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
               ) : (
                 <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
                   <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>Tap the stage your plant is actually at:</div>
-                  <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Stages before current will push your harvest date out.</div>
+                  <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Running behind? Move it back. Further ahead? Move it forward. We'll update your harvest timing, progress and tasks.</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
                       style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
