@@ -2730,13 +2730,18 @@ function Dashboard({ onTabChange }) {
           </div>
         )}
 
-        {/* Also today — grouped by crop, max 3 crops, rest in See all */}
+        {/* Also today — grouped by crop/succession group, max 3 groups */}
         {remainingToday.length > 0 && (() => {
-          // Group by crop, show max 3 crop groups
           const alsoGrouped = {};
           for (const t of remainingToday) {
-            const key = t.crop?.name || "General";
-            if (!alsoGrouped[key]) alsoGrouped[key] = { crop: t.crop, tasks: [] };
+            const isSuccession = !!t.crop?.succession_group_id;
+            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            if (!alsoGrouped[key]) alsoGrouped[key] = {
+              crop: t.crop,
+              isSuccession,
+              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
+              tasks: [],
+            };
             alsoGrouped[key].tasks.push(t);
           }
           const alsoGroups = Object.values(alsoGrouped).slice(0, 3);
@@ -2747,8 +2752,11 @@ function Dashboard({ onTabChange }) {
                 {alsoGroups.map((group, gi) => (
                   <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || "")}</span>
-                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.crop?.name || "General"}</span>
+                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
+                      {group.isSuccession && (
+                        <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                      )}
                     </div>
                     {group.tasks.map((t, ti) => (
                       <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
@@ -2775,28 +2783,36 @@ function Dashboard({ onTabChange }) {
           );
         })()}
 
-        {/* See all — expandable full due task list grouped by crop */}
+        {/* See all — expandable full due task list grouped by crop/succession */}
         {(() => {
-          // Get the crop names already shown in Also Today (first 3 crop groups)
-          const shownCropNames = new Set();
+          // Get keys already shown in Also Today — use same succession key logic
+          const shownKeys = new Set();
           const tempGrouped = {};
           for (const t of remainingToday) {
-            const key = t.crop?.name || "General";
+            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
             if (!tempGrouped[key]) tempGrouped[key] = true;
           }
-          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownCropNames.add(k));
+          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownKeys.add(k));
 
-          // Overflow = today tasks whose crop isn't in Also Today
-          // This-week tasks are shown in Coming Up Next only — not here
-          const todayOverflow = remainingToday.filter(t => !shownCropNames.has(t.crop?.name || "General") && !completed.has(t.id));
+          // Overflow = tasks whose group key isn't in Also Today
+          const todayOverflow = remainingToday.filter(t => {
+            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            return !shownKeys.has(key) && !completed.has(t.id);
+          });
           const allItems = [...todayOverflow];
           if (allItems.length === 0) return null;
 
-          // Group by crop name
+          // Group by succession_group_id or crop name
           const grouped = {};
           for (const t of allItems) {
-            const key = t.crop?.name || "General";
-            if (!grouped[key]) grouped[key] = { crop: t.crop, tasks: [] };
+            const isSuccession = !!t.crop?.succession_group_id;
+            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
+            if (!grouped[key]) grouped[key] = {
+              crop: t.crop,
+              isSuccession,
+              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
+              tasks: [],
+            };
             grouped[key].tasks.push(t);
           }
           const cropGroups = Object.values(grouped);
@@ -2818,8 +2834,11 @@ function Dashboard({ onTabChange }) {
                   {cropGroups.map((group, gi) => (
                     <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || "")}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.crop?.name || "General"}</span>
+                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
+                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
+                        {group.isSuccession && (
+                          <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                        )}
                       </div>
                       {group.tasks.map((t, ti) => (
                         <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
@@ -4446,7 +4465,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const [timeline,      setTimeline]      = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [adjusting,     setAdjusting]     = useState(false);
-  const [adjustMode,    setAdjustMode]    = useState("stage"); // "stage" | "date" | "days"
+  const [adjustMode,    setAdjustMode]    = useState("stage");
   const [selected,      setSelected]      = useState(null);
   const [dateInput,     setDateInput]     = useState("");
   const [daysInput,     setDaysInput]     = useState("");
@@ -4478,19 +4497,15 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"],
   };
 
-  // ── Calculate offset from a target harvest date ───────────────────────────
   const calcOffsetFromHarvestDate = (targetDateStr) => {
     const rawSowDate = crop.sown_date || crop.transplanted_date;
     if (!rawSowDate) return 0;
     const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
-    // newOffset = (targetHarvest - rawSow) - dtm
-    const targetMs  = new Date(targetDateStr).getTime();
-    const rawSowMs  = new Date(rawSowDate).getTime();
-    const newOffset = Math.round((targetMs - rawSowMs) / 86400000) - dtm;
-    return newOffset;
+    const targetMs = new Date(targetDateStr).getTime();
+    const rawSowMs = new Date(rawSowDate).getTime();
+    return Math.round((targetMs - rawSowMs) / 86400000) - dtm;
   };
 
-  // ── Save: stage adjustment ────────────────────────────────────────────────
   const confirmStage = async (stageKey) => {
     const stage = STAGES.find(s => s.key === stageKey);
     setSaving(true);
@@ -4501,8 +4516,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
         const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
         const realDaysSown = Math.floor((Date.now() - new Date(sowDateRaw).getTime()) / 86400000);
-        const expectedDaysForStage = Math.round((STAGE_PCT[stageKey] || 0) * dtm);
-        timelineOffsetDays = realDaysSown - expectedDaysForStage;
+        timelineOffsetDays = realDaysSown - Math.round((STAGE_PCT[stageKey] || 0) * dtm);
       }
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
@@ -4517,7 +4531,6 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     setSaving(false);
   };
 
-  // ── Save: harvest date adjustment ────────────────────────────────────────
   const confirmHarvestDate = async () => {
     if (!dateInput) return;
     setSaving(true);
@@ -4536,7 +4549,6 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     setSaving(false);
   };
 
-  // ── Save: days offset adjustment ─────────────────────────────────────────
   const confirmDaysOffset = async () => {
     const days = parseInt(daysInput, 10);
     if (isNaN(days)) return;
@@ -4555,7 +4567,6 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     setSaving(false);
   };
 
-  // ── Save: reset offset ────────────────────────────────────────────────────
   const resetOffset = async () => {
     setSaving(true);
     try {
@@ -4581,24 +4592,15 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const stageIdx     = STAGES.findIndex(s => s.key === currentStageKey);
   const progressPct  = timeline?.progress_pct ?? Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
   const currentOffset = crop.timeline_offset_days || 0;
-
-  const daysSown = sowDate
-    ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000)
-    : null;
-
+  const daysSown = sowDate ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000) : null;
   const journeyNodes = timeline?.nodes?.filter(n => n.status === "completed" || n.status === "current") || [];
 
-  // Pre-fill date input with current harvest date when opening date mode
   const openAdjustMode = (mode) => {
     setAdjustMode(mode);
     setAdjusting(true);
     setSelected(null);
-    if (mode === "date" && timeline?.harvest_date_iso) {
-      setDateInput(timeline.harvest_date_iso);
-    }
-    if (mode === "days") {
-      setDaysInput(String(currentOffset));
-    }
+    if (mode === "date" && timeline?.harvest_date_iso) setDateInput(timeline.harvest_date_iso);
+    if (mode === "days") setDaysInput(String(currentOffset));
   };
 
   return (
@@ -4606,11 +4608,10 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
 
-        {/* ── Header ── */}
         <div style={{ background: C.forest, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
           <button onClick={onClose}
             style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-            ×
+            x
           </button>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>
             {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
@@ -4625,7 +4626,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
             {harvestNode?.formatted_date ? `Harvest expected ${harvestNode.formatted_date}` : "Tracking your crop's journey"}
             {currentOffset !== 0 && (
               <span style={{ marginLeft: 6, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-                · adjusted {currentOffset > 0 ? `+${currentOffset}` : currentOffset}d
+                adjusted {currentOffset > 0 ? "+" + currentOffset : currentOffset}d
               </span>
             )}
           </div>
@@ -4633,10 +4634,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
         {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
 
-        {/* ── Confirmed state ── */}
         {!loading && confirmed && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>✓</div>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>checkmark</div>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline updated</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
             {harvestNode?.formatted_date && (
@@ -4652,23 +4652,19 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
           </div>
         )}
 
-        {/* ── Main content ── */}
         {!loading && !confirmed && timeline && (() => {
-          const currentStage = STAGES.find(s => s.key === currentStageKey);
           const actions = stageActions[currentStageKey] || [];
-
           return (
             <div style={{ padding: "16px 16px 40px" }}>
 
-              {/* ── Progress bar ── */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                   <span style={{ fontSize: 10, color: C.stone }}>{sowDate ? new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Sow date unknown"}</span>
                   <span style={{ fontSize: 10, color: C.stone }}>{harvestNode?.formatted_date || "Harvest"}</span>
                 </div>
-                <div style={{ position: "relative", height: 8, background: C.offwhite, borderRadius: 99, border: `1px solid ${C.border}` }}>
-                  <div style={{ position: "absolute", left: 0, width: `${progressPct}%`, height: "100%", background: C.forest, borderRadius: 99 }} />
-                  <div style={{ position: "absolute", left: `${progressPct}%`, top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, background: C.forest, border: "3px solid #fff", borderRadius: "50%", boxShadow: `0 0 0 2px ${C.forest}` }} />
+                <div style={{ position: "relative", height: 8, background: C.offwhite, borderRadius: 99, border: "1px solid " + C.border }}>
+                  <div style={{ position: "absolute", left: 0, width: progressPct + "%", height: "100%", background: C.forest, borderRadius: 99 }} />
+                  <div style={{ position: "absolute", left: progressPct + "%", top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, background: C.forest, border: "3px solid #fff", borderRadius: "50%", boxShadow: "0 0 0 2px " + C.forest }} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
                   <span style={{ fontSize: 10, color: C.stone }}>Sown</span>
@@ -4676,50 +4672,43 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                 </div>
               </div>
 
-              {/* ── Adjust mode UI ── */}
               {adjusting ? (
                 <div>
-                  {/* Mode tabs */}
                   <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                     {[
                       { key: "stage", label: "By stage" },
                       { key: "date",  label: "By harvest date" },
                       { key: "days",  label: "By days" },
                     ].map(tab => (
-                      <button key={tab.key} onClick={() => { setAdjustMode(tab.key); setSelected(null); if (tab.key === "date" && timeline?.harvest_date_iso) setDateInput(timeline.harvest_date_iso); if (tab.key === "days") setDaysInput(String(currentOffset)); }}
-                        style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${adjustMode === tab.key ? C.forest : C.border}`, background: adjustMode === tab.key ? C.forest : "transparent", color: adjustMode === tab.key ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      <button key={tab.key} onClick={() => {
+                        setAdjustMode(tab.key);
+                        setSelected(null);
+                        if (tab.key === "date" && timeline?.harvest_date_iso) setDateInput(timeline.harvest_date_iso);
+                        if (tab.key === "days") setDaysInput(String(currentOffset));
+                      }}
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "1px solid " + (adjustMode === tab.key ? C.forest : C.border), background: adjustMode === tab.key ? C.forest : "transparent", color: adjustMode === tab.key ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                         {tab.label}
                       </button>
                     ))}
                   </div>
 
-                  {/* By stage */}
                   {adjustMode === "stage" && (
                     <div>
                       <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>Tap the stage your plant is actually at:</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Running behind? Move it back. Further ahead? Move it forward. We'll update your harvest timing, progress and tasks.</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Running behind? Move it back. Further ahead? Move it forward.</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
                         {STAGES.map((s, i) => {
-                          const idx     = STAGES.findIndex(st => st.key === currentStageKey);
-                          const isPast  = i < idx;
-                          const isCurr  = i === idx;
-                          const isFuture = i > idx;
-                          const isDisabledInAdjust = adjusting && isCurr;
+                          const idx = STAGES.findIndex(st => st.key === currentStageKey);
+                          const isCurr = i === idx;
+                          const isPast = i < idx;
                           return (
                             <div key={s.key}
-                              style={{
-                                padding: "10px 3px", textAlign: "center",
-                                borderRight: i < 5 ? `1px solid ${C.border}` : "none",
-                                background: isCurr ? C.forest : adjusting && selected === s.key ? "#EAF3DE" : "transparent",
-                                cursor: adjusting && !isDisabledInAdjust ? "pointer" : "default",
-                                opacity: isDisabledInAdjust ? 0.35 : 1,
-                                outline: adjusting && selected === s.key ? `2px solid ${C.forest}` : "none",
-                              }}
-                              onClick={adjusting && !isDisabledInAdjust ? () => setSelected(s.key) : undefined}>
+                              style={{ padding: "10px 3px", textAlign: "center", borderRight: i < 5 ? "1px solid " + C.border : "none", background: isCurr ? C.forest : selected === s.key ? "#EAF3DE" : "transparent", cursor: !isCurr ? "pointer" : "default", opacity: isCurr ? 0.35 : 1, outline: selected === s.key ? "2px solid " + C.forest : "none" }}
+                              onClick={!isCurr ? () => setSelected(s.key) : undefined}>
                               <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
                               <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
                               <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
-                                {isCurr ? "Now" : isPast && !adjusting ? "Done" : isPast && adjusting ? "← behind" : adjusting ? "ahead →" : ""}
+                                {isCurr ? "Now" : isPast ? "behind" : "ahead"}
                               </div>
                             </div>
                           );
@@ -4728,21 +4717,20 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
                           style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
-                          {saving ? "Saving…" : "Confirm stage"}
+                          {saving ? "Saving..." : "Confirm stage"}
                         </button>
                         <button onClick={() => { setAdjusting(false); setSelected(null); }}
-                          style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* By harvest date */}
                   {adjustMode === "date" && (
                     <div>
                       <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>When do you expect to harvest?</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>We'll work backwards to adjust your timeline. Your tasks and forecast will update to match.</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>We will work backwards to adjust your timeline.</div>
                       <input type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
                         style={{ ...inputStyle, marginBottom: 12 }} />
                       {dateInput && (
@@ -4750,92 +4738,76 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                           {(() => {
                             const newOffset = calcOffsetFromHarvestDate(dateInput);
                             if (newOffset === 0) return "No change from original schedule";
-                            return newOffset > 0
-                              ? `${newOffset} days behind original schedule — harvest moved later`
-                              : `${Math.abs(newOffset)} days ahead of original schedule — harvest moved earlier`;
+                            if (newOffset > 0) return newOffset + " days behind original schedule";
+                            return Math.abs(newOffset) + " days ahead of original schedule";
                           })()}
                         </div>
                       )}
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmHarvestDate} disabled={!dateInput || saving}
                           style={{ flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: dateInput ? "pointer" : "default", fontFamily: "serif" }}>
-                          {saving ? "Saving…" : "Update harvest date"}
+                          {saving ? "Saving..." : "Update harvest date"}
                         </button>
-                        <button onClick={() => { setAdjusting(false); }}
-                          style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                        <button onClick={() => setAdjusting(false)}
+                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* By days */}
                   {adjustMode === "days" && (
                     <div>
                       <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>How many days off schedule?</div>
-                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Positive = behind schedule (harvest later). Negative = ahead (harvest sooner).</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Positive = behind schedule. Negative = ahead.</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                         <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) - 7))}
-                          style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.border}`, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>−</button>
+                          style={{ width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>-</button>
                         <input type="number" value={daysInput} onChange={e => setDaysInput(e.target.value)}
                           style={{ ...inputStyle, textAlign: "center", flex: 1 }} inputMode="numeric" />
                         <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) + 7))}
-                          style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.border}`, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>+</button>
+                          style={{ width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>+</button>
                       </div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, textAlign: "center" }}>
-                        {parseInt(daysInput, 10) === 0 ? "No adjustment — original schedule" :
-                         parseInt(daysInput, 10) > 0 ? `${daysInput} days behind — harvest pushed later` :
-                         `${Math.abs(parseInt(daysInput, 10))} days ahead — harvest pulled earlier`}
+                        {parseInt(daysInput, 10) === 0 ? "No adjustment" : parseInt(daysInput, 10) > 0 ? daysInput + " days behind — harvest later" : Math.abs(parseInt(daysInput, 10)) + " days ahead — harvest sooner"}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmDaysOffset} disabled={saving}
                           style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
-                          {saving ? "Saving…" : "Apply adjustment"}
+                          {saving ? "Saving..." : "Apply adjustment"}
                         </button>
-                        <button onClick={() => { setAdjusting(false); }}
-                          style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                        <button onClick={() => setAdjusting(false)}
+                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Reset to original — only if offset is currently set */}
                   {currentOffset !== 0 && (
                     <button onClick={resetOffset} disabled={saving}
-                      style={{ width: "100%", marginTop: 10, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
+                      style={{ width: "100%", marginTop: 10, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
                       Reset to original schedule
                     </button>
                   )}
                 </div>
               ) : (
-                <>
-                  {/* Stage tiles — normal view */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
                     {STAGES.map((s, i) => {
-                      const idx     = STAGES.findIndex(st => st.key === currentStageKey);
-                      const isPast  = i < idx;
-                      const isCurr  = i === idx;
+                      const idx = STAGES.findIndex(st => st.key === currentStageKey);
+                      const isCurr = i === idx;
                       const isFuture = i > idx;
                       return (
-                        <div key={s.key}
-                          style={{
-                            padding: "10px 3px", textAlign: "center",
-                            borderRight: i < 5 ? `1px solid ${C.border}` : "none",
-                            background: isCurr ? C.forest : "transparent",
-                            opacity: isFuture ? 0.35 : 1,
-                          }}>
+                        <div key={s.key} style={{ padding: "10px 3px", textAlign: "center", borderRight: i < 5 ? "1px solid " + C.border : "none", background: isCurr ? C.forest : "transparent", opacity: isFuture ? 0.35 : 1 }}>
                           <div style={{ fontSize: 16, marginBottom: 2 }}>{s.emoji}</div>
                           <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.95)" : C.stone, fontWeight: isCurr ? 700 : 400, lineHeight: 1.2 }}>{s.label}</div>
-                          <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>
-                            {isCurr ? "Now" : isPast ? "Done" : ""}
-                          </div>
+                          <div style={{ fontSize: 9, color: isCurr ? "rgba(255,255,255,0.6)" : C.stone, marginTop: 1 }}>{isCurr ? "Now" : i < idx ? "Done" : ""}</div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* What to do now */}
                   {actions.length > 0 && (
                     <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What to do right now</div>
@@ -4848,31 +4820,21 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                     </div>
                   )}
 
-                  {/* Stat cards */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
                       <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Next milestone</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
-                        {STAGES[stageIdx + 1]?.label || "Harvest"}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.stone }}>
-                        {harvestNode?.formatted_date ? `By ${harvestNode.formatted_date}` : "Coming up"}
-                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{STAGES[stageIdx + 1]?.label || "Harvest"}</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>{harvestNode?.formatted_date ? "By " + harvestNode.formatted_date : "Coming up"}</div>
                     </div>
                     <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
                       <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Growing for</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
-                        {daysSown !== null ? `${daysSown} days` : "—"}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.stone }}>
-                        {sowDate ? `since ${new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "add a sow date"}
-                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{daysSown !== null ? daysSown + " days" : "—"}</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>{sowDate ? "since " + new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "add a sow date"}</div>
                     </div>
                   </div>
 
-                  {/* Journey so far */}
                   {journeyNodes.length > 0 && (
-                    <div style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+                    <div style={{ border: "1px solid " + C.border, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
                       <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Your journey so far</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                         {journeyNodes.map((n, i) => (
@@ -4880,45 +4842,39 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "current" ? C.leaf : C.forest, flexShrink: 0 }} />
                             <div style={{ fontSize: 12, color: C.stone }}>
                               {n.label}
-                              {n.formatted_date && (
-                                <span style={{ color: "#1a1a1a", fontWeight: 600, marginLeft: 6 }}>{n.formatted_date}</span>
-                              )}
+                              {n.formatted_date && <span style={{ color: "#1a1a1a", fontWeight: 600, marginLeft: 6 }}>{n.formatted_date}</span>}
                               {n.status === "current" && <span style={{ color: C.leaf, fontWeight: 600, marginLeft: 6 }}>now</span>}
                             </div>
                           </div>
                         ))}
                         {harvestNode && (
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", border: `1.5px solid ${C.border}`, flexShrink: 0 }} />
-                            <div style={{ fontSize: 12, color: C.stone }}>
-                              Harvest expected
-                              <span style={{ color: C.stone, fontWeight: 600, marginLeft: 6 }}>{harvestNode.formatted_date}</span>
-                            </div>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", border: "1.5px solid " + C.border, flexShrink: 0 }} />
+                            <div style={{ fontSize: 12, color: C.stone }}>Harvest expected<span style={{ color: C.stone, fontWeight: 600, marginLeft: 6 }}>{harvestNode.formatted_date}</span></div>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {/* Confirm / Adjust buttons */}
-                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                  <div style={{ borderTop: "1px solid " + C.border, paddingTop: 14 }}>
                     <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Is this timeline right for your plant?</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => confirmStage(currentStageKey)} disabled={saving}
                         style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
-                        {saving ? "Saving…" : "Yes — looks right"}
+                        {saving ? "Saving..." : "Yes — looks right"}
                       </button>
                       <button onClick={() => openAdjustMode("stage")}
-                        style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+                        style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
                         No — adjust
                       </button>
                     </div>
                     <button onClick={() => setShowLogAction(true)}
-                      style={{ width: "100%", marginTop: 10, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "center" }}>
+                      style={{ width: "100%", marginTop: 10, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "center" }}>
                       + Log something you did
                     </button>
                   </div>
-                </>
+                </div>
               )}
 
             </div>
@@ -4927,140 +4883,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
         {!loading && !confirmed && !timeline && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>plant</div>
             <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop's growth timeline.</div>
-          </div>
-        )}
-
-        {showLogAction && (
-          <LogActionSheet
-            scope={{ type: "crop", id: crop.id, name: crop.name }}
-            onClose={() => setShowLogAction(false)}
-            onLogged={() => { setShowLogAction(false); if (onCropUpdated) onCropUpdated(); }}
-          />
-        )}
-
-      </div>
-    </div>
-  );
-}
-
-  useEffect(() => {
-    apiFetch(`/crops/${crop.id}`)
-      .then(d => { setTimeline(d.timeline); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [crop.id]);
-
-  const STAGES = [
-    { key: "seed",       label: "Seed",      emoji: "🌰", symptom: null },
-    { key: "seedling",   label: "Seedling",  emoji: "🌱", symptom: "seedling_emerged" },
-    { key: "vegetative", label: "Veg",       emoji: "🍃", symptom: "vegetative_confirmed" },
-    { key: "flowering",  label: "Flower",    emoji: "🌸", symptom: "flowering_confirmed" },
-    { key: "fruiting",   label: "Fruiting",  emoji: "🍅", symptom: "fruit_set_confirmed" },
-    { key: "harvesting", label: "Harvest",   emoji: "🧺", symptom: "harvest_started" },
-  ];
-
-  const stageActions = {
-    seed:       ["Keep at 20-25°C for germination", "Keep compost moist but not soggy", "Expect shoots in 7-14 days"],
-    seedling:   ["Pot on when first true leaves appear", "Keep on a warm sunny windowsill", "Water from below to avoid damping off"],
-    vegetative: ["Pot on to final container if needed", "Begin fortnightly balanced feed", "Ensure good light and airflow"],
-    flowering:  ["Tap stems gently to aid pollination", "Switch to high potash feed", "Remove lower leaves for airflow"],
-    fruiting:   ["Feed weekly with high potash", "Water consistently to avoid blossom end rot", "Check regularly for pests and blight"],
-    harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"],
-  };
-
-  const confirmStage = async (stageKey) => {
-    const stage = STAGES.find(s => s.key === stageKey);
-    setSaving(true);
-    try {
-      let timelineOffsetDays = 0;
-      const sowDateRaw = crop.sown_date || crop.transplanted_date;
-      if (sowDateRaw) {
-        const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min || 90;
-        const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-        const realDaysSown = Math.floor((Date.now() - new Date(sowDateRaw).getTime()) / 86400000);
-        const expectedDaysForStage = Math.round((STAGE_PCT[stageKey] || 0) * dtm);
-        timelineOffsetDays = realDaysSown - expectedDaysForStage;
-      }
-      await apiFetch(`/crops/${crop.id}/observe`, {
-        method: "POST",
-        body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey, timeline_offset_days: timelineOffsetDays }),
-      });
-      const updated = await apiFetch(`/crops/${crop.id}`);
-      if (updated?.timeline) setTimeline(updated.timeline);
-      setConfirmed(true);
-      if (onCropUpdated) await onCropUpdated();
-      setTimeout(() => onClose(), 2500);
-    } catch(e) { console.error(e); }
-    setSaving(false);
-  };
-
-  const currentStageKey = timeline?.nodes?.find(n => n.status === "current")?.key
-    || timeline?.nodes?.find(n => n.status === "upcoming")?.key
-    || "seed";
-
-  const sowDate      = crop.sown_date || crop.transplanted_date;
-  const harvestNode  = timeline?.nodes?.find(n => n.key === "harvesting" || n.key === "harvest");
-  const stageIdx     = STAGES.findIndex(s => s.key === currentStageKey);
-  const progressPct  = timeline?.progress_pct ?? Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
-
-  const daysSown = sowDate
-    ? Math.floor((Date.now() - new Date(sowDate).getTime()) / 86400000)
-    : null;
-
-  const journeyNodes = timeline?.nodes?.filter(n => n.status === "completed" || n.status === "current") || [];
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
-
-        {/* ── Header ── */}
-        <div style={{ background: C.forest, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
-          <button onClick={onClose}
-            style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-            ×
-          </button>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>
-            {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.leaf, flexShrink: 0 }} />
-            <div style={{ fontSize: 19, fontWeight: 700, color: "#fff", fontFamily: "serif" }}>
-              {STAGES.find(s => s.key === currentStageKey)?.label || "Growing"} now
-            </div>
-          </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
-            {harvestNode?.formatted_date ? `Harvest expected ${harvestNode.formatted_date}` : "Tracking your crop's journey"}
-          </div>
-        </div>
-
-        {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
-
-        {!loading && confirmed && (
-          <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>✓</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Stage updated</div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan has been updated to match your plant's current stage.</div>
-            {harvestNode?.formatted_date && (
-              <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Harvest now expected</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
-              </div>
-            )}
-            <button onClick={onClose}
-              style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
-              Done
-            </button>
-          </div>
-        )}
-
-        {!loading && !confirmed && !timeline && (
-          <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop's growth timeline.</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop growth timeline.</div>
           </div>
         )}
 
@@ -5317,7 +5142,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
       area_id:     crop.area_id || "",
       notes:       crop.notes || "",
       status:      crop.status || "growing",
-      grown_from:  crop.grown_from || "",
+      grown_from:     crop.grown_from || "",
+      lifecycle_mode: crop.lifecycle_mode || "seasonal",
     });
     if (crop.crop_def_id) {
       try {
@@ -5365,6 +5191,26 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     try {
       await apiFetch(`/succession-groups/${groupId}`, { method: "DELETE" });
       setConfirmDeleteGroup(null);
+      await load();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  const [convertingCrop, setConvertingCrop] = useState(null);
+  const [convertForm,    setConvertForm]    = useState({ target_sowings: 3, interval_days: 14 });
+
+  const convertToSuccession = async (cropId) => {
+    setSaving(true);
+    try {
+      await apiFetch(`/crops/${cropId}/convert-to-succession`, {
+        method: "POST",
+        body: JSON.stringify({
+          target_sowings: Number(convertForm.target_sowings) || 3,
+          interval_days:  Number(convertForm.interval_days)  || 14,
+        }),
+      });
+      setConvertingCrop(null);
+      setConvertForm({ target_sowings: 3, interval_days: 14 });
       await load();
     } catch (e) { setError(e.message); }
     setSaving(false);
@@ -5839,6 +5685,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   <option value="cane">Cane</option>
                 </select>
               </div>
+              <div>
+                <label style={labelStyle}>Lifecycle</label>
+                <select value={editForm.lifecycle_mode || "seasonal"} onChange={e => setEditForm(f => ({ ...f, lifecycle_mode: e.target.value }))} style={inputStyle}>
+                  <option value="seasonal">This season</option>
+                  <option value="established">Already established</option>
+                  <option value="overwintered">Overwintered</option>
+                </select>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
                   style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -5849,6 +5703,46 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   Cancel
                 </button>
               </div>
+
+              {!crop.succession_group_id && (
+                <div style={{ marginTop: 10 }}>
+                  {convertingCrop !== crop.id ? (
+                    <button onClick={() => { setConvertingCrop(crop.id); setConvertForm({ target_sowings: 3, interval_days: 14 }); }}
+                      style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer", textAlign: "left" }}>
+                      🔁 Convert to succession sowing
+                    </button>
+                  ) : (
+                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", background: "#f0f5f3" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
+                      <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                        <div>
+                          <label style={labelStyle}>Planned sowings</label>
+                          <input type="number" min="2" max="12" value={convertForm.target_sowings}
+                            onChange={e => setConvertForm(f => ({ ...f, target_sowings: e.target.value }))}
+                            style={inputStyle} inputMode="numeric" />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Sow every (days)</label>
+                          <input type="number" min="7" max="90" value={convertForm.interval_days}
+                            onChange={e => setConvertForm(f => ({ ...f, interval_days: e.target.value }))}
+                            style={inputStyle} inputMode="numeric" />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => convertToSuccession(crop.id)} disabled={saving}
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: "serif" }}>
+                          {saving ? "Converting…" : "Convert"}
+                        </button>
+                        <button onClick={() => setConvertingCrop(null)}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             /* Normal view */
@@ -5968,6 +5862,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                 {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>🗓 Planned</span>}
                 {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
                 {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
+                {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>🌳 Established</span>}
+                {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>❄️ Overwintered</span>}
               </div>
 
               {/* Missed task note */}
@@ -5993,6 +5889,89 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   );
 }
 
+// ── CropSearchInput ───────────────────────────────────────────────────────────
+function CropSearchInput({ cropDefs, value, onChange }) {
+  const [query,   setQuery]   = useState("");
+  const [open,    setOpen]    = useState(false);
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef(null);
+
+  const displayText = focused ? query : (value?.name || query);
+
+  const filtered = (() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return cropDefs.slice(0, 8);
+    const singular = q.endsWith("s") ? q.slice(0, -1) : q;
+    const matches = cropDefs.filter(d => {
+      const n = d.name.toLowerCase();
+      return n.includes(q) || n.includes(singular);
+    });
+    matches.sort((a, b) => {
+      const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+      const aStarts = an.startsWith(q) || an.startsWith(singular);
+      const bStarts = bn.startsWith(q) || bn.startsWith(singular);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return an.localeCompare(bn);
+    });
+    return matches.slice(0, 8);
+  })();
+
+  const handleFocus = () => { setFocused(true); setQuery(value?.name || ""); setOpen(true); };
+  const handleBlur  = () => {
+    setTimeout(() => {
+      setFocused(false); setOpen(false);
+      if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
+    }, 150);
+  };
+  const handleChange = e => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); };
+  const handleSelect = def => { onChange(def); setQuery(def.name); setOpen(false); setFocused(false); inputRef.current?.blur(); };
+  const handleKeyDown = e => {
+    if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
+    if (e.key === "Enter" && filtered.length > 0) { e.preventDefault(); handleSelect(filtered[0]); }
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input ref={inputRef} type="text" value={displayText} onChange={handleChange}
+        onFocus={handleFocus} onBlur={handleBlur} onKeyDown={handleKeyDown}
+        style={{ ...inputStyle, background: value && value.id !== "__other__" ? "#f0f5f3" : undefined }}
+        placeholder="Search crops — e.g. Carrot, Tomato…" autoComplete="off" />
+      {value && value.id !== "__other__" && (
+        <button type="button" onClick={() => { onChange(null); setQuery(""); setTimeout(() => inputRef.current?.focus(), 50); }}
+          style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
+      )}
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
+          {filtered.map(def => (
+            <div key={def.id} onMouseDown={() => handleSelect(def)}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              {getCropEmoji(def.name)} {def.name}
+            </div>
+          ))}
+          {query.trim() ? (
+            <div onMouseDown={() => handleSelect({ id: "__other__", name: query.trim() })}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              🔍 Not in list — identify "{query.trim()}" with AI
+            </div>
+          ) : (
+            <div onMouseDown={() => { setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              🔍 Not in list — identify with AI
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [cropDefs,  setCropDefs]  = useState([]);
@@ -6000,7 +5979,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    status: "", sown_date: "", transplant_date: "", notes: "",
+    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal",
   });
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
@@ -6012,6 +5991,8 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   // Succession mode
   const [successionMode,  setSuccessionMode]  = useState(false);
   const [succForm,        setSuccForm]        = useState({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
+  // Lifecycle mode
+  // (value stored in form.lifecycle_mode)
 
   useEffect(() => {
     Promise.all([apiFetch("/crop-definitions"), apiFetch("/areas")])
@@ -6143,7 +6124,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           setStep("form"); setSaved(false); setEnriching(false); setCropProfile(null);
           setSuccessionMode(false);
           setSuccForm({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
-          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
         }, 5000);
       } catch (e) { setError(e.message); setStep("previewing"); }
       setSaving(false);
@@ -6175,6 +6156,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
+          lifecycle_mode:   form.lifecycle_mode || "seasonal",
         }),
       });
 
@@ -6184,7 +6166,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" });
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -6199,7 +6181,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "" }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
@@ -6368,15 +6350,15 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               📷 Scan packet
             </button>
           </div>
-          <select value={form.crop_def_id} onChange={e => set("crop_def_id", e.target.value)} style={inputStyle}>
-            <option value="">Select crop…</option>
-            {cropDefs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            <option value="__other__">Other — type my own</option>
-          </select>
-          {isOtherCrop && (
-            <input type="text" value={form.crop_other} onChange={e => set("crop_other", e.target.value)}
-              style={{ ...inputStyle, marginTop: 8 }} placeholder="e.g. Tomatillo, Okra, Pak Choi…" autoFocus />
-          )}
+          <CropSearchInput
+            cropDefs={cropDefs}
+            value={form.crop_def_id === "__other__" ? { id: "__other__", name: form.crop_other } : (cropDefs.find(d => d.id === form.crop_def_id) || null)}
+            onChange={selection => {
+              if (!selection) { set("crop_def_id", ""); set("crop_other", ""); }
+              else if (selection.id === "__other__") { set("crop_def_id", "__other__"); set("crop_other", selection.name); }
+              else { set("crop_def_id", selection.id); set("crop_other", ""); }
+            }}
+          />
         </div>
 
         {/* Variety */}
@@ -6445,6 +6427,24 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <label style={labelStyle}>Notes (optional)</label>
           <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
             style={{ ...inputStyle, height: 80, resize: "vertical" }} placeholder="Any notes about this plant…" />
+        </div>
+
+        {/* Lifecycle mode */}
+        <div>
+          <label style={labelStyle}>How are you growing this?</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              { value: "seasonal",     label: "This season",        hint: "Growing from seed or young plant this season" },
+              { value: "established",  label: "Already established", hint: "Long-term plant already in the ground" },
+              { value: "overwintered", label: "Overwintered",        hint: "Started last season and still growing now" },
+            ].map(opt => (
+              <div key={opt.value} onClick={() => set("lifecycle_mode", opt.value)}
+                style={{ border: "2px solid " + (form.lifecycle_mode === opt.value ? C.forest : C.border), borderRadius: 10, padding: "9px 12px", cursor: "pointer", background: form.lifecycle_mode === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: form.lifecycle_mode === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Succession sowing toggle */}
