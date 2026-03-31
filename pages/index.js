@@ -2365,6 +2365,10 @@ function Dashboard({ onTabChange }) {
   const [timeAwayDismissed,  setTimeAwayDismissed]  = useState(() => {
     try { return localStorage.getItem("vercro_timeaway_dismissed") === "1"; } catch(e) { return false; }
   });
+  const [showSessionComplete, setShowSessionComplete] = useState(false);
+  const [sessionCompleteData, setSessionCompleteData] = useState(null); // { nextTask, completedCount }
+  const sessionCompletedCountRef = useRef(0);
+  const sessionModalShownRef = useRef(false); // prevents double-trigger in same session
 
   const CACHE_KEY = "vercro_dashboard_v1";
 
@@ -2429,6 +2433,44 @@ function Dashboard({ onTabChange }) {
       if (total === 5 && !localStorage.getItem("vercro_share_nudge_shown")) {
         setTimeout(() => setShowShareNudge(true), 800);
         localStorage.setItem("vercro_share_nudge_shown", "1");
+      }
+
+      // Session complete hook — show "what's next tomorrow" modal
+      // Triggers when: user completes 2+ tasks in session OR no today tasks remain
+      // modalShownRef guards against double-trigger (undo → re-complete, rapid taps)
+      sessionCompletedCountRef.current += 1;
+      const remainingAfterThis = grouped.today.filter(t => !completed.has(t.id) && t.id !== task.id).length;
+      const sessionThreshold = sessionCompletedCountRef.current >= 2;
+      const allTodayDone = remainingAfterThis === 0 && grouped.today.length > 0;
+
+      if ((allTodayDone || sessionThreshold) && !showSessionComplete && !sessionModalShownRef.current) {
+        sessionModalShownRef.current = true;
+
+        // Find best "tomorrow" task — exclude low-value checks and vague perennial prompts
+        const upcomingPool = [...(grouped.this_week || []), ...(grouped.coming_up || [])]
+          .filter(t => {
+            if (completed.has(t.id) || t.id === task.id) return false;
+            // Exclude weak task types that would undermine the modal
+            if (t.urgency === "low" && t.task_type === "check" && !t.crop?.name) return false;
+            if (["perennial_flowering_upcoming", "perennial_harvest_upcoming", "null_crop_fallback"].includes(t.rule_id)) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            // Prefer higher urgency and sooner due dates
+            const urgencyRank = { high: 3, medium: 2, low: 1 };
+            const uDiff = (urgencyRank[b.urgency] || 0) - (urgencyRank[a.urgency] || 0);
+            if (uDiff !== 0) return uDiff;
+            return (a.due_date || "").localeCompare(b.due_date || "");
+          });
+        const nextTask = upcomingPool[0] || null;
+
+        setTimeout(() => {
+          setSessionCompleteData({
+            nextTask,
+            completedCount: sessionCompletedCountRef.current,
+          });
+          setShowSessionComplete(true);
+        }, 600);
       }
     } catch {
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
@@ -3117,6 +3159,70 @@ function Dashboard({ onTabChange }) {
       </button>
 
       {/* ── SHARE NUDGE MODAL ──────────────────────────────────────────────── */}
+      {/* ── SESSION COMPLETE HOOK ─────────────────────────────────────────────── */}
+      {showSessionComplete && sessionCompleteData && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setShowSessionComplete(false)}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 44px", width: "100%", maxWidth: 480 }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
+              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
+                Nice work today
+              </div>
+              <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
+                {sessionCompleteData.completedCount >= 2
+                  ? `You've taken care of ${sessionCompleteData.completedCount} jobs — your garden is in good shape.`
+                  : "You've taken care of today's most important job."}
+              </div>
+            </div>
+
+            {/* Tomorrow hook */}
+            {sessionCompleteData.nextTask ? (
+              <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px", marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                  ⭐ Coming up next
+                </div>
+                <div style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 600, lineHeight: 1.5, marginBottom: 4 }}>
+                  {sessionCompleteData.nextTask.crop?.name
+                    ? `${sessionCompleteData.nextTask.crop.name} — ${sessionCompleteData.nextTask.action}`
+                    : sessionCompleteData.nextTask.action}
+                </div>
+                <div style={{ fontSize: 12, color: C.stone }}>
+                  We'll remind you in the morning
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px", marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                  ⭐ Tomorrow
+                </div>
+                <div style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 600, lineHeight: 1.5, marginBottom: 4 }}>
+                  Take a quick look at your garden
+                </div>
+                <div style={{ fontSize: 12, color: C.stone }}>
+                  We'll check in with you in the morning
+                </div>
+              </div>
+            )}
+
+            {/* CTAs */}
+            <button
+              onClick={() => { setShowSessionComplete(false); sessionCompletedCountRef.current = 0; }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Done
+            </button>
+            <button
+              onClick={() => { setShowSessionComplete(false); onTabChange("crops"); }}
+              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
+              View my garden
+            </button>
+          </div>
+        </div>
+      )}
+
       {showShareNudge && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={() => setShowShareNudge(false)}>
