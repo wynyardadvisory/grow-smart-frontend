@@ -2369,6 +2369,7 @@ function Dashboard({ onTabChange }) {
   const [sessionCompleteData, setSessionCompleteData] = useState(null); // { nextTask, completedCount }
   const sessionCompletedCountRef = useRef(0);
   const sessionModalShownRef = useRef(false); // prevents double-trigger in same session
+  const [engineRefreshing, setEngineRefreshing] = useState(false); // true when waiting for on-demand engine
 
   const CACHE_KEY = "vercro_dashboard_v1";
 
@@ -2408,6 +2409,23 @@ function Dashboard({ onTabChange }) {
     checkPendingUnlocks();
     loadRecentHarvests();
   }, [load]);
+
+  // Auto-refresh when Today is empty — backend runs engine on demand, we poll once after 1.5s
+  // This makes empty screens feel like "loading your plan" not "app has nothing"
+  useEffect(() => {
+    if (!data || loading) return;
+    const activeTasks = (data.tasks?.today || []).length +
+                        (data.tasks?.this_week || []).length +
+                        (data.tasks?.alerts || []).length;
+    if (activeTasks === 0 && !engineRefreshing) {
+      setEngineRefreshing(true);
+      const timer = setTimeout(() => {
+        load(true); // background reload
+        setEngineRefreshing(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [data, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkPendingUnlocks = async () => {
     try {
@@ -3382,9 +3400,27 @@ function Dashboard({ onTabChange }) {
 
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>You're all caught up</div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>No garden jobs right now.</div>
+          {engineRefreshing ? (
+            <>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🌱</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+                Checking what your garden needs today
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+                Just a moment…
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+                You're all caught up
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+                Your garden is in good shape — check back tomorrow.
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
