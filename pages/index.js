@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
+import { useRouter } from "next/router";
 
 // ── Supabase client (frontend) ────────────────────────────────────────────────
 const supabase = createClient(
@@ -29,6 +30,12 @@ const supabase = createClient(
 );
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+// ── Pro feature flag ──────────────────────────────────────────────────────────
+// Set NEXT_PUBLIC_PRO_ENABLED=true in Vercel env vars to show Pro UI to users.
+// When false (default), all paywall triggers and upgrade prompts are hidden.
+// Existing users see no change until you deliberately flip this flag.
+const PRO_ENABLED = process.env.NEXT_PUBLIC_PRO_ENABLED === "true";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 // Seasonal palette — subtle shifts by time of year
@@ -78,6 +85,34 @@ async function apiFetch(path, options = {}) {
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+// ── Pro subscription hook ────────────────────────────────────────────────────
+// Fetches subscription status from the API. Returns { isPro, plan, loading }.
+// Only fetches when PRO_ENABLED is true — no unnecessary API calls otherwise.
+// Cache in localStorage to avoid flickering on re-renders.
+function useProStatus() {
+  const [isPro,    setIsPro]    = useState(() => {
+    try { return localStorage.getItem("vercro_is_pro") === "true"; } catch(e) { return false; }
+  });
+  const [plan,     setPlan]     = useState("free");
+  const [loading,  setLoading]  = useState(false);
+
+  useEffect(() => {
+    if (!PRO_ENABLED) return; // don't fetch if Pro UI is hidden
+    setLoading(true);
+    apiFetch("/subscription/status")
+      .then(data => {
+        const pro = data?.is_pro === true;
+        setIsPro(pro);
+        setPlan(data?.plan || "free");
+        try { localStorage.setItem("vercro_is_pro", pro ? "true" : "false"); } catch(e) {}
+      })
+      .catch(() => {}) // non-fatal — default to free
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { isPro: PRO_ENABLED && isPro, plan, loading };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -7734,6 +7769,9 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {/* FAQ Section */}
       <FAQSection />
 
+      {/* Pro subscription section — only visible when PRO_ENABLED=true */}
+      {PRO_ENABLED && <ProSubscriptionSection />}
+
       {/* Sign out */}
       <button
         onClick={() => supabase.auth.signOut()}
@@ -7746,6 +7784,179 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   );
 }
 
+
+// ── Pro Subscription Section ─────────────────────────────────────────────────
+// Shows in Profile when PRO_ENABLED=true.
+// Free users see upgrade prompt. Pro users see their plan status + manage link.
+
+function ProSubscriptionSection() {
+  const { isPro, plan, loading } = useProStatus();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [manageLoading,   setManageLoading]   = useState(false);
+
+  const handleUpgrade = async (priceType = "early") => {
+    setCheckoutLoading(true);
+    try {
+      const data = await apiFetch("/subscription/create-checkout", {
+        method: "POST",
+        body: JSON.stringify({ price_type: priceType }),
+      });
+      if (data?.url) window.location.href = data.url;
+    } catch (e) {
+      console.error("Checkout error:", e);
+    }
+    setCheckoutLoading(false);
+  };
+
+  const handleManage = async () => {
+    setManageLoading(true);
+    try {
+      const data = await apiFetch("/subscription/manage");
+      if (data?.url) window.location.href = data.url;
+    } catch (e) {
+      console.error("Manage error:", e);
+    }
+    setManageLoading(false);
+  };
+
+  if (loading) return null;
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>
+        Subscription
+      </div>
+
+      {isPro ? (
+        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <div style={{ fontSize: 24 }}>🌱</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Vercro Pro</div>
+              <div style={{ fontSize: 12, color: C.stone }}>All features unlocked</div>
+            </div>
+          </div>
+          <button
+            onClick={handleManage}
+            disabled={manageLoading}
+            style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 600, color: C.stone, cursor: "pointer" }}>
+            {manageLoading ? "Loading…" : "Manage subscription"}
+          </button>
+        </div>
+      ) : (
+        <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px" }}>
+          <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+            Vercro Pro
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 16 }}>
+            Unlimited plant diagnosis, smart garden planning, rotation automation and yield insights.
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            {[
+              "📸 Unlimited Plant Check",
+              "📐 Smart garden planning",
+              "🔄 Crop rotation automation",
+              "📊 Yield & ROI insights",
+            ].map(item => (
+              <div key={item} style={{ fontSize: 13, color: "#1a1a1a", padding: "4px 0", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: C.leaf, fontWeight: 700 }}>✓</span> {item}
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => handleUpgrade("early")}
+            disabled={checkoutLoading}
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 8 }}>
+            {checkoutLoading ? "Loading…" : "Start Pro — £49/year"}
+          </button>
+          <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
+            Early supporter price · cancel anytime
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Pro Paywall Component ─────────────────────────────────────────────────────
+// Shown as a bottom sheet when user hits a Pro feature limit.
+// Only renders when PRO_ENABLED=true — pass null/undefined to hide.
+// Usage: <ProPaywall trigger="diagnosis" onClose={() => setShowPaywall(false)} />
+
+function ProPaywall({ trigger, onClose }) {
+  const [loading, setLoading] = useState(false);
+
+  if (!PRO_ENABLED || !trigger) return null;
+
+  const MESSAGES = {
+    diagnosis: {
+      title:  "Unlimited Plant Check",
+      body:   "You've used your free plant checks. Upgrade to Pro for unlimited diagnosis, harvest timing, and treatment plans.",
+      cta:    "Unlock unlimited Plant Check",
+    },
+    plans: {
+      title:  "Save your garden plans",
+      body:   "Save and compare multiple garden layouts, reuse them next season, and track your performance over time.",
+      cta:    "Unlock garden planning",
+    },
+    default: {
+      title:  "Grow better with Pro",
+      body:   "Unlock unlimited plant diagnosis, smart planning, rotation automation and yield insights.",
+      cta:    "Upgrade to Pro",
+    },
+  };
+
+  const msg = MESSAGES[trigger] || MESSAGES.default;
+
+  const handleUpgrade = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch("/subscription/create-checkout", {
+        method: "POST",
+        body: JSON.stringify({ price_type: "early" }),
+      });
+      if (data?.url) window.location.href = data.url;
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
+          <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
+            {msg.title}
+          </div>
+          <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
+            {msg.body}
+          </div>
+        </div>
+
+        <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Vercro Pro — £49/year</div>
+          <div style={{ fontSize: 12, color: C.stone }}>Early supporter price · cancel anytime</div>
+        </div>
+
+        <button
+          onClick={handleUpgrade}
+          disabled={loading}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+          {loading ? "Loading…" : msg.cta}
+        </button>
+        <button
+          onClick={onClose}
+          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
+          Maybe later
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── My Feeds ──────────────────────────────────────────────────────────────────
 
@@ -9671,6 +9882,7 @@ function IOSInstallBanner({ onDismiss }) {
 }
 
 export default function GrowSmart() {
+  const router = useRouter();
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
   const [tab,         setTab]         = useState("dashboard");
@@ -9713,7 +9925,29 @@ export default function GrowSmart() {
       .then(p => setIsDemo(p?.is_demo === true))
       .catch(() => setIsDemo(false));
   }, [session]);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [showFeedback,    setShowFeedback]    = useState(false);
+  const [subscribedToast, setSubscribedToast] = useState(false);
+
+  // Handle Stripe redirect back after successful checkout
+  // Uses Next.js router for reliable query param detection and cleanup
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.subscribed !== "true") return;
+
+    setSubscribedToast(true);
+    try { localStorage.removeItem("vercro_is_pro"); } catch(e) {}
+
+    // Remove ?subscribed=true from URL without reloading
+    const { subscribed, ...rest } = router.query;
+    router.replace(
+      { pathname: router.pathname, query: rest },
+      undefined,
+      { shallow: true }
+    );
+
+    const timer = setTimeout(() => setSubscribedToast(false), 3500);
+    return () => clearTimeout(timer);
+  }, [router.isReady, router.query.subscribed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // iOS install prompt — show if on iOS Safari and not installed as PWA
   const isIOS        = typeof window !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -9773,6 +10007,13 @@ export default function GrowSmart() {
         </button>
       )}
       {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} />}
+
+      {/* Subscribed success toast — shown after Stripe redirect */}
+      {subscribedToast && (
+        <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 1000, background: "#1E3D33", color: "#fff", padding: "12px 16px", borderRadius: 14, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", fontSize: 14, fontWeight: 600, maxWidth: "calc(100vw - 32px)", textAlign: "center" }}>
+          Pro unlocked successfully 🌱
+        </div>
+      )}
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
