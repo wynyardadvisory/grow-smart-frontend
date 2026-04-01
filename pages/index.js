@@ -10460,6 +10460,7 @@ function PlanScreen() {
     const allAtOrigin = areas.every(a => (a.layout_x || 0) === 0 && (a.layout_y || 0) === 0);
     const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined || allAtOrigin);
     console.log("[Visualiser] auto-layout: areas=", areas.length, "needLayout=", needLayout.length, "allAtOrigin=", allAtOrigin);
+    console.log("[Visualiser] area positions:", areas.map(a => ({ name: a.name, x: a.layout_x, y: a.layout_y, w: a.width_m, h: a.length_m })));
     if (!needLayout.length) return;
     let x = 0.3, y = 0.3, rowH = 0;
     const GAP = 0.5;
