@@ -8062,9 +8062,9 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
 
 // ── Diagnosis result screen ───────────────────────────────────────────────────
 function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
-  const [confirming, setConfirming] = useState(false);
-  const [updating,   setUpdating]   = useState(false);
-  const [updated,    setUpdated]    = useState(false);
+  const [updating,     setUpdating]     = useState(false);
+  const [updated,      setUpdated]      = useState(false);
+  const [updateError,  setUpdateError]  = useState(null);
 
   const severityColor = {
     low:    "#7FB069",
@@ -8086,12 +8086,15 @@ function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
 
   const handleConfirmUpdate = async () => {
     setUpdating(true);
+    setUpdateError(null);
     try {
       await onConfirmUpdate(result);
       setUpdated(true);
-    } catch(e) {}
+    } catch(e) {
+      console.error("[PlantCheck] Confirm update failed:", e.message);
+      setUpdateError("Couldn't update crop record — please try again");
+    }
     setUpdating(false);
-    setConfirming(false);
   };
 
   return (
@@ -8223,11 +8226,14 @@ function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
                 style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
                 {updating ? "Updating…" : "Yes, update record"}
               </button>
-              <button onClick={() => setConfirming(false)}
+              <button onClick={() => setUpdated(true)}
                 style={{ flex: 1, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
                 No thanks
               </button>
             </div>
+            {updateError && (
+              <div style={{ marginTop: 10, fontSize: 13, color: C.red }}>{updateError}</div>
+            )}
           </div>
         )}
 
