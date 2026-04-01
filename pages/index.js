@@ -10416,25 +10416,30 @@ function PlanScreen() {
   }, []);
 
   // Load data — fetch locations, areas, and crops separately.
-  // /areas is used for areas because growing_areas nested in /locations
-  // may be blocked by RLS (no user_id column, ownership via location_id).
   useEffect(() => {
     Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops")])
       .then(([locs, areasData, cropsData]) => {
-        setLocations(locs || []);
-        setCrops(cropsData || []);
-        // Attach areas to their location
+        const allAreas = areasData || [];
+        const allCrops = cropsData || [];
+        setCrops(allCrops);
+        console.log("[Visualiser] locations:", (locs||[]).length, "areas:", allAreas.length, "crops:", allCrops.length);
+        console.log("[Visualiser] sample area:", allAreas[0]);
+
+        // Attach areas to their location by location_id
         const locsWithAreas = (locs || []).map(loc => ({
           ...loc,
-          growing_areas: (areasData || []).filter(a => a.location_id === loc.id),
+          growing_areas: allAreas.filter(a => a.location_id === loc.id),
         }));
+        console.log("[Visualiser] locsWithAreas:", locsWithAreas.map(l => ({ name: l.name, areas: l.growing_areas?.length })));
         setLocations(locsWithAreas);
         if (locsWithAreas.length) {
           setSelectedLoc(locsWithAreas[0].id);
-          setAreas(locsWithAreas[0].growing_areas || []);
+          const firstAreas = locsWithAreas[0].growing_areas || [];
+          console.log("[Visualiser] setting areas:", firstAreas.length);
+          setAreas(firstAreas);
         }
       })
-      .catch(e => setError(e.message))
+      .catch(e => { console.error("[Visualiser] load error:", e); setError(e.message); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -10444,15 +10449,17 @@ function PlanScreen() {
     if (loc) setAreas(loc.growing_areas || []);
   }, [selectedLoc, locations]);
 
-  // Auto-layout: flow areas that have no saved position
+  // Auto-layout: assign positions to areas that have none saved
   useEffect(() => {
     if (!areas.length) return;
-    const needLayout = areas.filter(a => a.layout_x == null);
+    // Check for null OR undefined — Supabase may return either for unset columns
+    const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined);
+    console.log("[Visualiser] auto-layout: areas=", areas.length, "needLayout=", needLayout.length);
     if (!needLayout.length) return;
     let x = 0.3, y = 0.3, rowH = 0;
-    const GAP = 0.3; // metres gap between areas
+    const GAP = 0.5;
     const updated = areas.map(area => {
-      if (area.layout_x != null) return area;
+      if (area.layout_x != null && area.layout_x !== undefined) return area;
       const w = area.width_m  || 2;
       const h = area.length_m || 2;
       const placed = { ...area, layout_x: x, layout_y: y };
@@ -10462,7 +10469,7 @@ function PlanScreen() {
       return placed;
     });
     setAreas(updated);
-  }, [areas.length]);
+  }, [areas.map(a => a.id + (a.layout_x ?? "null")).join(",")]);
 
   // ── Scale calculation ─────────────────────────────────────────────────────
   // Base: fit the location bounding box into the container width
