@@ -10215,8 +10215,13 @@ function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) 
     ? (area.length_m || 2) : (area.width_m  || 2);
   const h = (area.rotation === 90 || area.rotation === 270)
     ? (area.width_m  || 2) : (area.length_m || 2);
-  const widthPx  = w * pxPerM;
-  const heightPx = h * pxPerM;
+  // Enforce minimum rendered size so small areas (e.g. 0.4m containers) are visible
+  // Min 60px wide, 50px tall regardless of actual dimensions
+  const MIN_PX_W = 60;
+  const MIN_PX_H = 50;
+  const widthPx  = Math.max(MIN_PX_W, w * pxPerM);
+  const heightPx = Math.max(MIN_PX_H, h * pxPerM);
+  const isTooSmall = (w * pxPerM) < MIN_PX_W || (h * pxPerM) < MIN_PX_H;
 
   const onPointerDown = (e) => {
     e.stopPropagation();
@@ -10302,13 +10307,12 @@ function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) 
         <EmojiGrid crops={crops} widthPx={widthPx} heightPx={heightPx - Math.max(16, pxPerM * 0.28)} />
       </div>
 
-      {/* Missing dimensions indicator */}
+      {/* Missing dimensions or too-small indicator */}
       {(!area.width_m || !area.length_m) && (
-        <div style={{
-          position: "absolute", bottom: 3, right: 4,
-          fontSize: Math.max(8, pxPerM * 0.16),
-          opacity: 0.7,
-        }}>📐</div>
+        <div style={{ position: "absolute", bottom: 3, right: 4, fontSize: Math.max(8, pxPerM * 0.16), opacity: 0.7 }}>📐</div>
+      )}
+      {isTooSmall && area.width_m && area.length_m && (
+        <div style={{ position: "absolute", bottom: 3, right: 4, fontSize: 8, color: style.border, opacity: 0.8, fontWeight: 700 }}>~</div>
       )}
     </div>
   );
@@ -10452,14 +10456,16 @@ function PlanScreen() {
   // Auto-layout: assign positions to areas that have none saved
   useEffect(() => {
     if (!areas.length) return;
-    // Check for null OR undefined — Supabase may return either for unset columns
-    const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined);
-    console.log("[Visualiser] auto-layout: areas=", areas.length, "needLayout=", needLayout.length);
+    // Treat as needing layout if: null/undefined, OR all areas are at origin (0,0) from DB default
+    const allAtOrigin = areas.every(a => (a.layout_x || 0) === 0 && (a.layout_y || 0) === 0);
+    const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined || allAtOrigin);
+    console.log("[Visualiser] auto-layout: areas=", areas.length, "needLayout=", needLayout.length, "allAtOrigin=", allAtOrigin);
     if (!needLayout.length) return;
     let x = 0.3, y = 0.3, rowH = 0;
     const GAP = 0.5;
     const updated = areas.map(area => {
-      if (area.layout_x != null && area.layout_x !== undefined) return area;
+      // Skip if already has a real non-zero position (unless allAtOrigin reset)
+      if (!allAtOrigin && area.layout_x != null && area.layout_x !== undefined) return area;
       const w = area.width_m  || 2;
       const h = area.length_m || 2;
       const placed = { ...area, layout_x: x, layout_y: y };
