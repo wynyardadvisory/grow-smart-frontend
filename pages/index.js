@@ -6138,8 +6138,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           )}
         </div>
       ))}
-    </div>
     </>}
+    </div>
   );
 }
 
