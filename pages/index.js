@@ -10415,15 +10415,23 @@ function PlanScreen() {
     return () => ro.disconnect();
   }, []);
 
-  // Load data
+  // Load data — fetch locations, areas, and crops separately.
+  // /areas is used for areas because growing_areas nested in /locations
+  // may be blocked by RLS (no user_id column, ownership via location_id).
   useEffect(() => {
-    Promise.all([apiFetch("/locations"), apiFetch("/crops")])
-      .then(([locs, cropsData]) => {
+    Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops")])
+      .then(([locs, areasData, cropsData]) => {
         setLocations(locs || []);
         setCrops(cropsData || []);
-        if (locs?.length) {
-          setSelectedLoc(locs[0].id);
-          setAreas(locs[0].growing_areas || []);
+        // Attach areas to their location
+        const locsWithAreas = (locs || []).map(loc => ({
+          ...loc,
+          growing_areas: (areasData || []).filter(a => a.location_id === loc.id),
+        }));
+        setLocations(locsWithAreas);
+        if (locsWithAreas.length) {
+          setSelectedLoc(locsWithAreas[0].id);
+          setAreas(locsWithAreas[0].growing_areas || []);
         }
       })
       .catch(e => setError(e.message))
@@ -10483,10 +10491,6 @@ function PlanScreen() {
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleDragEnd = async (areaId, x, y) => {
     setAreas(prev => prev.map(a => a.id === areaId ? { ...a, layout_x: x, layout_y: y } : a));
-    setLocations(prev => prev.map(loc => ({
-      ...loc,
-      growing_areas: (loc.growing_areas || []).map(a => a.id === areaId ? { ...a, layout_x: x, layout_y: y } : a),
-    })));
     try {
       await apiFetch(`/areas/${areaId}`, { method: "PUT", body: JSON.stringify({ layout_x: x, layout_y: y }) });
       setSavedToast(true);
@@ -10499,10 +10503,6 @@ function PlanScreen() {
     if (!area) return;
     const newRotation = ((area.rotation || 0) + 90) % 360;
     setAreas(prev => prev.map(a => a.id === areaId ? { ...a, rotation: newRotation } : a));
-    setLocations(prev => prev.map(loc => ({
-      ...loc,
-      growing_areas: (loc.growing_areas || []).map(a => a.id === areaId ? { ...a, rotation: newRotation } : a),
-    })));
     try {
       await apiFetch(`/areas/${areaId}`, { method: "PUT", body: JSON.stringify({ rotation: newRotation }) });
     } catch(e) { console.error("[Visualiser] Rotate save failed:", e.message); }
