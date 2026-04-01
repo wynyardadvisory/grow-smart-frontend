@@ -10450,33 +10450,42 @@ function PlanScreen() {
   // Update areas when location changes
   useEffect(() => {
     const loc = locations.find(l => l.id === selectedLoc);
-    if (loc) setAreas(loc.growing_areas || []);
+    if (loc) {
+      autoLayoutDone.current = false; // reset so auto-layout runs for new location
+      setAreas(loc.growing_areas || []);
+    }
   }, [selectedLoc, locations]);
 
-  // Auto-layout: assign positions to areas that have none saved
+  // Auto-layout: runs once when areas load, assigns positions to any without saved layout
+  const autoLayoutDone = useRef(false);
   useEffect(() => {
     if (!areas.length) return;
-    // Treat as needing layout if: null/undefined, OR all areas are at origin (0,0) from DB default
-    const allAtOrigin = areas.every(a => (a.layout_x || 0) === 0 && (a.layout_y || 0) === 0);
-    const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined || allAtOrigin);
-    console.log("[Visualiser] auto-layout: areas=", areas.length, "needLayout=", needLayout.length, "allAtOrigin=", allAtOrigin);
-    console.log("[Visualiser] area positions:", areas.map(a => ({ name: a.name, x: a.layout_x, y: a.layout_y, w: a.width_m, h: a.length_m })));
-    if (!needLayout.length) return;
+    if (autoLayoutDone.current) return;
+
+    const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined);
+    const allAtOrigin = areas.length > 0 && areas.every(a => !a.layout_x && !a.layout_y);
+    console.log("[Visualiser] auto-layout check: needLayout=", needLayout.length, "allAtOrigin=", allAtOrigin,
+      "positions=", areas.map(a => a.name + ":" + a.layout_x + "," + a.layout_y));
+
+    if (!needLayout.length && !allAtOrigin) return;
+
+    autoLayoutDone.current = true;
     let x = 0.3, y = 0.3, rowH = 0;
     const GAP = 0.5;
     const updated = areas.map(area => {
-      // Skip if already has a real non-zero position (unless allAtOrigin reset)
-      if (!allAtOrigin && area.layout_x != null && area.layout_x !== undefined) return area;
-      const w = area.width_m  || 2;
-      const h = area.length_m || 2;
+      const hasPosition = area.layout_x != null && area.layout_x !== undefined && !allAtOrigin;
+      if (hasPosition) return area;
+      const w = area.width_m  || 1.5;
+      const h = area.length_m || 1.5;
       const placed = { ...area, layout_x: x, layout_y: y };
       x += w + GAP;
       rowH = Math.max(rowH, h);
-      if (x > 8) { x = 0.3; y += rowH + GAP; rowH = 0; }
+      if (x > (gardenW - 1)) { x = 0.3; y += rowH + GAP; rowH = 0; }
       return placed;
     });
+    console.log("[Visualiser] auto-layout result:", updated.map(a => a.name + ":" + a.layout_x + "," + a.layout_y));
     setAreas(updated);
-  }, [areas.map(a => a.id + (a.layout_x ?? "null")).join(",")]);
+  }, [areas.length, selectedLoc]);
 
   // ── Scale calculation ─────────────────────────────────────────────────────
   // Base: fit the location bounding box into the container width
