@@ -10127,75 +10127,381 @@ function AdminScreen({ isDemo = false }) {
 // PLAN SCREEN — holding page until visualiser + rotation are built
 // Only visible to Mark (or when PRO_ENABLED=true)
 // =============================================================================
-function PlanScreen() {
-  const features = [
-    {
-      icon: "🗺️",
-      title: "Garden Visualiser",
-      desc: "See your entire garden laid out spatially. Drag and drop crops between areas, view companion planting relationships, and spot gaps at a glance.",
-      status: "Coming soon",
-    },
-    {
-      icon: "🔄",
-      title: "Rotation Planner",
-      desc: "Automatically suggest what to grow where next season based on crop families, soil depletion, and your harvest history. Never repeat the same family twice.",
-      status: "Coming soon",
-    },
-    {
-      icon: "📊",
-      title: "Yield & ROI",
-      desc: "See how much food your garden is producing and what it's worth. Compare layouts and get suggestions that maximise your harvest for the space you have.",
-      status: "Coming soon",
-    },
-    {
-      icon: "⚖️",
-      title: "Layout Comparison",
-      desc: "Generate 2–3 optimised plans based on your goals — max yield, favourites, rotation-safe — then compare side by side before applying.",
-      status: "Coming soon",
-    },
-  ];
+// =============================================================================
+// PLAN SCREEN — Garden Visualiser (V1)
+// Mark only until navEnabled goes live for all users.
+// Shows all locations + areas + crops visually.
+// Locked metric placeholders for Pro upsell.
+// =============================================================================
+
+// ── Area detail sheet ─────────────────────────────────────────────────────────
+function AreaDetailSheet({ area, crops, onClose, onEditDimensions }) {
+  const areaType = (area.type || "area").replace(/_/g, " ");
+  const hasDimensions = area.width_m && area.length_m;
+  const sqm = hasDimensions ? (area.width_m * area.length_m).toFixed(1) : null;
+
+  const statusColor = {
+    growing:       C.leaf,
+    sown_indoors:  C.amber,
+    sown_outdoors: C.amber,
+    transplanted:  C.forest,
+    planned:       C.stone,
+    harvested:     C.stone,
+  };
+
+  const statusLabel = {
+    growing:       "Growing",
+    sown_indoors:  "Sown indoors",
+    sown_outdoors: "Sown outdoors",
+    transplanted:  "Transplanted",
+    planned:       "Planned",
+    harvested:     "Harvested",
+  };
 
   return (
-    <div style={{ paddingBottom: 20 }}>
-      {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 16, padding: "24px 20px 20px", marginBottom: 20, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -20, right: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
-        <div style={{ position: "relative" }}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>Coming to Vercro Pro</div>
-          <div style={{ fontFamily: "serif", fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>Plan your garden smarter</div>
-          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
-            The planner turns your garden data into decisions — optimising for yield, rotation, and the crops you actually want to grow.
-          </div>
-        </div>
-      </div>
+    <div style={{ position: "fixed", inset: 0, zIndex: 800, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "85vh", display: "flex", flexDirection: "column" }}
+        onClick={e => e.stopPropagation()}>
 
-      {/* Feature cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-        {features.map((f, i) => (
-          <div key={i} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
-            <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{f.icon}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <div style={{ fontFamily: "serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>{f.title}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "2px 8px", letterSpacing: 0.5, textTransform: "uppercase", flexShrink: 0 }}>{f.status}</div>
+        {/* Handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ padding: "14px 20px 12px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>{area.name}</div>
+              <div style={{ fontSize: 13, color: C.stone, textTransform: "capitalize", marginTop: 2 }}>
+                {areaType}{sqm ? ` · ${sqm}m²` : ""}
               </div>
-              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>{f.desc}</div>
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: C.stone, cursor: "pointer", padding: 4 }}>×</button>
+          </div>
+
+          {/* Dimensions prompt */}
+          {!hasDimensions && (
+            <button onClick={onEditDimensions}
+              style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 8, padding: "7px 12px", cursor: "pointer", width: "100%" }}>
+              <span style={{ fontSize: 14 }}>📐</span>
+              <span style={{ fontSize: 12, color: "#7a5c00", fontWeight: 600 }}>Add dimensions for yield + space tracking</span>
+            </button>
+          )}
+        </div>
+
+        {/* Crops list */}
+        <div style={{ overflowY: "auto", flex: 1, padding: "12px 20px 32px" }}>
+          {crops.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 0", color: C.stone }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🌱</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Empty bed</div>
+              <div style={{ fontSize: 13 }}>Nothing planted here yet this season</div>
+            </div>
+          ) : (
+            crops.map(crop => (
+              <div key={crop.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
+                  {crop.variety && <div style={{ fontSize: 12, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: statusColor[crop.status] || C.stone,
+                  background: (statusColor[crop.status] || C.stone) + "18",
+                  borderRadius: 20, padding: "3px 10px", flexShrink: 0 }}>
+                  {statusLabel[crop.status] || crop.status || "Growing"}
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Locked metrics row */}
+          <div style={{ marginTop: 20, background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Area insights</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[["📊 Yield", "Estimate yield for this bed"], ["🔄 Rotation", "Rotation score"], ["📐 Utilisation", "Space used %"]].map(([label, hint]) => (
+                <div key={label} style={{ flex: 1, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                  <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.stone }}>🔒</div>
+                  <div style={{ fontSize: 9, color: C.stone, marginTop: 3 }}>Pro</div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Foundation note */}
-      <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px" }}>
-        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.7 }}>
-          <span style={{ fontWeight: 700, color: C.forest }}>Your data is already working for you.</span>{" "}
-          Every crop you add, task you complete, and harvest you log is building the foundation the planner needs — locations, areas, rotation history, yield patterns.
-          When the planner launches, it will hit the ground running.
         </div>
       </div>
     </div>
   );
 }
+
+// ── Area card (grid view) ─────────────────────────────────────────────────────
+function AreaCard({ area, crops, onTap }) {
+  const hasDimensions = area.width_m && area.length_m;
+  const isEmpty = crops.length === 0;
+  const areaType = (area.type || "area").replace(/_/g, " ");
+
+  const typeEmoji = {
+    raised_bed:   "🪴",
+    greenhouse:   "🏠",
+    polytunnel:   "⛺",
+    container:    "🪣",
+    open_ground:  "🌿",
+  }[area.type] || "🌱";
+
+  // Show up to 6 crops as emoji chips, remainder as +N
+  const MAX_SHOW = 6;
+  const shown  = crops.slice(0, MAX_SHOW);
+  const hidden = crops.length - MAX_SHOW;
+
+  return (
+    <div onClick={onTap}
+      style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 16px", cursor: "pointer", position: "relative", minHeight: 120, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+
+      {/* Missing dimensions flag */}
+      {!hasDimensions && (
+        <div style={{ position: "absolute", top: 10, right: 10, background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#7a5c00" }}>
+          📐 Add size
+        </div>
+      )}
+
+      {/* Area header */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <span style={{ fontSize: 16 }}>{typeEmoji}</span>
+          <div style={{ fontFamily: "serif", fontSize: 15, fontWeight: 700, color: "#1a1a1a", flex: 1, paddingRight: hasDimensions ? 0 : 60 }}>{area.name}</div>
+        </div>
+        <div style={{ fontSize: 11, color: C.stone, textTransform: "capitalize", marginBottom: 10 }}>
+          {areaType}{hasDimensions ? ` · ${(area.width_m * area.length_m).toFixed(0)}m²` : ""}
+        </div>
+      </div>
+
+      {/* Crop chips */}
+      {isEmpty ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0" }}>
+          <span style={{ fontSize: 20, opacity: 0.3 }}>🌱</span>
+          <span style={{ fontSize: 12, color: C.stone, fontStyle: "italic" }}>Empty bed</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+          {shown.map(crop => (
+            <div key={crop.id} style={{ display: "flex", alignItems: "center", gap: 4, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "3px 8px" }}>
+              <span style={{ fontSize: 14 }}>{getCropEmoji(crop.name)}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#1a1a1a", maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crop.name}</span>
+            </div>
+          ))}
+          {hidden > 0 && (
+            <div style={{ background: C.forest + "18", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: C.forest }}>+{hidden}</div>
+          )}
+        </div>
+      )}
+
+      {/* Footer — crop count */}
+      <div style={{ marginTop: 10, fontSize: 11, color: C.stone }}>
+        {crops.length === 0 ? "Nothing planted" : `${crops.length} crop${crops.length !== 1 ? "s" : ""}`}
+      </div>
+    </div>
+  );
+}
+
+// ── Area row (list view) ──────────────────────────────────────────────────────
+function AreaRow({ area, crops, onTap }) {
+  const hasDimensions = area.width_m && area.length_m;
+  const typeEmoji = {
+    raised_bed: "🪴", greenhouse: "🏠", polytunnel: "⛺", container: "🪣", open_ground: "🌿",
+  }[area.type] || "🌱";
+
+  return (
+    <div onClick={onTap}
+      style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+      <div style={{ fontSize: 24, flexShrink: 0 }}>{typeEmoji}</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontFamily: "serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>{area.name}</div>
+          {!hasDimensions && (
+            <span style={{ fontSize: 10, background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 20, padding: "1px 7px", color: "#7a5c00", fontWeight: 700 }}>📐 Add size</span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
+          {crops.length === 0
+            ? "Empty bed"
+            : crops.slice(0, 4).map(c => c.name).join(", ") + (crops.length > 4 ? ` +${crops.length - 4} more` : "")}
+        </div>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, flexShrink: 0 }}>
+        {crops.length > 0 ? `${crops.length} 🌱` : ""}
+      </div>
+      <div style={{ fontSize: 18, color: C.stone, flexShrink: 0 }}>›</div>
+    </div>
+  );
+}
+
+// ── Main PlanScreen ───────────────────────────────────────────────────────────
+function PlanScreen() {
+  const [locations,    setLocations]    = useState([]);
+  const [crops,        setCrops]        = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [selectedLoc,  setSelectedLoc]  = useState(null);
+  const [viewMode,     setViewMode]     = useState("grid"); // "grid" | "list"
+  const [selectedArea, setSelectedArea] = useState(null);
+  const { isPro, isMark }              = useProStatus();
+
+  // Mark sees everything unlocked. Free users only see first location.
+  const unlockedLocId = (isPro || isMark) ? null : locations[0]?.id;
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch("/locations"),
+      apiFetch("/crops"),
+    ]).then(([locs, cropsData]) => {
+      setLocations(locs || []);
+      setCrops(cropsData || []);
+      if (locs?.length) setSelectedLoc(locs[0].id);
+    }).catch(e => setError(e.message))
+    .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div style={{ textAlign: "center", padding: "60px 0" }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>🗺️</div>
+      <div style={{ fontFamily: "serif", fontSize: 16, fontWeight: 700, color: C.forest }}>Loading your garden…</div>
+    </div>
+  );
+
+  if (error) return <ErrorMsg msg={error} />;
+
+  // Get location data for selected location
+  const currentLoc = locations.find(l => l.id === selectedLoc);
+  const areas = (currentLoc?.growing_areas || []);
+
+  // Map crops to their area
+  const cropsByArea = {};
+  for (const area of areas) {
+    cropsByArea[area.id] = crops.filter(c => c.area_id === area.id && c.active !== false);
+  }
+
+  // Crop for area detail sheet
+  const selectedAreaData = selectedArea ? areas.find(a => a.id === selectedArea) : null;
+  const selectedAreaCrops = selectedArea ? (cropsByArea[selectedArea] || []) : [];
+
+  // Summary stats
+  const totalCrops = Object.values(cropsByArea).reduce((n, arr) => n + arr.length, 0);
+  const emptyAreas = areas.filter(a => (cropsByArea[a.id] || []).length === 0).length;
+  const missingDims = areas.filter(a => !a.width_m || !a.length_m).length;
+
+  return (
+    <div style={{ paddingBottom: 20 }}>
+
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 16, padding: "18px 20px 16px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>Garden Visualiser</div>
+          <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+            {currentLoc?.name || "My garden"}
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+            {areas.length} area{areas.length !== 1 ? "s" : ""} · {totalCrops} crop{totalCrops !== 1 ? "s" : ""}
+            {emptyAreas > 0 ? ` · ${emptyAreas} empty` : ""}
+          </div>
+        </div>
+      </div>
+
+      {/* Location selector — all unlocked for Mark/Pro, first only for free */}
+      {locations.length > 1 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, overflowX: "auto", paddingBottom: 4 }}>
+          {locations.map(loc => {
+            const isLocked = unlockedLocId && loc.id !== unlockedLocId;
+            return (
+              <button key={loc.id}
+                onClick={() => isLocked ? null : setSelectedLoc(loc.id)}
+                style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 20, border: `1px solid ${selectedLoc === loc.id ? C.forest : C.border}`, background: selectedLoc === loc.id ? C.forest : "#fff", color: selectedLoc === loc.id ? "#fff" : isLocked ? C.stone : "#1a1a1a", fontSize: 13, fontWeight: 600, cursor: isLocked ? "default" : "pointer", opacity: isLocked ? 0.6 : 1, display: "flex", alignItems: "center", gap: 6 }}>
+                {isLocked && <span>🔒</span>}
+                {loc.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Missing dimensions banner */}
+      {missingDims > 0 && (
+        <div style={{ background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 18 }}>📐</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#7a5c00" }}>
+              {missingDims} area{missingDims !== 1 ? "s" : ""} missing dimensions
+            </div>
+            <div style={{ fontSize: 12, color: "#9a7200" }}>Add width and length to unlock yield and space tracking</div>
+          </div>
+        </div>
+      )}
+
+      {/* View toggle + locked metrics pills */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        {/* Grid / List toggle */}
+        <div style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3 }}>
+          {[["grid", "⊞ Grid"], ["list", "☰ List"]].map(([id, label]) => (
+            <button key={id} onClick={() => setViewMode(id)}
+              style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: viewMode === id ? C.forest : "transparent", color: viewMode === id ? "#fff" : C.stone, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Locked metric pills */}
+        <div style={{ display: "flex", gap: 6 }}>
+          {["📊 Yield", "🔄 Rotation"].map(label => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 20, padding: "4px 10px", fontSize: 11, color: C.stone }}>
+              {label} <span style={{ fontSize: 10 }}>🔒</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* No areas state */}
+      {areas.length === 0 && (
+        <div style={{ textAlign: "center", padding: "40px 0", color: C.stone }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No areas in this location</div>
+          <div style={{ fontSize: 13 }}>Add growing areas in the Garden tab to see them here</div>
+        </div>
+      )}
+
+      {/* Grid view */}
+      {viewMode === "grid" && areas.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {areas.map(area => (
+            <AreaCard key={area.id} area={area} crops={cropsByArea[area.id] || []}
+              onTap={() => setSelectedArea(area.id)} />
+          ))}
+        </div>
+      )}
+
+      {/* List view */}
+      {viewMode === "list" && areas.length > 0 && (
+        <div>
+          {areas.map(area => (
+            <AreaRow key={area.id} area={area} crops={cropsByArea[area.id] || []}
+              onTap={() => setSelectedArea(area.id)} />
+          ))}
+        </div>
+      )}
+
+      {/* Area detail sheet */}
+      {selectedAreaData && (
+        <AreaDetailSheet
+          area={selectedAreaData}
+          crops={selectedAreaCrops}
+          onClose={() => setSelectedArea(null)}
+          onEditDimensions={() => setSelectedArea(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 
 const TABS = [
   { id: "dashboard", label: "Today",   icon: "◈" },
