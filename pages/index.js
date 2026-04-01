@@ -146,6 +146,21 @@ function usePlantCheckEnabled() {
   return enabled;
 }
 
+// ── Nav redesign visibility hook ─────────────────────────────────────────────
+// Returns true only for Mark's account OR when PRO_ENABLED=true.
+// When false: nav is unchanged, Feeds tab stays, Plan tab hidden.
+// When true: Plan tab replaces Feeds, Feeds moves inside Crops tab.
+function useNavEnabled() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    if (PRO_ENABLED) { setEnabled(true); return; }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email === MARK_EMAIL) setEnabled(true);
+    }).catch(() => {});
+  }, []);
+  return enabled;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Supabase joins can return variety as a nested object {name, days_to_maturity_min}
 // or as a plain string depending on the query. This always returns a safe string.
@@ -2405,6 +2420,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
   const [showPlantCheck,     setShowPlantCheck]     = useState(false);
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
   const plantCheckEnabled = usePlantCheckEnabled();
+  const [cropTab, setCropTab] = useState("crops"); // "crops" | "feeds"
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -5274,7 +5290,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
   );
 }
 
-function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false }) {
+function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
   const [crops,    setCrops]   = useState(_cachedCrops?.cropsData || []);
@@ -5499,6 +5515,24 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onDone={() => { setCropPlantCheck(null); load(); }}
         />
       )}
+      {/* Crops / Feed toggle — only shown when nav is redesigned (Mark or PRO_ENABLED) */}
+      {navEnabled && (
+        <div style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
+          {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
+            <button key={id} onClick={() => setCropTab(id)}
+              style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif", transition: "all 0.15s" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Feeds view — only when navEnabled and cropTab=feeds */}
+      {navEnabled && cropTab === "feeds" && <FeedsScreen />}
+
+      {/* Crops view — always shown when navEnabled=false, or when cropTab=crops */}
+      {(!navEnabled || cropTab === "crops") && <>
+
       {/* Header + filter/sort controls */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -6105,6 +6139,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         </div>
       ))}
     </div>
+    </>}
   );
 }
 
@@ -10088,6 +10123,80 @@ function AdminScreen({ isDemo = false }) {
   );
 }
 
+// =============================================================================
+// PLAN SCREEN — holding page until visualiser + rotation are built
+// Only visible to Mark (or when PRO_ENABLED=true)
+// =============================================================================
+function PlanScreen() {
+  const features = [
+    {
+      icon: "🗺️",
+      title: "Garden Visualiser",
+      desc: "See your entire garden laid out spatially. Drag and drop crops between areas, view companion planting relationships, and spot gaps at a glance.",
+      status: "Coming soon",
+    },
+    {
+      icon: "🔄",
+      title: "Rotation Planner",
+      desc: "Automatically suggest what to grow where next season based on crop families, soil depletion, and your harvest history. Never repeat the same family twice.",
+      status: "Coming soon",
+    },
+    {
+      icon: "📊",
+      title: "Yield & ROI",
+      desc: "See how much food your garden is producing and what it's worth. Compare layouts and get suggestions that maximise your harvest for the space you have.",
+      status: "Coming soon",
+    },
+    {
+      icon: "⚖️",
+      title: "Layout Comparison",
+      desc: "Generate 2–3 optimised plans based on your goals — max yield, favourites, rotation-safe — then compare side by side before applying.",
+      status: "Coming soon",
+    },
+  ];
+
+  return (
+    <div style={{ paddingBottom: 20 }}>
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 16, padding: "24px 20px 20px", marginBottom: 20, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>Coming to Vercro Pro</div>
+          <div style={{ fontFamily: "serif", fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>Plan your garden smarter</div>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
+            The planner turns your garden data into decisions — optimising for yield, rotation, and the crops you actually want to grow.
+          </div>
+        </div>
+      </div>
+
+      {/* Feature cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+        {features.map((f, i) => (
+          <div key={i} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{f.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ fontFamily: "serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>{f.title}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "2px 8px", letterSpacing: 0.5, textTransform: "uppercase", flexShrink: 0 }}>{f.status}</div>
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>{f.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Foundation note */}
+      <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px" }}>
+        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.7 }}>
+          <span style={{ fontWeight: 700, color: C.forest }}>Your data is already working for you.</span>{" "}
+          Every crop you add, task you complete, and harvest you log is building the foundation the planner needs — locations, areas, rotation history, yield patterns.
+          When the planner launches, it will hit the ground running.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id: "dashboard", label: "Today",   icon: "◈" },
   { id: "garden",    label: "Garden",  icon: "⬡" },
@@ -10471,6 +10580,7 @@ export default function GrowSmart() {
   const [showFeedback,         setShowFeedback]         = useState(false);
   const [showGlobalPlantCheck, setShowGlobalPlantCheck] = useState(false);
   const showGlobalPlantCheckEnabled = usePlantCheckEnabled();
+  const navEnabled = useNavEnabled();
   const [subscribedToast, setSubscribedToast] = useState(false);
 
   // Handle Stripe redirect back after successful checkout
@@ -10530,10 +10640,11 @@ export default function GrowSmart() {
       <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
-        {tab === "crops"     && <CropList isDemo={isDemo} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
+        {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
-        {tab === "feeds"     && <FeedsScreen />}
+        {tab === "feeds"     && !navEnabled && <FeedsScreen />}
+        {tab === "plan"      && navEnabled   && <PlanScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
         {tab === "admin"     && isViewer && !isAdmin && !isDemo && <ViewerAdminScreen />}
@@ -10581,7 +10692,16 @@ export default function GrowSmart() {
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
-        {[...TABS, ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []), ...(isViewer && !isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
+        {[...(navEnabled
+    ? [
+        { id: "dashboard", label: "Today",   icon: "◈" },
+        { id: "garden",    label: "Garden",  icon: "⬡" },
+        { id: "plan",      label: "Plan",    icon: "◫" },
+        { id: "crops",     label: "Crops",   icon: "◉" },
+        { id: "profile",   label: "Profile", icon: "👤" },
+      ]
+    : TABS
+  ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []), ...(isViewer && !isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
