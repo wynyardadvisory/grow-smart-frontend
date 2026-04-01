@@ -10253,6 +10253,7 @@ function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) 
         onDragEnd(area.id, posRef.current.x, posRef.current.y);
       }, 300);
     } else {
+      e.stopPropagation(); // prevent bubbling to canvas which would clear activeBlock
       onTap(area.id);
     }
   };
@@ -10636,7 +10637,7 @@ function PlanScreen() {
       {/* Canvas */}
       <div
         ref={containerRef}
-        onClick={() => { setActiveBlock(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setActiveBlock(null); }}
         style={{ width: "100%", overflowX: "auto", overflowY: "auto", maxHeight: 500, background: "#eef3ec", borderRadius: 16, border: `1px solid ${C.border}`, position: "relative" }}>
 
         {/* Saved toast */}
