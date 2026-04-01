@@ -2420,7 +2420,6 @@ function Dashboard({ onTabChange, isDemo = false }) {
   const [showPlantCheck,     setShowPlantCheck]     = useState(false);
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
   const plantCheckEnabled = usePlantCheckEnabled();
-  const [cropTab, setCropTab] = useState("crops"); // "crops" | "feeds"
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -5331,6 +5330,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [showFilters,   setShowFilters]   = useState(false);
   const [cropPlantCheck, setCropPlantCheck] = useState(null); // crop object when Plant Check opened from crop card
   const plantCheckEnabled = usePlantCheckEnabled();
+  const [cropTab, setCropTab] = useState("crops"); // "crops" | "feeds" — toggle inside Crops tab
 
   const load = useCallback(async () => {
     // Fetch fresh
