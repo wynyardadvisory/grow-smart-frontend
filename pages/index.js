@@ -10128,80 +10128,86 @@ function AdminScreen({ isDemo = false }) {
 // Only visible to Mark (or when PRO_ENABLED=true)
 // =============================================================================
 // =============================================================================
-// PLAN SCREEN — Garden Visualiser V3
-// True-to-scale spatial canvas. Location dimensions define canvas size.
-// Areas are sized in metres, positioned in metres, saved in metres.
-// Crops shown as emoji grid inside each area block.
-// Rotate works via floating button outside drag surface.
+// PLAN SCREEN — Garden Visualiser V4
+// Premium spatial canvas. Calm, tactile, minimal.
 // =============================================================================
 
-// ── Area type config ──────────────────────────────────────────────────────────
+// ── Area type styles — physical, not UI ──────────────────────────────────────
 const AREA_STYLES = {
-  raised_bed:  { bg: "#C4A882", border: "#8B6F47", soil: "#A0785A" },
-  greenhouse:  { bg: "#A8D5B5", border: "#4A7C59", soil: "#6AAB82" },
-  polytunnel:  { bg: "#B5D4A8", border: "#5B8A3C", soil: "#7AAD5A" },
-  container:   { bg: "#C9B99A", border: "#7A6B55", soil: "#A08060" },
-  open_ground: { bg: "#AACB8A", border: "#5A7A3A", soil: "#7AAD50" },
+  raised_bed:  { bg: "#C8A97A", border: "#9C7A4E", labelColor: "#7A5C35", soilBg: "#D4B48C" },
+  greenhouse:  { bg: "#B8D4B0", border: "#6A9B70", labelColor: "#456B48", soilBg: "#C8E0C0" },
+  polytunnel:  { bg: "#C0D8B8", border: "#72A878", labelColor: "#4A7050", soilBg: "#D0E8C8" },
+  container:   { bg: "#BFAA8A", border: "#8C7558", labelColor: "#6A5540", soilBg: "#CFC0A0" },
+  open_ground: { bg: "#B8C89A", border: "#7A9060", labelColor: "#506040", soilBg: "#C8D8AA" },
 };
 function getAreaStyle(type) {
   return AREA_STYLES[type] || AREA_STYLES.open_ground;
 }
 
-// ── Emoji grid renderer — fills area with crop emojis ────────────────────────
-function EmojiGrid({ crops, widthPx, heightPx }) {
+// ── Sparse emoji grid — premium spacing, not filled ──────────────────────────
+function CropDots({ crops, widthPx, heightPx }) {
   if (!crops.length) {
-    // Empty — show faint soil texture suggestion
     return (
-      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.25 }}>
-        <span style={{ fontSize: Math.min(widthPx, heightPx) * 0.35 }}>🌱</span>
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontStyle: "italic", textAlign: "center", lineHeight: 1.5, userSelect: "none" }}>
+          empty
+        </div>
       </div>
     );
   }
 
-  // Calculate grid: how many cells fit?
-  const cellSize = Math.max(16, Math.min(32, Math.min(widthPx, heightPx) / 3));
-  const cols = Math.max(1, Math.floor((widthPx - 8) / cellSize));
-  const rows = Math.max(1, Math.floor((heightPx - 8) / cellSize));
-  const totalCells = cols * rows;
+  // Sparse grid — generous spacing so crops breathe
+  const PAD = 8;
+  const cellSize = Math.max(18, Math.min(28, Math.min(widthPx, heightPx) * 0.28));
+  const cols = Math.max(1, Math.floor((widthPx - PAD * 2) / (cellSize + 4)));
+  const rows = Math.max(1, Math.floor((heightPx - PAD * 2) / (cellSize + 4)));
+  const maxShow = cols * rows;
 
-  // Repeat crop emojis to fill all cells
-  const cells = [];
-  for (let i = 0; i < totalCells; i++) {
-    const crop = crops[i % crops.length];
-    cells.push(getCropEmoji(crop.name));
+  // Deduplicate crops — show one icon per crop type, not one per instance
+  const unique = [];
+  const seen = new Set();
+  for (const c of crops) {
+    if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); }
   }
+  const shown = unique.slice(0, maxShow);
 
   return (
     <div style={{
       width: "100%", height: "100%",
       display: "grid",
-      gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
-      gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
-      overflow: "hidden",
-      alignContent: "center",
-      justifyContent: "center",
-      gap: 0,
-      padding: 4,
+      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+      padding: PAD,
+      gap: 4,
       boxSizing: "border-box",
+      alignContent: "start",
     }}>
-      {cells.map((emoji, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: cellSize * 0.65, lineHeight: 1 }}>
-          {emoji}
+      {shown.map((crop, i) => (
+        <div key={i} style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: cellSize * 0.75,
+          lineHeight: 1,
+          filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))",
+        }}>
+          {getCropEmoji(crop.name)}
         </div>
       ))}
+      {unique.length > maxShow && (
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+          +{unique.length - maxShow}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Draggable area block ──────────────────────────────────────────────────────
+// ── Area block — physical, tactile ───────────────────────────────────────────
 function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) {
-  const blockRef   = useRef(null);
-  const dragState  = useRef({ active: false, moved: false, startX: 0, startY: 0, origX: 0, origY: 0 });
+  const blockRef  = useRef(null);
+  const dragState = useRef({ active: false, moved: false, startX: 0, startY: 0, origX: 0, origY: 0 });
   const [pos, setPos] = useState({ x: area.layout_x ?? 0.5, y: area.layout_y ?? 0.5 });
-  const posRef     = useRef(pos);
-  const saveTimer  = useRef(null);
+  const posRef    = useRef(pos);
+  const saveTimer = useRef(null);
 
-  // Sync if area prop changes externally
   useEffect(() => {
     if (!dragState.current.active) {
       const p = { x: area.layout_x ?? 0.5, y: area.layout_y ?? 0.5 };
@@ -10211,28 +10217,20 @@ function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) 
   }, [area.layout_x, area.layout_y]);
 
   const style = getAreaStyle(area.type);
-  const w = (area.rotation === 90 || area.rotation === 270)
-    ? (area.length_m || 2) : (area.width_m  || 2);
-  const h = (area.rotation === 90 || area.rotation === 270)
-    ? (area.width_m  || 2) : (area.length_m || 2);
-  // Enforce minimum rendered size so small areas (e.g. 0.4m containers) are visible
-  // Min 60px wide, 50px tall regardless of actual dimensions
-  const MIN_PX_W = 60;
-  const MIN_PX_H = 50;
-  const widthPx  = Math.max(MIN_PX_W, w * pxPerM);
-  const heightPx = Math.max(MIN_PX_H, h * pxPerM);
-  const isTooSmall = (w * pxPerM) < MIN_PX_W || (h * pxPerM) < MIN_PX_H;
+  const isRotated = area.rotation === 90 || area.rotation === 270;
+  const w = isRotated ? (area.length_m || 2) : (area.width_m  || 2);
+  const h = isRotated ? (area.width_m  || 2) : (area.length_m || 2);
+  const MIN_PX = 55;
+  const widthPx  = Math.max(MIN_PX, w * pxPerM);
+  const heightPx = Math.max(MIN_PX, h * pxPerM);
+  const labelH   = Math.max(16, Math.min(22, heightPx * 0.2));
+  const fontSize  = Math.max(7, Math.min(11, labelH * 0.6));
 
   const onPointerDown = (e) => {
     e.stopPropagation();
-    dragState.current = {
-      active: true, moved: false,
-      startX: e.clientX, startY: e.clientY,
-      origX: posRef.current.x, origY: posRef.current.y,
-    };
+    dragState.current = { active: true, moved: false, startX: e.clientX, startY: e.clientY, origX: posRef.current.x, origY: posRef.current.y };
     blockRef.current?.setPointerCapture(e.pointerId);
   };
-
   const onPointerMove = (e) => {
     if (!dragState.current.active) return;
     const dx = (e.clientX - dragState.current.startX) / pxPerM;
@@ -10243,17 +10241,14 @@ function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) 
     posRef.current = { x: newX, y: newY };
     setPos({ x: newX, y: newY });
   };
-
   const onPointerUp = (e) => {
     if (!dragState.current.active) return;
     dragState.current.active = false;
     if (dragState.current.moved) {
       clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        onDragEnd(area.id, posRef.current.x, posRef.current.y);
-      }, 300);
+      saveTimer.current = setTimeout(() => onDragEnd(area.id, posRef.current.x, posRef.current.y), 300);
     } else {
-      e.stopPropagation(); // prevent bubbling to canvas which would clear activeBlock
+      e.stopPropagation();
       onTap(area.id);
     }
   };
@@ -10270,50 +10265,57 @@ function CanvasAreaBlock({ area, crops, pxPerM, isSelected, onTap, onDragEnd }) 
         top:  pos.y * pxPerM,
         width:  widthPx,
         height: heightPx,
-        background: style.bg,
-        border: `${isSelected ? 3 : 2}px solid ${isSelected ? C.forest : style.border}`,
-        borderRadius: Math.max(4, pxPerM * 0.15),
+        background: `linear-gradient(160deg, ${style.soilBg} 0%, ${style.bg} 100%)`,
+        border: `${isSelected ? 2.5 : 1.5}px solid ${isSelected ? "#2F5D50" : style.border}`,
+        borderRadius: Math.max(6, pxPerM * 0.12),
         boxShadow: isSelected
-          ? `0 0 0 3px ${C.forest}55, 0 4px 16px rgba(0,0,0,0.18)`
-          : "0 2px 8px rgba(0,0,0,0.12)",
+          ? "0 0 0 3px rgba(47,93,80,0.25), 0 4px 12px rgba(0,0,0,0.2)"
+          : "0 2px 6px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.2)",
         cursor: "grab",
         userSelect: "none",
         touchAction: "none",
         overflow: "hidden",
         zIndex: isSelected ? 20 : 1,
         boxSizing: "border-box",
-        transition: dragState.current?.active ? "none" : "box-shadow 0.15s",
       }}>
 
-      {/* Area name label — top strip */}
+      {/* Top label strip — small caps, edge-aligned, low contrast */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0,
-        background: style.border + "cc",
-        padding: `${Math.max(2, pxPerM * 0.06)}px ${Math.max(4, pxPerM * 0.1)}px`,
-        fontSize: Math.max(8, Math.min(13, pxPerM * 0.22)),
-        fontWeight: 700,
-        color: "#fff",
-        fontFamily: "serif",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        zIndex: 2,
-        lineHeight: 1.3,
+        height: labelH,
+        padding: `2px ${Math.max(4, fontSize)}px 0`,
+        display: "flex", alignItems: "center",
+        background: "rgba(0,0,0,0.12)",
       }}>
-        {area.name}
+        <span style={{
+          fontSize,
+          fontWeight: 700,
+          color: "rgba(255,255,255,0.75)",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          fontFamily: "sans-serif",
+          userSelect: "none",
+        }}>
+          {area.name.replace(/^"|"$/g, "")}
+        </span>
       </div>
 
-      {/* Emoji grid — fills area below label */}
-      <div style={{ position: "absolute", top: Math.max(16, pxPerM * 0.28), left: 0, right: 0, bottom: 0 }}>
-        <EmojiGrid crops={crops} widthPx={widthPx} heightPx={heightPx - Math.max(16, pxPerM * 0.28)} />
+      {/* Crop dots */}
+      <div style={{ position: "absolute", top: labelH, left: 0, right: 0, bottom: 0 }}>
+        <CropDots crops={crops} widthPx={widthPx} heightPx={heightPx - labelH} />
       </div>
 
-      {/* Missing dimensions or too-small indicator */}
-      {(!area.width_m || !area.length_m) && (
-        <div style={{ position: "absolute", bottom: 3, right: 4, fontSize: Math.max(8, pxPerM * 0.16), opacity: 0.7 }}>📐</div>
-      )}
-      {isTooSmall && area.width_m && area.length_m && (
-        <div style={{ position: "absolute", bottom: 3, right: 4, fontSize: 8, color: style.border, opacity: 0.8, fontWeight: 700 }}>~</div>
+      {/* Selection pulse ring */}
+      {isSelected && (
+        <div style={{
+          position: "absolute", inset: -4,
+          border: "2px solid rgba(47,93,80,0.4)",
+          borderRadius: Math.max(8, pxPerM * 0.16),
+          pointerEvents: "none",
+        }} />
       )}
     </div>
   );
@@ -10324,35 +10326,33 @@ function AreaDetailSheet({ area, crops, onClose }) {
   const style = getAreaStyle(area.type);
   const hasDimensions = area.width_m && area.length_m;
   const sqm = hasDimensions ? (area.width_m * area.length_m).toFixed(1) : null;
-  const statusColor  = { growing: C.leaf, sown_indoors: C.amber, sown_outdoors: C.amber, transplanted: C.forest, planned: C.stone, harvested: C.stone };
-  const statusLabel  = { growing: "Growing", sown_indoors: "Indoors", sown_outdoors: "Outdoors", transplanted: "Transplanted", planned: "Planned", harvested: "Harvested" };
+  const statusColor = { growing: C.leaf, sown_indoors: C.amber, sown_outdoors: C.amber, transplanted: C.forest, planned: C.stone, harvested: C.stone };
+  const statusLabel = { growing: "Growing", sown_indoors: "Indoors", sown_outdoors: "Outdoors", transplanted: "Transplanted", planned: "Planned", harvested: "Harvested" };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+    <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ padding: "14px 20px 12px", borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontFamily: "serif", fontSize: 19, fontWeight: 700, color: "#1a1a1a" }}>{area.name}</div>
-              <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
-                {(area.type || "area").replace(/_/g, " ")}
-                {sqm ? ` · ${area.width_m}m × ${area.length_m}m (${sqm}m²)` : " · dimensions not set"}
-              </div>
-            </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: C.stone, cursor: "pointer" }}>×</button>
+        {/* Coloured header strip */}
+        <div style={{ background: `linear-gradient(135deg, ${style.bg}, ${style.soilBg})`, margin: "12px 16px", borderRadius: 14, padding: "14px 16px" }}>
+          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.2)" }}>
+            {area.name.replace(/^"|"$/g, "")}
           </div>
-          {!hasDimensions && (
-            <div style={{ marginTop: 10, background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#7a5c00", fontWeight: 600 }}>
-              📐 Add dimensions in Garden tab for accurate scale
-            </div>
-          )}
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 2 }}>
+            {(area.type || "area").replace(/_/g, " ")}
+            {sqm ? ` · ${area.width_m}m × ${area.length_m}m · ${sqm}m²` : " · dimensions not set"}
+          </div>
         </div>
-        <div style={{ overflowY: "auto", flex: 1, padding: "12px 20px 40px" }}>
+        {!hasDimensions && (
+          <div style={{ margin: "0 16px 12px", background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#7a5c00", fontWeight: 600 }}>
+            📐 Add dimensions in Garden tab for accurate scale
+          </div>
+        )}
+        <div style={{ overflowY: "auto", flex: 1, padding: "0 20px 40px" }}>
           {crops.length === 0 ? (
             <div style={{ textAlign: "center", padding: "32px 0", color: C.stone }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>🌱</div>
@@ -10361,7 +10361,7 @@ function AreaDetailSheet({ area, crops, onClose }) {
             </div>
           ) : crops.map(crop => (
             <div key={crop.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
                 {crop.variety && <div style={{ fontSize: 12, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
@@ -10371,13 +10371,12 @@ function AreaDetailSheet({ area, crops, onClose }) {
               </div>
             </div>
           ))}
-          {/* Locked metrics */}
           <div style={{ marginTop: 20, background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Area insights</div>
             <div style={{ display: "flex", gap: 8 }}>
               {[["📊", "Yield"], ["🔄", "Rotation"], ["📐", "Space"]].map(([icon, label]) => (
                 <div key={label} style={{ flex: 1, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 6px", textAlign: "center" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
+                  <div style={{ fontSize: 16, marginBottom: 4 }}>{icon}</div>
                   <div style={{ fontSize: 10, color: C.stone, marginBottom: 4 }}>{label}</div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: C.stone }}>🔒 Pro</div>
                 </div>
@@ -10398,156 +10397,113 @@ function PlanScreen() {
   const [error,       setError]       = useState(null);
   const [selectedLoc, setSelectedLoc] = useState(null);
   const [areas,       setAreas]       = useState([]);
-  const [activeBlock, setActiveBlock] = useState(null); // selected area id
-  const [detailArea,  setDetailArea]  = useState(null); // area id for detail sheet
+  const [activeBlock, setActiveBlock] = useState(null);
+  const [detailArea,  setDetailArea]  = useState(null);
   const [savedToast,  setSavedToast]  = useState(false);
-  const [zoom,        setZoom]        = useState(1);    // zoom multiplier on top of base scale
+  const [zoom,        setZoom]        = useState(1);
 
-  const containerRef = useRef(null);
+  const containerRef    = useRef(null);
+  const autoLayoutDone  = useRef(false);
   const [containerW, setContainerW] = useState(360);
 
   const { isPro, isMark } = useProStatus();
 
-  // Measure container width
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    setContainerW(el.clientWidth);
-    const ro = new ResizeObserver(entries => {
-      setContainerW(entries[0].contentRect.width);
-    });
+    setContainerW(el.clientWidth || 360);
+    const ro = new ResizeObserver(e => setContainerW(e[0].contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Load data — fetch locations, areas, and crops separately.
+  // Load
   useEffect(() => {
     Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops")])
       .then(([locs, areasData, cropsData]) => {
-        const allAreas = areasData || [];
-        const allCrops = cropsData || [];
-        setCrops(allCrops);
-        console.log("[Visualiser] locations:", (locs||[]).length, "areas:", allAreas.length, "crops:", allCrops.length);
-        console.log("[Visualiser] sample area:", allAreas[0]);
-
-        // Attach areas to their location by location_id
+        setCrops(cropsData || []);
         const locsWithAreas = (locs || []).map(loc => ({
           ...loc,
-          growing_areas: allAreas.filter(a => a.location_id === loc.id),
+          growing_areas: (areasData || []).filter(a => a.location_id === loc.id),
         }));
-        console.log("[Visualiser] locsWithAreas:", locsWithAreas.map(l => ({ name: l.name, areas: l.growing_areas?.length })));
         setLocations(locsWithAreas);
         if (locsWithAreas.length) {
           setSelectedLoc(locsWithAreas[0].id);
-          const firstAreas = locsWithAreas[0].growing_areas || [];
-          console.log("[Visualiser] setting areas:", firstAreas.length);
-          setAreas(firstAreas);
+          setAreas(locsWithAreas[0].growing_areas || []);
         }
       })
-      .catch(e => { console.error("[Visualiser] load error:", e); setError(e.message); })
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  // Update areas when location changes
   useEffect(() => {
     const loc = locations.find(l => l.id === selectedLoc);
     if (loc) {
-      autoLayoutDone.current = false; // reset so auto-layout runs for new location
+      autoLayoutDone.current = false;
       setAreas(loc.growing_areas || []);
     }
   }, [selectedLoc, locations]);
 
-  // Auto-layout: runs once when areas load, assigns positions to any without saved layout
-  const autoLayoutDone = useRef(false);
+  // Auto-layout
   useEffect(() => {
     if (!areas.length) return;
     if (autoLayoutDone.current) return;
 
-    // Detect stale pixel-based positions — any position > 20m on a typical garden
-    // is clearly a pixel value from an older version. Reset those areas.
-    const maxSanePosition = Math.max(gardenW, gardenH, 20) * 3;
-    const hasStalePixelPositions = areas.some(a =>
-      a.layout_x != null && (Math.abs(a.layout_x) > maxSanePosition || Math.abs(a.layout_y) > maxSanePosition)
-    );
-    const needLayout = areas.filter(a =>
-      a.layout_x == null || a.layout_x === undefined || hasStalePixelPositions
-    );
-    const allAtOrigin = areas.length > 0 && areas.every(a => !a.layout_x && !a.layout_y);
-    console.log("[Visualiser] auto-layout check: needLayout=", needLayout.length,
-      "allAtOrigin=", allAtOrigin, "stalePixels=", hasStalePixelPositions,
-      "positions=", areas.map(a => a.name + ":" + a.layout_x + "," + a.layout_y));
-
-    if (!needLayout.length && !allAtOrigin) return;
+    const maxSane = Math.max(50, (loc?.width_m || 20) * 5);
+    const hasStale = areas.some(a => a.layout_x != null && Math.abs(a.layout_x) > maxSane);
+    const needLayout = areas.filter(a => a.layout_x == null || hasStale);
+    if (!needLayout.length) return;
 
     autoLayoutDone.current = true;
-    let x = 0.3, y = 0.3, rowH = 0;
-    const GAP = 0.5;
+    let x = 0.4, y = 0.4, rowH = 0;
+    const GAP = 0.4;
+    const maxRow = (loc?.width_m || 10) - 0.5;
     const updated = areas.map(area => {
-      const hasPosition = area.layout_x != null && area.layout_x !== undefined
-        && !allAtOrigin && !hasStalePixelPositions;
-      if (hasPosition) return area;
+      const hasPos = area.layout_x != null && !hasStale;
+      if (hasPos) return area;
       const w = area.width_m  || 1.5;
       const h = area.length_m || 1.5;
       const placed = { ...area, layout_x: x, layout_y: y };
       x += w + GAP;
       rowH = Math.max(rowH, h);
-      if (x > (gardenW - 1)) { x = 0.3; y += rowH + GAP; rowH = 0; }
+      if (x > maxRow) { x = 0.4; y += rowH + GAP; rowH = 0; }
       return placed;
     });
-    console.log("[Visualiser] auto-layout result:", updated.map(a => a.name + ":" + a.layout_x + "," + a.layout_y));
     setAreas(updated);
 
-    // If stale pixel positions were detected, clear them in DB so they don't persist
-    if (hasStalePixelPositions) {
-      Promise.all(areas.map(a =>
-        apiFetch(`/areas/${a.id}`, { method: "PUT", body: JSON.stringify({ layout_x: null, layout_y: null }) })
-          .catch(() => {})
-      )).then(() => console.log("[Visualiser] cleared stale pixel positions from DB"));
+    if (hasStale) {
+      areas.forEach(a => {
+        apiFetch(`/areas/${a.id}`, { method: "PUT", body: JSON.stringify({ layout_x: null, layout_y: null }) }).catch(() => {});
+      });
     }
   }, [areas.length, selectedLoc]);
 
-  // ── Scale calculation ─────────────────────────────────────────────────────
-  // Base: fit the location bounding box into the container width
-  // pxPerM = how many pixels per real-world metre
+  // Scale
   const loc = locations.find(l => l.id === selectedLoc);
-
-  // Determine garden size in metres
-  const gardenW = loc?.width_m  || (() => {
-    if (!areas.length) return 10;
-    const maxX = Math.max(...areas.map(a => (a.layout_x || 0) + (a.width_m  || 2)));
-    return maxX + 1;
-  })();
-  const gardenH = loc?.length_m || (() => {
-    if (!areas.length) return 10;
-    const maxY = Math.max(...areas.map(a => (a.layout_y || 0) + (a.length_m || 2)));
-    return maxY + 1;
-  })();
-
-  // Base scale: fit garden width into container with padding
-  const PADDING = 32;
-  const basePxPerM = (containerW - PADDING) / gardenW;
+  const gardenW = loc?.width_m  || Math.max(6, ...areas.map(a => (a.layout_x || 0) + (a.width_m  || 2))) + 1;
+  const gardenH = loc?.length_m || Math.max(6, ...areas.map(a => (a.layout_y || 0) + (a.length_m || 2))) + 1;
+  const CANVAS_PAD = 28;
+  const basePxPerM = Math.max(1, (containerW - CANVAS_PAD * 2) / gardenW);
   const pxPerM = basePxPerM * zoom;
-  const canvasW = gardenW * pxPerM + PADDING;
-  const canvasH = gardenH * pxPerM + PADDING;
+  const canvasW = gardenW * pxPerM + CANVAS_PAD * 2;
+  const canvasH = gardenH * pxPerM + CANVAS_PAD * 2;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleDragEnd = async (areaId, x, y) => {
     setAreas(prev => prev.map(a => a.id === areaId ? { ...a, layout_x: x, layout_y: y } : a));
     try {
       await apiFetch(`/areas/${areaId}`, { method: "PUT", body: JSON.stringify({ layout_x: x, layout_y: y }) });
       setSavedToast(true);
-      setTimeout(() => setSavedToast(false), 1800);
-    } catch(e) { console.error("[Visualiser] Save failed:", e.message); }
+      setTimeout(() => setSavedToast(false), 1500);
+    } catch(e) { console.error("[Visualiser] save failed:", e.message); }
   };
 
   const handleRotate = async (areaId) => {
     const area = areas.find(a => a.id === areaId);
     if (!area) return;
-    const newRotation = ((area.rotation || 0) + 90) % 360;
-    setAreas(prev => prev.map(a => a.id === areaId ? { ...a, rotation: newRotation } : a));
-    try {
-      await apiFetch(`/areas/${areaId}`, { method: "PUT", body: JSON.stringify({ rotation: newRotation }) });
-    } catch(e) { console.error("[Visualiser] Rotate save failed:", e.message); }
+    const newR = ((area.rotation || 0) + 90) % 360;
+    setAreas(prev => prev.map(a => a.id === areaId ? { ...a, rotation: newR } : a));
+    try { await apiFetch(`/areas/${areaId}`, { method: "PUT", body: JSON.stringify({ rotation: newR }) }); }
+    catch(e) { console.error("[Visualiser] rotate failed:", e.message); }
   };
 
   const cropsByArea = {};
@@ -10555,12 +10511,10 @@ function PlanScreen() {
     cropsByArea[area.id] = crops.filter(c => c.area_id === area.id);
   }
 
-  const missingDims = areas.filter(a => !a.width_m || !a.length_m).length;
-  const totalCrops  = Object.values(cropsByArea).reduce((n, arr) => n + arr.length, 0);
-  const emptyCount  = areas.filter(a => !(cropsByArea[a.id]?.length)).length;
-
+  const totalCrops = Object.values(cropsByArea).reduce((n, a) => n + a.length, 0);
   const selectedAreaObj  = detailArea ? areas.find(a => a.id === detailArea) : null;
   const selectedAreaCrops = detailArea ? (cropsByArea[detailArea] || []) : [];
+  const activeAreaName = activeBlock ? areas.find(a => a.id === activeBlock)?.name?.replace(/^"|"$/g, "") : null;
 
   if (loading) return (
     <div style={{ textAlign: "center", padding: "60px 0" }}>
@@ -10574,37 +10528,33 @@ function PlanScreen() {
     <div style={{ paddingBottom: 16 }}>
 
       {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 16, padding: "16px 18px 14px", marginBottom: 12, position: "relative", overflow: "hidden" }}>
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 16, padding: "16px 18px 14px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -20, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
         <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 3 }}>Garden Visualiser</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 3 }}>Garden Visualiser</div>
             <div style={{ fontFamily: "serif", fontSize: 19, fontWeight: 700, color: "#fff" }}>
               {loc?.name || "My garden"}
-              {loc?.width_m && loc?.length_m ? ` · ${loc.width_m}m × ${loc.length_m}m` : ""}
+              {loc?.width_m && loc?.length_m ? ` · ${loc.width_m}×${loc.length_m}m` : ""}
             </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
               {areas.length} area{areas.length !== 1 ? "s" : ""} · {totalCrops} crop{totalCrops !== 1 ? "s" : ""}
-              {emptyCount > 0 ? ` · ${emptyCount} empty` : ""}
             </div>
           </div>
-          {/* Zoom controls */}
-          <div style={{ display: "flex", gap: 4 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button onClick={() => setZoom(z => Math.min(3, +(z + 0.25).toFixed(2)))}
-              style={{ width: 30, height: 30, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>+</button>
+              style={{ width: 28, height: 28, borderRadius: 7, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>+</button>
             <button onClick={() => setZoom(z => Math.max(0.3, +(z - 0.25).toFixed(2)))}
-              style={{ width: 30, height: 30, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>−</button>
+              style={{ width: 28, height: 28, borderRadius: 7, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>−</button>
             <button onClick={() => setZoom(1)}
-              style={{ height: 30, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "0 10px" }}>
-              Fit
-            </button>
+              style={{ height: 28, borderRadius: 7, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "0 10px" }}>Fit</button>
           </div>
         </div>
       </div>
 
       {/* Location tabs */}
       {locations.length > 1 && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
           {locations.map(l => (
             <button key={l.id} onClick={() => { setSelectedLoc(l.id); setActiveBlock(null); setDetailArea(null); }}
               style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: `1px solid ${selectedLoc === l.id ? C.forest : C.border}`, background: selectedLoc === l.id ? C.forest : "#fff", color: selectedLoc === l.id ? "#fff" : "#1a1a1a", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -10614,79 +10564,81 @@ function PlanScreen() {
         </div>
       )}
 
-      {/* Missing dims banner */}
-      {missingDims > 0 && (
-        <div style={{ background: "#fff8e6", border: "1px solid #f0d080", borderRadius: 10, padding: "8px 14px", marginBottom: 10, fontSize: 12, color: "#7a5c00", fontWeight: 600 }}>
-          📐 {missingDims} area{missingDims !== 1 ? "s" : ""} missing dimensions — shown at default 2×2m. Add in Garden tab.
-        </div>
-      )}
-
-      {/* Toolbar — shows when area selected */}
-      {activeBlock ? (
-        <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-          <div style={{ fontSize: 11, color: C.stone, flex: 1 }}>
-            {areas.find(a => a.id === activeBlock)?.name || "Area"} selected
-          </div>
-          <button onClick={() => handleRotate(activeBlock)}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            ↻ Rotate
-          </button>
-          <button onClick={() => { setDetailArea(activeBlock); }}
-            style={{ background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "8px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Detail
-          </button>
-          <button onClick={() => setActiveBlock(null)}
-            style={{ background: "none", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, cursor: "pointer" }}>
-            ✕
-          </button>
-        </div>
-      ) : (
-        <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>
-          Tap an area to select · drag to move · then rotate
-        </div>
-      )}
+      {/* Toolbar — appears when area selected */}
+      <div style={{ minHeight: 36, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+        {activeBlock ? (
+          <>
+            <div style={{ fontSize: 13, fontFamily: "serif", fontWeight: 700, color: "#1a1a1a", flex: 1 }}>
+              {activeAreaName}
+            </div>
+            <button onClick={() => handleRotate(activeBlock)}
+              style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "8px 18px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              ↻ Rotate
+            </button>
+            <button onClick={() => setDetailArea(activeBlock)}
+              style={{ background: "#fff", color: C.forest, border: `1.5px solid ${C.forest}`, borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              Detail
+            </button>
+            <button onClick={() => setActiveBlock(null)}
+              style={{ background: "none", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", fontSize: 13, cursor: "pointer" }}>✕</button>
+          </>
+        ) : (
+          <div style={{ fontSize: 11, color: C.stone }}>Tap an area to select · drag to move</div>
+        )}
+      </div>
 
       {/* Canvas */}
       <div
         ref={containerRef}
-        onClick={(e) => { if (e.target === e.currentTarget) setActiveBlock(null); }}
-        style={{ width: "100%", overflowX: "auto", overflowY: "auto", maxHeight: 500, background: "#eef3ec", borderRadius: 16, border: `1px solid ${C.border}`, position: "relative" }}>
+        onClick={(e) => { if (e.target === e.currentTarget || e.target.dataset.canvas) setActiveBlock(null); }}
+        style={{
+          width: "100%",
+          overflowX: "auto",
+          overflowY: "auto",
+          maxHeight: 520,
+          borderRadius: 18,
+          border: `1px solid ${C.border}`,
+          position: "relative",
+          background: "#E8EDE4",
+        }}>
 
         {/* Saved toast */}
         {savedToast && (
-          <div style={{ position: "sticky", top: 8, left: "50%", transform: "translateX(-50%)", width: "fit-content", background: C.forest, color: "#fff", borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: 600, zIndex: 200, whiteSpace: "nowrap", marginBottom: -28, display: "block" }}>
-            ✓ Saved
+          <div style={{ position: "sticky", top: 10, zIndex: 200, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+            <div style={{ background: C.forest, color: "#fff", borderRadius: 20, padding: "5px 16px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+              ✓ Saved
+            </div>
           </div>
         )}
 
-        {/* Scrollable canvas area */}
-        <div style={{
-          position: "relative",
-          width: canvasW,
-          height: canvasH,
-          minWidth: "100%",
-          backgroundImage: `
-            linear-gradient(rgba(100,140,100,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(100,140,100,0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: `${pxPerM}px ${pxPerM}px`,
-          backgroundPosition: `${PADDING / 2}px ${PADDING / 2}px`,
-        }}>
+        {/* Canvas surface */}
+        <div
+          data-canvas="1"
+          style={{
+            position: "relative",
+            width: canvasW,
+            height: canvasH,
+            minWidth: "100%",
+            // Subtle dot grid — barely visible
+            backgroundImage: "radial-gradient(circle, rgba(80,100,80,0.15) 1px, transparent 1px)",
+            backgroundSize: `${pxPerM}px ${pxPerM}px`,
+            backgroundPosition: `${CANVAS_PAD}px ${CANVAS_PAD}px`,
+          }}>
 
-          {/* Metre labels on grid — every 1m */}
-          {Array.from({ length: Math.ceil(gardenW) + 1 }, (_, i) => (
-            <div key={`mx${i}`} style={{ position: "absolute", left: PADDING / 2 + i * pxPerM, top: 2, fontSize: 9, color: "rgba(100,140,100,0.5)", transform: "translateX(-50%)", fontWeight: 600, userSelect: "none" }}>
-              {i > 0 ? `${i}m` : ""}
+          {/* Metre labels — very subtle, top and left edges */}
+          {Array.from({ length: Math.ceil(gardenW) }, (_, i) => i + 1).map(i => (
+            <div key={`mx${i}`} style={{ position: "absolute", left: CANVAS_PAD + i * pxPerM, top: 4, fontSize: 8, color: "rgba(80,100,70,0.35)", transform: "translateX(-50%)", fontWeight: 700, userSelect: "none", pointerEvents: "none" }}>
+              {i}m
             </div>
           ))}
-          {Array.from({ length: Math.ceil(gardenH) + 1 }, (_, i) => (
-            <div key={`my${i}`} style={{ position: "absolute", top: PADDING / 2 + i * pxPerM, left: 2, fontSize: 9, color: "rgba(100,140,100,0.5)", transform: "translateY(-50%)", fontWeight: 600, userSelect: "none" }}>
-              {i > 0 ? `${i}m` : ""}
+          {Array.from({ length: Math.ceil(gardenH) }, (_, i) => i + 1).map(i => (
+            <div key={`my${i}`} style={{ position: "absolute", top: CANVAS_PAD + i * pxPerM, left: 4, fontSize: 8, color: "rgba(80,100,70,0.35)", transform: "translateY(-50%)", fontWeight: 700, userSelect: "none", pointerEvents: "none" }}>
+              {i}m
             </div>
           ))}
 
-          {/* Area offset wrapper */}
-          <div style={{ position: "absolute", left: PADDING / 2, top: PADDING / 2, right: 0, bottom: 0 }}>
+          {/* Area blocks */}
+          <div style={{ position: "absolute", left: CANVAS_PAD, top: CANVAS_PAD, right: 0, bottom: 0 }}>
             {areas.map(area => (
               <CanvasAreaBlock
                 key={area.id}
@@ -10694,7 +10646,7 @@ function PlanScreen() {
                 crops={cropsByArea[area.id] || []}
                 pxPerM={pxPerM}
                 isSelected={activeBlock === area.id}
-                onTap={(id) => { setActiveBlock(id === activeBlock ? null : id); }}
+                onTap={(id) => setActiveBlock(id === activeBlock ? null : id)}
                 onDragEnd={handleDragEnd}
               />
             ))}
@@ -10710,26 +10662,23 @@ function PlanScreen() {
         </div>
       </div>
 
-      {/* Scale indicator */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: pxPerM, height: 3, background: C.forest, borderRadius: 2, maxWidth: 60, minWidth: 20 }} />
-          <div style={{ fontSize: 10, color: C.stone, fontWeight: 600 }}>1m</div>
-        </div>
+      {/* Scale bar */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginTop: 6 }}>
+        <div style={{ width: Math.min(pxPerM, 60), height: 2, background: C.stone, opacity: 0.4, borderRadius: 1 }} />
+        <div style={{ fontSize: 10, color: C.stone, opacity: 0.6, fontWeight: 600 }}>1m</div>
       </div>
 
-      {/* Locked metrics */}
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        {[["📊", "Yield estimate"], ["🔄", "Rotation score"], ["📐", "Space utilisation"]].map(([icon, label]) => (
-          <div key={label} style={{ flex: 1, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-            <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, marginBottom: 6 }}>{label}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px", display: "inline-block" }}>🔒 Pro</div>
+      {/* Locked metrics — lighter, less dominant */}
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        {[["📊", "Yield estimate", "How much your layout could produce"], ["🔄", "Rotation score", "Crop family rotation across seasons"], ["📐", "Space efficiency", "How well you're using each bed"]].map(([icon, label, hint]) => (
+          <div key={label} style={{ flex: 1, background: "rgba(255,255,255,0.7)", border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+            <div style={{ fontSize: 16, marginBottom: 3, opacity: 0.6 }}>{icon}</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.stone, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+            <div style={{ fontSize: 9, color: C.stone, opacity: 0.6 }}>🔒 Pro</div>
           </div>
         ))}
       </div>
 
-      {/* Area detail sheet */}
       {selectedAreaObj && (
         <AreaDetailSheet
           area={selectedAreaObj}
