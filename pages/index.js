@@ -10128,310 +10128,535 @@ function AdminScreen({ isDemo = false }) {
 // Only visible to Mark (or when PRO_ENABLED=true)
 // =============================================================================
 // =============================================================================
-// PLAN SCREEN — Garden Visualiser V5
-// Calm · Spatial · Tactile · Premium
+// PLAN SCREEN — Garden Visualiser V6 (Konva)
+// Illustrated spatial canvas. react-konva + konva rendering engine.
+// Each area type has its own visual language. Crops as illustrated objects.
+// Background: bark/woodchip texture. Premium feel throughout.
 // =============================================================================
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const VIZ = {
-  canvasBg:    "#F4F6F2",
-  canvasTint:  "linear-gradient(180deg, #F6F8F4 0%, #EEF3EC 100%)",
-  raised_bed:  "#C9A574",
-  open_ground: "#B89A6A",
-  greenhouse:  "#7FAF8A",
-  container:   "#A88F6A",
-  polytunnel:  "#8FAF7A",
-  borderMult:  0.85, // darken border relative to bg
+// ── Konva dynamic import guard ────────────────────────────────────────────────
+// Konva uses browser APIs — must never run server-side.
+// We lazy-load via a state flag that only sets after mount.
+
+// ── Design constants ──────────────────────────────────────────────────────────
+const K = {
+  // Canvas
+  canvasBg:      "#8B6B4A", // bark/woodchip base
+  barkDark:      "#6B4E35",
+  barkLight:     "#A07850",
+
+  // Raised bed
+  timberOuter:   "#8B5E3C",
+  timberInner:   "#A0704A",
+  timberEdge:    "#6B4428",
+  soilDark:      "#3D2B1F",
+  soilMid:       "#4A3428",
+  soilLight:     "#5A4035",
+
+  // Open ground
+  openSoil:      "#5C4030",
+  openSoilLight: "#705040",
+
+  // Greenhouse
+  ghFrame:       "#4A6B4A",
+  ghPanel:       "rgba(180,220,180,0.25)",
+  ghPanelLine:   "rgba(100,160,100,0.5)",
+
+  // Container
+  terracotta:    "#C4643A",
+  terracottaDark:"#A04A28",
+  terracottaRim: "#D47848",
+
+  // Polytunnel
+  tunnelFrame:   "#8A9A7A",
+  tunnelCover:   "rgba(220,235,210,0.35)",
+
+  // Crop families
+  cropRoot:      "#6B8C3A",  // carrot/parsnip tops — green
+  cropBrassica:  "#4A7A3A",  // cabbage heads — dark green
+  cropLegume:    "#5A9A4A",  // climbing — bright green
+  cropFruiting:  "#8A5A2A",  // tomato/courgette — warm brown stem
+  cropFruit:     "#3A6A2A",  // trees/bushes — deep green
+  cropHerb:      "#7A9A5A",  // herbs — sage green
+  cropSalad:     "#6AAA4A",  // loose leaf — light green
+  cropAllium:    "#7A7A9A",  // onion/garlic — blue-grey
+  cropDefault:   "#5A7A4A",
 };
 
-function getVizColor(type) {
-  return VIZ[type] || VIZ.open_ground;
+// Metres to pixels — set per render based on container size
+const PX_PER_M_BASE = 80; // will be overridden by scale calc
+
+// ── Crop family classifier ────────────────────────────────────────────────────
+function getCropFamily(name) {
+  const n = (name || "").toLowerCase();
+  if (/carrot|parsnip|beetroot|radish|turnip|celeriac|swede/.test(n)) return "root";
+  if (/cabbage|kale|broccoli|cauliflower|brussels|kohlrabi|pak/.test(n)) return "brassica";
+  if (/pea|bean|runner|broad|french|mangetout|lentil/.test(n)) return "legume";
+  if (/tomato|courgette|cucumber|squash|pumpkin|pepper|aubergine|marrow/.test(n)) return "fruiting";
+  if (/apple|pear|plum|cherry|fig|quince|berry|strawberry|raspberry|blackberry|gooseberry|currant/.test(n)) return "fruit";
+  if (/mint|basil|thyme|rosemary|sage|oregano|chive|dill|fennel|coriander|parsley/.test(n)) return "herb";
+  if (/lettuce|spinach|chard|rocket|sorrel|endive|chicory|watercress|salad/.test(n)) return "salad";
+  if (/onion|garlic|leek|shallot|spring onion/.test(n)) return "allium";
+  if (/potato|sweet potato|yam/.test(n)) return "root";
+  return "default";
 }
 
-function darken(hex, amt) {
-  // Simple darken: reduce each channel by amt (0–1)
-  const n = parseInt(hex.replace("#",""), 16);
-  const r = Math.max(0, (n>>16) - Math.round(((n>>16)) * amt));
-  const g = Math.max(0, ((n>>8)&0xff) - Math.round(((n>>8)&0xff) * amt));
-  const b = Math.max(0, (n&0xff) - Math.round((n&0xff) * amt));
-  return `rgb(${r},${g},${b})`;
+function getCropColor(name) {
+  const f = getCropFamily(name);
+  return K[`crop${f.charAt(0).toUpperCase() + f.slice(1)}`] || K.cropDefault;
 }
 
-// ── Crop icons — staggered, not grid-aligned ──────────────────────────────────
-function CropIcons({ crops, widthPx, heightPx }) {
-  if (!crops.length) {
-    return (
-      <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <div style={{ fontSize:11, color:"rgba(0,0,0,0.28)", fontStyle:"italic", userSelect:"none", textAlign:"center", lineHeight:1.4 }}>
-          Ready to plant 🌱
-        </div>
-      </div>
-    );
+// ── Konva-based Garden Canvas ─────────────────────────────────────────────────
+function GardenCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onTap, onDragEnd }) {
+  const { Stage, Layer, Rect, Group, Line, Circle, Ellipse, Text, Shape } = window.KonvaReact || {};
+
+  if (!Stage) return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:canvasH, color:"#888" }}>
+      Loading canvas…
+    </div>
+  );
+
+  const cropsByArea = {};
+  for (const area of areas) {
+    cropsByArea[area.id] = crops.filter(c => c.area_id === area.id);
   }
 
-  // Deduplicate by name — one icon per crop type
-  const unique = [];
-  const seen   = new Set();
-  for (const c of crops) {
-    if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); }
+  const PAD = 24;
+
+  // ── Draw bark/woodchip background ──────────────────────────────────────────
+  // Simulate bark texture with overlapping thin rectangles of varying tone
+  const barkStripes = [];
+  const stripeCount = Math.floor(canvasW / 6);
+  for (let i = 0; i < stripeCount; i++) {
+    const x = i * 6 + (i % 3 === 0 ? -1 : i % 3 === 1 ? 1 : 0);
+    const tone = i % 4 === 0 ? K.barkDark : i % 4 === 2 ? K.barkLight : K.canvasBg;
+    barkStripes.push({ x, tone });
   }
 
-  const MAX = 4;
-  const shown  = unique.slice(0, MAX);
-  const extra  = unique.length - MAX;
-  const PAD    = 12; // never touch borders
-  const size   = Math.max(14, Math.min(22, Math.min(widthPx, heightPx) * 0.22));
+  return (
+    <Stage width={canvasW} height={canvasH}>
 
-  // Slightly staggered positions — not perfect grid
-  const positions = shown.map((_, i) => {
-    const cols = Math.min(shown.length, 2);
+      {/* Background layer — bark texture */}
+      <Layer>
+        {/* Base colour */}
+        <Rect x={0} y={0} width={canvasW} height={canvasH} fill={K.canvasBg} />
+        {/* Bark stripes — diagonal, subtle */}
+        {barkStripes.map((s, i) => (
+          <Line key={i}
+            points={[s.x, 0, s.x + canvasH * 0.15, canvasH]}
+            stroke={s.tone} strokeWidth={i%5===0?2.5:1.5} opacity={0.35}
+            lineCap="round"
+          />
+        ))}
+        {/* Bark chips — small ellipses scattered */}
+        {Array.from({length: 40}, (_,i) => ({
+          x: (i * 73 + 40) % canvasW,
+          y: (i * 113 + 30) % canvasH,
+          rx: 6 + (i%3)*3,
+          ry: 2 + (i%2),
+          rot: (i * 37) % 180,
+          tone: i%3===0 ? K.barkDark : i%3===1 ? K.barkLight : K.canvasBg,
+        })).map((chip,i) => (
+          <Ellipse key={`chip${i}`}
+            x={chip.x} y={chip.y}
+            radiusX={chip.rx} radiusY={chip.ry}
+            rotation={chip.rot}
+            fill={chip.tone} opacity={0.25}
+          />
+        ))}
+      </Layer>
+
+      {/* Areas layer */}
+      <Layer>
+        {areas.map(area => {
+          const isRotated = area.rotation === 90 || area.rotation === 270;
+          const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
+          const rawH = isRotated ? (area.width_m||2) : (area.length_m||2);
+          const MIN = 65;
+          const w = Math.max(MIN, rawW * pxPerM);
+          const h = Math.max(MIN, rawH * pxPerM);
+          const x = PAD + (area.layout_x || 0) * pxPerM;
+          const y = PAD + (area.layout_y || 0) * pxPerM;
+          const areaCrops = cropsByArea[area.id] || [];
+          const isSelected = activeBlock === area.id;
+
+          return (
+            <AreaBlock key={area.id} area={area} x={x} y={y} w={w} h={h}
+              crops={areaCrops} isSelected={isSelected}
+              pxPerM={pxPerM}
+              onTap={onTap} onDragEnd={onDragEnd}
+              KonvaReact={window.KonvaReact}
+            />
+          );
+        })}
+      </Layer>
+    </Stage>
+  );
+}
+
+// ── Individual area block renderer ────────────────────────────────────────────
+function AreaBlock({ area, x, y, w, h, crops, isSelected, pxPerM, onTap, onDragEnd, KonvaReact }) {
+  const { Group, Rect, Line, Circle, Ellipse, Text, Shape, Layer } = KonvaReact;
+  const posRef  = useRef({ x, y });
+  const [pos, setPos] = useState({ x, y });
+
+  useEffect(() => {
+    posRef.current = { x, y };
+    setPos({ x, y });
+  }, [x, y]);
+
+  const TIMBER = 8; // timber frame thickness in px
+  const LABEL_H = Math.max(14, Math.min(18, h * 0.14));
+  const labelSize = Math.max(7, Math.min(10, w * 0.1));
+  const name = area.name.replace(/^"|"$/g, "");
+
+  const handleDragEnd = (e) => {
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+    const mX = (newX - 24) / pxPerM;
+    const mY = (newY - 24) / pxPerM;
+    onDragEnd(area.id, Math.max(0, mX), Math.max(0, mY));
+  };
+
+  // Staggered crop positions
+  const cropPositions = crops.slice(0, 6).map((c, i) => {
+    const cols = Math.min(crops.length, 3);
     const col  = i % cols;
     const row  = Math.floor(i / cols);
-    const jitterX = (i % 3 === 0 ? -3 : i % 3 === 1 ? 4 : -1);
-    const jitterY = (i % 2 === 0 ? -2 : 3);
-    const cellW = (widthPx  - PAD * 2) / cols;
-    const cellH = (heightPx - PAD * 2) / Math.ceil(shown.length / cols);
+    const cellW = (w - TIMBER*2 - 16) / cols;
+    const cellH = (h - TIMBER*2 - LABEL_H - 10) / Math.max(1, Math.ceil(crops.length / cols));
+    const jX = (i%3===0?-4:i%3===1?4:-1);
+    const jY = (i%2===0?-3:3);
     return {
-      left: PAD + col * cellW + cellW * 0.5 - size * 0.5 + jitterX,
-      top:  PAD + row * cellH + cellH * 0.5 - size * 0.5 + jitterY,
+      x: TIMBER + 8 + col*cellW + cellW*0.5 + jX,
+      y: TIMBER + LABEL_H + 6 + row*cellH + cellH*0.5 + jY,
+      crop: c,
     };
   });
 
-  return (
-    <div style={{ position:"relative", width:"100%", height:"100%" }}>
-      {shown.map((crop, i) => (
-        <div key={i} style={{
-          position: "absolute",
-          left:  positions[i].left,
-          top:   positions[i].top,
-          fontSize: size,
-          lineHeight: 1,
-          opacity: 0.9,
-          filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.12))",
-          userSelect: "none",
-          pointerEvents: "none",
-        }}>
-          {getCropEmoji(crop.name)}
-        </div>
-      ))}
-      {extra > 0 && (
-        <div style={{
-          position: "absolute",
-          right: PAD, bottom: PAD - 4,
-          fontSize: 9, fontWeight: 700,
-          color: "rgba(0,0,0,0.35)",
-          userSelect: "none",
-        }}>+{extra}</div>
-      )}
-    </div>
-  );
-}
+  const renderAreaShape = () => {
+    switch(area.type) {
 
-// ── Area block ────────────────────────────────────────────────────────────────
-function CanvasAreaBlock({ area, crops, pxPerM, isSelected, isDragging: externalDragging, onTap, onDragEnd }) {
-  const blockRef  = useRef(null);
-  const drag      = useRef({ active:false, moved:false, startX:0, startY:0, origX:0, origY:0 });
-  const [pos, setPos]           = useState({ x: area.layout_x ?? 0.5, y: area.layout_y ?? 0.5 });
-  const [dragging, setDragging] = useState(false);
-  const posRef    = useRef(pos);
-  const saveTimer = useRef(null);
-
-  useEffect(() => {
-    if (!drag.current.active) {
-      const p = { x: area.layout_x ?? 0.5, y: area.layout_y ?? 0.5 };
-      posRef.current = p;
-      setPos(p);
-    }
-  }, [area.layout_x, area.layout_y]);
-
-  const isRotated = area.rotation === 90 || area.rotation === 270;
-  const rawW = isRotated ? (area.length_m || 2) : (area.width_m  || 2);
-  const rawH = isRotated ? (area.width_m  || 2) : (area.length_m || 2);
-  const MIN_PX = 60;
-  const widthPx  = Math.max(MIN_PX, rawW * pxPerM);
-  const heightPx = Math.max(MIN_PX, rawH * pxPerM);
-
-  const hasDimensions = area.width_m && area.length_m;
-  const baseColor = getVizColor(area.type);
-  const borderColor = darken(baseColor, 0.18);
-
-  const onPointerDown = (e) => {
-    e.stopPropagation();
-    drag.current = { active:true, moved:false, startX:e.clientX, startY:e.clientY, origX:posRef.current.x, origY:posRef.current.y };
-    blockRef.current?.setPointerCapture(e.pointerId);
-    setDragging(true);
-  };
-  const onPointerMove = (e) => {
-    if (!drag.current.active) return;
-    const dx = (e.clientX - drag.current.startX) / pxPerM;
-    const dy = (e.clientY - drag.current.startY) / pxPerM;
-    if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) drag.current.moved = true;
-    const newX = Math.max(0, drag.current.origX + dx);
-    const newY = Math.max(0, drag.current.origY + dy);
-    posRef.current = { x:newX, y:newY };
-    setPos({ x:newX, y:newY });
-  };
-  const onPointerUp = (e) => {
-    if (!drag.current.active) return;
-    drag.current.active = false;
-    setDragging(false);
-    if (drag.current.moved) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => onDragEnd(area.id, posRef.current.x, posRef.current.y), 300);
-    } else {
-      e.stopPropagation();
-      onTap(area.id);
-    }
-  };
-
-  const labelSize = Math.max(8, Math.min(11, widthPx * 0.1));
-
-  return (
-    <div
-      ref={blockRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      style={{
-        position:  "absolute",
-        left:      pos.x * pxPerM,
-        top:       pos.y * pxPerM,
-        width:     widthPx,
-        height:    heightPx,
-        background: hasDimensions
-          ? `radial-gradient(circle at 30% 20%, rgba(255,255,255,0.22), transparent 60%), ${baseColor}`
-          : `#EFE7DA`,
-        border: hasDimensions
-          ? `1px solid rgba(0,0,0,0.06)`
-          : `1.5px dashed #D9A441`,
-        borderRadius: 14,
-        boxShadow: dragging
-          ? "0 6px 16px rgba(0,0,0,0.13)"
-          : isSelected
-            ? "0 0 0 2px #6FAF63, 0 3px 10px rgba(0,0,0,0.08)"
-            : "0 2px 6px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.25)",
-        transform: dragging ? "scale(1.03)" : isSelected ? "scale(1.02)" : "scale(1)",
-        transition: dragging ? "box-shadow 0.1s, transform 0.1s" : "box-shadow 0.2s, transform 0.15s",
-        cursor: dragging ? "grabbing" : "grab",
-        userSelect: "none",
-        touchAction: "none",
-        overflow: "hidden",
-        zIndex: dragging ? 50 : isSelected ? 20 : 1,
-        boxSizing: "border-box",
-      }}>
-
-      {/* Label — top-left, subtle, small caps */}
-      <div style={{
-        position: "absolute", top:0, left:0, right:0,
-        padding: "5px 8px 3px",
-        zIndex: 2,
-      }}>
-        <span style={{
-          fontSize: labelSize,
-          fontWeight: 600,
-          color: "rgba(0,0,0,0.5)",
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          fontFamily: "sans-serif",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          display: "block",
-          maxWidth: widthPx - 16,
-          userSelect: "none",
-        }}>
-          {area.name.replace(/^"|"$/g, "")}
-        </span>
-      </div>
-
-      {/* Missing dimensions badge */}
-      {!hasDimensions && (
-        <div style={{
-          position:"absolute", top:4, right:6,
-          fontSize:8, fontWeight:700,
-          color:"#9A7200",
-          background:"rgba(217,164,65,0.2)",
-          borderRadius:4, padding:"1px 5px",
-          userSelect:"none",
-        }}>
-          Add size
-        </div>
-      )}
-
-      {/* Crop icons */}
-      <div style={{ position:"absolute", top: labelSize + 12, left:0, right:0, bottom:0 }}>
-        <CropIcons crops={crops} widthPx={widthPx} heightPx={heightPx - labelSize - 12} />
-      </div>
-    </div>
-  );
-}
-
-// ── Area detail sheet ─────────────────────────────────────────────────────────
-function AreaDetailSheet({ area, crops, onClose }) {
-  const baseColor = getVizColor(area.type);
-  const hasDimensions = area.width_m && area.length_m;
-  const sqm = hasDimensions ? (area.width_m * area.length_m).toFixed(1) : null;
-  const statusColor = { growing:C.leaf, sown_indoors:C.amber, sown_outdoors:C.amber, transplanted:C.forest, planned:C.stone, harvested:C.stone };
-  const statusLabel = { growing:"Growing", sown_indoors:"Indoors", sown_outdoors:"Outdoors", transplanted:"Transplanted", planned:"Planned", harvested:"Harvested" };
-
-  return (
-    <div style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}
-      onClick={onClose}>
-      <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", width:"100%", maxWidth:480, maxHeight:"80vh", display:"flex", flexDirection:"column" }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 0" }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:"#ddd" }} />
-        </div>
-        {/* Coloured header */}
-        <div style={{ margin:"12px 16px 0", borderRadius:14, padding:"14px 16px", background:`radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25), transparent 60%), ${baseColor}` }}>
-          <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, color:"rgba(0,0,0,0.7)" }}>
-            {area.name.replace(/^"|"$/g, "")}
-          </div>
-          <div style={{ fontSize:12, color:"rgba(0,0,0,0.45)", marginTop:2 }}>
-            {(area.type||"area").replace(/_/g," ")}
-            {sqm ? ` · ${area.width_m}m × ${area.length_m}m · ${sqm}m²` : " · dimensions not set"}
-          </div>
-        </div>
-        {!hasDimensions && (
-          <div style={{ margin:"10px 16px 0", background:"#fff8e6", border:"1px solid #f0d080", borderRadius:10, padding:"8px 12px", fontSize:12, color:"#7a5c00", fontWeight:600 }}>
-            📐 Add dimensions in Garden tab for accurate scale
-          </div>
-        )}
-        <div style={{ overflowY:"auto", flex:1, padding:"12px 20px 40px" }}>
-          {crops.length === 0 ? (
-            <div style={{ textAlign:"center", padding:"32px 0", color:C.stone }}>
-              <div style={{ fontSize:36, marginBottom:8 }}>🌱</div>
-              <div style={{ fontSize:15, fontWeight:700, fontFamily:"serif", marginBottom:4 }}>Empty bed</div>
-              <div style={{ fontSize:13 }}>Nothing planted here this season</div>
-            </div>
-          ) : crops.map(crop => (
-            <div key={crop.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 0", borderBottom:`1px solid ${C.border}` }}>
-              <span style={{ fontSize:22, flexShrink:0 }}>{getCropEmoji(crop.name)}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", fontFamily:"serif" }}>{crop.name}</div>
-                {crop.variety && <div style={{ fontSize:12, color:C.stone }}>{typeof crop.variety==="object" ? crop.variety.name : crop.variety}</div>}
-              </div>
-              <div style={{ fontSize:11, fontWeight:700, color:statusColor[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
-                {statusLabel[crop.status]||crop.status||"Growing"}
-              </div>
-            </div>
+      case "raised_bed": return (
+        <Group>
+          {/* Outer timber shadow */}
+          <Rect x={3} y={3} width={w} height={h} fill="rgba(0,0,0,0.18)" cornerRadius={6} />
+          {/* Timber frame */}
+          <Rect x={0} y={0} width={w} height={h} fill={K.timberOuter} cornerRadius={6}
+            shadowColor="rgba(0,0,0,0.3)" shadowBlur={4} shadowOffsetY={2} />
+          {/* Timber plank lines */}
+          <Line points={[TIMBER, 0, TIMBER, h]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
+          <Line points={[w-TIMBER, 0, w-TIMBER, h]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
+          <Line points={[0, TIMBER, w, TIMBER]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
+          <Line points={[0, h-TIMBER, w, h-TIMBER]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
+          {/* Timber grain on long edges */}
+          {Array.from({length: Math.floor(w/18)}, (_,i) => (
+            <Line key={`tg${i}`} points={[TIMBER+i*18, 2, TIMBER+i*18+8, 2]} stroke={K.timberInner} strokeWidth={1} opacity={0.4} />
           ))}
-          <div style={{ marginTop:20, background:"#F7F8F5", border:`1px solid #E3E7E1`, borderRadius:14, padding:"14px 16px" }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Area insights</div>
-            <div style={{ display:"flex", gap:8 }}>
-              {[["📊","Yield"],["🔄","Rotation"],["📐","Space"]].map(([icon,label]) => (
-                <div key={label} style={{ flex:1, background:"#fff", border:"1px solid #E3E7E1", borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
-                  <div style={{ fontSize:16, marginBottom:4, opacity:0.6 }}>{icon}</div>
-                  <div style={{ fontSize:10, color:C.stone, marginBottom:4 }}>{label}</div>
-                  <div style={{ fontSize:10, fontWeight:700, color:C.stone }}>🔒 Pro</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          {/* Soil fill */}
+          <Rect x={TIMBER} y={TIMBER} width={w-TIMBER*2} height={h-TIMBER*2} fill={K.soilDark} cornerRadius={2} />
+          {/* Soil texture — subtle lighter patches */}
+          {Array.from({length:8},(_,i)=>(
+            <Ellipse key={`s${i}`}
+              x={TIMBER+10+(i*29)%(w-TIMBER*2-20)}
+              y={TIMBER+8+(i*17)%(h-TIMBER*2-16)}
+              radiusX={8+(i%3)*4} radiusY={4+(i%2)*2}
+              fill={K.soilMid} opacity={0.4}
+            />
+          ))}
+          {/* Corner bolts */}
+          {[[6,6],[w-6,6],[6,h-6],[w-6,h-6]].map(([bx,by],i)=>(
+            <Circle key={`b${i}`} x={bx} y={by} radius={3} fill={K.timberEdge} opacity={0.7} />
+          ))}
+        </Group>
+      );
+
+      case "open_ground": return (
+        <Group>
+          {/* Soft shadow */}
+          <Rect x={2} y={3} width={w} height={h} fill="rgba(0,0,0,0.12)" cornerRadius={12} />
+          {/* Soil base — irregular feel via cornerRadius */}
+          <Rect x={0} y={0} width={w} height={h} fill={K.openSoil} cornerRadius={10} />
+          {/* Soil texture patches */}
+          {Array.from({length:10},(_,i)=>(
+            <Ellipse key={`op${i}`}
+              x={8+(i*31)%(w-16)}
+              y={6+(i*23)%(h-12)}
+              radiusX={10+(i%4)*6} radiusY={5+(i%3)*3}
+              fill={K.openSoilLight} opacity={0.3} rotation={(i*27)%90}
+            />
+          ))}
+          {/* Edge irregularity suggestion — inner shadow */}
+          <Rect x={0} y={0} width={w} height={h}
+            fill="transparent"
+            stroke="rgba(0,0,0,0.15)" strokeWidth={3}
+            cornerRadius={10}
+          />
+        </Group>
+      );
+
+      case "greenhouse": return (
+        <Group>
+          {/* Shadow */}
+          <Rect x={3} y={4} width={w} height={h} fill="rgba(0,0,0,0.15)" cornerRadius={4} />
+          {/* Glass panels — translucent */}
+          <Rect x={0} y={0} width={w} height={h} fill={K.ghPanel} cornerRadius={3}
+            stroke={K.ghFrame} strokeWidth={2}
+          />
+          {/* Structural frame lines — vertical */}
+          {Array.from({length:Math.max(1,Math.floor(w/40))},(_,i)=>(
+            <Line key={`gv${i}`}
+              points={[w*(i+1)/(Math.floor(w/40)+1), 0, w*(i+1)/(Math.floor(w/40)+1), h]}
+              stroke={K.ghFrame} strokeWidth={1.5} opacity={0.7}
+            />
+          ))}
+          {/* Structural frame lines — horizontal */}
+          {Array.from({length:Math.max(1,Math.floor(h/35))},(_,i)=>(
+            <Line key={`gh${i}`}
+              points={[0, h*(i+1)/(Math.floor(h/35)+1), w, h*(i+1)/(Math.floor(h/35)+1)]}
+              stroke={K.ghFrame} strokeWidth={1.5} opacity={0.5}
+            />
+          ))}
+          {/* Ridge line */}
+          <Line points={[0, h*0.08, w, h*0.08]} stroke={K.ghFrame} strokeWidth={2.5} opacity={0.8} />
+          {/* Internal grow bags */}
+          {Array.from({length:Math.min(3,Math.floor(w/35))},(_,i)=>(
+            <Rect key={`gb${i}`}
+              x={8+i*(w-16)/Math.min(3,Math.floor(w/35))} y={h*0.55}
+              width={(w-24)/Math.min(3,Math.floor(w/35))} height={h*0.3}
+              fill="rgba(80,60,40,0.5)" cornerRadius={4}
+            />
+          ))}
+        </Group>
+      );
+
+      case "container": return (
+        <Group>
+          {/* Terracotta pot */}
+          <Rect x={3} y={4} width={w} height={h} fill="rgba(0,0,0,0.2)" cornerRadius={8} />
+          {/* Main body */}
+          <Rect x={0} y={0} width={w} height={h} fill={K.terracotta} cornerRadius={8}
+            shadowColor="rgba(0,0,0,0.25)" shadowBlur={5} shadowOffsetY={2}
+          />
+          {/* Rim at top */}
+          <Rect x={0} y={0} width={w} height={Math.max(8,h*0.12)} fill={K.terracottaRim} cornerRadius={[8,8,0,0]} />
+          {/* Drainage line */}
+          <Line points={[w*0.2, h*0.9, w*0.8, h*0.9]} stroke={K.terracottaDark} strokeWidth={1.5} opacity={0.5} />
+          {/* Terracotta texture lines */}
+          {Array.from({length:3},(_,i)=>(
+            <Line key={`ct${i}`}
+              points={[4, h*0.3+i*h*0.15, w-4, h*0.3+i*h*0.15]}
+              stroke={K.terracottaDark} strokeWidth={0.8} opacity={0.3}
+            />
+          ))}
+          {/* Soil inside */}
+          <Rect x={4} y={Math.max(8,h*0.12)+2} width={w-8} height={h-Math.max(8,h*0.12)-10}
+            fill={K.soilDark} cornerRadius={[0,0,4,4]} opacity={0.8}
+          />
+        </Group>
+      );
+
+      case "polytunnel": return (
+        <Group>
+          {/* Shadow */}
+          <Ellipse x={w/2} y={h+6} radiusX={w*0.5} radiusY={8} fill="rgba(0,0,0,0.15)" />
+          {/* Tunnel cover */}
+          <Rect x={0} y={h*0.25} width={w} height={h*0.75} fill={K.tunnelFrame} opacity={0.3} cornerRadius={[0,0,4,4]} />
+          {/* Arch shape — approximated with a wide rectangle + rounded top */}
+          <Rect x={0} y={0} width={w} height={h} fill={K.tunnelCover}
+            stroke={K.tunnelFrame} strokeWidth={2}
+            cornerRadius={[w*0.15, w*0.15, 4, 4]}
+          />
+          {/* Arch rib lines */}
+          {Array.from({length:Math.max(2,Math.floor(w/30))},(_,i)=>(
+            <Line key={`pr${i}`}
+              points={[w*(i+1)/(Math.floor(w/30)+1), h*0.1, w*(i+1)/(Math.floor(w/30)+1), h]}
+              stroke={K.tunnelFrame} strokeWidth={1.5} opacity={0.5}
+            />
+          ))}
+          {/* End wall hint */}
+          <Line points={[0, h*0.15, 0, h, w, h, w, h*0.15]} stroke={K.tunnelFrame} strokeWidth={2} opacity={0.6} />
+          {/* Soil floor */}
+          <Rect x={4} y={h*0.55} width={w-8} height={h*0.4} fill={K.soilMid} cornerRadius={[0,0,3,3]} opacity={0.6} />
+        </Group>
+      );
+
+      default: return (
+        <Group>
+          <Rect x={0} y={0} width={w} height={h} fill={K.openSoil} cornerRadius={8} />
+        </Group>
+      );
+    }
+  };
+
+  // ── Crop illustration renderer ────────────────────────────────────────────
+  const renderCrop = (cp, i) => {
+    const { x: cx, y: cy, crop } = cp;
+    const family = getCropFamily(crop.name);
+    const col    = getCropColor(crop.name);
+    const s      = Math.max(10, Math.min(20, Math.min(w,h) * 0.14)); // icon scale
+
+    switch(family) {
+      case "root": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Leafy carrot top */}
+          <Ellipse radiusX={s*0.35} radiusY={s*0.6} fill={col} opacity={0.9} />
+          <Ellipse x={s*0.3} radiusX={s*0.25} radiusY={s*0.5} fill={col} opacity={0.7} rotation={20} />
+          <Ellipse x={-s*0.3} radiusX={s*0.25} radiusY={s*0.5} fill={col} opacity={0.7} rotation={-20} />
+          <Ellipse y={s*0.7} radiusX={s*0.15} radiusY={s*0.35} fill="#D4601A" opacity={0.85} />
+        </Group>
+      );
+      case "brassica": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Round cabbage head */}
+          <Circle radius={s*0.55} fill={col} opacity={0.85} />
+          <Circle radius={s*0.38} fill="#6FAF50" opacity={0.5} />
+          <Circle radius={s*0.2} fill="#8FC060" opacity={0.4} />
+        </Group>
+      );
+      case "legume": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Climbing tendrils */}
+          <Line points={[0,s*0.8, 0,0]} stroke={col} strokeWidth={2} opacity={0.8} />
+          <Ellipse x={s*0.3} y={-s*0.2} radiusX={s*0.25} radiusY={s*0.18} fill={col} opacity={0.8} rotation={30} />
+          <Ellipse x={-s*0.25} y={s*0.2} radiusX={s*0.2} radiusY={s*0.15} fill={col} opacity={0.7} rotation={-20} />
+          <Ellipse x={s*0.2} y={s*0.5} radiusX={s*0.2} radiusY={s*0.15} fill={col} opacity={0.75} rotation={15} />
+        </Group>
+      );
+      case "fruiting": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Bushy plant with fruit hint */}
+          <Circle radius={s*0.6} fill={col} opacity={0.75} />
+          <Circle x={s*0.3} y={-s*0.2} radius={s*0.35} fill={col} opacity={0.6} />
+          <Circle x={-s*0.3} y={-s*0.15} radius={s*0.3} fill={col} opacity={0.65} />
+          {/* Fruit dots */}
+          <Circle x={0} y={s*0.15} radius={s*0.18} fill="#CC3A1A" opacity={0.85} />
+          <Circle x={s*0.3} y={s*0.05} radius={s*0.14} fill="#CC3A1A" opacity={0.7} />
+        </Group>
+      );
+      case "fruit": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Tree/bush — fuller */}
+          <Line points={[0, s*0.9, 0, s*0.2]} stroke="#6B4428" strokeWidth={3} />
+          <Circle y={-s*0.1} radius={s*0.7} fill={col} opacity={0.8} />
+          <Circle x={s*0.35} y={s*0.05} radius={s*0.45} fill={col} opacity={0.65} />
+          <Circle x={-s*0.35} y={0} radius={s*0.42} fill={col} opacity={0.65} />
+        </Group>
+      );
+      case "herb": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Tight herb cluster */}
+          <Circle radius={s*0.42} fill={col} opacity={0.85} />
+          <Circle x={s*0.2} y={-s*0.1} radius={s*0.28} fill={col} opacity={0.7} />
+          <Circle x={-s*0.2} y={-s*0.1} radius={s*0.28} fill={col} opacity={0.7} />
+        </Group>
+      );
+      case "salad": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Loose leaf cluster */}
+          {[-25,-10,5,20,35].map((angle,li)=>(
+            <Ellipse key={li}
+              x={Math.sin(angle*Math.PI/180)*s*0.4}
+              y={-Math.cos(angle*Math.PI/180)*s*0.4}
+              radiusX={s*0.28} radiusY={s*0.4}
+              fill={col} opacity={0.7+(li%2)*0.1}
+              rotation={angle}
+            />
+          ))}
+        </Group>
+      );
+      case "allium": return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          {/* Upright onion/garlic stems */}
+          {[-s*0.25, 0, s*0.25].map((ox,ai)=>(
+            <Group key={ai} x={ox}>
+              <Line points={[0, s*0.8, 0, -s*0.1]} stroke={col} strokeWidth={2.5} opacity={0.85} />
+              <Circle y={-s*0.25} radius={s*0.22} fill={K.cropAllium} opacity={0.7} />
+            </Group>
+          ))}
+        </Group>
+      );
+      default: return (
+        <Group key={`cr${i}`} x={cx} y={cy}>
+          <Circle radius={s*0.45} fill={col} opacity={0.8} />
+          <Circle radius={s*0.25} fill={col} opacity={0.5} />
+        </Group>
+      );
+    }
+  };
+
+  return (
+    <Group
+      x={pos.x} y={pos.y}
+      draggable
+      onDragEnd={handleDragEnd}
+      onClick={() => onTap(area.id)}
+      onTap={() => onTap(area.id)}
+    >
+      {/* Area shape */}
+      {renderAreaShape()}
+
+      {/* Crops */}
+      {cropPositions.map((cp, i) => renderCrop(cp, i))}
+
+      {/* Overflow count */}
+      {crops.length > 6 && (
+        <Text
+          x={w-20} y={h-14}
+          text={`+${crops.length-6}`}
+          fontSize={9} fill="rgba(255,255,255,0.6)" fontStyle="bold"
+        />
+      )}
+
+      {/* Label */}
+      <Text
+        x={TIMBER+4} y={TIMBER+3}
+        text={name.toUpperCase()}
+        fontSize={labelSize} fill="rgba(255,255,255,0.65)"
+        fontStyle="600" fontFamily="sans-serif"
+        width={w - TIMBER*2 - 8}
+        ellipsis={true} wrap="none"
+        letterSpacing={0.8}
+      />
+
+      {/* Empty state */}
+      {crops.length === 0 && (
+        <Text
+          x={0} y={h/2 - 8}
+          text="Ready to plant"
+          fontSize={10} fill="rgba(255,255,255,0.3)"
+          fontStyle="italic" align="center" width={w}
+        />
+      )}
+
+      {/* Selected outline */}
+      {isSelected && (
+        <Rect x={-3} y={-3} width={w+6} height={h+6}
+          fill="transparent"
+          stroke="#6FAF63" strokeWidth={2.5}
+          cornerRadius={10}
+          dash={[6,3]}
+        />
+      )}
+    </Group>
   );
+}
+
+// ── Konva loader — ensures Konva only loads client-side ───────────────────────
+function useKonva() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.KonvaReact) { setReady(true); return; }
+    Promise.all([
+      import("react-konva"),
+    ]).then(([konvaReact]) => {
+      window.KonvaReact = konvaReact;
+      setReady(true);
+    }).catch(e => console.error("[Konva] load failed:", e));
+  }, []);
+  return ready;
 }
 
 // ── Main PlanScreen ───────────────────────────────────────────────────────────
@@ -10450,9 +10675,9 @@ function PlanScreen() {
   const containerRef   = useRef(null);
   const autoLayoutDone = useRef(false);
   const [containerW,   setContainerW] = useState(360);
+  const konvaReady     = useKonva();
   const { isPro, isMark } = useProStatus();
 
-  // Measure container
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -10462,7 +10687,6 @@ function PlanScreen() {
     return () => ro.disconnect();
   }, []);
 
-  // Load
   useEffect(() => {
     Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops")])
       .then(([locs, areasData, cropsData]) => {
@@ -10481,21 +10705,18 @@ function PlanScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Location change
+  const loc = locations.find(l => l.id === selectedLoc);
+
   useEffect(() => {
-    const loc = locations.find(l => l.id === selectedLoc);
-    if (loc) {
-      autoLayoutDone.current = false;
-      setActiveBlock(null);
-      setAreas(loc.growing_areas || []);
-    }
-  }, [selectedLoc, locations]);
+    if (!loc) return;
+    autoLayoutDone.current = false;
+    setActiveBlock(null);
+    setAreas(loc.growing_areas || []);
+  }, [selectedLoc]);
 
   // Auto-layout
-  const loc = locations.find(l => l.id === selectedLoc);
   useEffect(() => {
-    if (!areas.length) return;
-    if (autoLayoutDone.current) return;
+    if (!areas.length || autoLayoutDone.current) return;
     const maxSane = Math.max(50, (loc?.width_m || 20) * 5);
     const hasStale = areas.some(a => a.layout_x != null && Math.abs(a.layout_x) > maxSane);
     const needLayout = areas.filter(a => a.layout_x == null || hasStale);
@@ -10509,51 +10730,46 @@ function PlanScreen() {
       const w = area.width_m  || 1.5;
       const h = area.length_m || 1.5;
       const placed = { ...area, layout_x: x, layout_y: y };
-      x += w + GAP;
-      rowH = Math.max(rowH, h);
+      x += w + GAP; rowH = Math.max(rowH, h);
       if (x > maxRow) { x = 0.4; y += rowH + GAP; rowH = 0; }
       return placed;
     });
     setAreas(updated);
-    if (hasStale) {
-      areas.forEach(a => apiFetch(`/areas/${a.id}`, { method:"PUT", body:JSON.stringify({ layout_x:null, layout_y:null }) }).catch(()=>{}));
-    }
+    if (hasStale) areas.forEach(a =>
+      apiFetch(`/areas/${a.id}`, { method:"PUT", body:JSON.stringify({ layout_x:null, layout_y:null }) }).catch(()=>{})
+    );
   }, [areas.length, selectedLoc]);
 
-  // Scale
-  const gardenW = loc?.width_m  || Math.max(6, ...areas.map(a => (a.layout_x||0)+(a.width_m ||2)))+1;
-  const gardenH = loc?.length_m || Math.max(6, ...areas.map(a => (a.layout_y||0)+(a.length_m||2)))+1;
+  const gardenW = loc?.width_m  || Math.max(6, ...areas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1;
+  const gardenH = loc?.length_m || Math.max(6, ...areas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1;
   const CANVAS_PAD = 24;
-  const basePxPerM  = Math.max(1, (containerW - CANVAS_PAD * 2) / gardenW);
+  const basePxPerM  = Math.max(20, (containerW - CANVAS_PAD*2) / gardenW);
   const pxPerM      = basePxPerM * zoom;
-  const canvasW     = gardenW * pxPerM + CANVAS_PAD * 2;
-  const canvasH     = gardenH * pxPerM + CANVAS_PAD * 2;
+  const canvasW     = Math.max(containerW, gardenW * pxPerM + CANVAS_PAD*2);
+  const canvasH     = gardenH * pxPerM + CANVAS_PAD*2;
 
   const handleDragEnd = async (areaId, x, y) => {
     setAreas(prev => prev.map(a => a.id===areaId ? {...a, layout_x:x, layout_y:y} : a));
     try {
       await apiFetch(`/areas/${areaId}`, { method:"PUT", body:JSON.stringify({ layout_x:x, layout_y:y }) });
       setSavedToast(true);
-      setTimeout(() => setSavedToast(false), 1500);
+      setTimeout(()=>setSavedToast(false), 1500);
     } catch(e) { console.error("[Visualiser] save failed:", e.message); }
   };
 
   const handleRotate = async (areaId) => {
-    const area = areas.find(a => a.id===areaId);
+    const area = areas.find(a=>a.id===areaId);
     if (!area) return;
     const newR = ((area.rotation||0)+90)%360;
-    setAreas(prev => prev.map(a => a.id===areaId ? {...a, rotation:newR} : a));
+    setAreas(prev => prev.map(a=>a.id===areaId?{...a,rotation:newR}:a));
     try { await apiFetch(`/areas/${areaId}`, { method:"PUT", body:JSON.stringify({ rotation:newR }) }); }
     catch(e) { console.error("[Visualiser] rotate failed:", e.message); }
   };
 
-  const cropsByArea = {};
-  for (const area of areas) cropsByArea[area.id] = crops.filter(c => c.area_id===area.id);
-
-  const totalCrops      = Object.values(cropsByArea).reduce((n,a)=>n+a.length,0);
-  const selectedAreaObj = detailArea ? areas.find(a=>a.id===detailArea) : null;
-  const selectedCrops   = detailArea ? (cropsByArea[detailArea]||[]) : [];
-  const activeAreaName  = activeBlock ? areas.find(a=>a.id===activeBlock)?.name?.replace(/^"|"$/g,"") : null;
+  const totalCrops     = crops.filter(c => areas.some(a=>a.id===c.area_id)).length;
+  const activeAreaName = activeBlock ? areas.find(a=>a.id===activeBlock)?.name?.replace(/^"|"$/g,"") : null;
+  const selectedAreaObj  = detailArea ? areas.find(a=>a.id===detailArea) : null;
+  const selectedAreaCrops = detailArea ? crops.filter(c=>c.area_id===detailArea) : [];
 
   if (loading) return (
     <div style={{ textAlign:"center", padding:"60px 0" }}>
@@ -10580,11 +10796,10 @@ function PlanScreen() {
               {areas.length} area{areas.length!==1?"s":""} · {totalCrops} crop{totalCrops!==1?"s":""}
             </div>
           </div>
-          {/* Zoom controls — frosted glass */}
           <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.1)", backdropFilter:"blur(8px)", borderRadius:12, padding:"4px 6px" }}>
-            <button onClick={()=>setZoom(z=>Math.min(2.5, +(z+0.25).toFixed(2)))}
+            <button onClick={()=>setZoom(z=>Math.min(2.5,+(z+0.25).toFixed(2)))}
               style={{ width:30, height:30, borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>+</button>
-            <button onClick={()=>setZoom(z=>Math.max(0.6, +(z-0.25).toFixed(2)))}
+            <button onClick={()=>setZoom(z=>Math.max(0.4,+(z-0.25).toFixed(2)))}
               style={{ width:30, height:30, borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>−</button>
             <button onClick={()=>setZoom(1)}
               style={{ height:30, borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", padding:"0 10px" }}>Fit</button>
@@ -10595,8 +10810,8 @@ function PlanScreen() {
       {/* Location tabs */}
       {locations.length>1 && (
         <div style={{ display:"flex", gap:8, marginBottom:12, overflowX:"auto", paddingBottom:2 }}>
-          {locations.map(l => (
-            <button key={l.id} onClick={()=>{ setSelectedLoc(l.id); setDetailArea(null); }}
+          {locations.map(l=>(
+            <button key={l.id} onClick={()=>setSelectedLoc(l.id)}
               style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:`1px solid ${selectedLoc===l.id?C.forest:C.border}`, background:selectedLoc===l.id?C.forest:"#fff", color:selectedLoc===l.id?"#fff":"#1a1a1a", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               {l.name}
             </button>
@@ -10604,7 +10819,7 @@ function PlanScreen() {
         </div>
       )}
 
-      {/* Selection toolbar */}
+      {/* Toolbar */}
       <div style={{ minHeight:38, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
         {activeBlock ? (
           <>
@@ -10621,69 +10836,40 @@ function PlanScreen() {
         )}
       </div>
 
-      {/* Canvas */}
-      <div
-        ref={containerRef}
-        onClick={(e)=>{ if(e.target===e.currentTarget) setActiveBlock(null); }}
-        style={{
-          width:"100%", overflowX:"auto", overflowY:"auto", maxHeight:540,
-          borderRadius:18,
-          border:"1px solid rgba(0,0,0,0.06)",
-          position:"relative",
-          background: VIZ.canvasTint,
-          boxShadow:"inset 0 1px 3px rgba(0,0,0,0.04)",
-        }}>
-
-        {/* Saved toast */}
-        {savedToast && (
-          <div style={{ position:"sticky", top:10, zIndex:200, display:"flex", justifyContent:"center", pointerEvents:"none" }}>
-            <div style={{ background:"rgba(47,93,80,0.92)", color:"#fff", borderRadius:20, padding:"5px 16px", fontSize:12, fontWeight:600, whiteSpace:"nowrap", backdropFilter:"blur(8px)" }}>
-              ✓ Layout saved
-            </div>
+      {/* Konva canvas */}
+      <div ref={containerRef} style={{ width:"100%", borderRadius:18, overflow:"hidden", border:"1px solid rgba(0,0,0,0.08)", boxShadow:"0 4px 20px rgba(0,0,0,0.12)", overflowX:"auto", overflowY:"auto", maxHeight:540 }}>
+        {!konvaReady ? (
+          <div style={{ height:300, display:"flex", alignItems:"center", justifyContent:"center", background:"#8B6B4A", color:"rgba(255,255,255,0.6)", fontSize:14 }}>
+            Preparing your garden…
           </div>
+        ) : (
+          <GardenCanvas
+            areas={areas}
+            crops={crops}
+            pxPerM={pxPerM}
+            canvasW={canvasW}
+            canvasH={Math.max(300, canvasH)}
+            activeBlock={activeBlock}
+            onTap={id=>setActiveBlock(id===activeBlock?null:id)}
+            onDragEnd={handleDragEnd}
+          />
         )}
 
-        {/* Canvas surface — no grid, clean */}
-        <div
-          onClick={(e)=>{ if(e.target===e.currentTarget) setActiveBlock(null); }}
-          style={{
-            position:"relative",
-            width:canvasW, height:canvasH, minWidth:"100%",
-            // No grid — clean canvas
-          }}>
-
-          {/* Area blocks */}
-          <div style={{ position:"absolute", left:CANVAS_PAD, top:CANVAS_PAD, right:0, bottom:0 }}>
-            {areas.map(area => (
-              <CanvasAreaBlock
-                key={area.id}
-                area={area}
-                crops={cropsByArea[area.id]||[]}
-                pxPerM={pxPerM}
-                isSelected={activeBlock===area.id}
-                onTap={id=>setActiveBlock(id===activeBlock?null:id)}
-                onDragEnd={handleDragEnd}
-              />
-            ))}
+        {/* Saved toast overlay */}
+        {savedToast && (
+          <div style={{ position:"absolute", top:12, left:"50%", transform:"translateX(-50%)", background:"rgba(47,93,80,0.92)", color:"#fff", borderRadius:20, padding:"5px 16px", fontSize:12, fontWeight:600, backdropFilter:"blur(8px)", whiteSpace:"nowrap", zIndex:100 }}>
+            ✓ Layout saved
           </div>
-
-          {areas.length===0 && (
-            <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:C.stone }}>
-              <div style={{ fontSize:40, marginBottom:12 }}>🌱</div>
-              <div style={{ fontSize:15, fontWeight:700 }}>No areas yet</div>
-              <div style={{ fontSize:13, marginTop:4 }}>Add areas in the Garden tab</div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Scale bar — minimal */}
+      {/* Scale bar */}
       <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:5, marginTop:5 }}>
         <div style={{ width:Math.min(pxPerM,50), height:2, background:"rgba(0,0,0,0.2)", borderRadius:1 }} />
-        <div style={{ fontSize:9, color:"rgba(0,0,0,0.3)", fontWeight:700 }}>1m</div>
+        <div style={{ fontSize:9, color:"rgba(0,0,0,0.35)", fontWeight:700 }}>1m</div>
       </div>
 
-      {/* Locked metrics — light, non-dominant */}
+      {/* Locked metrics */}
       <div style={{ display:"flex", gap:8, marginTop:14 }}>
         {[["📊","Yield estimate"],["🔄","Rotation score"],["📐","Space efficiency"]].map(([icon,label])=>(
           <div key={label} style={{ flex:1, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"10px 8px", textAlign:"center" }}>
@@ -10697,7 +10883,7 @@ function PlanScreen() {
       {selectedAreaObj && (
         <AreaDetailSheet
           area={selectedAreaObj}
-          crops={selectedCrops}
+          crops={selectedAreaCrops}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
         />
       )}
