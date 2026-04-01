@@ -37,6 +37,11 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 // Existing users see no change until you deliberately flip this flag.
 const PRO_ENABLED = process.env.NEXT_PUBLIC_PRO_ENABLED === "true";
 
+// ── Mark bypass ───────────────────────────────────────────────────────────────
+// Mark's account always sees all Pro features regardless of PRO_ENABLED flag.
+// No other account is affected. Everyone else sees exactly what they always saw.
+const MARK_EMAIL = "mark@wynyardadvisory.co.uk";
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 // Seasonal palette — subtle shifts by time of year
 const SEASON = (() => {
@@ -88,31 +93,41 @@ async function apiFetch(path, options = {}) {
 }
 
 // ── Pro subscription hook ────────────────────────────────────────────────────
-// Fetches subscription status from the API. Returns { isPro, plan, loading }.
-// Only fetches when PRO_ENABLED is true — no unnecessary API calls otherwise.
-// Cache in localStorage to avoid flickering on re-renders.
+// Fetches subscription status from the API. Returns { isPro, plan, loading, isMark }.
+// Mark's account always gets isPro=true regardless of PRO_ENABLED or plan.
+// All other users only get Pro if PRO_ENABLED=true AND their plan is pro.
 function useProStatus() {
   const [isPro,    setIsPro]    = useState(() => {
     try { return localStorage.getItem("vercro_is_pro") === "true"; } catch(e) { return false; }
   });
   const [plan,     setPlan]     = useState("free");
   const [loading,  setLoading]  = useState(false);
+  const [isMark,   setIsMark]   = useState(false);
 
   useEffect(() => {
-    if (!PRO_ENABLED) return; // don't fetch if Pro UI is hidden
+    // Always fetch status — needed for Mark bypass even when PRO_ENABLED=false
     setLoading(true);
-    apiFetch("/subscription/status")
-      .then(data => {
-        const pro = data?.is_pro === true;
-        setIsPro(pro);
-        setPlan(data?.plan || "free");
-        try { localStorage.setItem("vercro_is_pro", pro ? "true" : "false"); } catch(e) {}
-      })
-      .catch(() => {}) // non-fatal — default to free
-      .finally(() => setLoading(false));
+    Promise.all([
+      apiFetch("/subscription/status").catch(() => null),
+      supabase.auth.getSession().catch(() => ({ data: { session: null } })),
+    ]).then(([statusData, sessionData]) => {
+      const email = sessionData?.data?.session?.user?.email || "";
+      const markBypass = email === MARK_EMAIL;
+      setIsMark(markBypass);
+      const pro = markBypass || statusData?.is_pro === true;
+      setIsPro(pro);
+      setPlan(markBypass ? "pro" : (statusData?.plan || "free"));
+      try { localStorage.setItem("vercro_is_pro", pro ? "true" : "false"); } catch(e) {}
+    }).catch(() => {})
+    .finally(() => setLoading(false));
   }, []);
 
-  return { isPro: PRO_ENABLED && isPro, plan, loading };
+  // isPro for general Pro UI: Mark account OR (PRO_ENABLED=true AND plan is pro)
+  // isPro for diagnosis: Mark account OR actual plan is pro (regardless of PRO_ENABLED)
+  // This means paid users never get blocked by the diagnosis limit even when Pro UI is hidden.
+  const effectiveIsPro = isMark || (PRO_ENABLED && isPro);
+  const isProForDiagnosis = isMark || isPro; // plan-based, ignores flag
+  return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2371,6 +2386,8 @@ function Dashboard({ onTabChange }) {
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [recentHarvests,      setRecentHarvests]      = useState(null); // null = not loaded yet
   const [showShareGarden,    setShowShareGarden]    = useState(false);
+  const [showPlantCheck,     setShowPlantCheck]     = useState(false);
+  const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -3184,6 +3201,18 @@ function Dashboard({ onTabChange }) {
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
       <TipsSection />
 
+      {/* ── PLANT CHECK CARD — subtle entry in feed ─────────────────────── */}
+      <div
+        onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
+        style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.forest, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🔍</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", fontFamily: "serif" }}>Plant Check</div>
+          <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>Take a photo — get an instant diagnosis</div>
+        </div>
+        <div style={{ fontSize: 18, color: C.stone }}>›</div>
+      </div>
+
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
       <button onClick={() => setShowShareGarden(true)}
@@ -3408,6 +3437,16 @@ function Dashboard({ onTabChange }) {
           scope={null}
           onClose={() => setShowLogActivity(false)}
           onLogged={() => { setShowLogActivity(false); load(true); }}
+        />
+      )}
+
+      {/* ── PLANT CHECK MODAL ─────────────────────────────────────────────── */}
+      {showPlantCheck && (
+        <PlantCheck
+          entry="today"
+          prefillCrop={plantCheckPrefill}
+          onClose={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); }}
+          onDone={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); load(true); }}
         />
       )}
 
@@ -5257,6 +5296,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const [filterType,    setFilterType]    = useState("");    // "" | "veg" | "fruit" | "herb"
   const [sortBy,        setSortBy]        = useState("recent"); // "recent" | "alpha" | "pct"
   const [showFilters,   setShowFilters]   = useState(false);
+  const [cropPlantCheck, setCropPlantCheck] = useState(null); // crop object when Plant Check opened from crop card
 
   const load = useCallback(async () => {
     // Fetch fresh
@@ -5433,6 +5473,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
+      {cropPlantCheck && (
+        <PlantCheck
+          entry="crop"
+          prefillCrop={cropPlantCheck}
+          onClose={() => setCropPlantCheck(null)}
+          onDone={() => { setCropPlantCheck(null); load(); }}
+        />
+      )}
       {/* Header + filter/sort controls */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -5933,6 +5981,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                   <button onClick={() => setTimelineCrop(crop)}
                     style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                     Timeline
+                  </button>
+                  <button onClick={() => setCropPlantCheck(crop)}
+                    style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+                    🔍 Check
                   </button>
                   <button onClick={() => setDiary(crop)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
@@ -7852,6 +7904,493 @@ function ProSubscriptionSection() {
   );
 }
 
+
+// =============================================================================
+// PLANT CHECK (DIAGNOSIS) — Full Flow
+// Entry points: Today screen (floating button + feed card) + Crop detail page
+// Flow: crop picker → camera/library → processing → result → confirm update
+// Free: 3 lifetime diagnoses. Mark's account: always Pro (unlimited).
+// =============================================================================
+
+// ── Crop picker for Plant Check ───────────────────────────────────────────────
+function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
+  const [crops,   setCrops]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState("");
+
+  useEffect(() => {
+    apiFetch("/crops")
+      .then(data => {
+        setCrops(data || []);
+        // If a crop is prefilled, auto-select it immediately
+        if (prefillCropId && data?.length) {
+          const found = data.find(c => c.id === prefillCropId);
+          if (found) { onSelect(found); return; }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = crops.filter(c => {
+    if (!search.trim()) return true;
+    return (c.name || "").toLowerCase().includes(search.toLowerCase());
+  });
+
+  // Sort: today's crops first (those with tasks due today), then alphabetical
+  const today = new Date().toISOString().split("T")[0];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+
+        <div style={{ padding: "8px 20px 12px" }}>
+          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
+          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search crops…"
+            autoFocus
+            style={{ ...inputStyle, marginBottom: 0 }}
+          />
+        </div>
+
+        <div style={{ overflowY: "auto", flex: 1, padding: "0 20px 32px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>Loading your crops…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>No crops found</div>
+          ) : (
+            filtered.map(crop => (
+              <button key={crop.id} onClick={() => onSelect(crop)}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
+                  <div style={{ fontSize: 12, color: C.stone }}>
+                    {crop.area?.name || ""}
+                    {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
+                    {crop.stage ? ` · ${crop.stage}` : ""}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Photo source picker ───────────────────────────────────────────────────────
+function PlantCheckPhotoPicker({ onPhoto, onClose }) {
+  const fileRef = useRef(null);
+  const cameraRef = useRef(null);
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result.split(",")[1];
+      onPhoto(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 710, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
+        onClick={e => e.stopPropagation()}>
+
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+
+        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
+        <div style={{ fontSize: 13, color: C.stone, textAlign: "center", marginBottom: 24 }}>Get a clear shot of the affected leaves, stems or fruit</div>
+
+        {/* Camera */}
+        <button onClick={() => cameraRef.current?.click()}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          📷 Take a photo
+        </button>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
+
+        {/* Library */}
+        <button onClick={() => fileRef.current?.click()}
+          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          🖼️ Choose from library
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+
+        <button onClick={onClose}
+          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 14, cursor: "pointer", padding: 8 }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Diagnosis result screen ───────────────────────────────────────────────────
+function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
+  const [confirming, setConfirming] = useState(false);
+  const [updating,   setUpdating]   = useState(false);
+  const [updated,    setUpdated]    = useState(false);
+
+  const severityColor = {
+    low:    "#7FB069",
+    medium: "#D9A441",
+    high:   "#C65A5A",
+  }[result.severity] || C.stone;
+
+  const severityBg = {
+    low:    "#f0f9eb",
+    medium: "#fdf6e3",
+    high:   "#fdf0f0",
+  }[result.severity] || "#f5f5f5";
+
+  const readinessEmoji = {
+    ready:     "✅",
+    soon:      "🟡",
+    not_ready: "⏳",
+  }[result.harvest_readiness] || "";
+
+  const handleConfirmUpdate = async () => {
+    setUpdating(true);
+    try {
+      await onConfirmUpdate(result);
+      setUpdated(true);
+    } catch(e) {}
+    setUpdating(false);
+    setConfirming(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", overflowY: "auto" }}>
+      {/* Header */}
+      <div style={{ background: C.forest, color: "#fff", padding: "20px 20px 16px", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
+          <div>
+            <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700 }}>Plant Check</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "20px 20px 100px" }}>
+
+        {/* Overall summary */}
+        <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: 16, padding: "18px", marginBottom: 16 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>
+            {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
+          </div>
+          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+            {result.looks_healthy
+              ? "Looking healthy!"
+              : result.problem_name || "Issue detected"}
+          </div>
+          <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
+            {result.reasoning_summary}
+          </div>
+          {result.severity && !result.looks_healthy && (
+            <div style={{ display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {result.severity} severity
+            </div>
+          )}
+        </div>
+
+        {/* Harvest readiness */}
+        {result.harvest_readiness && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Harvest readiness</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", textTransform: "capitalize" }}>
+                  {result.harvest_readiness === "not_ready" ? "Not ready yet" : result.harvest_readiness === "soon" ? "Ready soon" : "Ready to harvest"}
+                </div>
+                {result.harvest_readiness_detail && (
+                  <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{result.harvest_readiness_detail}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stage detection */}
+        {result.stage_detected && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Growth stage detected</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: 15, color: C.forest, textTransform: "capitalize" }}>{result.stage_detected}</span>
+                {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
+              </div>
+              {!result.stage_matches_record && result.stage_detected && (
+                <span style={{ fontSize: 11, background: "#fff3cd", color: "#856404", borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Yield impact — Pro only */}
+        {result.yield_impact_pct !== null && result.yield_impact_pct !== undefined && (
+          <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Estimated yield impact</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontFamily: "serif", fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
+                {result.yield_impact_pct}%
+              </span>
+              {result.quality_impact && result.quality_impact !== "none" && (
+                <span style={{ fontSize: 12, color: C.stone }}>· Quality impact: {result.quality_impact}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Problem description */}
+        {result.problem_description && !result.looks_healthy && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>What we can see</div>
+            <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.6 }}>{result.problem_description}</div>
+          </div>
+        )}
+
+        {/* Treatment steps */}
+        {result.treatment_steps?.length > 0 && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>What to do now</div>
+            {result.treatment_steps.map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < result.treatment_steps.length - 1 ? 10 : 0 }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5, flex: 1 }}>{step}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Prevention tips */}
+        {result.prevention_tips?.length > 0 && (
+          <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Prevention</div>
+            {result.prevention_tips.map((tip, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
+                <span style={{ color: C.leaf, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Confirm update prompt */}
+        {result.requires_confirmation && !updated && (
+          <div style={{ background: "#f0f7ff", border: "1px solid #b3d4f5", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a3a5c", marginBottom: 12, lineHeight: 1.5 }}>
+              {result.confirmation_prompt || `Update ${crop.name} record with detected stage?`}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={handleConfirmUpdate} disabled={updating}
+                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+                {updating ? "Updating…" : "Yes, update record"}
+              </button>
+              <button onClick={() => setConfirming(false)}
+                style={{ flex: 1, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                No thanks
+              </button>
+            </div>
+          </div>
+        )}
+
+        {updated && (
+          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: C.forest, fontWeight: 600 }}>
+            ✓ Crop record updated
+          </div>
+        )}
+
+        {/* Diagnoses remaining count */}
+        {result.diagnoses_remaining !== null && result.diagnoses_remaining !== undefined && (
+          <div style={{ textAlign: "center", fontSize: 12, color: C.stone, marginBottom: 16 }}>
+            {result.diagnoses_remaining === 0
+              ? "You've used all 3 free plant checks"
+              : `${result.diagnoses_remaining} free plant check${result.diagnoses_remaining !== 1 ? "s" : ""} remaining`}
+          </div>
+        )}
+
+        <button onClick={onDone}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Plant Check orchestrator ─────────────────────────────────────────────
+// Manages the full flow: crop picker → photo picker → processing → result
+// entry: "today" | "crop" | "task"
+// prefillCrop: crop object to skip picker (crop page / task entry)
+function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
+  const [step,       setStep]       = useState(prefillCrop ? "photo" : "crop");
+  const [crop,       setCrop]       = useState(prefillCrop);
+  const [processing, setProcessing] = useState(false);
+  const [result,     setResult]     = useState(null);
+  const [error,      setError]      = useState(null);
+  const { isPro, isProForDiagnosis } = useProStatus();
+
+  // Check lifetime usage for free users
+  const [usageCount, setUsageCount] = useState(null);
+  useEffect(() => {
+    // Use isProForDiagnosis — plan-based check, ignores PRO_ENABLED flag.
+    // This ensures paid users are never blocked and free users always see accurate counts.
+    if (isProForDiagnosis) return;
+    apiFetch("/diagnoses/count").then(d => setUsageCount(d?.count || 0)).catch(() => {});
+  }, [isProForDiagnosis]);
+
+  const handleCropSelect = (selectedCrop) => {
+    setCrop(selectedCrop);
+    setStep("photo");
+  };
+
+  const handlePhoto = async (base64) => {
+    // Gate on isProForDiagnosis — plan-based, not flag-based
+    if (!isProForDiagnosis && usageCount >= 3) {
+      setStep("paywall");
+      return;
+    }
+
+    setStep("processing");
+    setError(null);
+
+    try {
+      const data = await apiFetch("/diagnoses/analyze", {
+        method: "POST",
+        body: JSON.stringify({
+          crop_instance_id: crop.id,
+          image: base64,
+        }),
+      });
+
+      if (data.upgrade_required) {
+        setStep("paywall");
+        return;
+      }
+
+      setResult(data);
+      setStep("result");
+    } catch (e) {
+      if (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks")) {
+        setStep("paywall");
+        return;
+      }
+      setError(e.message || "Something went wrong — please try again");
+      setStep("photo");
+    }
+  };
+
+  const handleConfirmUpdate = async (diagResult) => {
+    if (!crop?.id) return;
+    // Build the observation payload based on what was detected
+    const payload = { observation_type: "plant_check" };
+    if (diagResult.stage_detected) {
+      payload.confirmed_stage = diagResult.stage_detected;
+      payload.symptom_code = {
+        seedling:   "seedling_emerged",
+        vegetative: "vegetative_confirmed",
+        flowering:  "flowering_confirmed",
+        fruiting:   "fruit_set_confirmed",
+        harvesting: "harvest_started",
+      }[diagResult.stage_detected] || null;
+    }
+    if (diagResult.harvest_readiness === "ready") {
+      payload.symptom_code = "harvest_started";
+      payload.confirmed_stage = "harvesting";
+    }
+    await apiFetch(`/crops/${crop.id}/observe`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  };
+
+  // ── STEP: crop picker ─────────────────────────────────────────────────────
+  if (step === "crop") {
+    return (
+      <PlantCheckCropPicker
+        onSelect={handleCropSelect}
+        onClose={onClose}
+        prefillCropId={prefillCrop?.id}
+      />
+    );
+  }
+
+  // ── STEP: photo picker ────────────────────────────────────────────────────
+  if (step === "photo") {
+    return (
+      <>
+        {error && (
+          <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 800, background: C.red, color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, maxWidth: "90vw", textAlign: "center" }}>
+            {error}
+          </div>
+        )}
+        <PlantCheckPhotoPicker onPhoto={handlePhoto} onClose={onClose} />
+      </>
+    );
+  }
+
+  // ── STEP: processing ──────────────────────────────────────────────────────
+  if (step === "processing") {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+        <div style={{ fontSize: 52, marginBottom: 24, animation: "pulse 1.5s infinite" }}>🔬</div>
+        <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 10, textAlign: "center" }}>Analysing your {crop?.name || "plant"}…</div>
+        <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6, maxWidth: 280 }}>
+          Checking for issues, growth stage, and harvest readiness
+        </div>
+        <div style={{ marginTop: 32, display: "flex", gap: 6 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: C.forest, opacity: 0.3, animation: `bounce 1.2s ${i * 0.2}s infinite` }} />
+          ))}
+        </div>
+        <style>{`
+          @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+          @keyframes bounce { 0%,100%{opacity:0.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-4px)} }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ── STEP: result ──────────────────────────────────────────────────────────
+  if (step === "result" && result) {
+    return (
+      <PlantCheckResult
+        result={result}
+        crop={crop}
+        onClose={() => setStep("photo")}
+        onConfirmUpdate={handleConfirmUpdate}
+        onDone={onDone || onClose}
+      />
+    );
+  }
+
+  // ── STEP: paywall ─────────────────────────────────────────────────────────
+  if (step === "paywall") {
+    return <ProPaywall trigger="diagnosis" onClose={onClose} />;
+  }
+
+  return null;
+}
+
 // ── Pro Paywall Component ─────────────────────────────────────────────────────
 // Shown as a bottom sheet when user hits a Pro feature limit.
 // Only renders when PRO_ENABLED=true — pass null/undefined to hide.
@@ -7860,12 +8399,17 @@ function ProSubscriptionSection() {
 function ProPaywall({ trigger, onClose }) {
   const [loading, setLoading] = useState(false);
 
-  if (!PRO_ENABLED || !trigger) return null;
+  // Diagnosis paywall always works — users need an upgrade path when they hit
+  // their 3 free checks, even while the broader Pro UI is still hidden.
+  // All other paywall triggers (plans, default etc) respect the PRO_ENABLED flag.
+  const diagnosisOnly = trigger === "diagnosis";
+  if (!diagnosisOnly && (!PRO_ENABLED || !trigger)) return null;
+  if (!trigger) return null;
 
   const MESSAGES = {
     diagnosis: {
       title:  "Unlimited Plant Check",
-      body:   "You've used your free plant checks. Upgrade to Pro for unlimited diagnosis, harvest timing, and treatment plans.",
+      body:   "You've used your 3 free plant checks. Upgrade to Pro for unlimited diagnosis, harvest readiness detection, and treatment plans.",
       cta:    "Unlock unlimited Plant Check",
     },
     plans: {
@@ -7910,8 +8454,11 @@ function ProPaywall({ trigger, onClose }) {
         </div>
 
         <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Vercro Pro — £49/year</div>
-          <div style={{ fontSize: 12, color: C.stone }}>Early supporter price · cancel anytime</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Vercro Pro</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>£3.99/mo</div>
+          </div>
+          <div style={{ fontSize: 12, color: C.stone }}>or £39/year · early supporter price · cancel anytime</div>
         </div>
 
         <button
@@ -9897,7 +10444,8 @@ export default function GrowSmart() {
       .then(p => setIsDemo(p?.is_demo === true))
       .catch(() => setIsDemo(false));
   }, [session]);
-  const [showFeedback,    setShowFeedback]    = useState(false);
+  const [showFeedback,         setShowFeedback]         = useState(false);
+  const [showGlobalPlantCheck, setShowGlobalPlantCheck] = useState(false);
   const [subscribedToast, setSubscribedToast] = useState(false);
 
   // Handle Stripe redirect back after successful checkout
@@ -9968,6 +10516,25 @@ export default function GrowSmart() {
 
       {/* iOS install banner */}
       {showIOSBanner && <IOSInstallBanner onDismiss={dismissIOSBanner} />}
+
+      {/* Floating Plant Check button — Today tab only */}
+      {tab === "dashboard" && !showFeedback && !showIOSBanner && (
+        <button
+          onClick={() => setShowGlobalPlantCheck(true)}
+          style={{ position: "fixed", bottom: 90, left: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+          🔍
+        </button>
+      )}
+      {showGlobalPlantCheck && (
+        <PlantCheck
+          entry="today"
+          prefillCrop={null}
+          onClose={() => setShowGlobalPlantCheck(false)}
+          onDone={() => setShowGlobalPlantCheck(false)}
+        />
+      )}
 
       {/* Floating feedback button */}
       {!showFeedback && tab !== "admin" && !showIOSBanner && (
