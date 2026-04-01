@@ -10128,146 +10128,726 @@ function AdminScreen({ isDemo = false }) {
 // Only visible to Mark (or when PRO_ENABLED=true)
 // =============================================================================
 // =============================================================================
-// PLAN SCREEN — Garden Visualiser V6 (Konva)
-// Illustrated spatial canvas. react-konva + konva rendering engine.
-// Each area type has its own visual language. Crops as illustrated objects.
-// Background: bark/woodchip texture. Premium feel throughout.
+// PLAN SCREEN — Garden Visualiser V7 (Konva — Full Redesign)
+// Realistic illustrated garden. Calm, spatial, premium.
 // =============================================================================
 
-// ── Konva dynamic import guard ────────────────────────────────────────────────
-// Konva uses browser APIs — must never run server-side.
-// We lazy-load via a state flag that only sets after mount.
-
-// ── Design constants ──────────────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
 const K = {
-  // Canvas
-  canvasBg:      "#8B6B4A", // bark/woodchip base
-  barkDark:      "#6B4E35",
-  barkLight:     "#A07850",
+  // Canvas — muted earthy path/bark
+  canvasBg:     "#9E7E5A",
+  pathDark:     "#7A5E3E",
+  pathMid:      "#8A6E4A",
+  pathLight:    "#B0906A",
 
-  // Raised bed
-  timberOuter:   "#8B5E3C",
-  timberInner:   "#A0704A",
-  timberEdge:    "#6B4428",
-  soilDark:      "#3D2B1F",
-  soilMid:       "#4A3428",
-  soilLight:     "#5A4035",
+  // Raised bed — natural oak/pine timber
+  timber:       "#9B7040",
+  timberLight:  "#B88448",
+  timberDark:   "#7A5430",
+  timberGrain:  "#8A6038",
+  soilRich:     "#2E1E14",
+  soilMid:      "#3A2618",
+  soilLight:    "#4A3020",
+  soilHigh:     "#5A3E28",
 
-  // Open ground
-  openSoil:      "#5C4030",
-  openSoilLight: "#705040",
+  // Open ground — cultivated soil
+  groundSoil:   "#3E2A18",
+  groundLight:  "#504030",
+  groundEdge:   "#2A1A0C",
 
-  // Greenhouse
-  ghFrame:       "#4A6B4A",
-  ghPanel:       "rgba(180,220,180,0.25)",
-  ghPanelLine:   "rgba(100,160,100,0.5)",
+  // Greenhouse — aluminium frame, glass
+  ghFrame:      "#8AA090",
+  ghGlass:      "rgba(200,230,210,0.18)",
+  ghGlassLine:  "rgba(140,190,160,0.45)",
+  ghRidge:      "#6A8878",
+  ghBag:        "#3A2A18",
 
-  // Container
-  terracotta:    "#C4643A",
-  terracottaDark:"#A04A28",
-  terracottaRim: "#D47848",
+  // Container — aged terracotta
+  pot:          "#B85C34",
+  potLight:     "#CC7048",
+  potDark:      "#8C4024",
+  potRim:       "#D07050",
+  potSoil:      "#2A1810",
 
-  // Polytunnel
-  tunnelFrame:   "#8A9A7A",
-  tunnelCover:   "rgba(220,235,210,0.35)",
+  // Polytunnel — white plastic / hoops
+  tunnelHoop:   "#7A8870",
+  tunnelSkin:   "rgba(235,245,230,0.28)",
+  tunnelBase:   "#5A6858",
 
-  // Crop families
-  cropRoot:      "#6B8C3A",  // carrot/parsnip tops — green
-  cropBrassica:  "#4A7A3A",  // cabbage heads — dark green
-  cropLegume:    "#5A9A4A",  // climbing — bright green
-  cropFruiting:  "#8A5A2A",  // tomato/courgette — warm brown stem
-  cropFruit:     "#3A6A2A",  // trees/bushes — deep green
-  cropHerb:      "#7A9A5A",  // herbs — sage green
-  cropSalad:     "#6AAA4A",  // loose leaf — light green
-  cropAllium:    "#7A7A9A",  // onion/garlic — blue-grey
-  cropDefault:   "#5A7A4A",
+  // Crops — natural plant palette
+  leafBright:   "#5A9A30",
+  leafMid:      "#4A8020",
+  leafDark:     "#3A6818",
+  leafSage:     "#7A9A60",
+  stem:         "#6A7A30",
+  rootOrange:   "#D4601A",
+  rootPurple:   "#8A4A7A",
+  fruitRed:     "#CC2A1A",
+  fruitYellow:  "#D4A020",
+  fruitGreen:   "#4A8A20",
+  bark:         "#7A5030",
+  barkLight:    "#9A6840",
 };
 
-// Metres to pixels — set per render based on container size
-const PX_PER_M_BASE = 80; // will be overridden by scale calc
-
-// ── Crop family classifier ────────────────────────────────────────────────────
+// ── Crop family ───────────────────────────────────────────────────────────────
 function getCropFamily(name) {
-  const n = (name || "").toLowerCase();
-  if (/carrot|parsnip|beetroot|radish|turnip|celeriac|swede/.test(n)) return "root";
-  if (/cabbage|kale|broccoli|cauliflower|brussels|kohlrabi|pak/.test(n)) return "brassica";
-  if (/pea|bean|runner|broad|french|mangetout|lentil/.test(n)) return "legume";
-  if (/tomato|courgette|cucumber|squash|pumpkin|pepper|aubergine|marrow/.test(n)) return "fruiting";
-  if (/apple|pear|plum|cherry|fig|quince|berry|strawberry|raspberry|blackberry|gooseberry|currant/.test(n)) return "fruit";
-  if (/mint|basil|thyme|rosemary|sage|oregano|chive|dill|fennel|coriander|parsley/.test(n)) return "herb";
-  if (/lettuce|spinach|chard|rocket|sorrel|endive|chicory|watercress|salad/.test(n)) return "salad";
-  if (/onion|garlic|leek|shallot|spring onion/.test(n)) return "allium";
-  if (/potato|sweet potato|yam/.test(n)) return "root";
+  const n = (name||"").toLowerCase();
+  if (/carrot|parsnip|beetroot|radish|turnip|swede/.test(n)) return "root";
+  if (/potato/.test(n)) return "potato";
+  if (/cabbage|kale|broccoli|cauliflower|brussels|kohlrabi/.test(n)) return "brassica";
+  if (/pea|bean|runner|broad|french|mangetout/.test(n)) return "legume";
+  if (/tomato|pepper|chilli/.test(n)) return "tomato";
+  if (/courgette|cucumber|squash|pumpkin|marrow/.test(n)) return "sprawling";
+  if (/apple|pear|plum|cherry|fig/.test(n)) return "tree";
+  if (/berry|strawberry|raspberry|blackberry|gooseberry|currant|blueberry/.test(n)) return "bush";
+  if (/mint|basil|thyme|rosemary|sage|oregano|chive|dill|parsley|coriander/.test(n)) return "herb";
+  if (/lettuce|spinach|chard|rocket|sorrel|endive|salad/.test(n)) return "salad";
+  if (/onion|garlic|leek|shallot/.test(n)) return "allium";
+  if (/sweetcorn|corn/.test(n)) return "corn";
   return "default";
 }
 
-function getCropColor(name) {
-  const f = getCropFamily(name);
-  return K[`crop${f.charAt(0).toUpperCase() + f.slice(1)}`] || K.cropDefault;
+// ── Crop renderer — realistic illustrated plants ───────────────────────────────
+function drawCrop(ctx, family, cx, cy, s) {
+  // s = scale factor based on area size
+  switch(family) {
+
+    case "root": {
+      // Carrot/parsnip — feathery tops + taproot suggestion
+      // Stems
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + i*s*0.18, cy + s*0.2);
+        ctx.quadraticCurveTo(cx + i*s*0.35, cy - s*0.1, cx + i*s*0.15, cy - s*0.55);
+        ctx.strokeStyle = K.leafMid;
+        ctx.lineWidth = s*0.08;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+      // Feathery leaf tips
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.15, cy-s*0.55, s*0.12, s*0.2, -0.4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx+s*0.05, cy-s*0.62, s*0.1, s*0.22, 0.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx+s*0.22, cy-s*0.5, s*0.1, s*0.18, 0.5, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "potato": {
+      // Potato — leafy mound above ground
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.ellipse(cx, cy-s*0.1, s*0.45, s*0.38, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.25, cy-s*0.05, s*0.28, s*0.22, -0.3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.2, cy-s*0.18, s*0.25, s*0.2, 0.4, 0, Math.PI*2); ctx.fill();
+      // White flower hint
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.beginPath(); ctx.arc(cx+s*0.08, cy-s*0.42, s*0.08, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "brassica": {
+      // Cabbage/kale — layered round head
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.ellipse(cx, cy, s*0.52, s*0.42, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.08, cy-s*0.05, s*0.38, s*0.32, -0.2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.05, cy-s*0.1, s*0.26, s*0.22, 0.15, 0, Math.PI*2); ctx.fill();
+      // Heart
+      ctx.fillStyle = "rgba(200,230,180,0.6)";
+      ctx.beginPath(); ctx.ellipse(cx+s*0.05, cy-s*0.08, s*0.12, s*0.1, 0, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "legume": {
+      // Peas/beans — climbing vine with tendrils
+      ctx.strokeStyle = K.stem;
+      ctx.lineWidth = s*0.07;
+      ctx.beginPath(); ctx.moveTo(cx, cy+s*0.6); ctx.lineTo(cx+s*0.1, cy-s*0.5); ctx.stroke();
+      // Leaves
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.28, cy+s*0.1, s*0.24, s*0.16, 0.4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx-s*0.2, cy-s*0.15, s*0.2, s*0.14, -0.3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx+s*0.22, cy-s*0.38, s*0.22, s*0.15, 0.5, 0, Math.PI*2); ctx.fill();
+      // Pod
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.05, cy+s*0.28, s*0.08, s*0.22, 0.15, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "tomato": {
+      // Tomato — stake + bushy plant + red fruits
+      ctx.strokeStyle = K.bark;
+      ctx.lineWidth = s*0.06;
+      ctx.beginPath(); ctx.moveTo(cx+s*0.12, cy+s*0.5); ctx.lineTo(cx+s*0.12, cy-s*0.6); ctx.stroke();
+      // Foliage
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.1, cy-s*0.1, s*0.38, s*0.3, -0.2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.18, cy-s*0.25, s*0.3, s*0.25, 0.3, 0, Math.PI*2); ctx.fill();
+      // Tomatoes
+      ctx.fillStyle = K.fruitRed;
+      ctx.beginPath(); ctx.arc(cx-s*0.15, cy+s*0.08, s*0.16, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#FF5A30";
+      ctx.beginPath(); ctx.arc(cx+s*0.25, cy-s*0.05, s*0.13, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#FF9050";
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.35, s*0.11, 0, Math.PI*2); ctx.fill();
+      // Calyx on largest fruit
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.arc(cx-s*0.15, cy+s*0.08-s*0.16, s*0.06, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "sprawling": {
+      // Courgette/squash — big leaves, trailing
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.2, cy+s*0.1, s*0.5, s*0.4, -0.3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.25, cy-s*0.15, s*0.45, s*0.38, 0.4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafSage;
+      ctx.beginPath(); ctx.ellipse(cx, cy-s*0.3, s*0.38, s*0.3, 0, 0, Math.PI*2); ctx.fill();
+      // Courgette fruit
+      ctx.fillStyle = K.fruitGreen;
+      ctx.beginPath(); ctx.ellipse(cx-s*0.35, cy+s*0.35, s*0.12, s*0.32, -0.4, 0, Math.PI*2); ctx.fill();
+      // Yellow flower
+      ctx.fillStyle = K.fruitYellow;
+      ctx.beginPath(); ctx.arc(cx+s*0.1, cy+s*0.25, s*0.1, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "tree": {
+      // Apple/pear tree — trunk + rounded canopy
+      ctx.fillStyle = K.bark;
+      ctx.beginPath(); ctx.roundRect(cx-s*0.1, cy+s*0.2, s*0.2, s*0.55, s*0.05); ctx.fill();
+      // Roots suggestion
+      ctx.strokeStyle = K.barkLight;
+      ctx.lineWidth = s*0.06;
+      ctx.beginPath(); ctx.moveTo(cx-s*0.08, cy+s*0.72); ctx.lineTo(cx-s*0.35, cy+s*0.78); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+s*0.08, cy+s*0.72); ctx.lineTo(cx+s*0.35, cy+s*0.78); ctx.stroke();
+      // Canopy layers
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.1, s*0.58, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.arc(cx-s*0.18, cy-s*0.2, s*0.4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.28, s*0.35, 0, Math.PI*2); ctx.fill();
+      // Fruit
+      ctx.fillStyle = K.fruitRed;
+      ctx.beginPath(); ctx.arc(cx-s*0.2, cy+s*0.1, s*0.1, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#E8A030";
+      ctx.beginPath(); ctx.arc(cx+s*0.22, cy-s*0.02, s*0.09, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.fruitRed;
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.35, s*0.08, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "bush": {
+      // Berry bush — rounded multi-stem shrub
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.arc(cx, cy+s*0.05, s*0.52, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.arc(cx-s*0.2, cy-s*0.1, s*0.36, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.arc(cx+s*0.18, cy-s*0.18, s*0.32, 0, Math.PI*2); ctx.fill();
+      // Berries
+      const berryPositions = [[-0.25,0.15],[0.15,0.25],[0.35,-0.05],[-0.05,0.35],[0.25,-0.3]];
+      berryPositions.forEach(([bx,by]) => {
+        ctx.fillStyle = "#6030A0";
+        ctx.beginPath(); ctx.arc(cx+bx*s, cy+by*s, s*0.09, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(120,60,180,0.5)";
+        ctx.beginPath(); ctx.arc(cx+bx*s-s*0.03, cy+by*s-s*0.03, s*0.04, 0, Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+
+    case "herb": {
+      // Herb — compact mounded cluster
+      ctx.fillStyle = K.leafSage;
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.42, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.arc(cx-s*0.18, cy-s*0.08, s*0.28, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.15, s*0.24, 0, Math.PI*2); ctx.fill();
+      // Tiny flower dots
+      ["#D0A0E0","#E0B0F0","#C890D8"].forEach((c,i) => {
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(cx + (i-1)*s*0.2, cy-s*0.3 + (i%2)*s*0.08, s*0.06, 0, Math.PI*2);
+        ctx.fill();
+      });
+      break;
+    }
+
+    case "salad": {
+      // Lettuce/salad — loose open leaves
+      const angles = [-40,-15,10,35,58,-65];
+      angles.forEach((angle, i) => {
+        const rad = angle * Math.PI / 180;
+        const dist = s * 0.3;
+        ctx.fillStyle = i%2===0 ? K.leafBright : K.leafMid;
+        ctx.beginPath();
+        ctx.ellipse(
+          cx + Math.sin(rad)*dist*0.6,
+          cy - Math.cos(rad)*dist*0.6,
+          s*0.22, s*0.35,
+          rad, 0, Math.PI*2
+        );
+        ctx.fill();
+      });
+      // Heart
+      ctx.fillStyle = "rgba(200,240,170,0.8)";
+      ctx.beginPath(); ctx.arc(cx, cy, s*0.15, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    case "allium": {
+      // Onion/garlic/leek — upright stems with round heads
+      const stems = [-s*0.28, 0, s*0.28];
+      stems.forEach((ox, i) => {
+        ctx.strokeStyle = i===1 ? K.leafMid : K.leafSage;
+        ctx.lineWidth = s*0.1;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(cx+ox, cy+s*0.55);
+        ctx.bezierCurveTo(cx+ox, cy+s*0.2, cx+ox+ox*0.3, cy-s*0.1, cx+ox+ox*0.1, cy-s*0.45);
+        ctx.stroke();
+        // Flower head
+        ctx.fillStyle = i===1 ? "#C0A0D0" : "#D0B0E0";
+        ctx.beginPath(); ctx.arc(cx+ox+ox*0.1, cy-s*0.48, s*0.16, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.beginPath(); ctx.arc(cx+ox+ox*0.1-s*0.04, cy-s*0.52, s*0.06, 0, Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+
+    case "corn": {
+      // Sweetcorn — tall stalks
+      ctx.strokeStyle = K.leafMid;
+      ctx.lineWidth = s*0.1;
+      ctx.beginPath(); ctx.moveTo(cx, cy+s*0.6); ctx.lineTo(cx+s*0.05, cy-s*0.65); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-s*0.25, cy+s*0.5); ctx.lineTo(cx-s*0.2, cy-s*0.5); ctx.stroke();
+      // Leaves
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.3, cy, s*0.35, s*0.1, 0.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx-s*0.4, cy-s*0.2, s*0.32, s*0.09, -0.4, 0, Math.PI*2); ctx.fill();
+      // Cob
+      ctx.fillStyle = K.fruitYellow;
+      ctx.beginPath(); ctx.ellipse(cx+s*0.1, cy+s*0.1, s*0.1, s*0.25, 0.2, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+
+    default: {
+      // Generic plant
+      ctx.fillStyle = K.leafMid;
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.05, s*0.4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafBright;
+      ctx.beginPath(); ctx.arc(cx-s*0.15, cy-s*0.15, s*0.25, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = K.leafDark;
+      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.1, s*0.22, 0, Math.PI*2); ctx.fill();
+    }
+  }
 }
 
-// ── Konva-based Garden Canvas ─────────────────────────────────────────────────
-function GardenCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onTap, onDragEnd }) {
-  const { Stage, Layer, Rect, Group, Line, Circle, Ellipse, Text, Shape } = window.KonvaReact || {};
+// ── Canvas-based garden renderer ──────────────────────────────────────────────
+// Uses HTML5 Canvas directly via Konva.
+// One Shape per area for maximum performance and control.
+
+function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onTap, onDragEnd }) {
+  const stageRef = useRef(null);
+  const { Stage, Layer, Shape, Rect, Group, Text, Line, Ellipse, Circle } = window.KonvaReact || {};
 
   if (!Stage) return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:canvasH, color:"#888" }}>
-      Loading canvas…
+    <div style={{ height:canvasH, display:"flex", alignItems:"center", justifyContent:"center", background:K.canvasBg, color:"rgba(255,255,255,0.5)", fontSize:14 }}>
+      Preparing your garden…
     </div>
   );
 
-  const cropsByArea = {};
-  for (const area of areas) {
-    cropsByArea[area.id] = crops.filter(c => c.area_id === area.id);
-  }
-
   const PAD = 24;
+  const cropsByArea = {};
+  for (const area of areas) cropsByArea[area.id] = crops.filter(c => c.area_id === area.id);
 
-  // ── Draw bark/woodchip background ──────────────────────────────────────────
-  // Simulate bark texture with overlapping thin rectangles of varying tone
-  const barkStripes = [];
-  const stripeCount = Math.floor(canvasW / 6);
-  for (let i = 0; i < stripeCount; i++) {
-    const x = i * 6 + (i % 3 === 0 ? -1 : i % 3 === 1 ? 1 : 0);
-    const tone = i % 4 === 0 ? K.barkDark : i % 4 === 2 ? K.barkLight : K.canvasBg;
-    barkStripes.push({ x, tone });
-  }
+  // ── Draw bark/path background ───────────────────────────────────────────
+  const drawBackground = (ctx, w, h) => {
+    // Base fill
+    ctx.fillStyle = K.canvasBg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Bark chips — irregular ellipses, very natural
+    for (let i = 0; i < 60; i++) {
+      const x  = (i * 71 + 23) % w;
+      const y  = (i * 113 + 41) % h;
+      const rx = 8 + (i%5)*4;
+      const ry = 3 + (i%3)*2;
+      const angle = (i * 43) % Math.PI;
+      const lightness = i%4===0 ? K.pathDark : i%4===1 ? K.pathLight : K.pathMid;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.fillStyle = lightness;
+      ctx.globalAlpha = 0.3 + (i%3)*0.1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Subtle grain direction — very faint, not wood floor
+    ctx.globalAlpha = 0.06;
+    for (let i = 0; i < w; i += 8) {
+      ctx.strokeStyle = i%16===0 ? K.pathDark : K.pathLight;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(i + h*0.05, 0);
+      ctx.lineTo(i, h);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  // ── Draw individual area ────────────────────────────────────────────────
+  const drawArea = (ctx, area, x, y, w, h, isSelected) => {
+    ctx.save();
+
+    switch(area.type) {
+
+      case "raised_bed": {
+        const T = Math.max(6, Math.min(12, w * 0.08)); // timber thickness proportional
+
+        // Drop shadow
+        ctx.shadowColor = "rgba(0,0,0,0.35)";
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 4;
+
+        // Outer timber frame
+        ctx.fillStyle = K.timber;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 8);
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+
+        // Timber plank texture — horizontal lines
+        ctx.strokeStyle = K.timberGrain;
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.35;
+        for (let i = T+4; i < h-T; i += 6) {
+          ctx.beginPath(); ctx.moveTo(x+T, y+i); ctx.lineTo(x+w-T, y+i); ctx.stroke();
+        }
+        // Vertical grain on side planks
+        for (let i = T+4; i < w-T; i += 10) {
+          ctx.beginPath(); ctx.moveTo(x+i, y); ctx.lineTo(x+i, y+T); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x+i, y+h-T); ctx.lineTo(x+i, y+h); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Timber edge highlight (top face)
+        const grad = ctx.createLinearGradient(x, y, x, y+T);
+        grad.addColorStop(0, K.timberLight);
+        grad.addColorStop(1, K.timber);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, T, [8,8,0,0]);
+        ctx.fill();
+
+        // Bottom plank
+        ctx.fillStyle = K.timberDark;
+        ctx.beginPath();
+        ctx.roundRect(x, y+h-T, w, T, [0,0,8,8]);
+        ctx.fill();
+
+        // Left/right planks
+        ctx.fillStyle = K.timber;
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(x, y+T, T, h-T*2);
+        ctx.fillRect(x+w-T, y+T, T, h-T*2);
+        ctx.globalAlpha = 1;
+
+        // Corner bolts
+        [[x+T/2, y+T/2],[x+w-T/2, y+T/2],[x+T/2, y+h-T/2],[x+w-T/2, y+h-T/2]].forEach(([bx,by]) => {
+          ctx.fillStyle = K.timberDark;
+          ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = K.timberLight;
+          ctx.beginPath(); ctx.arc(bx-0.8, by-0.8, 1.2, 0, Math.PI*2); ctx.fill();
+        });
+
+        // Soil fill
+        const soilGrad = ctx.createRadialGradient(x+w/2, y+h/2, 0, x+w/2, y+h/2, Math.max(w,h)*0.6);
+        soilGrad.addColorStop(0, K.soilMid);
+        soilGrad.addColorStop(1, K.soilRich);
+        ctx.fillStyle = soilGrad;
+        ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
+
+        // Soil texture — random pebbles/clods
+        for (let i = 0; i < 12; i++) {
+          const sx = x+T+6 + (i*29)%(w-T*2-12);
+          const sy = y+T+4 + (i*19)%(h-T*2-8);
+          ctx.fillStyle = K.soilHigh;
+          ctx.globalAlpha = 0.25;
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, 5+(i%4)*3, 3+(i%3)*2, (i*37)%Math.PI, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        break;
+      }
+
+      case "open_ground": {
+        // Soft shadow
+        ctx.shadowColor = "rgba(0,0,0,0.2)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 3;
+
+        // Soil base with irregular edges
+        ctx.fillStyle = K.groundSoil;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 12);
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+
+        // Cultivated soil rows — subtle furrows
+        ctx.strokeStyle = K.groundLight;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.2;
+        const rowSpacing = Math.max(8, h / 8);
+        for (let ry = y + rowSpacing; ry < y+h-4; ry += rowSpacing) {
+          ctx.beginPath(); ctx.moveTo(x+6, ry); ctx.lineTo(x+w-6, ry); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Edge darkening
+        const edgeGrad = ctx.createRadialGradient(x+w/2, y+h/2, Math.min(w,h)*0.25, x+w/2, y+h/2, Math.max(w,h)*0.7);
+        edgeGrad.addColorStop(0, "transparent");
+        edgeGrad.addColorStop(1, "rgba(0,0,0,0.3)");
+        ctx.fillStyle = edgeGrad;
+        ctx.beginPath(); ctx.roundRect(x, y, w, h, 12); ctx.fill();
+        break;
+      }
+
+      case "greenhouse": {
+        ctx.shadowColor = "rgba(0,0,0,0.25)";
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetY = 4;
+
+        // Foundation/base
+        ctx.fillStyle = K.ghFrame;
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath(); ctx.roundRect(x, y+h*0.9, w, h*0.1, [0,0,4,4]); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowColor = "transparent";
+
+        // Glass panels
+        ctx.fillStyle = K.ghGlass;
+        ctx.strokeStyle = K.ghFrame;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.fill(); ctx.stroke();
+
+        // Panel divisions — vertical
+        const vDivs = Math.max(2, Math.floor(w/38));
+        for (let i = 1; i < vDivs; i++) {
+          ctx.strokeStyle = K.ghGlassLine;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(x + w*i/vDivs, y+4);
+          ctx.lineTo(x + w*i/vDivs, y+h-4);
+          ctx.stroke();
+        }
+        // Horizontal mid-rail
+        ctx.strokeStyle = K.ghFrame;
+        ctx.lineWidth = 1.8;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath(); ctx.moveTo(x, y+h*0.45); ctx.lineTo(x+w, y+h*0.45); ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Ridge beam
+        ctx.strokeStyle = K.ghRidge;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(x, y+6); ctx.lineTo(x+w, y+6); ctx.stroke();
+
+        // Grow bags
+        const bagW = (w-20) / Math.max(2, Math.min(3, Math.floor(w/40)));
+        for (let i = 0; i < Math.min(3, Math.floor(w/40)); i++) {
+          ctx.fillStyle = K.ghBag;
+          ctx.globalAlpha = 0.6;
+          ctx.beginPath();
+          ctx.roundRect(x+10+i*(bagW+4), y+h*0.6, bagW, h*0.28, 4);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Glass shine
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.beginPath(); ctx.roundRect(x+3, y+3, w*0.4, h*0.35, [3,3,3,3]); ctx.fill();
+        break;
+      }
+
+      case "container": {
+        const rimH = Math.max(8, h*0.1);
+
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 4;
+
+        // Pot body — slightly tapered via roundRect
+        const potGrad = ctx.createLinearGradient(x, y, x+w, y);
+        potGrad.addColorStop(0, K.potDark);
+        potGrad.addColorStop(0.3, K.pot);
+        potGrad.addColorStop(0.7, K.potLight);
+        potGrad.addColorStop(1, K.potDark);
+        ctx.fillStyle = potGrad;
+        ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
+        ctx.shadowColor = "transparent";
+
+        // Rim
+        const rimGrad = ctx.createLinearGradient(x, y, x, y+rimH);
+        rimGrad.addColorStop(0, K.potRim);
+        rimGrad.addColorStop(1, K.pot);
+        ctx.fillStyle = rimGrad;
+        ctx.beginPath(); ctx.roundRect(x-2, y, w+4, rimH, [8,8,0,0]); ctx.fill();
+
+        // Horizontal rings
+        ctx.strokeStyle = K.potDark;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        [0.35, 0.55, 0.72].forEach(frac => {
+          ctx.beginPath(); ctx.moveTo(x+4, y+h*frac); ctx.lineTo(x+w-4, y+h*frac); ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+
+        // Soil
+        ctx.fillStyle = K.potSoil;
+        ctx.beginPath(); ctx.roundRect(x+4, y+rimH+2, w-8, h-rimH-8, [0,0,4,4]); ctx.fill();
+
+        // Shine
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.beginPath(); ctx.roundRect(x+4, y+4, w*0.25, h*0.45, 3); ctx.fill();
+        break;
+      }
+
+      case "polytunnel": {
+        ctx.shadowColor = "rgba(0,0,0,0.2)";
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 4;
+
+        // Base/ground strip
+        ctx.fillStyle = K.tunnelBase;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath(); ctx.roundRect(x, y+h*0.75, w, h*0.25, [0,0,6,6]); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowColor = "transparent";
+
+        // Plastic skin — translucent with rounded top
+        ctx.fillStyle = K.tunnelSkin;
+        ctx.strokeStyle = K.tunnelHoop;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, [w*0.12, w*0.12, 6, 6]);
+        ctx.fill(); ctx.stroke();
+
+        // Hoop ribs
+        const hoops = Math.max(3, Math.floor(w/28));
+        ctx.strokeStyle = K.tunnelHoop;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.55;
+        for (let i = 1; i < hoops; i++) {
+          const hx = x + w*i/hoops;
+          ctx.beginPath(); ctx.moveTo(hx, y+h*0.08); ctx.lineTo(hx, y+h); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Ridge line
+        ctx.strokeStyle = K.tunnelHoop;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath(); ctx.moveTo(x, y+h*0.08); ctx.lineTo(x+w, y+h*0.08); ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Soil floor
+        ctx.fillStyle = K.soilRich;
+        ctx.globalAlpha = 0.55;
+        ctx.beginPath(); ctx.roundRect(x+4, y+h*0.5, w-8, h*0.42, [0,0,4,4]); ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Shine on skin
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
+        ctx.beginPath(); ctx.roundRect(x+4, y+4, w*0.35, h*0.35, 4); ctx.fill();
+        break;
+      }
+
+      default: {
+        ctx.shadowColor = "rgba(0,0,0,0.2)";
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = K.groundSoil;
+        ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.fill();
+        ctx.shadowColor = "transparent";
+      }
+    }
+
+    // Selection outline — dashed green
+    if (isSelected) {
+      ctx.strokeStyle = "#6FAF63";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([7, 3]);
+      ctx.shadowColor = "rgba(111,175,99,0.4)";
+      ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 12); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.shadowColor = "transparent";
+    }
+
+    ctx.restore();
+  };
+
+  // ── Crop placement ──────────────────────────────────────────────────────
+  const getT = (type) => Math.max(6, Math.min(12, 80 * 0.08)); // approximate timber
+
+  const placeCrops = (area, x, y, w, h) => {
+    const areaCrops = cropsByArea[area.id] || [];
+    if (!areaCrops.length) return [];
+    const T = area.type === "raised_bed" ? Math.max(6, Math.min(12, w*0.08)) : 4;
+    const LABEL_H = Math.max(14, Math.min(18, h*0.14));
+    const PAD_INNER = T + 8;
+
+    const unique = [];
+    const seen = new Set();
+    for (const c of areaCrops) {
+      if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); }
+    }
+    const shown = unique.slice(0, 6);
+    const cols = Math.min(shown.length, Math.max(1, Math.floor((w-PAD_INNER*2) / 36)));
+    const rows = Math.ceil(shown.length / cols);
+    const cellW = (w - PAD_INNER*2) / cols;
+    const cellH = (h - PAD_INNER - LABEL_H - 4) / rows;
+    const s = Math.max(10, Math.min(22, Math.min(cellW, cellH) * 0.42));
+
+    return shown.map((crop, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const jX = (i%3===0?-3:i%3===1?3:-1);
+      const jY = (i%2===0?-2:2);
+      return {
+        cx: x + PAD_INNER + col*cellW + cellW*0.5 + jX,
+        cy: y + LABEL_H + PAD_INNER*0.5 + row*cellH + cellH*0.5 + jY,
+        crop, s,
+      };
+    });
+  };
 
   return (
-    <Stage width={canvasW} height={canvasH}>
-
-      {/* Background layer — bark texture */}
+    <Stage ref={stageRef} width={canvasW} height={canvasH}>
       <Layer>
-        {/* Base colour */}
-        <Rect x={0} y={0} width={canvasW} height={canvasH} fill={K.canvasBg} />
-        {/* Bark stripes — diagonal, subtle */}
-        {barkStripes.map((s, i) => (
-          <Line key={i}
-            points={[s.x, 0, s.x + canvasH * 0.15, canvasH]}
-            stroke={s.tone} strokeWidth={i%5===0?2.5:1.5} opacity={0.35}
-            lineCap="round"
-          />
-        ))}
-        {/* Bark chips — small ellipses scattered */}
-        {Array.from({length: 40}, (_,i) => ({
-          x: (i * 73 + 40) % canvasW,
-          y: (i * 113 + 30) % canvasH,
-          rx: 6 + (i%3)*3,
-          ry: 2 + (i%2),
-          rot: (i * 37) % 180,
-          tone: i%3===0 ? K.barkDark : i%3===1 ? K.barkLight : K.canvasBg,
-        })).map((chip,i) => (
-          <Ellipse key={`chip${i}`}
-            x={chip.x} y={chip.y}
-            radiusX={chip.rx} radiusY={chip.ry}
-            rotation={chip.rot}
-            fill={chip.tone} opacity={0.25}
-          />
-        ))}
-      </Layer>
+        {/* Background — drawn as a custom Shape */}
+        <Shape
+          sceneFunc={(ctx, shape) => {
+            drawBackground(ctx, canvasW, canvasH);
+            ctx.fillStrokeShape(shape);
+          }}
+          width={canvasW} height={canvasH}
+        />
 
-      {/* Areas layer */}
-      <Layer>
+        {/* Each area */}
         {areas.map(area => {
           const isRotated = area.rotation === 90 || area.rotation === 270;
           const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
@@ -10275,18 +10855,101 @@ function GardenCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onT
           const MIN = 65;
           const w = Math.max(MIN, rawW * pxPerM);
           const h = Math.max(MIN, rawH * pxPerM);
-          const x = PAD + (area.layout_x || 0) * pxPerM;
-          const y = PAD + (area.layout_y || 0) * pxPerM;
-          const areaCrops = cropsByArea[area.id] || [];
+          const ax = PAD + (area.layout_x||0) * pxPerM;
+          const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
+          const areaCrops = cropsByArea[area.id] || [];
+          const T = area.type==="raised_bed" ? Math.max(6,Math.min(12,w*0.08)) : 4;
+          const LABEL_H = Math.max(14, Math.min(18, h*0.14));
+          const labelSize = Math.max(7, Math.min(11, w*0.09));
+          const name = area.name.replace(/^"|"$/g, "");
+
+          // Unique crops for display
+          const unique = [];
+          const seen = new Set();
+          for (const c of areaCrops) { if(!seen.has(c.name)){seen.add(c.name);unique.push(c);} }
+          const shown = unique.slice(0,6);
 
           return (
-            <AreaBlock key={area.id} area={area} x={x} y={y} w={w} h={h}
-              crops={areaCrops} isSelected={isSelected}
-              pxPerM={pxPerM}
-              onTap={onTap} onDragEnd={onDragEnd}
-              KonvaReact={window.KonvaReact}
-            />
+            <Group key={area.id}
+              x={ax} y={ay}
+              draggable
+              onDragEnd={e => {
+                const nx = (e.target.x() - PAD) / pxPerM;
+                const ny = (e.target.y() - PAD) / pxPerM;
+                onDragEnd(area.id, Math.max(0,nx), Math.max(0,ny));
+              }}
+              onClick={() => onTap(area.id)}
+              onTap={() => onTap(area.id)}
+            >
+              {/* Area shape — drawn via custom Shape */}
+              <Shape
+                sceneFunc={(ctx, shape) => {
+                  drawArea(ctx, area, 0, 0, w, h, isSelected);
+                  ctx.fillStrokeShape(shape);
+                }}
+                width={w+10} height={h+10}
+                x={-3} y={-3}
+              />
+
+              {/* Crop illustrations — each as a Shape */}
+              {shown.map((crop, i) => {
+                const cols = Math.min(shown.length, Math.max(1, Math.floor((w-T*2-16)/36)));
+                const rows = Math.ceil(shown.length/cols);
+                const cellW = (w-T*2-16)/cols;
+                const cellH = (h-T*2-LABEL_H-8)/Math.max(1,rows);
+                const s = Math.max(10, Math.min(22, Math.min(cellW,cellH)*0.42));
+                const col = i%cols;
+                const row = Math.floor(i/cols);
+                const jX = (i%3===0?-3:i%3===1?3:-1);
+                const jY = (i%2===0?-2:2);
+                const cx = T+8+col*cellW+cellW*0.5+jX;
+                const cy = LABEL_H+T+4+row*cellH+cellH*0.5+jY;
+                const family = getCropFamily(crop.name);
+
+                return (
+                  <Shape key={i}
+                    sceneFunc={(ctx) => {
+                      ctx.save();
+                      drawCrop(ctx, family, cx, cy, s);
+                      ctx.restore();
+                    }}
+                    width={s*2+10} height={s*2+10}
+                    x={cx-s-5} y={cy-s-5}
+                    listening={false}
+                  />
+                );
+              })}
+
+              {/* Overflow count */}
+              {unique.length>6 && (
+                <Text x={w-22} y={h-14} text={`+${unique.length-6}`}
+                  fontSize={9} fill="rgba(255,255,255,0.55)" fontStyle="bold"
+                />
+              )}
+
+              {/* Empty state */}
+              {areaCrops.length===0 && (
+                <Text x={0} y={h/2-7} width={w} align="center"
+                  text="Ready to plant" fontSize={10}
+                  fill="rgba(255,255,255,0.28)" fontStyle="italic"
+                />
+              )}
+
+              {/* Label — top left, small caps, subtle */}
+              <Text
+                x={T+5} y={T+3}
+                text={name.toUpperCase()}
+                fontSize={labelSize}
+                fill="rgba(255,255,255,0.6)"
+                fontStyle="600"
+                fontFamily="sans-serif"
+                width={w-T*2-10}
+                ellipsis={true} wrap="none"
+                letterSpacing={0.5}
+                listening={false}
+              />
+            </Group>
           );
         })}
       </Layer>
@@ -10294,369 +10957,89 @@ function GardenCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onT
   );
 }
 
-// ── Individual area block renderer ────────────────────────────────────────────
-function AreaBlock({ area, x, y, w, h, crops, isSelected, pxPerM, onTap, onDragEnd, KonvaReact }) {
-  const { Group, Rect, Line, Circle, Ellipse, Text, Shape, Layer } = KonvaReact;
-  const posRef  = useRef({ x, y });
-  const [pos, setPos] = useState({ x, y });
-
-  useEffect(() => {
-    posRef.current = { x, y };
-    setPos({ x, y });
-  }, [x, y]);
-
-  const TIMBER = 8; // timber frame thickness in px
-  const LABEL_H = Math.max(14, Math.min(18, h * 0.14));
-  const labelSize = Math.max(7, Math.min(10, w * 0.1));
-  const name = area.name.replace(/^"|"$/g, "");
-
-  const handleDragEnd = (e) => {
-    const node = e.target;
-    const newX = node.x();
-    const newY = node.y();
-    const mX = (newX - 24) / pxPerM;
-    const mY = (newY - 24) / pxPerM;
-    onDragEnd(area.id, Math.max(0, mX), Math.max(0, mY));
-  };
-
-  // Staggered crop positions
-  const cropPositions = crops.slice(0, 6).map((c, i) => {
-    const cols = Math.min(crops.length, 3);
-    const col  = i % cols;
-    const row  = Math.floor(i / cols);
-    const cellW = (w - TIMBER*2 - 16) / cols;
-    const cellH = (h - TIMBER*2 - LABEL_H - 10) / Math.max(1, Math.ceil(crops.length / cols));
-    const jX = (i%3===0?-4:i%3===1?4:-1);
-    const jY = (i%2===0?-3:3);
-    return {
-      x: TIMBER + 8 + col*cellW + cellW*0.5 + jX,
-      y: TIMBER + LABEL_H + 6 + row*cellH + cellH*0.5 + jY,
-      crop: c,
-    };
-  });
-
-  const renderAreaShape = () => {
-    switch(area.type) {
-
-      case "raised_bed": return (
-        <Group>
-          {/* Outer timber shadow */}
-          <Rect x={3} y={3} width={w} height={h} fill="rgba(0,0,0,0.18)" cornerRadius={6} />
-          {/* Timber frame */}
-          <Rect x={0} y={0} width={w} height={h} fill={K.timberOuter} cornerRadius={6}
-            shadowColor="rgba(0,0,0,0.3)" shadowBlur={4} shadowOffsetY={2} />
-          {/* Timber plank lines */}
-          <Line points={[TIMBER, 0, TIMBER, h]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
-          <Line points={[w-TIMBER, 0, w-TIMBER, h]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
-          <Line points={[0, TIMBER, w, TIMBER]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
-          <Line points={[0, h-TIMBER, w, h-TIMBER]} stroke={K.timberEdge} strokeWidth={1} opacity={0.5} />
-          {/* Timber grain on long edges */}
-          {Array.from({length: Math.floor(w/18)}, (_,i) => (
-            <Line key={`tg${i}`} points={[TIMBER+i*18, 2, TIMBER+i*18+8, 2]} stroke={K.timberInner} strokeWidth={1} opacity={0.4} />
-          ))}
-          {/* Soil fill */}
-          <Rect x={TIMBER} y={TIMBER} width={w-TIMBER*2} height={h-TIMBER*2} fill={K.soilDark} cornerRadius={2} />
-          {/* Soil texture — subtle lighter patches */}
-          {Array.from({length:8},(_,i)=>(
-            <Ellipse key={`s${i}`}
-              x={TIMBER+10+(i*29)%(w-TIMBER*2-20)}
-              y={TIMBER+8+(i*17)%(h-TIMBER*2-16)}
-              radiusX={8+(i%3)*4} radiusY={4+(i%2)*2}
-              fill={K.soilMid} opacity={0.4}
-            />
-          ))}
-          {/* Corner bolts */}
-          {[[6,6],[w-6,6],[6,h-6],[w-6,h-6]].map(([bx,by],i)=>(
-            <Circle key={`b${i}`} x={bx} y={by} radius={3} fill={K.timberEdge} opacity={0.7} />
-          ))}
-        </Group>
-      );
-
-      case "open_ground": return (
-        <Group>
-          {/* Soft shadow */}
-          <Rect x={2} y={3} width={w} height={h} fill="rgba(0,0,0,0.12)" cornerRadius={12} />
-          {/* Soil base — irregular feel via cornerRadius */}
-          <Rect x={0} y={0} width={w} height={h} fill={K.openSoil} cornerRadius={10} />
-          {/* Soil texture patches */}
-          {Array.from({length:10},(_,i)=>(
-            <Ellipse key={`op${i}`}
-              x={8+(i*31)%(w-16)}
-              y={6+(i*23)%(h-12)}
-              radiusX={10+(i%4)*6} radiusY={5+(i%3)*3}
-              fill={K.openSoilLight} opacity={0.3} rotation={(i*27)%90}
-            />
-          ))}
-          {/* Edge irregularity suggestion — inner shadow */}
-          <Rect x={0} y={0} width={w} height={h}
-            fill="transparent"
-            stroke="rgba(0,0,0,0.15)" strokeWidth={3}
-            cornerRadius={10}
-          />
-        </Group>
-      );
-
-      case "greenhouse": return (
-        <Group>
-          {/* Shadow */}
-          <Rect x={3} y={4} width={w} height={h} fill="rgba(0,0,0,0.15)" cornerRadius={4} />
-          {/* Glass panels — translucent */}
-          <Rect x={0} y={0} width={w} height={h} fill={K.ghPanel} cornerRadius={3}
-            stroke={K.ghFrame} strokeWidth={2}
-          />
-          {/* Structural frame lines — vertical */}
-          {Array.from({length:Math.max(1,Math.floor(w/40))},(_,i)=>(
-            <Line key={`gv${i}`}
-              points={[w*(i+1)/(Math.floor(w/40)+1), 0, w*(i+1)/(Math.floor(w/40)+1), h]}
-              stroke={K.ghFrame} strokeWidth={1.5} opacity={0.7}
-            />
-          ))}
-          {/* Structural frame lines — horizontal */}
-          {Array.from({length:Math.max(1,Math.floor(h/35))},(_,i)=>(
-            <Line key={`gh${i}`}
-              points={[0, h*(i+1)/(Math.floor(h/35)+1), w, h*(i+1)/(Math.floor(h/35)+1)]}
-              stroke={K.ghFrame} strokeWidth={1.5} opacity={0.5}
-            />
-          ))}
-          {/* Ridge line */}
-          <Line points={[0, h*0.08, w, h*0.08]} stroke={K.ghFrame} strokeWidth={2.5} opacity={0.8} />
-          {/* Internal grow bags */}
-          {Array.from({length:Math.min(3,Math.floor(w/35))},(_,i)=>(
-            <Rect key={`gb${i}`}
-              x={8+i*(w-16)/Math.min(3,Math.floor(w/35))} y={h*0.55}
-              width={(w-24)/Math.min(3,Math.floor(w/35))} height={h*0.3}
-              fill="rgba(80,60,40,0.5)" cornerRadius={4}
-            />
-          ))}
-        </Group>
-      );
-
-      case "container": return (
-        <Group>
-          {/* Terracotta pot */}
-          <Rect x={3} y={4} width={w} height={h} fill="rgba(0,0,0,0.2)" cornerRadius={8} />
-          {/* Main body */}
-          <Rect x={0} y={0} width={w} height={h} fill={K.terracotta} cornerRadius={8}
-            shadowColor="rgba(0,0,0,0.25)" shadowBlur={5} shadowOffsetY={2}
-          />
-          {/* Rim at top */}
-          <Rect x={0} y={0} width={w} height={Math.max(8,h*0.12)} fill={K.terracottaRim} cornerRadius={[8,8,0,0]} />
-          {/* Drainage line */}
-          <Line points={[w*0.2, h*0.9, w*0.8, h*0.9]} stroke={K.terracottaDark} strokeWidth={1.5} opacity={0.5} />
-          {/* Terracotta texture lines */}
-          {Array.from({length:3},(_,i)=>(
-            <Line key={`ct${i}`}
-              points={[4, h*0.3+i*h*0.15, w-4, h*0.3+i*h*0.15]}
-              stroke={K.terracottaDark} strokeWidth={0.8} opacity={0.3}
-            />
-          ))}
-          {/* Soil inside */}
-          <Rect x={4} y={Math.max(8,h*0.12)+2} width={w-8} height={h-Math.max(8,h*0.12)-10}
-            fill={K.soilDark} cornerRadius={[0,0,4,4]} opacity={0.8}
-          />
-        </Group>
-      );
-
-      case "polytunnel": return (
-        <Group>
-          {/* Shadow */}
-          <Ellipse x={w/2} y={h+6} radiusX={w*0.5} radiusY={8} fill="rgba(0,0,0,0.15)" />
-          {/* Tunnel cover */}
-          <Rect x={0} y={h*0.25} width={w} height={h*0.75} fill={K.tunnelFrame} opacity={0.3} cornerRadius={[0,0,4,4]} />
-          {/* Arch shape — approximated with a wide rectangle + rounded top */}
-          <Rect x={0} y={0} width={w} height={h} fill={K.tunnelCover}
-            stroke={K.tunnelFrame} strokeWidth={2}
-            cornerRadius={[w*0.15, w*0.15, 4, 4]}
-          />
-          {/* Arch rib lines */}
-          {Array.from({length:Math.max(2,Math.floor(w/30))},(_,i)=>(
-            <Line key={`pr${i}`}
-              points={[w*(i+1)/(Math.floor(w/30)+1), h*0.1, w*(i+1)/(Math.floor(w/30)+1), h]}
-              stroke={K.tunnelFrame} strokeWidth={1.5} opacity={0.5}
-            />
-          ))}
-          {/* End wall hint */}
-          <Line points={[0, h*0.15, 0, h, w, h, w, h*0.15]} stroke={K.tunnelFrame} strokeWidth={2} opacity={0.6} />
-          {/* Soil floor */}
-          <Rect x={4} y={h*0.55} width={w-8} height={h*0.4} fill={K.soilMid} cornerRadius={[0,0,3,3]} opacity={0.6} />
-        </Group>
-      );
-
-      default: return (
-        <Group>
-          <Rect x={0} y={0} width={w} height={h} fill={K.openSoil} cornerRadius={8} />
-        </Group>
-      );
-    }
-  };
-
-  // ── Crop illustration renderer ────────────────────────────────────────────
-  const renderCrop = (cp, i) => {
-    const { x: cx, y: cy, crop } = cp;
-    const family = getCropFamily(crop.name);
-    const col    = getCropColor(crop.name);
-    const s      = Math.max(10, Math.min(20, Math.min(w,h) * 0.14)); // icon scale
-
-    switch(family) {
-      case "root": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Leafy carrot top */}
-          <Ellipse radiusX={s*0.35} radiusY={s*0.6} fill={col} opacity={0.9} />
-          <Ellipse x={s*0.3} radiusX={s*0.25} radiusY={s*0.5} fill={col} opacity={0.7} rotation={20} />
-          <Ellipse x={-s*0.3} radiusX={s*0.25} radiusY={s*0.5} fill={col} opacity={0.7} rotation={-20} />
-          <Ellipse y={s*0.7} radiusX={s*0.15} radiusY={s*0.35} fill="#D4601A" opacity={0.85} />
-        </Group>
-      );
-      case "brassica": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Round cabbage head */}
-          <Circle radius={s*0.55} fill={col} opacity={0.85} />
-          <Circle radius={s*0.38} fill="#6FAF50" opacity={0.5} />
-          <Circle radius={s*0.2} fill="#8FC060" opacity={0.4} />
-        </Group>
-      );
-      case "legume": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Climbing tendrils */}
-          <Line points={[0,s*0.8, 0,0]} stroke={col} strokeWidth={2} opacity={0.8} />
-          <Ellipse x={s*0.3} y={-s*0.2} radiusX={s*0.25} radiusY={s*0.18} fill={col} opacity={0.8} rotation={30} />
-          <Ellipse x={-s*0.25} y={s*0.2} radiusX={s*0.2} radiusY={s*0.15} fill={col} opacity={0.7} rotation={-20} />
-          <Ellipse x={s*0.2} y={s*0.5} radiusX={s*0.2} radiusY={s*0.15} fill={col} opacity={0.75} rotation={15} />
-        </Group>
-      );
-      case "fruiting": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Bushy plant with fruit hint */}
-          <Circle radius={s*0.6} fill={col} opacity={0.75} />
-          <Circle x={s*0.3} y={-s*0.2} radius={s*0.35} fill={col} opacity={0.6} />
-          <Circle x={-s*0.3} y={-s*0.15} radius={s*0.3} fill={col} opacity={0.65} />
-          {/* Fruit dots */}
-          <Circle x={0} y={s*0.15} radius={s*0.18} fill="#CC3A1A" opacity={0.85} />
-          <Circle x={s*0.3} y={s*0.05} radius={s*0.14} fill="#CC3A1A" opacity={0.7} />
-        </Group>
-      );
-      case "fruit": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Tree/bush — fuller */}
-          <Line points={[0, s*0.9, 0, s*0.2]} stroke="#6B4428" strokeWidth={3} />
-          <Circle y={-s*0.1} radius={s*0.7} fill={col} opacity={0.8} />
-          <Circle x={s*0.35} y={s*0.05} radius={s*0.45} fill={col} opacity={0.65} />
-          <Circle x={-s*0.35} y={0} radius={s*0.42} fill={col} opacity={0.65} />
-        </Group>
-      );
-      case "herb": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Tight herb cluster */}
-          <Circle radius={s*0.42} fill={col} opacity={0.85} />
-          <Circle x={s*0.2} y={-s*0.1} radius={s*0.28} fill={col} opacity={0.7} />
-          <Circle x={-s*0.2} y={-s*0.1} radius={s*0.28} fill={col} opacity={0.7} />
-        </Group>
-      );
-      case "salad": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Loose leaf cluster */}
-          {[-25,-10,5,20,35].map((angle,li)=>(
-            <Ellipse key={li}
-              x={Math.sin(angle*Math.PI/180)*s*0.4}
-              y={-Math.cos(angle*Math.PI/180)*s*0.4}
-              radiusX={s*0.28} radiusY={s*0.4}
-              fill={col} opacity={0.7+(li%2)*0.1}
-              rotation={angle}
-            />
-          ))}
-        </Group>
-      );
-      case "allium": return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          {/* Upright onion/garlic stems */}
-          {[-s*0.25, 0, s*0.25].map((ox,ai)=>(
-            <Group key={ai} x={ox}>
-              <Line points={[0, s*0.8, 0, -s*0.1]} stroke={col} strokeWidth={2.5} opacity={0.85} />
-              <Circle y={-s*0.25} radius={s*0.22} fill={K.cropAllium} opacity={0.7} />
-            </Group>
-          ))}
-        </Group>
-      );
-      default: return (
-        <Group key={`cr${i}`} x={cx} y={cy}>
-          <Circle radius={s*0.45} fill={col} opacity={0.8} />
-          <Circle radius={s*0.25} fill={col} opacity={0.5} />
-        </Group>
-      );
-    }
-  };
-
-  return (
-    <Group
-      x={pos.x} y={pos.y}
-      draggable
-      onDragEnd={handleDragEnd}
-      onClick={() => onTap(area.id)}
-      onTap={() => onTap(area.id)}
-    >
-      {/* Area shape */}
-      {renderAreaShape()}
-
-      {/* Crops */}
-      {cropPositions.map((cp, i) => renderCrop(cp, i))}
-
-      {/* Overflow count */}
-      {crops.length > 6 && (
-        <Text
-          x={w-20} y={h-14}
-          text={`+${crops.length-6}`}
-          fontSize={9} fill="rgba(255,255,255,0.6)" fontStyle="bold"
-        />
-      )}
-
-      {/* Label */}
-      <Text
-        x={TIMBER+4} y={TIMBER+3}
-        text={name.toUpperCase()}
-        fontSize={labelSize} fill="rgba(255,255,255,0.65)"
-        fontStyle="600" fontFamily="sans-serif"
-        width={w - TIMBER*2 - 8}
-        ellipsis={true} wrap="none"
-        letterSpacing={0.8}
-      />
-
-      {/* Empty state */}
-      {crops.length === 0 && (
-        <Text
-          x={0} y={h/2 - 8}
-          text="Ready to plant"
-          fontSize={10} fill="rgba(255,255,255,0.3)"
-          fontStyle="italic" align="center" width={w}
-        />
-      )}
-
-      {/* Selected outline */}
-      {isSelected && (
-        <Rect x={-3} y={-3} width={w+6} height={h+6}
-          fill="transparent"
-          stroke="#6FAF63" strokeWidth={2.5}
-          cornerRadius={10}
-          dash={[6,3]}
-        />
-      )}
-    </Group>
-  );
-}
-
-// ── Konva loader — ensures Konva only loads client-side ───────────────────────
+// ── Konva loader ──────────────────────────────────────────────────────────────
 function useKonva() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.KonvaReact) { setReady(true); return; }
-    Promise.all([
-      import("react-konva"),
-    ]).then(([konvaReact]) => {
-      window.KonvaReact = konvaReact;
+    import("react-konva").then(mod => {
+      window.KonvaReact = mod;
       setReady(true);
     }).catch(e => console.error("[Konva] load failed:", e));
   }, []);
   return ready;
+}
+
+// ── Area detail sheet ─────────────────────────────────────────────────────────
+function AreaDetailSheet({ area, crops, onClose }) {
+  const baseColor = {
+    raised_bed: K.timber, open_ground: K.groundLight,
+    greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop,
+  }[area.type] || K.groundLight;
+  const hasDimensions = area.width_m && area.length_m;
+  const sqm = hasDimensions ? (area.width_m * area.length_m).toFixed(1) : null;
+  const statusColor = { growing:C.leaf, sown_indoors:C.amber, sown_outdoors:C.amber, transplanted:C.forest, planned:C.stone, harvested:C.stone };
+  const statusLabel = { growing:"Growing", sown_indoors:"Indoors", sown_outdoors:"Outdoors", transplanted:"Transplanted", planned:"Planned", harvested:"Harvested" };
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+      onClick={onClose}>
+      <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", width:"100%", maxWidth:480, maxHeight:"82vh", display:"flex", flexDirection:"column" }}
+        onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 0" }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:"#ddd" }} />
+        </div>
+        <div style={{ margin:"12px 16px 0", borderRadius:14, padding:"14px 16px",
+          background:`linear-gradient(135deg, ${baseColor}dd, ${baseColor}99)` }}>
+          <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, color:"rgba(255,255,255,0.9)" }}>
+            {area.name.replace(/^"|"$/g,"")}
+          </div>
+          <div style={{ fontSize:12, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
+            {(area.type||"area").replace(/_/g," ")}
+            {sqm?` · ${area.width_m}m × ${area.length_m}m · ${sqm}m²`:" · dimensions not set"}
+          </div>
+        </div>
+        {!hasDimensions && (
+          <div style={{ margin:"10px 16px 0", background:"#fff8e6", border:"1px solid #f0d080", borderRadius:10, padding:"8px 12px", fontSize:12, color:"#7a5c00", fontWeight:600 }}>
+            📐 Add dimensions in Garden tab for accurate scale
+          </div>
+        )}
+        <div style={{ overflowY:"auto", flex:1, padding:"12px 20px 40px" }}>
+          {crops.length===0 ? (
+            <div style={{ textAlign:"center", padding:"32px 0", color:C.stone }}>
+              <div style={{ fontSize:36, marginBottom:8 }}>🌱</div>
+              <div style={{ fontFamily:"serif", fontSize:15, fontWeight:700, marginBottom:4 }}>Empty bed</div>
+              <div style={{ fontSize:13 }}>Nothing planted here this season</div>
+            </div>
+          ) : crops.map(crop=>(
+            <div key={crop.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 0", borderBottom:`1px solid ${C.border}` }}>
+              <span style={{ fontSize:22, flexShrink:0 }}>{getCropEmoji(crop.name)}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", fontFamily:"serif" }}>{crop.name}</div>
+                {crop.variety && <div style={{ fontSize:12, color:C.stone }}>{typeof crop.variety==="object"?crop.variety.name:crop.variety}</div>}
+              </div>
+              <div style={{ fontSize:11, fontWeight:700, color:statusColor[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
+                {statusLabel[crop.status]||crop.status||"Growing"}
+              </div>
+            </div>
+          ))}
+          <div style={{ marginTop:20, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"14px 16px" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Area insights</div>
+            <div style={{ display:"flex", gap:8 }}>
+              {[["📊","Yield"],["🔄","Rotation"],["📐","Space"]].map(([icon,label])=>(
+                <div key={label} style={{ flex:1, background:"#fff", border:"1px solid #E3E7E1", borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
+                  <div style={{ fontSize:16, marginBottom:4, opacity:0.55 }}>{icon}</div>
+                  <div style={{ fontSize:10, color:C.stone, marginBottom:4 }}>{label}</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:C.stone }}>🔒 Pro</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main PlanScreen ───────────────────────────────────────────────────────────
@@ -10676,143 +11059,139 @@ function PlanScreen() {
   const autoLayoutDone = useRef(false);
   const [containerW,   setContainerW] = useState(360);
   const konvaReady     = useKonva();
+
   const { isPro, isMark } = useProStatus();
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    setContainerW(el.clientWidth || 360);
-    const ro = new ResizeObserver(e => setContainerW(e[0].contentRect.width));
+    setContainerW(el.clientWidth||360);
+    const ro = new ResizeObserver(e=>setContainerW(e[0].contentRect.width));
     ro.observe(el);
-    return () => ro.disconnect();
+    return ()=>ro.disconnect();
   }, []);
 
   useEffect(() => {
-    Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops")])
-      .then(([locs, areasData, cropsData]) => {
-        setCrops(cropsData || []);
-        const locsWithAreas = (locs||[]).map(loc => ({
+    Promise.all([apiFetch("/locations"),apiFetch("/areas"),apiFetch("/crops")])
+      .then(([locs,areasData,cropsData])=>{
+        setCrops(cropsData||[]);
+        const locsWithAreas=(locs||[]).map(loc=>({
           ...loc,
-          growing_areas: (areasData||[]).filter(a => a.location_id === loc.id),
+          growing_areas:(areasData||[]).filter(a=>a.location_id===loc.id),
         }));
         setLocations(locsWithAreas);
-        if (locsWithAreas.length) {
+        if(locsWithAreas.length){
           setSelectedLoc(locsWithAreas[0].id);
-          setAreas(locsWithAreas[0].growing_areas || []);
+          setAreas(locsWithAreas[0].growing_areas||[]);
         }
       })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(e=>setError(e.message))
+      .finally(()=>setLoading(false));
+  },[]);
 
-  const loc = locations.find(l => l.id === selectedLoc);
+  const loc = locations.find(l=>l.id===selectedLoc);
 
-  useEffect(() => {
-    if (!loc) return;
-    autoLayoutDone.current = false;
+  useEffect(()=>{
+    if(!loc) return;
+    autoLayoutDone.current=false;
     setActiveBlock(null);
-    setAreas(loc.growing_areas || []);
-  }, [selectedLoc]);
+    setAreas(loc.growing_areas||[]);
+  },[selectedLoc]);
 
-  // Auto-layout
-  useEffect(() => {
-    if (!areas.length || autoLayoutDone.current) return;
-    const maxSane = Math.max(50, (loc?.width_m || 20) * 5);
-    const hasStale = areas.some(a => a.layout_x != null && Math.abs(a.layout_x) > maxSane);
-    const needLayout = areas.filter(a => a.layout_x == null || hasStale);
-    if (!needLayout.length) return;
-    autoLayoutDone.current = true;
-    let x = 0.4, y = 0.4, rowH = 0;
-    const GAP = 0.5;
-    const maxRow = (loc?.width_m || 12) - 0.5;
-    const updated = areas.map(area => {
-      if (area.layout_x != null && !hasStale) return area;
-      const w = area.width_m  || 1.5;
-      const h = area.length_m || 1.5;
-      const placed = { ...area, layout_x: x, layout_y: y };
-      x += w + GAP; rowH = Math.max(rowH, h);
-      if (x > maxRow) { x = 0.4; y += rowH + GAP; rowH = 0; }
+  useEffect(()=>{
+    if(!areas.length||autoLayoutDone.current) return;
+    const maxSane=Math.max(50,(loc?.width_m||20)*5);
+    const hasStale=areas.some(a=>a.layout_x!=null&&Math.abs(a.layout_x)>maxSane);
+    const needLayout=areas.filter(a=>a.layout_x==null||hasStale);
+    if(!needLayout.length) return;
+    autoLayoutDone.current=true;
+    let x=0.4,y=0.4,rowH=0;
+    const GAP=0.5;
+    const maxRow=(loc?.width_m||12)-0.5;
+    const updated=areas.map(area=>{
+      if(area.layout_x!=null&&!hasStale) return area;
+      const w=area.width_m||1.5,h=area.length_m||1.5;
+      const placed={...area,layout_x:x,layout_y:y};
+      x+=w+GAP; rowH=Math.max(rowH,h);
+      if(x>maxRow){x=0.4;y+=rowH+GAP;rowH=0;}
       return placed;
     });
     setAreas(updated);
-    if (hasStale) areas.forEach(a =>
-      apiFetch(`/areas/${a.id}`, { method:"PUT", body:JSON.stringify({ layout_x:null, layout_y:null }) }).catch(()=>{})
-    );
-  }, [areas.length, selectedLoc]);
+    if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
+  },[areas.length,selectedLoc]);
 
-  const gardenW = loc?.width_m  || Math.max(6, ...areas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1;
-  const gardenH = loc?.length_m || Math.max(6, ...areas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1;
-  const CANVAS_PAD = 24;
-  const basePxPerM  = Math.max(20, (containerW - CANVAS_PAD*2) / gardenW);
-  const pxPerM      = basePxPerM * zoom;
-  const canvasW     = Math.max(containerW, gardenW * pxPerM + CANVAS_PAD*2);
-  const canvasH     = gardenH * pxPerM + CANVAS_PAD*2;
+  const gardenW=loc?.width_m||Math.max(6,...areas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1;
+  const gardenH=loc?.length_m||Math.max(6,...areas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1;
+  const CANVAS_PAD=24;
+  const basePxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
+  const pxPerM=basePxPerM*zoom;
+  const canvasW=Math.max(containerW,gardenW*pxPerM+CANVAS_PAD*2);
+  const canvasH=gardenH*pxPerM+CANVAS_PAD*2;
 
-  const handleDragEnd = async (areaId, x, y) => {
-    setAreas(prev => prev.map(a => a.id===areaId ? {...a, layout_x:x, layout_y:y} : a));
-    try {
-      await apiFetch(`/areas/${areaId}`, { method:"PUT", body:JSON.stringify({ layout_x:x, layout_y:y }) });
+  const handleDragEnd=async(areaId,x,y)=>{
+    setAreas(prev=>prev.map(a=>a.id===areaId?{...a,layout_x:x,layout_y:y}:a));
+    try{
+      await apiFetch(`/areas/${areaId}`,{method:"PUT",body:JSON.stringify({layout_x:x,layout_y:y})});
       setSavedToast(true);
-      setTimeout(()=>setSavedToast(false), 1500);
-    } catch(e) { console.error("[Visualiser] save failed:", e.message); }
+      setTimeout(()=>setSavedToast(false),1500);
+    }catch(e){console.error("[Visualiser] save failed:",e.message);}
   };
 
-  const handleRotate = async (areaId) => {
-    const area = areas.find(a=>a.id===areaId);
-    if (!area) return;
-    const newR = ((area.rotation||0)+90)%360;
-    setAreas(prev => prev.map(a=>a.id===areaId?{...a,rotation:newR}:a));
-    try { await apiFetch(`/areas/${areaId}`, { method:"PUT", body:JSON.stringify({ rotation:newR }) }); }
-    catch(e) { console.error("[Visualiser] rotate failed:", e.message); }
+  const handleRotate=async(areaId)=>{
+    const area=areas.find(a=>a.id===areaId);
+    if(!area) return;
+    const newR=((area.rotation||0)+90)%360;
+    setAreas(prev=>prev.map(a=>a.id===areaId?{...a,rotation:newR}:a));
+    try{await apiFetch(`/areas/${areaId}`,{method:"PUT",body:JSON.stringify({rotation:newR})});}
+    catch(e){console.error("[Visualiser] rotate failed:",e.message);}
   };
 
-  const totalCrops     = crops.filter(c => areas.some(a=>a.id===c.area_id)).length;
-  const activeAreaName = activeBlock ? areas.find(a=>a.id===activeBlock)?.name?.replace(/^"|"$/g,"") : null;
-  const selectedAreaObj  = detailArea ? areas.find(a=>a.id===detailArea) : null;
-  const selectedAreaCrops = detailArea ? crops.filter(c=>c.area_id===detailArea) : [];
+  const totalCrops=crops.filter(c=>areas.some(a=>a.id===c.area_id)).length;
+  const activeAreaName=activeBlock?areas.find(a=>a.id===activeBlock)?.name?.replace(/^"|"$/g,""):null;
+  const selectedAreaObj=detailArea?areas.find(a=>a.id===detailArea):null;
+  const selectedAreaCrops=detailArea?crops.filter(c=>c.area_id===detailArea):[];
 
-  if (loading) return (
-    <div style={{ textAlign:"center", padding:"60px 0" }}>
-      <div style={{ fontSize:40, marginBottom:12 }}>🗺️</div>
-      <div style={{ fontFamily:"serif", fontSize:16, fontWeight:700, color:C.forest }}>Loading your garden…</div>
+  if(loading) return(
+    <div style={{textAlign:"center",padding:"60px 0"}}>
+      <div style={{fontSize:40,marginBottom:12}}>🗺️</div>
+      <div style={{fontFamily:"serif",fontSize:16,fontWeight:700,color:C.forest}}>Loading your garden…</div>
     </div>
   );
-  if (error) return <ErrorMsg msg={error} />;
+  if(error) return <ErrorMsg msg={error} />;
 
-  return (
-    <div style={{ paddingBottom:16 }}>
+  return(
+    <div style={{paddingBottom:16}}>
 
       {/* Header */}
-      <div style={{ background:`linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius:16, padding:"16px 18px 14px", marginBottom:14, position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", top:-20, right:-20, width:90, height:90, borderRadius:"50%", background:"rgba(255,255,255,0.05)" }} />
-        <div style={{ position:"relative", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div style={{background:`linear-gradient(135deg,${C.forest} 0%,#1e3d33 100%)`,borderRadius:16,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
+        <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:3 }}>Garden Visualiser</div>
-            <div style={{ fontFamily:"serif", fontSize:19, fontWeight:700, color:"#fff" }}>
-              {loc?.name||"My garden"}
-              {loc?.width_m&&loc?.length_m ? ` · ${loc.width_m}×${loc.length_m}m` : ""}
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>Garden Visualiser</div>
+            <div style={{fontFamily:"serif",fontSize:19,fontWeight:700,color:"#fff"}}>
+              {loc?.name||"My garden"}{loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
             </div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:2}}>
               {areas.length} area{areas.length!==1?"s":""} · {totalCrops} crop{totalCrops!==1?"s":""}
             </div>
           </div>
-          <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.1)", backdropFilter:"blur(8px)", borderRadius:12, padding:"4px 6px" }}>
-            <button onClick={()=>setZoom(z=>Math.min(2.5,+(z+0.25).toFixed(2)))}
-              style={{ width:30, height:30, borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>+</button>
-            <button onClick={()=>setZoom(z=>Math.max(0.4,+(z-0.25).toFixed(2)))}
-              style={{ width:30, height:30, borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>−</button>
-            <button onClick={()=>setZoom(1)}
-              style={{ height:30, borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", padding:"0 10px" }}>Fit</button>
+          <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.1)",backdropFilter:"blur(8px)",borderRadius:12,padding:"4px 6px"}}>
+            {[["+",(z)=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",(z)=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
+              <button key={label} onClick={()=>setZoom(fn)}
+                style={{minWidth:30,height:30,borderRadius:8,border:"none",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:label==="Fit"?11:18,fontWeight:700,cursor:"pointer",padding:label==="Fit"?"0 10px":0}}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Location tabs */}
-      {locations.length>1 && (
-        <div style={{ display:"flex", gap:8, marginBottom:12, overflowX:"auto", paddingBottom:2 }}>
+      {locations.length>1&&(
+        <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
           {locations.map(l=>(
             <button key={l.id} onClick={()=>setSelectedLoc(l.id)}
-              style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:`1px solid ${selectedLoc===l.id?C.forest:C.border}`, background:selectedLoc===l.id?C.forest:"#fff", color:selectedLoc===l.id?"#fff":"#1a1a1a", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              style={{flexShrink:0,padding:"6px 14px",borderRadius:20,border:`1px solid ${selectedLoc===l.id?C.forest:C.border}`,background:selectedLoc===l.id?C.forest:"#fff",color:selectedLoc===l.id?"#fff":"#1a1a1a",fontSize:13,fontWeight:600,cursor:"pointer"}}>
               {l.name}
             </button>
           ))}
@@ -10820,71 +11199,66 @@ function PlanScreen() {
       )}
 
       {/* Toolbar */}
-      <div style={{ minHeight:38, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
-        {activeBlock ? (
+      <div style={{minHeight:38,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+        {activeBlock?(
           <>
-            <div style={{ fontSize:13, fontFamily:"serif", fontWeight:700, color:"#1a1a1a", flex:1 }}>{activeAreaName}</div>
+            <div style={{fontSize:13,fontFamily:"serif",fontWeight:700,color:"#1a1a1a",flex:1}}>{activeAreaName}</div>
             <button onClick={()=>handleRotate(activeBlock)}
-              style={{ background:C.forest, color:"#fff", border:"none", borderRadius:10, padding:"8px 18px", fontSize:14, fontWeight:700, cursor:"pointer" }}>↻ Rotate</button>
+              style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontSize:14,fontWeight:700,cursor:"pointer"}}>↻ Rotate</button>
             <button onClick={()=>setDetailArea(activeBlock)}
-              style={{ background:"#fff", color:C.forest, border:`1.5px solid ${C.forest}`, borderRadius:10, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>Detail</button>
+              style={{background:"#fff",color:C.forest,border:`1.5px solid ${C.forest}`,borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Detail</button>
             <button onClick={()=>setActiveBlock(null)}
-              style={{ background:"none", color:C.stone, border:`1px solid ${C.border}`, borderRadius:10, padding:"8px 10px", fontSize:13, cursor:"pointer" }}>✕</button>
+              style={{background:"none",color:C.stone,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",fontSize:13,cursor:"pointer"}}>✕</button>
           </>
-        ) : (
-          <div style={{ fontSize:11, color:C.stone }}>Tap an area to select · drag to reposition</div>
+        ):(
+          <div style={{fontSize:11,color:C.stone}}>Tap an area to select · drag to reposition</div>
         )}
       </div>
 
-      {/* Konva canvas */}
-      <div ref={containerRef} style={{ width:"100%", borderRadius:18, overflow:"hidden", border:"1px solid rgba(0,0,0,0.08)", boxShadow:"0 4px 20px rgba(0,0,0,0.12)", overflowX:"auto", overflowY:"auto", maxHeight:540 }}>
-        {!konvaReady ? (
-          <div style={{ height:300, display:"flex", alignItems:"center", justifyContent:"center", background:"#8B6B4A", color:"rgba(255,255,255,0.6)", fontSize:14 }}>
-            Preparing your garden…
+      {/* Canvas container */}
+      <div ref={containerRef} style={{width:"100%",borderRadius:18,overflow:"hidden",border:"1px solid rgba(0,0,0,0.1)",boxShadow:"0 4px 24px rgba(0,0,0,0.14)",overflowX:"auto",overflowY:"auto",maxHeight:540,position:"relative"}}>
+        {savedToast&&(
+          <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
+            ✓ Layout saved
           </div>
-        ) : (
-          <GardenCanvas
-            areas={areas}
-            crops={crops}
-            pxPerM={pxPerM}
-            canvasW={canvasW}
-            canvasH={Math.max(300, canvasH)}
+        )}
+        {konvaReady?(
+          <GardenKonvaCanvas
+            areas={areas} crops={crops}
+            pxPerM={pxPerM} canvasW={canvasW} canvasH={Math.max(300,canvasH)}
             activeBlock={activeBlock}
             onTap={id=>setActiveBlock(id===activeBlock?null:id)}
             onDragEnd={handleDragEnd}
           />
-        )}
-
-        {/* Saved toast overlay */}
-        {savedToast && (
-          <div style={{ position:"absolute", top:12, left:"50%", transform:"translateX(-50%)", background:"rgba(47,93,80,0.92)", color:"#fff", borderRadius:20, padding:"5px 16px", fontSize:12, fontWeight:600, backdropFilter:"blur(8px)", whiteSpace:"nowrap", zIndex:100 }}>
-            ✓ Layout saved
+        ):(
+          <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:K.canvasBg,color:"rgba(255,255,255,0.5)",fontSize:14}}>
+            Preparing your garden…
           </div>
         )}
       </div>
 
       {/* Scale bar */}
-      <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:5, marginTop:5 }}>
-        <div style={{ width:Math.min(pxPerM,50), height:2, background:"rgba(0,0,0,0.2)", borderRadius:1 }} />
-        <div style={{ fontSize:9, color:"rgba(0,0,0,0.35)", fontWeight:700 }}>1m</div>
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:5,marginTop:5}}>
+        <div style={{width:Math.min(pxPerM,50),height:2,background:"rgba(0,0,0,0.2)",borderRadius:1}}/>
+        <div style={{fontSize:9,color:"rgba(0,0,0,0.35)",fontWeight:700}}>1m</div>
       </div>
 
       {/* Locked metrics */}
-      <div style={{ display:"flex", gap:8, marginTop:14 }}>
+      <div style={{display:"flex",gap:8,marginTop:14}}>
         {[["📊","Yield estimate"],["🔄","Rotation score"],["📐","Space efficiency"]].map(([icon,label])=>(
-          <div key={label} style={{ flex:1, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"10px 8px", textAlign:"center" }}>
-            <div style={{ fontSize:15, marginBottom:3, opacity:0.5 }}>{icon}</div>
-            <div style={{ fontSize:9, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{label}</div>
-            <div style={{ fontSize:9, color:C.stone, opacity:0.7 }}>🔒 Pro</div>
+          <div key={label} style={{flex:1,background:"#F7F8F5",border:"1px solid #E3E7E1",borderRadius:14,padding:"10px 8px",textAlign:"center"}}>
+            <div style={{fontSize:15,marginBottom:3,opacity:0.5}}>{icon}</div>
+            <div style={{fontSize:9,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>{label}</div>
+            <div style={{fontSize:9,color:C.stone,opacity:0.7}}>🔒 Pro</div>
           </div>
         ))}
       </div>
 
-      {selectedAreaObj && (
+      {selectedAreaObj&&(
         <AreaDetailSheet
           area={selectedAreaObj}
           crops={selectedAreaCrops}
-          onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
+          onClose={()=>{setDetailArea(null);setActiveBlock(null);}}
         />
       )}
     </div>
