@@ -130,6 +130,22 @@ function useProStatus() {
   return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark };
 }
 
+// ── Plant Check visibility hook ──────────────────────────────────────────────
+// Returns true only for Mark's account OR when PRO_ENABLED=true.
+// Everyone else (including demo) sees nothing until the flag is flipped.
+function usePlantCheckEnabled() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (PRO_ENABLED) { setEnabled(true); return; }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email === MARK_EMAIL) setEnabled(true);
+    }).catch(() => {});
+  }, []);
+
+  return enabled;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Supabase joins can return variety as a nested object {name, days_to_maturity_min}
 // or as a plain string depending on the query. This always returns a safe string.
@@ -2373,7 +2389,7 @@ function NotificationDashboardPrompt({ onTabChange }) {
   );
 }
 
-function Dashboard({ onTabChange }) {
+function Dashboard({ onTabChange, isDemo = false }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
   const [error,        setError]       = useState(null);
@@ -2388,6 +2404,7 @@ function Dashboard({ onTabChange }) {
   const [showShareGarden,    setShowShareGarden]    = useState(false);
   const [showPlantCheck,     setShowPlantCheck]     = useState(false);
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
+  const plantCheckEnabled = usePlantCheckEnabled();
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -3201,8 +3218,8 @@ function Dashboard({ onTabChange }) {
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
       <TipsSection />
 
-      {/* ── PLANT CHECK CARD — subtle entry in feed ─────────────────────── */}
-      <div
+      {/* ── PLANT CHECK CARD — Mark only until PRO_ENABLED=true ──────────── */}
+      {plantCheckEnabled && <div
         onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
         style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.forest, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🔍</div>
@@ -3211,7 +3228,7 @@ function Dashboard({ onTabChange }) {
           <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>Take a photo — get an instant diagnosis</div>
         </div>
         <div style={{ fontSize: 18, color: C.stone }}>›</div>
-      </div>
+      </div>}
 
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
@@ -3441,7 +3458,7 @@ function Dashboard({ onTabChange }) {
       )}
 
       {/* ── PLANT CHECK MODAL ─────────────────────────────────────────────── */}
-      {showPlantCheck && (
+      {plantCheckEnabled && showPlantCheck && (
         <PlantCheck
           entry="today"
           prefillCrop={plantCheckPrefill}
@@ -5257,7 +5274,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
   );
 }
 
-function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
+function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
   const [crops,    setCrops]   = useState(_cachedCrops?.cropsData || []);
@@ -5297,6 +5314,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
   const [sortBy,        setSortBy]        = useState("recent"); // "recent" | "alpha" | "pct"
   const [showFilters,   setShowFilters]   = useState(false);
   const [cropPlantCheck, setCropPlantCheck] = useState(null); // crop object when Plant Check opened from crop card
+  const plantCheckEnabled = usePlantCheckEnabled();
 
   const load = useCallback(async () => {
     // Fetch fresh
@@ -5473,7 +5491,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
-      {cropPlantCheck && (
+      {plantCheckEnabled && cropPlantCheck && (
         <PlantCheck
           entry="crop"
           prefillCrop={cropPlantCheck}
@@ -5982,10 +6000,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened }) {
                     style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                     Timeline
                   </button>
-                  <button onClick={() => setCropPlantCheck(crop)}
+                  {plantCheckEnabled && <button onClick={() => setCropPlantCheck(crop)}
                     style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                     🔍 Check
-                  </button>
+                  </button>}
                   <button onClick={() => setDiary(crop)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
                     📷
@@ -10446,6 +10464,7 @@ export default function GrowSmart() {
   }, [session]);
   const [showFeedback,         setShowFeedback]         = useState(false);
   const [showGlobalPlantCheck, setShowGlobalPlantCheck] = useState(false);
+  const showGlobalPlantCheckEnabled = usePlantCheckEnabled();
   const [subscribedToast, setSubscribedToast] = useState(false);
 
   // Handle Stripe redirect back after successful checkout
@@ -10503,9 +10522,9 @@ export default function GrowSmart() {
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <Dashboard onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} />}
+        {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
-        {tab === "crops"     && <CropList onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
+        {tab === "crops"     && <CropList isDemo={isDemo} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && <FeedsScreen />}
@@ -10518,7 +10537,7 @@ export default function GrowSmart() {
       {showIOSBanner && <IOSInstallBanner onDismiss={dismissIOSBanner} />}
 
       {/* Floating Plant Check button — Today tab only */}
-      {tab === "dashboard" && !showFeedback && !showIOSBanner && (
+      {tab === "dashboard" && showGlobalPlantCheckEnabled && !showFeedback && !showIOSBanner && (
         <button
           onClick={() => setShowGlobalPlantCheck(true)}
           style={{ position: "fixed", bottom: 90, left: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
@@ -10527,7 +10546,7 @@ export default function GrowSmart() {
           🔍
         </button>
       )}
-      {showGlobalPlantCheck && (
+      {showGlobalPlantCheckEnabled && showGlobalPlantCheck && (
         <PlantCheck
           entry="today"
           prefillCrop={null}
