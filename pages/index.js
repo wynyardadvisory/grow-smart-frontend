@@ -10621,18 +10621,30 @@ function PlanScreen() {
         </div>
       )}
 
-      {/* Hint + rotate button */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: C.stone }}>
-          {activeBlock ? "Drag to reposition · Tap outside to deselect" : "Tap an area to select · then drag or rotate"}
-        </div>
-        {activeBlock && (
+      {/* Toolbar — shows when area selected */}
+      {activeBlock ? (
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+          <div style={{ fontSize: 11, color: C.stone, flex: 1 }}>
+            {areas.find(a => a.id === activeBlock)?.name || "Area"} selected
+          </div>
           <button onClick={() => handleRotate(activeBlock)}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "7px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             ↻ Rotate
           </button>
-        )}
-      </div>
+          <button onClick={() => { setDetailArea(activeBlock); }}
+            style={{ background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "8px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Detail
+          </button>
+          <button onClick={() => setActiveBlock(null)}
+            style={{ background: "none", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, cursor: "pointer" }}>
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>
+          Tap an area to select · drag to move · then rotate
+        </div>
+      )}
 
       {/* Canvas */}
       <div
@@ -10682,7 +10694,7 @@ function PlanScreen() {
                 crops={cropsByArea[area.id] || []}
                 pxPerM={pxPerM}
                 isSelected={activeBlock === area.id}
-                onTap={(id) => { setActiveBlock(id === activeBlock ? null : id); setDetailArea(id); }}
+                onTap={(id) => { setActiveBlock(id === activeBlock ? null : id); }}
                 onDragEnd={handleDragEnd}
               />
             ))}
