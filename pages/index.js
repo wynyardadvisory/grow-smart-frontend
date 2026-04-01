@@ -10462,9 +10462,18 @@ function PlanScreen() {
     if (!areas.length) return;
     if (autoLayoutDone.current) return;
 
-    const needLayout = areas.filter(a => a.layout_x == null || a.layout_x === undefined);
+    // Detect stale pixel-based positions — any position > 20m on a typical garden
+    // is clearly a pixel value from an older version. Reset those areas.
+    const maxSanePosition = Math.max(gardenW, gardenH, 20) * 3;
+    const hasStalePixelPositions = areas.some(a =>
+      a.layout_x != null && (Math.abs(a.layout_x) > maxSanePosition || Math.abs(a.layout_y) > maxSanePosition)
+    );
+    const needLayout = areas.filter(a =>
+      a.layout_x == null || a.layout_x === undefined || hasStalePixelPositions
+    );
     const allAtOrigin = areas.length > 0 && areas.every(a => !a.layout_x && !a.layout_y);
-    console.log("[Visualiser] auto-layout check: needLayout=", needLayout.length, "allAtOrigin=", allAtOrigin,
+    console.log("[Visualiser] auto-layout check: needLayout=", needLayout.length,
+      "allAtOrigin=", allAtOrigin, "stalePixels=", hasStalePixelPositions,
       "positions=", areas.map(a => a.name + ":" + a.layout_x + "," + a.layout_y));
 
     if (!needLayout.length && !allAtOrigin) return;
@@ -10473,7 +10482,8 @@ function PlanScreen() {
     let x = 0.3, y = 0.3, rowH = 0;
     const GAP = 0.5;
     const updated = areas.map(area => {
-      const hasPosition = area.layout_x != null && area.layout_x !== undefined && !allAtOrigin;
+      const hasPosition = area.layout_x != null && area.layout_x !== undefined
+        && !allAtOrigin && !hasStalePixelPositions;
       if (hasPosition) return area;
       const w = area.width_m  || 1.5;
       const h = area.length_m || 1.5;
@@ -10485,6 +10495,14 @@ function PlanScreen() {
     });
     console.log("[Visualiser] auto-layout result:", updated.map(a => a.name + ":" + a.layout_x + "," + a.layout_y));
     setAreas(updated);
+
+    // If stale pixel positions were detected, clear them in DB so they don't persist
+    if (hasStalePixelPositions) {
+      Promise.all(areas.map(a =>
+        apiFetch(`/areas/${a.id}`, { method: "PUT", body: JSON.stringify({ layout_x: null, layout_y: null }) })
+          .catch(() => {})
+      )).then(() => console.log("[Visualiser] cleared stale pixel positions from DB"));
+    }
   }, [areas.length, selectedLoc]);
 
   // ── Scale calculation ─────────────────────────────────────────────────────
