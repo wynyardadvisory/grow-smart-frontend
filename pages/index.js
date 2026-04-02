@@ -10916,11 +10916,12 @@ function PlanBadge({ status }) {
 // ── Plan creation flow: goal picker → generate → compare → select ─────────────
 
 const PLAN_GOALS = [
-  { id: "best_rotation", emoji: "🔁", label: "Best rotation",  desc: "Protect soil health by moving crop families around" },
-  { id: "max_yield",     emoji: "🌾", label: "Max yield",      desc: "Get the most food from your space this season" },
-  { id: "favourites",    emoji: "❤️",  label: "My favourites", desc: "Prioritise the crops you love growing most" },
-  { id: "easy",          emoji: "🧘", label: "Easy season",    desc: "Low maintenance crops, less work" },
-  { id: "balanced",      emoji: "⚖️",  label: "Balanced",      desc: "A bit of everything — yield, rotation and ease" },
+  { id: "rotate_mine",   emoji: "🔄", label: "Rotate what I grow",  desc: "Keep your current crops but move them to the right beds" },
+  { id: "best_rotation", emoji: "🔁", label: "Best rotation",        desc: "Protect soil health by moving crop families around" },
+  { id: "max_yield",     emoji: "🌾", label: "Max yield",            desc: "Get the most food from your space this season" },
+  { id: "favourites",    emoji: "❤️",  label: "My favourites",       desc: "Prioritise the crops you love growing most" },
+  { id: "easy",          emoji: "🧘", label: "Easy season",          desc: "Low maintenance crops, less work" },
+  { id: "balanced",      emoji: "⚖️",  label: "Balanced",            desc: "A bit of everything — yield, rotation and ease" },
 ];
 
 function ScoreBar({ label, value, max = 10, colour = C.forest }) {
@@ -11010,23 +11011,24 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     if (!chosen) return;
     setSaving(true); setErr(null);
     try {
-      // Create the plan
       const plan = await apiFetch("/plans", {
         method: "POST",
         body: JSON.stringify({ location_id: locationId, name: chosen.name }),
       });
-      // Bulk-save assignments
-      await Promise.all(chosen.assignments.map(a =>
-        apiFetch(`/plans/${plan.id}/assignments`, {
+      // Sequential saves to avoid race condition with useEffect assignment fetch
+      const savedAssignments = [];
+      for (const a of chosen.assignments) {
+        const saved = await apiFetch(`/plans/${plan.id}/assignments`, {
           method: "POST",
           body: JSON.stringify({
             area_id:            a.area_id,
             crop_definition_id: a.crop_definition_id || null,
             crop_name:          a.crop_name,
           }),
-        })
-      ));
-      onSave(plan);
+        });
+        savedAssignments.push(saved);
+      }
+      onSave(plan, savedAssignments);
     } catch(e) { setErr(e.message); setSaving(false); }
   };
 
@@ -11614,8 +11616,9 @@ function PlanScreen() {
         <CreatePlanSheet
           locationId={selectedLoc}
           locationName={loc.name}
-          onSave={plan => {
+          onSave={(plan, preloadedAssignments) => {
             setPlans(prev => [plan, ...prev]);
+            if (preloadedAssignments) setAssignments(preloadedAssignments);
             setSelectedPlanId(plan.id);
             setShowCreatePlan(false);
           }}
