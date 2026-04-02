@@ -5201,7 +5201,13 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
       const hint = result?.next_action_hint || null;
       setDone({ action_type: actionType, hint });
       setTimeout(() => onLogged(), 2000);
-    } catch(e) { console.error(e); setSaving(false); }
+    } catch(e) {
+      console.error("[LogAction] failed:", e);
+      setSaving(false);
+      // Show error inline so user knows it failed
+      setDone({ action_type: actionType, hint: "Something went wrong — please try again", error: true });
+      setTimeout(() => { setDone(null); }, 3000);
+    }
   };
 
   const scopeLabel = resolvedScope?.name || "garden";
