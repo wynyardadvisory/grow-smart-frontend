@@ -11028,7 +11028,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         });
         savedAssignments.push(saved);
       }
-      onSave(plan, savedAssignments);
+      onSave(plan);
     } catch(e) { setErr(e.message); setSaving(false); }
   };
 
@@ -11616,11 +11616,15 @@ function PlanScreen() {
         <CreatePlanSheet
           locationId={selectedLoc}
           locationName={loc.name}
-          onSave={(plan, preloadedAssignments) => {
+          onSave={async (plan) => {
             setPlans(prev => [plan, ...prev]);
-            if (preloadedAssignments) setAssignments(preloadedAssignments);
-            setSelectedPlanId(plan.id);
             setShowCreatePlan(false);
+            // Fetch assignments fresh from API (they're already saved), then switch to plan
+            try {
+              const fresh = await apiFetch(`/plans/${plan.id}/assignments`);
+              setAssignments(fresh || []);
+            } catch(e) { setAssignments([]); }
+            setSelectedPlanId(plan.id);
           }}
           onClose={()=>setShowCreatePlan(false)}
         />
