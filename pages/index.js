@@ -11288,11 +11288,13 @@ function PlanScreen() {
     if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
   },[areas.length,selectedLoc]);
 
-  // Fixed canvas — use location dimensions, or frozen initial area positions as fallback
-  // Never recomputes from live areas state so dragging beds doesn't resize the canvas
+  // Fixed canvas size — computed once from frozen initial positions + location dims
+  // Always large enough to show all beds; never grows during drag
   const _staticAreas = initialAreasRef.current || areas;
-  const gardenW = loc?.width_m  || Math.max(6, _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
-  const gardenH = loc?.length_m || Math.max(6, _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
+  const _extentW = _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6;
+  const _extentH = _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6;
+  const gardenW = Math.max(loc?.width_m||0,  _extentW, 6);
+  const gardenH = Math.max(loc?.length_m||0, _extentH, 6);
   const CANVAS_PAD=24;
   // pxPerM always at zoom=1 — Konva stage scaleX/scaleY handles zoom
   const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
