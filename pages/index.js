@@ -11198,55 +11198,6 @@ function PlanScreen() {
     if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
   },[areas.length,selectedLoc]);
 
-  // Fixed canvas size — computed once from frozen initial positions + location dims
-  // Always large enough to show all beds; never grows during drag
-  // Canvas size = location dimensions. pxPerM derived from these only.
-  // Beds that are dragged outside will scroll rather than shrink the scale.
-  const _staticAreas = initialAreasRef.current || areas;
-  const gardenW = loc?.width_m  || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
-  const gardenH = loc?.length_m || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
-  const CANVAS_PAD=24;
-  // pxPerM always at zoom=1 — Konva stage scaleX/scaleY handles zoom
-  const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
-  const canvasW=gardenW*pxPerM+CANVAS_PAD*2;
-  const canvasH=gardenH*pxPerM+CANVAS_PAD*2;
-  // Stage viewport = container width, height scales with zoom but capped
-  const stageW=containerW;
-  const stageH=Math.max(300, canvasH*zoom);
-
-  const handleDragEnd=async(areaId,x,y)=>{
-    setAreas(prev=>prev.map(a=>a.id===areaId?{...a,layout_x:x,layout_y:y}:a));
-    try{
-      await apiFetch(`/areas/${areaId}`,{method:"PUT",body:JSON.stringify({layout_x:x,layout_y:y})});
-      setSavedToast(true);
-      setTimeout(()=>setSavedToast(false),1500);
-    }catch(e){console.error("[Visualiser] save failed:",e.message);}
-  };
-
-  const handleRotate=async(areaId, angle, save)=>{
-    const area=areas.find(a=>a.id===areaId);
-    if(!area) return;
-    const newR = angle !== undefined ? angle : ((area.rotation||0)+90)%360;
-    setAreas(prev=>prev.map(a=>a.id===areaId?{...a,rotation:newR}:a));
-    if(save !== false){
-      try{await apiFetch(`/areas/${areaId}`,{method:"PUT",body:JSON.stringify({rotation:newR})});}
-      catch(e){console.error("[Visualiser] rotate failed:",e.message);}
-    }
-  };
-
-  const handleZoomChange=(delta)=>{
-    setZoom(z=>{
-      const nz = Math.min(2.5,Math.max(0.4,+(z+delta*0.01).toFixed(2)));
-      try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({ zoom: nz, selectedLoc })); } catch(e) {}
-      return nz;
-    });
-  };
-
-  // Derived display values
-  const totalCrops     = crops.filter(c => areas.some(a => a.id === c.area_id)).length;
-  const activeAreaName = activeBlock ? areas.find(a => a.id === activeBlock)?.name?.replace(/^"|"$/g,"") : null;
-  const selectedAreaObj    = detailArea ? areas.find(a => a.id === detailArea) : null;
-  const selectedAreaCrops  = detailArea ? crops.filter(c => c.area_id === detailArea) : [];
 
   // Canvas geometry
   const _staticAreas = initialAreasRef.current || areas;
