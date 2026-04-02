@@ -10135,10 +10135,11 @@ function AdminScreen({ isDemo = false }) {
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const K = {
   // Canvas — muted earthy path/bark
-  canvasBg:     "#9E7E5A",
-  pathDark:     "#7A5E3E",
-  pathMid:      "#8A6E4A",
-  pathLight:    "#B0906A",
+  canvasBg:     "#5C7A3E",
+  grassDark:    "#4A6630",
+  grassMid:     "#527038",
+  grassLight:   "#6A8A48",
+  grassPale:    "#7A9A55",
 
   // Raised bed — natural oak/pine timber
   timber:       "#9B7040",
@@ -10470,39 +10471,43 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
 
   // ── Draw bark/path background ───────────────────────────────────────────
   const drawBackground = (ctx, w, h) => {
-    // Base fill
+    // Base grass — muted olive/sage, not bright
     ctx.fillStyle = K.canvasBg;
     ctx.fillRect(0, 0, w, h);
 
-    // Bark chips — irregular ellipses, very natural
-    for (let i = 0; i < 60; i++) {
-      const x  = (i * 71 + 23) % w;
-      const y  = (i * 113 + 41) % h;
-      const rx = 8 + (i%5)*4;
-      const ry = 3 + (i%3)*2;
-      const angle = (i * 43) % Math.PI;
-      const lightness = i%4===0 ? K.pathDark : i%4===1 ? K.pathLight : K.pathMid;
+    // Subtle colour variation patches — worn allotment ground feel
+    const patches = [
+      { x: w*0.15, y: h*0.2,  r: w*0.22, col: K.grassDark,  a: 0.18 },
+      { x: w*0.7,  y: h*0.15, r: w*0.18, col: K.grassLight, a: 0.14 },
+      { x: w*0.4,  y: h*0.6,  r: w*0.25, col: K.grassDark,  a: 0.16 },
+      { x: w*0.85, y: h*0.7,  r: w*0.2,  col: K.grassPale,  a: 0.12 },
+      { x: w*0.1,  y: h*0.8,  r: w*0.15, col: K.grassMid,   a: 0.13 },
+      { x: w*0.55, y: h*0.35, r: w*0.16, col: K.grassLight, a: 0.10 },
+    ];
+    patches.forEach(p => {
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      grad.addColorStop(0, p.col);
+      grad.addColorStop(1, "transparent");
+      ctx.globalAlpha = p.a;
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
+    ctx.globalAlpha = 1;
 
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.fillStyle = lightness;
-      ctx.globalAlpha = 0.3 + (i%3)*0.1;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Subtle grain direction — very faint, not wood floor
-    ctx.globalAlpha = 0.06;
-    for (let i = 0; i < w; i += 8) {
-      ctx.strokeStyle = i%16===0 ? K.pathDark : K.pathLight;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(i + h*0.05, 0);
-      ctx.lineTo(i, h);
-      ctx.stroke();
+    // Grass blade texture — short vertical strokes, very faint
+    ctx.globalAlpha = 0.09;
+    for (let i = 0; i < w; i += 5) {
+      for (let j = 0; j < h; j += 7) {
+        const jitter = (i * 7 + j * 13) % 5 - 2;
+        const len    = 3 + (i * 3 + j) % 4;
+        const tone   = (i + j) % 3 === 0 ? K.grassDark : K.grassLight;
+        ctx.strokeStyle = tone;
+        ctx.lineWidth   = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(i + jitter, j);
+        ctx.lineTo(i + jitter * 0.5, j + len);
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
   };
