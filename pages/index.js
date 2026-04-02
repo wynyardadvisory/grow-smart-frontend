@@ -11213,6 +11213,7 @@ function PlanScreen() {
 
   const containerRef   = useRef(null);
   const autoLayoutDone = useRef(false);
+  const initialAreasRef = useRef(null); // frozen snapshot of areas at first load — for stable canvas size
   const [containerW,   setContainerW] = useState(360);
   const konvaReady     = useKonva();
 
@@ -11238,7 +11239,9 @@ function PlanScreen() {
         setLocations(locsWithAreas);
         if(locsWithAreas.length){
           setSelectedLoc(locsWithAreas[0].id);
-          setAreas(locsWithAreas[0].growing_areas||[]);
+          const firstAreas = locsWithAreas[0].growing_areas||[];
+          setAreas(firstAreas);
+          initialAreasRef.current = firstAreas; // freeze for canvas size calc
         }
       })
       .catch(e=>setError(e.message))
@@ -11276,11 +11279,11 @@ function PlanScreen() {
     if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
   },[areas.length,selectedLoc]);
 
-  // Always use actual area extents — loc dimensions may be smaller than placed beds
-  const actualW = areas.length ? Math.max(...areas.map(a=>(a.layout_x||0)+(a.width_m||2))) + 1 : 6;
-  const actualH = areas.length ? Math.max(...areas.map(a=>(a.layout_y||0)+(a.length_m||2))) + 1 : 6;
-  const gardenW = Math.max(actualW, loc?.width_m||0);
-  const gardenH = Math.max(actualH, loc?.length_m||0);
+  // Fixed canvas — use location dimensions, or frozen initial area positions as fallback
+  // Never recomputes from live areas state so dragging beds doesn't resize the canvas
+  const _staticAreas = initialAreasRef.current || areas;
+  const gardenW = loc?.width_m  || Math.max(6, _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
+  const gardenH = loc?.length_m || Math.max(6, _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
   const CANVAS_PAD=24;
   // pxPerM always at zoom=1 — Konva stage scaleX/scaleY handles zoom
   const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
