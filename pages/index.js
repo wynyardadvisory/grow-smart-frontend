@@ -10785,8 +10785,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
     ctx.textBaseline = "middle";
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const offsetX = (r % 2 === 1) ? cellW * 0.25 : 0;
-        const ex = innerX + c * cellW + cellW / 2 + offsetX;
+        const ex = innerX + c * cellW + cellW / 2;
         const ey = innerY + r * cellH + cellH / 2;
         ctx.fillText(emoji, ex, ey);
       }
@@ -10922,6 +10921,37 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                   listening={false}
                 />
               )}
+
+              {/* Area name — small, along longest edge */}
+              <Shape
+                sceneFunc={(ctx) => {
+                  const label = name.toUpperCase();
+                  const isLandscape = w >= h;
+                  ctx.save();
+                  ctx.globalAlpha = 0.45;
+                  ctx.fillStyle = "#fff";
+                  if (isLandscape) {
+                    // Along bottom edge, horizontal
+                    const fs = Math.max(6, Math.min(9, w * 0.06));
+                    ctx.font = `600 ${fs}px sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "bottom";
+                    ctx.fillText(label, w/2, h - T - 2, w - T*2 - 8);
+                  } else {
+                    // Rotated along left edge, reading bottom-to-top
+                    const fs = Math.max(6, Math.min(9, h * 0.05));
+                    ctx.font = `600 ${fs}px sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "top";
+                    ctx.translate(T + fs, h/2);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillText(label, 0, 0, h - T*2 - 8);
+                  }
+                  ctx.restore();
+                }}
+                width={w} height={h}
+                listening={false}
+              />
 
               {/* Rotate handle — draggable when selected */}
               {isSelected && onRotate && (
