@@ -11210,6 +11210,12 @@ function PlanScreen() {
   const stageW  = containerW;
   const stageH  = Math.max(300, canvasH*zoom);
 
+  // Derived display values
+  const totalCrops        = crops.filter(c => areas.some(a => a.id === c.area_id)).length;
+  const activeAreaName    = activeBlock ? areas.find(a => a.id === activeBlock)?.name?.replace(/^"|"$/g,"") : null;
+  const selectedAreaObj   = detailArea ? areas.find(a => a.id === detailArea) : null;
+  const selectedAreaCrops = detailArea ? crops.filter(c => c.area_id === detailArea) : [];
+
   // Plan mode
   const isPlanMode    = selectedPlanId !== "live";
   const assignmentMap = Object.fromEntries(assignments.map(a => [a.area_id, a]));
