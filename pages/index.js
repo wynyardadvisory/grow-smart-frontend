@@ -10154,26 +10154,48 @@ function _jit(seed, range) {
   return (((seed * 1664525 + 1013904223) & 0x7fffffff) / 0x7fffffff) * range - range / 2;
 }
 
+// ── Bark/soil texture image cache ──────────────────────────────────────────────
+const _textureCache = { img: null, state: "idle" };
+const BARK_TEXTURE_URL = "https://www.transparenttextures.com/patterns/dark-mosaic.png";
+
+function _ensureBarkTexture(onReady) {
+  if (_textureCache.state === "ready")   { onReady(_textureCache.img); return; }
+  if (_textureCache.state === "failed")  { onReady(null); return; }
+  if (_textureCache.state === "loading") { return; }
+  _textureCache.state = "loading";
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload  = () => { _textureCache.img = img; _textureCache.state = "ready"; onReady(img); };
+  img.onerror = () => { _textureCache.state = "failed"; onReady(null); };
+  img.src = BARK_TEXTURE_URL;
+}
+
 // ── Ground ─────────────────────────────────────────────────────────────────────
 function _drawGround(ctx, x, y, w, h) {
   ctx.save();
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 22); ctx.clip();
   ctx.fillStyle = K.g1; ctx.fillRect(x, y, w, h);
+
+  // Overlay bark texture if loaded
+  if (_textureCache.state === "ready" && _textureCache.img) {
+    const pat = ctx.createPattern(_textureCache.img, "repeat");
+    if (pat) { ctx.globalAlpha = 0.20; ctx.fillStyle = pat; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; }
+  }
+
   // large very soft tonal patches
   [
-    [x+w*.2,  y+h*.3,  w*.55, K.gD, .08],
-    [x+w*.7,  y+h*.15, w*.45, K.gL, .07],
-    [x+w*.42, y+h*.65, w*.6,  K.gD, .07],
-    [x+w*.1,  y+h*.78, w*.38, K.gL, .06],
-    [x+w*.82, y+h*.72, w*.4,  K.g2, .06],
-    [x+w*.3,  y+h*.1,  w*.35, K.gL, .05],
+    [x+w*.2,  y+h*.3,  w*.55, K.gD, .07],
+    [x+w*.7,  y+h*.15, w*.45, K.gL, .06],
+    [x+w*.42, y+h*.65, w*.6,  K.gD, .06],
+    [x+w*.1,  y+h*.78, w*.38, K.gL, .05],
+    [x+w*.82, y+h*.72, w*.4,  K.g2, .05],
+    [x+w*.3,  y+h*.1,  w*.35, K.gL, .04],
   ].forEach(([cx, cy, r, c, a]) => {
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     g.addColorStop(0, c); g.addColorStop(.55, c); g.addColorStop(1, "transparent");
     ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
   });
-  // very fine noise
-  ctx.globalAlpha = .04;
+  ctx.globalAlpha = .03;
   for (let i = x; i < x+w; i += 4) for (let j = y; j < y+h; j += 5) {
     const v = (i*17 + j*11) % 15;
     if (v < 2) { ctx.fillStyle = v < 1 ? K.gD : K.gL; ctx.fillRect(i, j, 1, 1); }
@@ -10638,7 +10660,14 @@ function _drawAreaLabel(ctx, area, x, y, w, h, name) {
 function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, stageH, stageScale, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
   const stageRef = useRef(null);
   const lastDistRef = useRef(null);
+  const [, forceUpdate] = useState(0);
   const { Stage, Layer, Shape, Rect, Group, Text } = window.KonvaReact || {};
+
+  // Load bark texture on mount — force re-render once it's ready so canvas repaints
+  useEffect(() => {
+    if (_textureCache.state === "ready") return;
+    _ensureBarkTexture(() => forceUpdate(n => n + 1));
+  }, []);
 
   if (!Stage) return (
     <div style={{ height: canvasH, display: "flex", alignItems: "center", justifyContent: "center", background: K.g1, color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
