@@ -10895,27 +10895,223 @@ function AreaDetailSheet({ area, crops, onClose }) {
   );
 }
 
+// ── Plan helpers ──────────────────────────────────────────────────────────────
+const PLAN_STATUS_LABEL = { draft: "Draft", committed: "Committed", archived: "Archived" };
+const PLAN_STATUS_COLOUR = { draft: "#D9A441", committed: "#2F5D50", archived: "#9E9E9E" };
+
+function PlanBadge({ status }) {
+  return (
+    <span style={{
+      display: "inline-block", fontSize: 9, fontWeight: 700, letterSpacing: 0.8,
+      textTransform: "uppercase", padding: "2px 7px", borderRadius: 20,
+      background: PLAN_STATUS_COLOUR[status] + "22",
+      color: PLAN_STATUS_COLOUR[status], border: `1px solid ${PLAN_STATUS_COLOUR[status]}44`,
+    }}>
+      {PLAN_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+// Sheet to create a new plan
+function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
+  const [name,    setName]    = useState("");
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState(null);
+
+  const handleSave = async () => {
+    if (!name.trim()) { setErr("Give your plan a name"); return; }
+    setSaving(true); setErr(null);
+    try {
+      const plan = await apiFetch("/plans", {
+        method: "POST",
+        body: JSON.stringify({ location_id: locationId, name: name.trim() }),
+      });
+      onSave(plan);
+    } catch(e) { setErr(e.message); setSaving(false); }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
+      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box" }}>
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
+        <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:4 }}>New plan</div>
+        <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>For {locationName}</div>
+        <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Plan name</div>
+        <input
+          value={name} onChange={e=>setName(e.target.value)}
+          placeholder="e.g. 2027 rotation, Winter plan…"
+          autoFocus
+          style={{ width:"100%", boxSizing:"border-box", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${name.trim()?C.forest:C.border}`, fontSize:15, outline:"none", marginBottom:err?8:20 }}
+        />
+        {err && <div style={{ fontSize:12, color:C.red, marginBottom:12 }}>{err}</div>}
+        <button onClick={handleSave} disabled={saving||!name.trim()}
+          style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:name.trim()?C.forest:"#ccc", color:"#fff", fontSize:15, fontWeight:700, cursor:name.trim()?"pointer":"default" }}>
+          {saving ? "Creating…" : "Create plan"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Sheet to assign a crop to an area within a plan
+function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
+  const [cropDefs,  setCropDefs]  = useState([]);
+  const [query,     setQuery]     = useState(currentAssignment?.crop_name || "");
+  const [selected,  setSelected]  = useState(currentAssignment?.crop_definition_id || null);
+  const [saving,    setSaving]    = useState(false);
+  const [removing,  setRemoving]  = useState(false);
+
+  useEffect(() => {
+    apiFetch("/crop-definitions").then(d => setCropDefs(d||[])).catch(()=>{});
+  }, []);
+
+  const filtered = query.trim().length > 1
+    ? cropDefs.filter(c => c.name.toLowerCase().includes(query.toLowerCase())).slice(0, 12)
+    : [];
+
+  const selectedDef = cropDefs.find(c => c.id === selected);
+
+  const handleSave = async () => {
+    if (!selected && !query.trim()) { onClose(); return; }
+    setSaving(true);
+    try {
+      const body = { area_id: area.id };
+      if (selected) { body.crop_definition_id = selected; body.crop_name = selectedDef?.name || query.trim(); }
+      else { body.crop_name = query.trim(); }
+      const result = await apiFetch(`/plans/${plan.id}/assignments`, { method:"POST", body:JSON.stringify(body) });
+      onSave(result);
+    } catch(e) { setSaving(false); }
+  };
+
+  const handleRemove = async () => {
+    if (!currentAssignment?.id) { onClose(); return; }
+    setRemoving(true);
+    try {
+      await apiFetch(`/plans/${plan.id}/assignments/${currentAssignment.id}`, { method:"DELETE" });
+      onSave(null);
+    } catch(e) { setRemoving(false); }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
+      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}>
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
+        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:2 }}>Plan crop for {area.name}</div>
+        <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>In: {plan.name}</div>
+
+        {selectedDef && (
+          <div style={{ display:"flex", alignItems:"center", gap:10, background:"#F0F5F3", borderRadius:12, padding:"10px 14px", marginBottom:14 }}>
+            <div style={{ fontSize:22 }}>{selectedDef.emoji || "🌱"}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:14 }}>{selectedDef.name}</div>
+              <div style={{ fontSize:11, color:C.stone }}>Selected</div>
+            </div>
+            <button onClick={()=>{ setSelected(null); setQuery(""); }} style={{ background:"none", border:"none", color:C.stone, fontSize:18, cursor:"pointer" }}>✕</button>
+          </div>
+        )}
+
+        {!selectedDef && (
+          <>
+            <input
+              value={query} onChange={e=>{ setQuery(e.target.value); setSelected(null); }}
+              placeholder="Search crops…"
+              autoFocus
+              style={{ width:"100%", boxSizing:"border-box", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${C.border}`, fontSize:14, outline:"none", marginBottom:8 }}
+            />
+            {filtered.length > 0 && (
+              <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"hidden", marginBottom:12 }}>
+                {filtered.map((c,i) => (
+                  <button key={c.id} onClick={()=>{ setSelected(c.id); setQuery(c.name); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", border:"none", borderTop:i>0?`1px solid ${C.border}`:"none", background:"#fff", cursor:"pointer", textAlign:"left" }}>
+                    <span style={{ fontSize:18 }}>{c.emoji||"🌱"}</span>
+                    <span style={{ fontSize:14, fontWeight:600 }}>{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        <div style={{ display:"flex", gap:8 }}>
+          {currentAssignment?.id && (
+            <button onClick={handleRemove} disabled={removing}
+              style={{ flex:1, padding:"13px", borderRadius:14, border:`1.5px solid ${C.red}`, background:"#fff", color:C.red, fontSize:14, fontWeight:700, cursor:"pointer" }}>
+              {removing ? "Removing…" : "Remove"}
+            </button>
+          )}
+          <button onClick={handleSave} disabled={saving || (!selected && !query.trim())}
+            style={{ flex:2, padding:"13px", borderRadius:14, border:"none", background:(selected||query.trim())?C.forest:"#ccc", color:"#fff", fontSize:14, fontWeight:700, cursor:(selected||query.trim())?"pointer":"default" }}>
+            {saving ? "Saving…" : currentAssignment?.id ? "Update" : "Assign crop"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Commit plan confirmation modal
+function CommitPlanModal({ plan, onConfirm, onClose }) {
+  const [committing, setCommitting] = useState(false);
+  const handleCommit = async () => {
+    setCommitting(true);
+    try {
+      const updated = await apiFetch(`/plans/${plan.id}/commit`, { method:"POST" });
+      onConfirm(updated);
+    } catch(e) { setCommitting(false); }
+  };
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9200, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 20px" }}>
+      <div style={{ width:"100%", maxWidth:380, background:"#fff", borderRadius:20, padding:"28px 22px 22px", boxSizing:"border-box" }}>
+        <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>🌱</div>
+        <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, textAlign:"center", marginBottom:10 }}>Commit this plan?</div>
+        <div style={{ fontSize:14, color:C.stone, textAlign:"center", lineHeight:1.6, marginBottom:24 }}>
+          Your current garden stays unchanged. Vercro will use <strong>{plan.name}</strong> to guide prep, sowing and planting tasks as areas become available.
+        </div>
+        <button onClick={handleCommit} disabled={committing}
+          style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
+          {committing ? "Committing…" : "Commit plan"}
+        </button>
+        <button onClick={onClose}
+          style={{ width:"100%", padding:"12px", borderRadius:14, border:`1px solid ${C.border}`, background:"#fff", color:C.stone, fontSize:14, cursor:"pointer" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main PlanScreen ───────────────────────────────────────────────────────────
 function PlanScreen() {
   const PLAN_VIEW_CACHE = "vercro_plan_view_v1";
   const _savedView = (() => { try { const v = localStorage.getItem(PLAN_VIEW_CACHE); return v ? JSON.parse(v) : null; } catch(e) { return null; } })();
 
-  const [locations,   setLocations]   = useState([]);
-  const [crops,       setCrops]       = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(null);
-  const [selectedLoc, setSelectedLoc] = useState(_savedView?.selectedLoc || null);
-  const [areas,       setAreas]       = useState([]);
-  const [activeBlock, setActiveBlock] = useState(null);
-  const [detailArea,  setDetailArea]  = useState(null);
-  const [savedToast,  setSavedToast]  = useState(false);
-  const [zoom,        setZoom]        = useState(_savedView?.zoom || 0.82);
+  const [locations,    setLocations]    = useState([]);
+  const [crops,        setCrops]        = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [selectedLoc,  setSelectedLoc]  = useState(_savedView?.selectedLoc || null);
+  const [areas,        setAreas]        = useState([]);
+  const [activeBlock,  setActiveBlock]  = useState(null);
+  const [detailArea,   setDetailArea]   = useState(null);
+  const [savedToast,   setSavedToast]   = useState(false);
+  const [zoom,         setZoom]         = useState(_savedView?.zoom || 0.82);
 
-  const containerRef   = useRef(null);
-  const autoLayoutDone = useRef(false);
-  const initialAreasRef = useRef(null); // frozen snapshot of areas at first load — for stable canvas size
-  const [containerW,   setContainerW] = useState(360);
-  const konvaReady     = useKonva();
+  // Plan state
+  const [plans,          setPlans]          = useState([]);   // all plans for user
+  const [selectedPlanId, setSelectedPlanId] = useState("live"); // "live" | plan.id
+  const [assignments,    setAssignments]    = useState([]);   // assignments for selected plan
+  const [showCreatePlan, setShowCreatePlan] = useState(false);
+  const [assignArea,     setAssignArea]     = useState(null); // area object to assign crop to
+  const [showCommit,     setShowCommit]     = useState(false);
+  const [planToast,      setPlanToast]      = useState(null);
+
+  const containerRef    = useRef(null);
+  const autoLayoutDone  = useRef(false);
+  const initialAreasRef = useRef(null);
+  const [containerW,    setContainerW] = useState(360);
+  const konvaReady      = useKonva();
 
   const { isPro, isMark } = useProStatus();
 
@@ -10929,37 +11125,56 @@ function PlanScreen() {
   }, []);
 
   useEffect(() => {
-    Promise.all([apiFetch("/locations"),apiFetch("/areas"),apiFetch("/crops")])
-      .then(([locs,areasData,cropsData])=>{
+    Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops"), apiFetch("/plans")])
+      .then(([locs, areasData, cropsData, plansData]) => {
         setCrops(cropsData||[]);
-        const locsWithAreas=(locs||[]).map(loc=>({
+        setPlans(plansData||[]);
+        const locsWithAreas = (locs||[]).map(loc => ({
           ...loc,
-          growing_areas:(areasData||[]).filter(a=>a.location_id===loc.id),
+          growing_areas: (areasData||[]).filter(a => a.location_id === loc.id),
         }));
         setLocations(locsWithAreas);
-        if(locsWithAreas.length){
-          // Restore saved location or default to first
+        if (locsWithAreas.length) {
           const savedLocId = _savedView?.selectedLoc;
-          const restoredLoc = savedLocId ? locsWithAreas.find(l=>l.id===savedLocId) : null;
+          const restoredLoc = savedLocId ? locsWithAreas.find(l => l.id === savedLocId) : null;
           const activeLoc = restoredLoc || locsWithAreas[0];
           setSelectedLoc(activeLoc.id);
           const firstAreas = activeLoc.growing_areas||[];
           setAreas(firstAreas);
-          initialAreasRef.current = firstAreas; // freeze for canvas size calc
+          initialAreasRef.current = firstAreas;
         }
       })
-      .catch(e=>setError(e.message))
-      .finally(()=>setLoading(false));
-  },[]);
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const loc = locations.find(l=>l.id===selectedLoc);
+  const loc = locations.find(l => l.id === selectedLoc);
 
-  useEffect(()=>{
-    if(!loc) return;
-    autoLayoutDone.current=false;
+  // Plans filtered to current location
+  const locPlans = plans.filter(p => p.location_id === selectedLoc && p.status !== "archived");
+  const selectedPlan = locPlans.find(p => p.id === selectedPlanId) || null;
+
+  // Load assignments when plan changes
+  useEffect(() => {
+    if (!selectedPlanId || selectedPlanId === "live") { setAssignments([]); return; }
+    apiFetch(`/plans/${selectedPlanId}/assignments`)
+      .then(d => setAssignments(d||[]))
+      .catch(() => setAssignments([]));
+  }, [selectedPlanId]);
+
+  // Reset plan selection when location changes
+  useEffect(() => {
+    setSelectedPlanId("live");
+    setAssignments([]);
+    setActiveBlock(null);
+  }, [selectedLoc]);
+
+  useEffect(() => {
+    if (!loc) return;
+    autoLayoutDone.current = false;
     setActiveBlock(null);
     setAreas(loc.growing_areas||[]);
-  },[selectedLoc]);
+  }, [selectedLoc]);
 
   useEffect(()=>{
     if(!areas.length||autoLayoutDone.current) return;
@@ -11027,20 +11242,79 @@ function PlanScreen() {
     });
   };
 
-  const totalCrops=crops.filter(c=>areas.some(a=>a.id===c.area_id)).length;
-  const activeAreaName=activeBlock?areas.find(a=>a.id===activeBlock)?.name?.replace(/^"|"$/g,""):null;
-  const selectedAreaObj=detailArea?areas.find(a=>a.id===detailArea):null;
-  const selectedAreaCrops=detailArea?crops.filter(c=>c.area_id===detailArea):[];
+  // Derived display values
+  const totalCrops     = crops.filter(c => areas.some(a => a.id === c.area_id)).length;
+  const activeAreaName = activeBlock ? areas.find(a => a.id === activeBlock)?.name?.replace(/^"|"$/g,"") : null;
+  const selectedAreaObj    = detailArea ? areas.find(a => a.id === detailArea) : null;
+  const selectedAreaCrops  = detailArea ? crops.filter(c => c.area_id === detailArea) : [];
 
-  if(loading) return(
+  // Canvas geometry
+  const _staticAreas = initialAreasRef.current || areas;
+  const gardenW = loc?.width_m  || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
+  const gardenH = loc?.length_m || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
+  const CANVAS_PAD = 24;
+  const pxPerM  = Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
+  const canvasW = gardenW*pxPerM+CANVAS_PAD*2;
+  const canvasH = gardenH*pxPerM+CANVAS_PAD*2;
+  const stageW  = containerW;
+  const stageH  = Math.max(300, canvasH*zoom);
+
+  // Plan mode
+  const isPlanMode    = selectedPlanId !== "live";
+  const assignmentMap = Object.fromEntries(assignments.map(a => [a.area_id, a]));
+
+  const planCrops = isPlanMode
+    ? areas.flatMap(area => {
+        const a = assignmentMap[area.id];
+        if (!a) return [];
+        return [{ id:`plan-${area.id}`, area_id:area.id, name:a.crop_name||a.crop_definition?.name||"?", emoji:a.crop_definition?.emoji||"🌱", _isPlanCrop:true }];
+      })
+    : crops;
+
+  const handleDragEnd = async (areaId, x, y) => {
+    if (isPlanMode) return;
+    setAreas(prev => prev.map(a => a.id===areaId ? {...a,layout_x:x,layout_y:y} : a));
+    try {
+      await apiFetch(`/areas/${areaId}`, {method:"PUT", body:JSON.stringify({layout_x:x,layout_y:y})});
+      setSavedToast(true); setTimeout(()=>setSavedToast(false),1500);
+    } catch(e) { console.error("[Visualiser] save failed:", e.message); }
+  };
+
+  const handleRotate = async (areaId, angle, save) => {
+    if (isPlanMode) return;
+    const area = areas.find(a => a.id===areaId);
+    if (!area) return;
+    const newR = angle !== undefined ? angle : ((area.rotation||0)+90)%360;
+    setAreas(prev => prev.map(a => a.id===areaId ? {...a,rotation:newR} : a));
+    if (save !== false) {
+      try { await apiFetch(`/areas/${areaId}`, {method:"PUT", body:JSON.stringify({rotation:newR})}); }
+      catch(e) { console.error("[Visualiser] rotate failed:", e.message); }
+    }
+  };
+
+  const handleZoomChange = (delta) => {
+    setZoom(z => {
+      const nz = Math.min(2.5, Math.max(0.4, +(z+delta*0.01).toFixed(2)));
+      try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({zoom:nz,selectedLoc})); } catch(e) {}
+      return nz;
+    });
+  };
+
+  const handleAreaTapInPlanMode = (areaId) => {
+    if (selectedPlan?.status !== "draft") return;
+    const area = areas.find(a => a.id===areaId);
+    if (area) setAssignArea(area);
+  };
+
+  if (loading) return (
     <div style={{textAlign:"center",padding:"60px 0"}}>
       <div style={{fontSize:40,marginBottom:12}}>🗺️</div>
       <div style={{fontFamily:"serif",fontSize:16,fontWeight:700,color:C.forest}}>Loading your garden…</div>
     </div>
   );
-  if(error) return <ErrorMsg msg={error} />;
+  if (error) return <ErrorMsg msg={error} />;
 
-  return(
+  return (
     <div style={{paddingBottom:16}}>
 
       {/* Header */}
@@ -11048,16 +11322,21 @@ function PlanScreen() {
         <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
         <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>Garden Visualiser</div>
-            <div style={{fontFamily:"serif",fontSize:19,fontWeight:700,color:"#fff"}}>
-              {loc?.name||"My garden"}{loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>
+              {isPlanMode ? "Garden Plan" : "Garden Visualiser"}
             </div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:2}}>
-              {areas.length} area{areas.length!==1?"s":""} · {totalCrops} crop{totalCrops!==1?"s":""}
+            <div style={{fontFamily:"serif",fontSize:19,fontWeight:700,color:"#fff"}}>
+              {isPlanMode ? selectedPlan?.name : (loc?.name||"My garden")}{!isPlanMode&&loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
+            </div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+              {isPlanMode
+                ? <><PlanBadge status={selectedPlan?.status}/><span>{assignments.length} area{assignments.length!==1?"s":""} planned</span></>
+                : <>{areas.length} area{areas.length!==1?"s":""} · {totalCrops} crop{totalCrops!==1?"s":""}</>
+              }
             </div>
           </div>
           <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.1)",backdropFilter:"blur(8px)",borderRadius:12,padding:"4px 6px"}}>
-            {[["+",(z)=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",(z)=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
+            {[["+",z=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",z=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
               <button key={label} onClick={()=>setZoom(z=>{ const nz=fn(z); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom:nz,selectedLoc}));}catch(e){} return nz; })}
                 style={{minWidth:30,height:30,borderRadius:8,border:"none",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:label==="Fit"?11:18,fontWeight:700,cursor:"pointer",padding:label==="Fit"?"0 10px":0}}>
                 {label}
@@ -11068,9 +11347,9 @@ function PlanScreen() {
       </div>
 
       {/* Location tabs */}
-      {locations.length>1&&(
+      {locations.length > 1 && (
         <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-          {locations.map(l=>(
+          {locations.map(l => (
             <button key={l.id} onClick={()=>{ setSelectedLoc(l.id); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc:l.id}));}catch(e){} }}
               style={{flexShrink:0,padding:"6px 14px",borderRadius:20,border:`1px solid ${selectedLoc===l.id?C.forest:C.border}`,background:selectedLoc===l.id?C.forest:"#fff",color:selectedLoc===l.id?"#fff":"#1a1a1a",fontSize:13,fontWeight:600,cursor:"pointer"}}>
               {l.name}
@@ -11079,50 +11358,102 @@ function PlanScreen() {
         </div>
       )}
 
-      {/* Toolbar */}
-      <div style={{minHeight:38,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
-        {activeBlock?(
-          <>
-            <div style={{fontSize:13,fontFamily:"serif",fontWeight:700,color:"#1a1a1a",flex:1}}>{activeAreaName}</div>
-            <button onClick={()=>handleRotate(activeBlock)}
-              style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontSize:14,fontWeight:700,cursor:"pointer"}}>↻ Rotate</button>
-            <button onClick={()=>setDetailArea(activeBlock)}
-              style={{background:"#fff",color:C.forest,border:`1.5px solid ${C.forest}`,borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Detail</button>
-            <button onClick={()=>setActiveBlock(null)}
-              style={{background:"none",color:C.stone,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",fontSize:13,cursor:"pointer"}}>✕</button>
-          </>
-        ):(
-          <>
-            <div style={{fontSize:11,color:C.stone,flex:1}}>Tap an area to select · drag to reposition</div>
-            <button
-              onClick={()=>{ try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc}));}catch(e){} setSavedToast(true); setTimeout(()=>setSavedToast(false),1500); }}
-              style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
-              🔒 Save view
-            </button>
-          </>
+      {/* Plan selector */}
+      <div style={{marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{flex:1,position:"relative"}}>
+            <select
+              value={selectedPlanId}
+              onChange={e => setSelectedPlanId(e.target.value)}
+              style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:12,border:`1.5px solid ${isPlanMode?C.forest:C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:"#1a1a1a",appearance:"none",cursor:"pointer",outline:"none"}}>
+              <option value="live">📍 Current garden</option>
+              {locPlans.length > 0 && <option disabled>──────────────────</option>}
+              {locPlans.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.status==="committed"?"✅":"📋"} {p.name}
+                </option>
+              ))}
+            </select>
+            <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:C.stone,fontSize:12}}>▾</div>
+          </div>
+          <button onClick={()=>setShowCreatePlan(true)}
+            style={{flexShrink:0,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.forest}`,background:"#fff",color:C.forest,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+            + New plan
+          </button>
+        </div>
+
+        {isPlanMode && selectedPlan && (
+          <div style={{marginTop:8,display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{fontSize:11,color:C.stone,flex:1,lineHeight:1.5}}>
+              {selectedPlan.status==="committed"
+                ? "✅ Committed — engine will guide tasks as areas become available"
+                : "📋 Draft — tap areas on the canvas or list below to assign crops"}
+            </div>
+            {selectedPlan.status==="draft" && (
+              <button onClick={()=>setShowCommit(true)}
+                style={{flexShrink:0,padding:"7px 14px",borderRadius:10,border:"none",background:C.forest,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                Commit
+              </button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Canvas container — overflow hidden, Konva stage handles zoom internally */}
-      <div ref={containerRef} style={{width:"100%",borderRadius:18,overflow:"hidden",border:"1px solid rgba(0,0,0,0.1)",boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
-        {savedToast&&(
+      {/* Live mode toolbar */}
+      {!isPlanMode && (
+        <div style={{minHeight:38,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+          {activeBlock ? (
+            <>
+              <div style={{fontSize:13,fontFamily:"serif",fontWeight:700,color:"#1a1a1a",flex:1}}>{activeAreaName}</div>
+              <button onClick={()=>handleRotate(activeBlock)}
+                style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontSize:14,fontWeight:700,cursor:"pointer"}}>↻ Rotate</button>
+              <button onClick={()=>setDetailArea(activeBlock)}
+                style={{background:"#fff",color:C.forest,border:`1.5px solid ${C.forest}`,borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Detail</button>
+              <button onClick={()=>setActiveBlock(null)}
+                style={{background:"none",color:C.stone,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",fontSize:13,cursor:"pointer"}}>✕</button>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:11,color:C.stone,flex:1}}>Tap an area to select · drag to reposition</div>
+              <button onClick={()=>{ try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc}));}catch(e){} setSavedToast(true); setTimeout(()=>setSavedToast(false),1500); }}
+                style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                🔒 Save view
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Plan mode hint */}
+      {isPlanMode && (
+        <div style={{minHeight:30,marginBottom:10,display:"flex",alignItems:"center"}}>
+          <div style={{fontSize:11,color:C.stone}}>
+            {selectedPlan?.status==="committed" ? "View only — plan is committed" : "Tap any area to assign a planned crop"}
+          </div>
+        </div>
+      )}
+
+      {/* Canvas */}
+      <div ref={containerRef} style={{width:"100%",borderRadius:18,overflow:"hidden",border:`1px solid ${isPlanMode?"rgba(47,93,80,0.3)":"rgba(0,0,0,0.1)"}`,boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
+        {(savedToast||planToast) && (
           <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
-            ✓ Layout saved
+            {planToast||"✓ Layout saved"}
           </div>
         )}
-        {konvaReady?(
+        {konvaReady ? (
           <GardenKonvaCanvas
-            areas={areas} crops={crops}
+            areas={areas}
+            crops={planCrops}
             pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
             stageW={stageW} stageH={stageH} stageScale={zoom}
-            activeBlock={activeBlock}
-            onTap={id=>setActiveBlock(id===activeBlock?null:id)}
+            activeBlock={isPlanMode ? null : activeBlock}
+            onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
             onDragEnd={handleDragEnd}
             onRotate={handleRotate}
             onZoomChange={handleZoomChange}
             zoom={zoom}
           />
-        ):(
+        ) : (
           <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:K.canvasBg,color:"rgba(255,255,255,0.5)",fontSize:14}}>
             Preparing your garden…
           </div>
@@ -11146,11 +11477,88 @@ function PlanScreen() {
         ))}
       </div>
 
-      {selectedAreaObj&&(
+      {/* Area assignment list — plan mode only */}
+      {isPlanMode && areas.length > 0 && (
+        <div style={{marginTop:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Area assignments</div>
+          {areas.map(area => {
+            const assignment = assignmentMap[area.id];
+            return (
+              <div key={area.id}
+                onClick={selectedPlan?.status==="draft" ? ()=>setAssignArea(area) : undefined}
+                style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${assignment?C.forest+"44":C.border}`,background:assignment?"#F0F5F3":"#FAFAFA",marginBottom:8,cursor:selectedPlan?.status==="draft"?"pointer":"default"}}>
+                <div style={{fontSize:20,minWidth:24,textAlign:"center"}}>{assignment?.crop_definition?.emoji||(assignment?"🌱":"⬜")}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13,color:"#1a1a1a"}}>{area.name}</div>
+                  {assignment
+                    ? <div style={{fontSize:12,color:C.forest,marginTop:1}}>{assignment.crop_name||assignment.crop_definition?.name}</div>
+                    : <div style={{fontSize:12,color:C.stone,marginTop:1}}>No crop planned</div>
+                  }
+                </div>
+                {selectedPlan?.status==="draft" && (
+                  <div style={{fontSize:12,color:C.stone,flexShrink:0}}>{assignment?"Edit ›":"+ Assign"}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Sheets & modals */}
+      {selectedAreaObj && !isPlanMode && (
         <AreaDetailSheet
           area={selectedAreaObj}
           crops={selectedAreaCrops}
-          onClose={()=>{setDetailArea(null);setActiveBlock(null);}}
+          onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
+        />
+      )}
+
+      {showCreatePlan && loc && (
+        <CreatePlanSheet
+          locationId={selectedLoc}
+          locationName={loc.name}
+          onSave={plan => {
+            setPlans(prev => [plan, ...prev]);
+            setSelectedPlanId(plan.id);
+            setShowCreatePlan(false);
+          }}
+          onClose={()=>setShowCreatePlan(false)}
+        />
+      )}
+
+      {assignArea && selectedPlan && (
+        <AssignCropSheet
+          area={assignArea}
+          plan={selectedPlan}
+          currentAssignment={assignmentMap[assignArea.id]||null}
+          onSave={result => {
+            if (result) {
+              setAssignments(prev => [...prev.filter(a=>a.area_id!==assignArea.id), result]);
+              setPlanToast("✓ Crop assigned");
+            } else {
+              setAssignments(prev => prev.filter(a=>a.area_id!==assignArea.id));
+              setPlanToast("✓ Removed");
+            }
+            setTimeout(()=>setPlanToast(null),1800);
+            setAssignArea(null);
+          }}
+          onClose={()=>setAssignArea(null)}
+        />
+      )}
+
+      {showCommit && selectedPlan && (
+        <CommitPlanModal
+          plan={selectedPlan}
+          onConfirm={updated => {
+            setPlans(prev => prev.map(p =>
+              p.id===updated.id ? updated :
+              (p.location_id===updated.location_id && p.status==="committed") ? {...p,status:"archived"} : p
+            ));
+            setShowCommit(false);
+            setPlanToast("✅ Plan committed");
+            setTimeout(()=>setPlanToast(null),2500);
+          }}
+          onClose={()=>setShowCommit(false)}
         />
       )}
     </div>
