@@ -10973,11 +10973,13 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                   ctx.rect(PAD, PAD, w - PAD*2, h - PAD*2);
                   ctx.clip();
 
-                  const innerX = PAD + 2;
+                  const LABEL_RESERVE = 14; // space reserved for label pill
+                  const isLandscape = w >= h;
+                  const innerX = PAD + 2 + (isLandscape ? 0 : LABEL_RESERVE);
                   const innerY = PAD + 2;
-                  const innerW = w - PAD*2 - 4;
-                  const innerH = h - PAD*2 - 4;
-                  const emojiSize = Math.max(10, Math.min(18, Math.min(innerW, innerH) * 0.22));
+                  const innerW = w - PAD*2 - 4 - (isLandscape ? 0 : LABEL_RESERVE);
+                  const innerH = h - PAD*2 - 4 - (isLandscape ? LABEL_RESERVE : 0);
+                  const emojiSize = Math.max(9, Math.min(16, Math.min(innerW, innerH) * 0.20));
                   const strips = Math.min(activeUnique.length, 4);
                   const stripH = innerH / strips;
                   for (let s = 0; s < strips; s++) {
@@ -11200,16 +11202,19 @@ function AreaDetailSheet({ area, crops, onClose }) {
 
 // ── Main PlanScreen ───────────────────────────────────────────────────────────
 function PlanScreen() {
+  const PLAN_VIEW_CACHE = "vercro_plan_view_v1";
+  const _savedView = (() => { try { const v = localStorage.getItem(PLAN_VIEW_CACHE); return v ? JSON.parse(v) : null; } catch(e) { return null; } })();
+
   const [locations,   setLocations]   = useState([]);
   const [crops,       setCrops]       = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
-  const [selectedLoc, setSelectedLoc] = useState(null);
+  const [selectedLoc, setSelectedLoc] = useState(_savedView?.selectedLoc || null);
   const [areas,       setAreas]       = useState([]);
   const [activeBlock, setActiveBlock] = useState(null);
   const [detailArea,  setDetailArea]  = useState(null);
   const [savedToast,  setSavedToast]  = useState(false);
-  const [zoom,        setZoom]        = useState(0.82); // slightly zoomed out so garden fits on load
+  const [zoom,        setZoom]        = useState(_savedView?.zoom || 0.82);
 
   const containerRef   = useRef(null);
   const autoLayoutDone = useRef(false);
@@ -11238,8 +11243,12 @@ function PlanScreen() {
         }));
         setLocations(locsWithAreas);
         if(locsWithAreas.length){
-          setSelectedLoc(locsWithAreas[0].id);
-          const firstAreas = locsWithAreas[0].growing_areas||[];
+          // Restore saved location or default to first
+          const savedLocId = _savedView?.selectedLoc;
+          const restoredLoc = savedLocId ? locsWithAreas.find(l=>l.id===savedLocId) : null;
+          const activeLoc = restoredLoc || locsWithAreas[0];
+          setSelectedLoc(activeLoc.id);
+          const firstAreas = activeLoc.growing_areas||[];
           setAreas(firstAreas);
           initialAreasRef.current = firstAreas; // freeze for canvas size calc
         }
@@ -11291,7 +11300,7 @@ function PlanScreen() {
   const canvasH=gardenH*pxPerM+CANVAS_PAD*2;
   // Stage viewport = container width, height scales with zoom but capped
   const stageW=containerW;
-  const stageH=Math.min(600, Math.max(300, canvasH*zoom));
+  const stageH=Math.max(300, canvasH*zoom);
 
   const handleDragEnd=async(areaId,x,y)=>{
     setAreas(prev=>prev.map(a=>a.id===areaId?{...a,layout_x:x,layout_y:y}:a));
@@ -11314,7 +11323,11 @@ function PlanScreen() {
   };
 
   const handleZoomChange=(delta)=>{
-    setZoom(z=>Math.min(2.5,Math.max(0.4,+(z+delta*0.01).toFixed(2))));
+    setZoom(z=>{
+      const nz = Math.min(2.5,Math.max(0.4,+(z+delta*0.01).toFixed(2)));
+      try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({ zoom: nz, selectedLoc })); } catch(e) {}
+      return nz;
+    });
   };
 
   const totalCrops=crops.filter(c=>areas.some(a=>a.id===c.area_id)).length;
@@ -11348,7 +11361,7 @@ function PlanScreen() {
           </div>
           <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.1)",backdropFilter:"blur(8px)",borderRadius:12,padding:"4px 6px"}}>
             {[["+",(z)=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",(z)=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
-              <button key={label} onClick={()=>setZoom(fn)}
+              <button key={label} onClick={()=>setZoom(z=>{ const nz=fn(z); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom:nz,selectedLoc}));}catch(e){} return nz; })}
                 style={{minWidth:30,height:30,borderRadius:8,border:"none",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:label==="Fit"?11:18,fontWeight:700,cursor:"pointer",padding:label==="Fit"?"0 10px":0}}>
                 {label}
               </button>
@@ -11361,7 +11374,7 @@ function PlanScreen() {
       {locations.length>1&&(
         <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
           {locations.map(l=>(
-            <button key={l.id} onClick={()=>setSelectedLoc(l.id)}
+            <button key={l.id} onClick={()=>{ setSelectedLoc(l.id); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc:l.id}));}catch(e){} }}
               style={{flexShrink:0,padding:"6px 14px",borderRadius:20,border:`1px solid ${selectedLoc===l.id?C.forest:C.border}`,background:selectedLoc===l.id?C.forest:"#fff",color:selectedLoc===l.id?"#fff":"#1a1a1a",fontSize:13,fontWeight:600,cursor:"pointer"}}>
               {l.name}
             </button>
@@ -11382,7 +11395,14 @@ function PlanScreen() {
               style={{background:"none",color:C.stone,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",fontSize:13,cursor:"pointer"}}>✕</button>
           </>
         ):(
-          <div style={{fontSize:11,color:C.stone}}>Tap an area to select · drag to reposition</div>
+          <>
+            <div style={{fontSize:11,color:C.stone,flex:1}}>Tap an area to select · drag to reposition</div>
+            <button
+              onClick={()=>{ try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc}));}catch(e){} setSavedToast(true); setTimeout(()=>setSavedToast(false),1500); }}
+              style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+              🔒 Save view
+            </button>
+          </>
         )}
       </div>
 
