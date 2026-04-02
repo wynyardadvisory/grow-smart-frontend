@@ -5135,8 +5135,29 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
   crop }) {
 
   // Normalise legacy crop prop
-  const resolvedScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
+  const initialScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
   const resolvedConflict = conflictTaskType || crop?.task_type || null;
+
+  // If no scope provided, show a picker first
+  const needsPicker = !initialScope;
+  const [pickerStep,    setPickerStep]    = useState(needsPicker ? "what" : null); // "what"|"crop"|"area"|null
+  const [pickerCrops,   setPickerCrops]   = useState([]);
+  const [pickerAreas,   setPickerAreas]   = useState([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [resolvedScope, setResolvedScope] = useState(initialScope);
+
+  // Fetch crops + areas when picker opens
+  const { useEffect: _ue } = React;
+  _ue(() => {
+    if (!needsPicker) return;
+    setPickerLoading(true);
+    Promise.all([apiFetch("/crops"), apiFetch("/locations")]).then(([cropsData, locsData]) => {
+      setPickerCrops(cropsData || []);
+      const areas = (locsData || []).flatMap(l => (l.growing_areas || []).map(a => ({ ...a, locationName: l.name })));
+      setPickerAreas(areas);
+      setPickerLoading(false);
+    }).catch(() => setPickerLoading(false));
+  }, [needsPicker]);
 
   const [saving,      setSaving]      = useState(false);
   const [done,        setDone]        = useState(null);
@@ -5207,82 +5228,185 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
   const scopeLabel = resolvedScope?.name || "garden";
   const actionDefs = { watered: "💧", fed: "🌿", pruned_mulched: "✂️", weeded: "🌱", other: "📝" };
 
+  // ── Scope picker UI ────────────────────────────────────────────────────────
+  const renderPicker = () => {
+    if (pickerStep === "what") {
+      return (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>What were you working on?</div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button onClick={() => setPickerStep("crop")}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
+              <div style={{ fontSize: 22, width: 32, flexShrink: 0 }}>🌿</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>A specific crop</div>
+                <div style={{ fontSize: 11, color: C.stone }}>Pick which crop you were tending</div>
+              </div>
+            </button>
+            {pickerAreas.length > 0 && (
+              <button onClick={() => setPickerStep("area")}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                <div style={{ fontSize: 22, width: 32, flexShrink: 0 }}>🪴</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>A bed or area</div>
+                  <div style={{ fontSize: 11, color: C.stone }}>Pick a raised bed, border or container</div>
+                </div>
+              </button>
+            )}
+          </div>
+          {pickerLoading && <div style={{ fontSize: 12, color: C.stone, textAlign: "center", marginTop: 16 }}>Loading your garden…</div>}
+        </>
+      );
+    }
+
+    if (pickerStep === "crop") {
+      return (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <button onClick={() => setPickerStep("what")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Which crop?</div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, marginLeft: "auto" }}>×</button>
+          </div>
+          {pickerLoading ? (
+            <div style={{ fontSize: 12, color: C.stone, textAlign: "center", padding: "20px 0" }}>Loading…</div>
+          ) : pickerCrops.length === 0 ? (
+            <div style={{ fontSize: 13, color: C.stone, textAlign: "center", padding: "20px 0" }}>No crops found</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "55vh", overflowY: "auto" }}>
+              {pickerCrops.map(c => (
+                <button key={c.id}
+                  onClick={() => { setResolvedScope({ type: "crop", id: c.id, name: c.name }); setPickerStep(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{c.name}</div>
+                  {c.area_name && <div style={{ fontSize: 11, color: C.stone, marginLeft: "auto" }}>{c.area_name}</div>}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }
+
+    if (pickerStep === "area") {
+      return (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <button onClick={() => setPickerStep("what")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Which area?</div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, marginLeft: "auto" }}>×</button>
+          </div>
+          {pickerLoading ? (
+            <div style={{ fontSize: 12, color: C.stone, textAlign: "center", padding: "20px 0" }}>Loading…</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "55vh", overflowY: "auto" }}>
+              {pickerAreas.map(a => (
+                <button key={a.id}
+                  onClick={() => { setResolvedScope({ type: "area", id: a.id, name: a.name }); setPickerStep(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{a.name}</div>
+                  {a.locationName && <div style={{ fontSize: 11, color: C.stone, marginLeft: "auto" }}>{a.locationName}</div>}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
-        {done ? (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
-            {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
-            </div>
-            <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
-              {scopeType === "crop"     && `For: ${scopeLabel}`}
-              {scopeType === "area"     && `Area: ${scopeLabel}`}
-              {scopeType === "location" && `Location: ${scopeLabel}`}
-            </div>
 
-            {/* Date selector */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-              {[["today","Today"],["yesterday","Yesterday"],["custom","Choose date"]].map(([val, lbl]) => (
-                <button key={val} onClick={() => setDateChoice(val)}
-                  style={{ flex: 1, padding: "7px 4px", fontSize: 12, fontWeight: dateChoice === val ? 700 : 400,
-                    background: dateChoice === val ? C.forest : C.offwhite,
-                    color: dateChoice === val ? "#fff" : C.stone,
-                    border: `1px solid ${dateChoice === val ? C.forest : C.border}`,
-                    borderRadius: 8, cursor: "pointer" }}>
-                  {lbl}
-                </button>
-              ))}
-            </div>
-            {dateChoice === "custom" && (
-              <input type="date" value={customDate} max={todayISO}
-                onChange={e => setCustomDate(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 14 }} />
-            )}
+        {/* ── Scope picker steps ── */}
+        {pickerStep && renderPicker()}
 
-            {/* Activity buttons */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-              {ACTIONS.map(a => (
-                <button key={a.type}
-                  onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
-                  disabled={saving}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
-                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
-                  </div>
-                </button>
-              ))}
+        {/* ── Main activity UI (shown when scope is resolved) ── */}
+        {!pickerStep && (
+          done ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
+              {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
             </div>
-
-            {/* Other expanded form */}
-            {showOther && (
-              <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
-                <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
-                  placeholder="e.g. Applied copper fungicide, staked tomatoes…"
-                  style={{ ...inputStyle, marginBottom: 8 }}
-                  autoFocus />
-                <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="Notes (optional)"
-                  style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
-                <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
-                  style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
-                  {saving ? "Saving…" : "Save"}
-                </button>
+          ) : (
+            <>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {needsPicker && (
+                    <button onClick={() => setPickerStep("what")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+                  )}
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+                </div>
+                <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
               </div>
-            )}
-          </>
+              <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
+                {scopeType === "crop"     && `For: ${scopeLabel}`}
+                {scopeType === "area"     && `Area: ${scopeLabel}`}
+                {scopeType === "location" && `Location: ${scopeLabel}`}
+              </div>
+
+              {/* Date selector */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                {[["today","Today"],["yesterday","Yesterday"],["custom","Choose date"]].map(([val, lbl]) => (
+                  <button key={val} onClick={() => setDateChoice(val)}
+                    style={{ flex: 1, padding: "7px 4px", fontSize: 12, fontWeight: dateChoice === val ? 700 : 400,
+                      background: dateChoice === val ? C.forest : C.offwhite,
+                      color: dateChoice === val ? "#fff" : C.stone,
+                      border: `1px solid ${dateChoice === val ? C.forest : C.border}`,
+                      borderRadius: 8, cursor: "pointer" }}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+              {dateChoice === "custom" && (
+                <input type="date" value={customDate} max={todayISO}
+                  onChange={e => setCustomDate(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: 14 }} />
+              )}
+
+              {/* Activity buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                {ACTIONS.map(a => (
+                  <button key={a.type}
+                    onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
+                    disabled={saving}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
+                    <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Other expanded form */}
+              {showOther && (
+                <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
+                  <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
+                    placeholder="e.g. Applied copper fungicide, staked tomatoes…"
+                    style={{ ...inputStyle, marginBottom: 8 }}
+                    autoFocus />
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                    style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
+                  <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
+                    style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </>
+          )
         )}
       </div>
     </div>
