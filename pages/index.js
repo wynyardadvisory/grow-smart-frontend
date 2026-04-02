@@ -11296,9 +11296,13 @@ function PlanScreen() {
   const locPlans = plans.filter(p => p.location_id === selectedLoc && p.status !== "archived");
   const selectedPlan = locPlans.find(p => p.id === selectedPlanId) || null;
 
+  // Ref to skip useEffect fetch when assignments were just loaded manually (avoids race)
+  const skipAssignmentFetch = useRef(false);
+
   // Load assignments when plan changes
   useEffect(() => {
     if (!selectedPlanId || selectedPlanId === "live") { setAssignments([]); return; }
+    if (skipAssignmentFetch.current) { skipAssignmentFetch.current = false; return; }
     apiFetch(`/plans/${selectedPlanId}/assignments`)
       .then(d => setAssignments(d||[]))
       .catch(() => setAssignments([]));
@@ -11619,11 +11623,12 @@ function PlanScreen() {
           onSave={async (plan) => {
             setPlans(prev => [plan, ...prev]);
             setShowCreatePlan(false);
-            // Fetch assignments fresh from API (they're already saved), then switch to plan
+            // Fetch assignments, set them, then tell useEffect to skip its fetch
             try {
               const fresh = await apiFetch(`/plans/${plan.id}/assignments`);
               setAssignments(fresh || []);
             } catch(e) { setAssignments([]); }
+            skipAssignmentFetch.current = true;
             setSelectedPlanId(plan.id);
           }}
           onClose={()=>setShowCreatePlan(false)}
