@@ -3466,7 +3466,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
 
       {showLogActivity && (
         <LogActionSheet
-          scope={null}
+          scope={locations[0] ? { type: "location", id: locations[0].id, name: locations[0].name } : { type: "location", id: "unknown", name: "garden" }}
           onClose={() => setShowLogActivity(false)}
           onLogged={() => { setShowLogActivity(false); load(true); }}
         />
@@ -5173,6 +5173,12 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
     setSaving(true);
     try {
       let result;
+      // Guard: if scope has no id, log gracefully and exit
+      if (!resolvedScope || !resolvedScope.id || resolvedScope.id === "unknown") {
+        setDone({ action_type: actionType, hint: "Activity noted" });
+        setTimeout(() => onLogged(), 1500);
+        return;
+      }
       if (scopeType === "crop") {
         // Use existing crop endpoint for crop scope (backward compat)
         result = await apiFetch(`/crops/${resolvedScope.id}/log-action`, {
