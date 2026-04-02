@@ -10198,7 +10198,6 @@ function _ensureBedImg(onReady) {
   img.onerror = () => { _bedImgCache.state = "failed"; onReady(null); };
   img.src = BED_IMG_DATA;
 }
-}
 
 // ── Ground ─────────────────────────────────────────────────────────────────────
 function _drawGround(ctx, x, y, w, h) {
