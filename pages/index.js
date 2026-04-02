@@ -10911,9 +10911,13 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           const isRotated = area.rotation === 90 || area.rotation === 270;
           const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
           const rawH = isRotated ? (area.width_m||2) : (area.length_m||2);
-          const MIN = 65;
-          const w = Math.max(MIN, rawW * pxPerM);
-          const h = Math.max(MIN, rawH * pxPerM);
+          // Scale up small beds proportionally — never squash aspect ratio
+          const rawWpx = rawW * pxPerM;
+          const rawHpx = rawH * pxPerM;
+          const MIN = 55;
+          const minScale = Math.max(1, MIN / Math.min(rawWpx, rawHpx));
+          const w = rawWpx * minScale;
+          const h = rawHpx * minScale;
           const ax = PAD + (area.layout_x||0) * pxPerM;
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
