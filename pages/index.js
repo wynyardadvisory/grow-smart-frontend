@@ -11288,11 +11288,11 @@ function PlanScreen() {
 
   // Fixed canvas size — computed once from frozen initial positions + location dims
   // Always large enough to show all beds; never grows during drag
+  // Canvas size = location dimensions. pxPerM derived from these only.
+  // Beds that are dragged outside will scroll rather than shrink the scale.
   const _staticAreas = initialAreasRef.current || areas;
-  const _extentW = _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6;
-  const _extentH = _staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6;
-  const gardenW = Math.max(loc?.width_m||0,  _extentW, 6);
-  const gardenH = Math.max(loc?.length_m||0, _extentH, 6);
+  const gardenW = loc?.width_m  || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
+  const gardenH = loc?.length_m || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
   const CANVAS_PAD=24;
   // pxPerM always at zoom=1 — Konva stage scaleX/scaleY handles zoom
   const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
