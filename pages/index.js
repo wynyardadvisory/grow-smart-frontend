@@ -5126,229 +5126,114 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 // Reusable bottom sheet for logging manual garden activity.
 // Props:
 //   scope      — { type: 'crop'|'area'|'location', id, name } | null
-//                null = general entry (Today button) — user picks action then scope
+//                null = Today entry point, user chooses scope from their locations/areas
 //   onClose    — called on dismiss
 //   onLogged   — called after successful save (triggers parent refresh)
-//   conflictTaskType — optional string, hides conflicting action buttons
+//   conflictTaskType — optional string, hides conflicting action buttons (e.g. "feed")
 function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
-  // Legacy prop support
+  // Legacy prop support — old callers pass { crop } object
   crop }) {
 
   // Normalise legacy crop prop
-  const presetScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
+  const resolvedScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
   const resolvedConflict = conflictTaskType || crop?.task_type || null;
-
-  // step: "action" | "scope" | "confirm"
-  const [step,          setStep]         = useState("action");
-  const [pickedAction,  setPickedAction] = useState(null);
-  const [pickedScope,   setPickedScope]  = useState(presetScope);
-  const [scopeOptions,  setScopeOptions] = useState([]); // locations/areas/crops for picker
-  const [loadingScope,  setLoadingScope] = useState(false);
 
   const [saving,      setSaving]      = useState(false);
   const [done,        setDone]        = useState(null);
   const [otherLabel,  setOtherLabel]  = useState("");
   const [notes,       setNotes]       = useState("");
   const [showOther,   setShowOther]   = useState(false);
-  const [dateChoice,  setDateChoice]  = useState("today");
+  const [dateChoice,  setDateChoice]  = useState("today"); // "today"|"yesterday"|"custom"
   const [customDate,  setCustomDate]  = useState(() => new Date().toISOString().split("T")[0]);
 
   const todayISO     = new Date().toISOString().split("T")[0];
   const yesterdayISO = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-  const performedAt  = dateChoice === "today"     ? new Date().toISOString()
-                     : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
-                     : new Date(customDate + "T12:00:00").toISOString();
 
-  // Action definitions with correct scope rules per spec:
-  // watered      → location or area
-  // fed          → crop, area, or location
-  // weeded       → location only
-  // pruned_mulched → crop only
-  // other        → location or area
+  const performedAt = dateChoice === "today"     ? new Date().toISOString()
+                    : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
+                    : new Date(customDate + "T12:00:00").toISOString();
+
+  // Actions vary by scope type — feed is crop-only
   const ALL_ACTIONS = [
-    { type: "watered",        emoji: "💧", label: "Watered",          desc: "Suppress upcoming water tasks",     scopeTypes: ["location","area"],            conflicts: ["water"] },
-    { type: "fed",            emoji: "🌿", label: "Fed",              desc: "Reset feeding schedule from today",  scopeTypes: ["crop","area","location"],    conflicts: ["feed"]  },
-    { type: "weeded",         emoji: "🌱", label: "Weeded",           desc: "Log weeding across the garden",     scopeTypes: ["location"],                  conflicts: []        },
-    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching a crop",   scopeTypes: ["crop"],                      conflicts: ["prune","mulch"] },
-    { type: "other",          emoji: "📝", label: "Other",            desc: "Record anything else",              scopeTypes: ["location","area","crop"],    conflicts: []        },
+    { type: "watered",        emoji: "💧", label: "Watered",         desc: "Update watering schedule",         scopes: ["crop","area","location"], conflicts: ["water"] },
+    { type: "fed",            emoji: "🌿", label: "Fed",             desc: "Reset feeding schedule from today", scopes: ["crop"],                   conflicts: ["feed"] },
+    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching",          scopes: ["crop","area","location"], conflicts: ["prune","mulch"] },
+    { type: "weeded",         emoji: "🌱", label: "Weeded",          desc: "Log weeding",                       scopes: ["crop","area","location"], conflicts: [] },
+    { type: "other",          emoji: "📝", label: "Other",           desc: "Record something else",             scopes: ["crop","area","location"], conflicts: [] },
   ];
 
-  const ACTIONS = ALL_ACTIONS.filter(a => !a.conflicts.includes(resolvedConflict));
+  const scopeType = resolvedScope?.type || "crop";
+  const ACTIONS = ALL_ACTIONS
+    .filter(a => a.scopes.includes(scopeType))
+    .filter(a => !a.conflicts.includes(resolvedConflict));
 
-  // When a preset scope exists, filter actions to what's valid for that scope
-  const VISIBLE_ACTIONS = presetScope
-    ? ACTIONS.filter(a => a.scopeTypes.includes(presetScope.type))
-    : ACTIONS;
-
-  // Load scope options after action is picked (only when no preset scope)
-  const loadScopeOptions = async (actionType) => {
-    const action = ALL_ACTIONS.find(a => a.type === actionType);
-    if (!action) return;
-    const types = action.scopeTypes;
-    setLoadingScope(true);
-    try {
-      const opts = [];
-      if (types.includes("location") || types.includes("area")) {
-        const locs = await apiFetch("/locations");
-        if (types.includes("location")) {
-          (locs || []).forEach(l => opts.push({ type: "location", id: l.id, name: l.name, sub: "Whole garden" }));
-        }
-        if (types.includes("area")) {
-          const areas = await apiFetch("/areas");
-          (areas || []).forEach(a => opts.push({ type: "area", id: a.id, name: a.name, sub: "Bed / area" }));
-        }
-      }
-      if (types.includes("crop")) {
-        const crops = await apiFetch("/crops");
-        (crops || []).filter(c => c.active !== false).forEach(c =>
-          opts.push({ type: "crop", id: c.id, name: c.name, sub: "Crop" })
-        );
-      }
-      // If only one option and it's location-only (weeded), auto-select it
-      if (opts.length === 1 || (actionType === "weeded" && opts.filter(o => o.type === "location").length === 1)) {
-        const loc = opts.find(o => o.type === "location");
-        if (loc) { setPickedScope(loc); setStep("confirm"); setLoadingScope(false); return; }
-      }
-      setScopeOptions(opts);
-      setStep("scope");
-    } catch(e) { console.error("[LogAction] scope load failed:", e); }
-    setLoadingScope(false);
-  };
-
-  const handleActionPick = async (actionType) => {
-    setPickedAction(actionType);
-    if (presetScope) {
-      // Scope already known — go straight to confirm
-      setPickedScope(presetScope);
-      setStep("confirm");
-    } else {
-      await loadScopeOptions(actionType);
-    }
-  };
-
-  const logAction = async () => {
-    if (saving || !pickedScope || !pickedAction) return;
-    if (pickedAction === "other" && !otherLabel.trim()) return;
+  const logAction = async (actionType) => {
+    if (saving) return;
+    if (actionType === "other" && !otherLabel.trim()) return;
     setSaving(true);
     try {
       let result;
-      if (pickedScope.type === "crop") {
-        result = await apiFetch(`/crops/${pickedScope.id}/log-action`, {
+      if (scopeType === "crop") {
+        // Use existing crop endpoint for crop scope (backward compat)
+        result = await apiFetch(`/crops/${resolvedScope.id}/log-action`, {
           method: "POST",
           body: JSON.stringify({
-            action_type:  pickedAction,
+            action_type:  actionType,
             notes:        notes || null,
-            custom_label: pickedAction === "other" ? otherLabel.trim() : null,
+            custom_label: actionType === "other" ? otherLabel.trim() : null,
             performed_at: performedAt,
           }),
         });
       } else {
+        // Use generic endpoint for area/location scope
         result = await apiFetch("/activity/log", {
           method: "POST",
           body: JSON.stringify({
-            activity_type: pickedAction,
-            scope_type:    pickedScope.type,
-            scope_id:      pickedScope.id,
+            activity_type: actionType,
+            scope_type:    scopeType,
+            scope_id:      resolvedScope.id,
             notes:         notes || null,
-            custom_label:  pickedAction === "other" ? otherLabel.trim() : null,
+            custom_label:  actionType === "other" ? otherLabel.trim() : null,
             performed_at:  performedAt,
           }),
         });
       }
       const hint = result?.next_action_hint || null;
-      setDone({ action_type: pickedAction, hint });
+      setDone({ action_type: actionType, hint });
       setTimeout(() => onLogged(), 2000);
     } catch(e) {
       console.error("[LogAction] failed:", e);
       setSaving(false);
-      setDone({ action_type: pickedAction, hint: "Something went wrong — please try again", error: true });
-      setTimeout(() => { setDone(null); setSaving(false); }, 3000);
+      // Show error inline so user knows it failed
+      setDone({ action_type: actionType, hint: "Something went wrong — please try again", error: true });
+      setTimeout(() => { setDone(null); }, 3000);
     }
   };
 
+  const scopeLabel = resolvedScope?.name || "garden";
   const actionDefs = { watered: "💧", fed: "🌿", pruned_mulched: "✂️", weeded: "🌱", other: "📝" };
-  const currentAction = ALL_ACTIONS.find(a => a.type === pickedAction);
-
-  const sheetStyle = { background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" };
-  const dragBar = <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 18px" }} />;
-
-  const headerRow = (title, onBack) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, padding: 0 }}>‹</button>}
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", flex: 1 }}>{title}</div>
-      <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
-    </div>
-  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={sheetStyle}>
-        {dragBar}
-
-        {/* ── Done state ── */}
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
         {done ? (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: done.error ? C.red : "#1a1a1a", marginBottom: 6 }}>
-              {done.error ? "Not saved" : "Logged"}
-            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
             {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
           </div>
-
-        /* ── Step 1: pick action ── */
-        ) : step === "action" ? (
+        ) : (
           <>
-            {headerRow("Log activity")}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {VISIBLE_ACTIONS.map(a => (
-                <button key={a.type} onClick={() => handleActionPick(a.type)}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 22, width: 30, flexShrink: 0 }}>{a.emoji}</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
-                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
-                  </div>
-                </button>
-              ))}
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
             </div>
-          </>
-
-        /* ── Loading scope ── */
-        ) : loadingScope ? (
-          <div style={{ textAlign: "center", padding: "40px 0", color: C.stone, fontSize: 14 }}>Loading…</div>
-
-        /* ── Step 2: pick scope ── */
-        ) : step === "scope" ? (
-          <>
-            {headerRow(`${currentAction?.emoji} ${currentAction?.label} — where?`, () => { setStep("action"); setPickedAction(null); setScopeOptions([]); })}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {scopeOptions.map(opt => (
-                <button key={opt.id} onClick={() => { setPickedScope(opt); setStep("confirm"); }}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 18 }}>
-                    {opt.type === "location" ? "📍" : opt.type === "area" ? "🪴" : "🌱"}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{opt.name}</div>
-                    <div style={{ fontSize: 11, color: C.stone }}>{opt.sub}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </>
-
-        /* ── Step 3: confirm + date + notes ── */
-        ) : step === "confirm" ? (
-          <>
-            {headerRow(
-              `${currentAction?.emoji} ${currentAction?.label}`,
-              presetScope ? null : () => { setStep("scope"); setPickedScope(null); }
-            )}
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
-              {pickedScope?.type === "location" && `Logging for: ${pickedScope.name}`}
-              {pickedScope?.type === "area"     && `Area: ${pickedScope.name}`}
-              {pickedScope?.type === "crop"     && `Crop: ${pickedScope.name}`}
+              {scopeType === "crop"     && `For: ${scopeLabel}`}
+              {scopeType === "area"     && `Area: ${scopeLabel}`}
+              {scopeType === "location" && `Location: ${scopeLabel}`}
             </div>
 
             {/* Date selector */}
@@ -5370,29 +5255,41 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
                 style={{ ...inputStyle, marginBottom: 14 }} />
             )}
 
-            {/* Other label */}
-            {pickedAction === "other" && (
-              <div style={{ marginBottom: 12 }}>
+            {/* Activity buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              {ACTIONS.map(a => (
+                <button key={a.type}
+                  onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
+                  disabled={saving}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
+                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Other expanded form */}
+            {showOther && (
+              <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
                 <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
-                  placeholder="What did you do? e.g. Applied fungicide…"
-                  style={{ ...inputStyle, marginBottom: 8 }} autoFocus />
+                  placeholder="e.g. Applied copper fungicide, staked tomatoes…"
+                  style={{ ...inputStyle, marginBottom: 8 }}
+                  autoFocus />
+                <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
+                <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
+                  style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
+                  {saving ? "Saving…" : "Save"}
+                </button>
               </div>
             )}
-
-            {/* Notes */}
-            <textarea value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Notes (optional)"
-              style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 14 }} />
-
-            <button onClick={logAction}
-              disabled={saving || (pickedAction === "other" && !otherLabel.trim())}
-              style={{ width: "100%", background: (pickedAction === "other" && !otherLabel.trim()) ? "#ccc" : C.forest,
-                border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700,
-                color: "#fff", cursor: saving ? "default" : "pointer", fontFamily: "serif" }}>
-              {saving ? "Saving…" : "Save"}
-            </button>
           </>
-        ) : null}
+        )}
       </div>
     </div>
   );
@@ -10265,6 +10162,19 @@ function _jit(seed, range) {
 
 // ── Bark/soil texture image cache ──────────────────────────────────────────────
 const _textureCache = { img: null, state: "idle" };
+const _soilTextureCache = { img: null, state: "idle" };
+const SOIL_TEXTURE_DATA = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACAAIADASIAAhEBAxEB/8QAHAAAAgMBAQEBAAAAAAAAAAAABAUCAwYBAAcI/8QAOxAAAgECBQIFAgQFAgUFAAAAAQIDBBEABRIhMRNBBhQiUWEycRUjQoEkUpGhwTPRB0Ox8PEWRHKC4f/EABYBAQEBAAAAAAAAAAAAAAAAAAEAAv/EAB4RAQEAAwEBAAMBAAAAAAAAAAABESExQQISUWFx/9oADAMBAAIRAxEAPwD8wvmNRWQ1YmaoqaVUVTJI95YU1BQQe47HC2v0UIeJ7mYgpEVIH5ZAsdu3OLcxqno56pKaQXeIRyC4ZWB54254vgKqp5ag62KiRYAxF+QB/wBfjGJGq1XgzJ0zTLpFzOom8rSrqRYSNaFr8X2tbn3xfmsPkMxjy9J+uQojErsAGMyegFPgbX7WFucKPDniCWOJ6GWYrHIo2Y8Mo9JBHa4Bt8Yd+NVo6jMoKmok/NFMhlVCWlQaiVN+9he998G8tTGGSmirYqlYIoby0rlQdmAa/v3ucbaDytT4dlyqsp6dc0JSWmQA6msPVrN7PsD2POFkjT1Ma5vlkJjhmlP5KgaeQo1DvvvY/wBcL81pK2FaCVozKGkbXPGPUdJtseRYf4xdXDLOK+rMFRMqAU6ko9pd4l0jRt7nfc83OJeCa3zVLPK0QSSjV5OmBZZEYgEb9lNjbbbbAtaFqKuSKMTVxp5hI0lra0tv1Pf4Pbjvhl4XzClL1OVUSywQTatEpQMxQj1Ai3e3IPHbbBZo/PWa8Q0Akk80syGHWU6mm2trXJ09hfEPATRR50JZWjtbRpYEizEAn9saDOppqjN5Z4Y4qemaPpySONSrZQdJsOe1jzthQtBDFk0WYoIqd2dkVnY+r1WKkdiObjGs5jONvofj6op4FHhyIK0QgWrmnkNy5vYW9yb2wo8QJLNQwtXTwip8sIydQ/LjAPpHYsRc27asKqXOKql8ay100AqelGIhb1pGQp0lAB9PsD84MyqmqPFaw5NQxCWYQysZIkLObMSWHsCdI33xjGG7fyJ/CmYzeFa945gZoZwGiGshHIIsRtsRbm2HvibVJFMxqnanqY0nIYehI2APpH6bOoHFyD7YX5iaZ6ipps4/gWFkp20fmAqNAGkDYsLXPx749RLnEyZllpWKExLEGlkNmEI9NweDtbbnfD6zyYDTU2X0Pmp8yhMkDUwNKiuVGoizBdrhb8A2/vhTk1VUyZLV06zvFSw6HOoBtLXOke9j/wCcH1eeUVTHUZdOJ4FT8ulZ1+i7Avq9yDwe1sazwj/w/wDEGY+M6nJ0p6J+vTLWNO7jQiWFm2uxJJAta/GHnR/j5vUyQAUlaFQh1IaEbBbf74aTQ1VBHQV9RS66c0gMK3HqTWw9XzzbC6ngq62lkihobxwygs0a302BFr84ZVHlny2mqqlDG8cIRoyxAkKgEW9wR37HDaIHpzRzZYMveljkrKidVga2l4gT6h8/v7474p6UGbtTCpkcxRaHZiS2pVC6D72tgOtnkWsZHpVpmkdJECsfQCOx9iDc40GWx01Vm9E1SOqIptNQr2bUNhqLX4A1Ee1sR6Oy2Y/gFFSmdKV6sBJnAv1DYhEtxtcH979sLRUeRyZKN6tWnlZ0qImFrAWI52JNvSwwx8QyUcL5muXw66WeceWEe5Ui/qAI9JsRv/TnGbpc0eeqpYa+FG8stlHSAZmO29+ef84JDdG1HEJBAuTOaiUSEyx+ou4sSSV7KNzbfjATvMuZ0lOidIKoV5CmliSWIYG/JB5w9EbZfJUVFEgeSOnImlhfWhkBBLMp3W42sDb/AKYTyQP+KZpl61L1ERX8qYgMyk7hR7An0/tiVmB2cZjBORQJDUdBwsjzL/zWC+q57gcXP784Fzh4Mty2Ex1XXkeTVAyAAR2A9JNtyO/a/wB8EUX4dFluZSapwixiGCJLt0y62YFu2rfb7fbCfOIGp8vy8dGZoSLvrSxdm3uDwbf+cKysZKtc3o6ySaOmgqPWkicAXN9ub87HGoy/xHmuRVjZz4am8nLUqY54FRXtEmyuV99r/HPfGRoppaTxDFFEXeHfojT2Itex2vzftzja5oJqnw/+J5XD1i9qSoASwIveyG2x2sfcD2wfS+We8VmkqK45sHmMvmbVbMSZtZueoVvYXuNu1vnBmcT1LdLNcsfr0gtFpEhJCKBdpD2N/wClhgnJKWGbMY/MQT9GGkKy1MaatKp6rSDuQLA+2OzRxBTS035Dyp+UscjFJu5DgWtsR874M+H8QtVS5NWU3mqmcUlcoV0bQR1DcerT+om/9icarIvE2e+GM3/9YUMtFGOqIqhZU1IDa1+xUk8qNu+M9nX8Jl9FHmTJUlSIAUe7Ix5Fz/L6efc7Y69PA/mYJ60TUay9bpxm66msoJU8+9+BiU/QOvShgp6eIuKapNKxcQIysS7C6vtwBv32wqnmaKopczqjBUJEwi6SnU+lR9enjTv3thpntbLmmVU2ddKOOoibpuyKVUkiwWxP8o5+LYR1pNDnINWIwKhNEqJF07AbXA9zb98PzNCi8xoTmlLV5nBDHRUbkPDG5v6jsbWG1/btfFWXPWU1S09bTvKyoY10BfzNB9Skdxbk8gb4olzGoWieCJjS0SSsYAAGIfa68/F7/GC8sqKfLZYZp6aSSanl1tqcuFRgLsQNiPf3vhZmMj6qoqaHNXmp46aepzKlLwxRj0UwJBFg3ewvfC6Okjr6z8WaebRKxZpibMH7E+1jvbc2xDPIaiDMVgpZImNZArRhWvpjJLKt+xtbbtfnByo6UM0FJLDR09DJHJUQ1THU8hWxKrbdB874vF6HyrNPLV0cT1aRR1KPBJeK7xowO5P818TeGWizuOqoaxKuNU0PM6DpyKFGpfuB7b/OBaLXAOrmFInRqYmcToCxIBNie43t8kYOy9HqMrpY6ap6c7NIYYwW9cfDR2G1z/8AmJQWYZ0y6vr6LytM8ymEBGR4mhbhX5swtcHtbffAvhOnpc2yiemq5C9XI4jheRiqQkL6ST7f3vgmGvgp6cFsviheoJQ0wQgiw5K27m//AGb4TVGVsZaqSilkKqBMNTblGOw9gbX59sTVFZrGB5Kvo6UmqhvDJThWKq6g3Ibv72HvhvS1skWT9UyyRzWMqUTm0Qsn+oe2qw2/bHK/NKKqy2hpo2JVSVDqhWUkLsCfi/PcXwJnOmqkQLKZRVkJEzJYEqFOq473upwdSvIxUmKorIKiRAjJPNDK9uqb3Ei3tcX7fGG8nTzaCmZTFSNFqXqUzkyMXOrU6D42IG/zgaTMoWpayTM6aAzR0oIEin8xSVsBvsSNx7Y7TXyvLaKqjZWWZhL1GW4CBhZh3UjdRfnfBTF2YQymt6k1PRVEEcF3njB0U9gQt7fVuLXNzv2OK6SrpaNJDVimSiqIFjDKSSWX6mt3NrWvtjmaVUsWVl8qn6gqJJXk/Ms2xIDBbbi174QpAzR1cMFM0sRp1aJOnpZlAPqtxtzf7HFNi3F0JNd028vOYZKYaXZ7aWQspvYHb7gXv++EubyVIiRJYl/LclZmN5GUjYEne1uPvjTSy0EGQp5NhURUnSnB6Q/5l1cH9/8ArjPPlzVlRSl2qZGYaag21CIXsgDdxa32xqUWJ0lHVT0619UUlpoEB6YGnWqj9vsTiYrJ5cxqPIUyAVcIRaePcKNrgD32wVGJ3qWyVYwsInMMkyx+p0U72HB2AJ/2xPJIY8rzWozGSpBjUv0iIwRNbkX4Xe24PuMQF5JlWV5vG886+QVIjHEYpCSjkGzSX43HA2wgr6upmFXS1jCqqzLc1D7uQgsLH2IGCc1r5J6gRUoWjZoisypISCDvZm7/ACRtxioxSVCyNTOJ9FMOsgFgO4UHuRbf7WxRU08G102WUNXU1EjeWKLq1L1Ubcehl/lYbfcYBqq6Gkzt6mhjMcMW0cMpJ9JPA9v+/fBNJWKuSvUTID1xdIACVeQEC+m1hbY4lDlqPUJHCUlhC2mV2BHUKmwPFt7bb74od4PenTZpHUZtVTwU08cfSp6drs0KMfTKbbEg/wBBY4y2eVdQ9cSsTUaTRrHKQp0sq/qA9rWP74vpKyTJo6mGRz1JwsMyIRso/Uv2G2DcwqKYQxzRsZ0ji6cRZdoxa9vnnUfY7YJMU+OUxjzOeWDI4VaSniA68lkLJ+oi21z7fGDc1y6jlEtPlTTxU0EQnAe6oGsLm/a7Ej4PxjLUFXRU1aLiYlZG6kqADbsQD+3NsaZJM1rcwrKhauHRHGHdCLdVBbSNvqubAgfGKqFFfSVWqPM82eHozM8LKzAEui8WG4B29Q2xrfAmTzQ5hUZfmdRDRUslNHWU4mOtjpBsFv8AN732NjhB4lpo8wy8TwRujU5UVAAJSEkE6V9gLd/2wfksS5zl71ZWOZoisMbSj1kKLWXf2uMV3FJilGfOr5c9TT03TcE6QpLBIr3DqTuCTe/xh54q/CMvioKjI2qFlmy9VamkOrpz7ABd72IvcHjccYVz1U0XiWKUHTTRXcR3BRUIsGF9idz9vbC/I+pJXiGpeKUF9uoCQ9jtZu1rf0JxDK6o8hBlkFLSszOsoM/UN1a/Gm25A+q+32wdSeIKyWjmqaqnjrpZZV6bSJ/qMBYgWABFjb4xLxDTLm1LR11J/D1UWqIRxoSFRfdvsfnvimoqHmFJQARRPExeExHYy7Ab9vbBOHlNnpZH8Pt4hpavXqYqkSsAyyAAFlHIsNiDyMZGKpqPy0bTcyPdA+lVU2JRV7XwbmZkkMfmGMA3129Jc34B9ge3b5wrSfqeRl8yqusoUL3VeL/b74ZMD6s8F5s0dMsDMsCVMxYOIgfTGRbSb+2CMrWnpMxTy8XmKHWpLNGd2K20sO45txucTzKnmnqPLVQaJmjD0y9PVGV/SbjsR3xGjSVpZMpZzE8aA1CGUhWI9Vx7kX2B9sPg9X56q0yQr10ijRdKIbmNBfa9r3YX3+T8Yj4fFD1nimpZp26hkE8Lg2sBY397gnfHvEGaUNTkD0lPG3+sTG2kFkQXAUsNiSbk9+MZ8R3yuJYWPVDOHjW4ZrkW++KcNuKfL5yrzkzSxqwkH8WxiJsjNe/HNrb4qqXpoK6ryyfQKXpu9IQ5KqStwbj6gbf1N8NfDlRLFBPO0gWokp1ihs5VXt9QffZrAWvz2wnz8COspxp61Q0UbOANGk2+mwxfwUpjy5qiinzGOVOlFIEIdvWb8NYdsbx6Gqg8MSRtPSuk4jWMWOtbqrAAcKp7nbcYz+dRRRx0MkMLU/m4jrg3AjtsN/6/bBlHXVC5XFNBULH1H8uiOBeLSlyV7kHfkWF79sF2fnEXiKrfJvwkxieeZiZj+pSo9Ki2xJG9+4GKcmpEpah6qAPJl8ZBPouXZSAeN7Dc6hwB74n4cq48zrKlyrJJUQuoUKGEZQek/HpsL/e+LvDWqjSuvI0OmII82ktIDKp1DQNgvFyf25wNTairpXkzYVL0860hmsTvIGZiRtbcD4J4xV4iqJ468w060wWoJmsy+pHtax9r2vuffBtbEI5qeTXLEHjQSMAGjLDYmwOx2ABItvhWVp4ko6r8zyvmSIVlX/V7Mv8A8R7+57YWaYPKr0dPVyVEYCVJ6tOrCOPptY+gdhfthOVyyHMZaGtnqqelcu5VIrkE30hb7gG+/wDnDDPBR09CJYZOvV1bEpAxBanCizE7cadgNtwTvhVSU6V2czo8syO0TFjLIAxFuCeD2Fhzf4xRfS3VXLSpXZg6PRq3SWnDaW1hPSSOx2GIUOTF6OFmVJY9bSSurAqoC78bi3c4Hy8PmEqUstQlLBGxYyS6nu2m1vv7cdsGy5h+HUNTQ0FcEjDdMKsdzLfY3Pta/wDXCMbFZpFIrVUiSyFIF/h213VI7jUqnuxuGt++Fc9TK9WMwWXrOsYFQGNw622JI2Pbb4xpqGGmq3kopGTq0wKRRpcxTBhuvOxF/qH77DGemjaPOHyiOTVRLOYyLhdaggm578G2+KU2fpVmc81dlPm1hSmjRt9Fh1CeLgWFx8Yq8JCn/E4ZatSQrhkO5L22Kge++Cekaysegy+0lLUysyqrfQg2BJNgOMUZNO1FnMdVUsyxQnSH3BQjgD5w+Ab4iD0jiCn1PHMiyNJJsx1e/wAj+24woq45YfL5hZnSYldxubbHf/ONNVA5lmcU1U6M9Ypk1rFZVBB037X739sAzzPl1KtOiirRJLxuB9YIu1v3F9/vghsO8vOXV9ApmrDFUyvFFoP6ApAJA7eknbuLnC7xTTUNDnFXRyvBMEmboSRWCaR6R9N7HYbd8WxGekq/IxtDNFXpG8TjlDe9ztf0/TY+5O+B8xDVufVdBHMophMbGNQV9rg87Efbc4D4aZfST0ka1dM8c0sjgD0hFiZbLptybg/74plr56qZqfKlggy6aYPOLXbZdJu7blfT22GxwPRLFUVCTLK0dMoC1evbpuw0kk8gHci1xxhjQyNDP06CnWaPpymGSoiNwqCzEqNr2sbf7YiJgmo5p6xqenSvgisqwop0KzqPU7c6A3vjPM1ZXZnFQVKa46SOV0EaWK83Htc2GNV4UyhK54hlTRUyVN+r1DcMbA3JH03Hbfn23xlKnzFOJPw0sC85RICCZHBsxJPtsO+3GCdVLqlBURJMqaZZgVQBrkKt9THub34xXFTs7QSxg0rAho3drqCDv9jccfONFl8GST0dM9VJIjRq0yrcAsQLWUXvyOMI6+rWtr2jqIBGCwKlGKunHY7HYcf3xqVmwxnginzSLLqONjLHAXkWF7FpCNVyTyQSNgMJaenFUgJjkkaJiZip2jX2/rtgsyCpiENLoj6xKNJpNxpH1aj/ADDkYtjpjBlBniVI5Y0WV9DlVZW2UP8AexNvn5xBbHMhzaKKn2VY2AjD+qNzdbsTybG+3xidS0VLmk61MGmB1Z6aW5LTC1gBxz74VUVNFmWYxUizx0ym5aeZtPa/HYdsEB6fMfLS1haQwyCCRCeFJ+rb5viwcr6APlsTvSTMtWtxMg9UegkXsByPf7YHq6SonpHqKAvMpl1O9rOCdgLX4O/74b5GkaSuJaaGWKNyaeNwdcqAMNKkcAXJuSN8BUcNVQtLmQuobXJArDV9LWvzwL2++DKE5T/CZQaCFZ3nneN2iLd7MGUi19we2L6mKjleGLJ56ta7U2pAgAjewVk9t7XB7g74E8Pzx18U8VXUvT1W7NOYy299gw+WIA43w4iCy1UNQ0vQliHXMUY6jmSxDM3826gkdr2+9WoV5sKsxR1kY01dNJ+eIl+gLte/Nxtt8XxCSOc5wlbTr1qaiMdRJHItjI3p1bNzc89ucdWefNM3kco0UVQBOem1g/6VYr33B2PfBk9RVeT010SBZtRjq1jOqN9mvq+CBx84eMnPiHMsmzOoymooMt8g08DmuhsACAR61bi9wQBhJlt8xR4jN11E0kag7OIybizcaSdV/k4DpKWmqc8/CqySOKOri1oOpdIpLG2/sef3wwpop6Kn/C6mpunSDMkSqOoVs2nUe1r8cnbAZsX5iU0tNU09oFZTeKIASShCFBLDcEnt3wvyyKSWui8ybrVuxVXuFiVjZif/AKgC2CM1kYtDRKopnYpPUxAgBGHDA8kbg9sWSTyQK9VPKDUJOY+l6envsT7gW5tt3xRM3T1rVs1MkojaYTM88ojsxDW5J208YmMui85UrHLtG5b2i0XsVVjvcX5wpH59OogciSwEzGwAF7f5GGWbQ+VhgpC+pAhKFWFw533t9rj2w4ZQoqoZhWrTlUp21aipvo9K6TtY7nm+GOWvEmWSUNSYpA5MCR6/cgqw9wTtfgYzNTL5vMXlkdYC25NzttiNMrCrjL7CS2knYHDYsndXRVEMLrIOm3VFPPGxHUVtIuLfy3tucQrJqFJVaC0ckYVRrHqle9iTbYW/vjZ+FaH8Uy3MJqySKVhTvrswDPGlwSzHgggG/wBsYesqoJFDusdhEAYgoG99tNuB3v8AfGZcm6PWnOX0pgq55kq6iNlYaCAgtftwL7ADY9zhPB5qqzBaOWMQyayjOdkRfqIHa/JxfDW1WaUFVWVvmGqNEUEMwtoFtxqv2sp4x2iaaOOF2pmlMJedlLbWBN2b32thXTd6FQavysitMjxxtNLsgQoL7frbe9h/jAs00tFWU1DrJp3V0WPVbRIRzrI2B5HfBNNmkMlLHPJqWczB4HuA40iyg2B5uRaw7YnXUwmierM8a08cjzqk7DryIW06VFrFhsD7YGvNFlPSyJmdHK9OAklOxukmoWBO5sbC3t7Y1EzZTOtNQVNVGtGyt0oniKq7An1k/p324+PnGRzCWKlIpfLCNkb8phcKwJFyR3G3Pv8AbDVaIyyTSVMwWqopI9DObq2oX2P6Qdt9/nFYzKHlgkpRTmCKTqvM8rRmzPHHsUW/NzYm9+MF3q6mihz6CnUPJNplicB20sdmUc+/Pthp4OmhlzeWl8R09G/4jIsUbmSzIqXsSQdl2sOPnbCvxBIafxQtFlVcajLekwpzIu3TBNrH9Xex+cRQLS1zThAtZLBMv8TuUuD6I7D9LNuL4e5dTQmlq55amM1rRSNIq/8Aty31hjwBdjzfa2BKmKgWlqXpoz1GDGQo+nShF10W2sNjc39sLauv00v4fAsjT1MSxTlT/qtGbkm31KTvv/jBu8POv//Z";
+
+function _ensureSoilTexture(onReady) {
+  if (_soilTextureCache.state === "ready")   { onReady(_soilTextureCache.img); return; }
+  if (_soilTextureCache.state === "failed")  { onReady(null); return; }
+  if (_soilTextureCache.state === "loading") { return; }
+  _soilTextureCache.state = "loading";
+  const img = new Image();
+  img.onload  = () => { _soilTextureCache.img = img; _soilTextureCache.state = "ready"; onReady(img); };
+  img.onerror = () => { _soilTextureCache.state = "failed"; onReady(null); };
+  img.src = SOIL_TEXTURE_DATA;
+}
 // Inline wood chip mulch texture — tileable 128x128 from CC0 photo
 const BARK_TEXTURE_DATA = "data:image/jpeg;base64,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";
 
@@ -10357,11 +10267,21 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x+7, y+.5); ctx.lineTo(x+w-7, y+.5); ctx.stroke();
 
-  // soil fill — radial, offset toward top-left (lit corner richer)
-  const sg = ctx.createRadialGradient(x+w*.35, y+h*.35, 0, x+w*.5, y+h*.55, Math.max(w,h)*.7);
-  sg.addColorStop(0, K.sL); sg.addColorStop(.45, K.s1); sg.addColorStop(1, K.s2);
-  ctx.fillStyle = sg;
-  ctx.beginPath(); ctx.roundRect(x+T, y+T, w-T*2, h-T*2, 3); ctx.fill();
+  // soil fill — photo texture if loaded, else procedural gradient
+  ctx.beginPath(); ctx.roundRect(x+T, y+T, w-T*2, h-T*2, 3); ctx.clip();
+  if (_soilTextureCache.state === "ready" && _soilTextureCache.img) {
+    const soilPat = ctx.createPattern(_soilTextureCache.img, "repeat");
+    if (soilPat) {
+      // Darken slightly for depth
+      ctx.fillStyle = K.s2; ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
+      ctx.globalAlpha = 0.85; ctx.fillStyle = soilPat; ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
+      ctx.globalAlpha = 1;
+    }
+  } else {
+    const sg = ctx.createRadialGradient(x+w*.35, y+h*.35, 0, x+w*.5, y+h*.55, Math.max(w,h)*.7);
+    sg.addColorStop(0, K.sL); sg.addColorStop(.45, K.s1); sg.addColorStop(1, K.s2);
+    ctx.fillStyle = sg; ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
+  }
 
   // inner top shadow — depth
   const ig = ctx.createLinearGradient(x+T, y+T, x+T, y+T+10);
@@ -10772,10 +10692,10 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
   const [, forceUpdate] = useState(0);
   const { Stage, Layer, Shape, Rect, Group, Text } = window.KonvaReact || {};
 
-  // Load bark texture on mount — force re-render once it's ready so canvas repaints
+  // Load bark + soil textures on mount — force re-render once ready
   useEffect(() => {
-    if (_textureCache.state === "ready") return;
-    _ensureBarkTexture(() => forceUpdate(n => n + 1));
+    if (_textureCache.state !== "ready") _ensureBarkTexture(() => forceUpdate(n => n + 1));
+    if (_soilTextureCache.state !== "ready") _ensureSoilTexture(() => forceUpdate(n => n + 1));
   }, []);
 
   if (!Stage) return (
