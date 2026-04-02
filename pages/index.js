@@ -10913,41 +10913,181 @@ function PlanBadge({ status }) {
 }
 
 // Sheet to create a new plan
-function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
-  const [name,    setName]    = useState("");
-  const [saving,  setSaving]  = useState(false);
-  const [err,     setErr]     = useState(null);
+// ── Plan creation flow: goal picker → generate → compare → select ─────────────
 
-  const handleSave = async () => {
-    if (!name.trim()) { setErr("Give your plan a name"); return; }
+const PLAN_GOALS = [
+  { id: "best_rotation", emoji: "🔁", label: "Best rotation",  desc: "Protect soil health by moving crop families around" },
+  { id: "max_yield",     emoji: "🌾", label: "Max yield",      desc: "Get the most food from your space this season" },
+  { id: "favourites",    emoji: "❤️",  label: "My favourites", desc: "Prioritise the crops you love growing most" },
+  { id: "easy",          emoji: "🧘", label: "Easy season",    desc: "Low maintenance crops, less work" },
+  { id: "balanced",      emoji: "⚖️",  label: "Balanced",      desc: "A bit of everything — yield, rotation and ease" },
+];
+
+function ScoreBar({ label, value, max = 10, colour = C.forest }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+        <div style={{ fontSize:10, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:0.5 }}>{label}</div>
+        <div style={{ fontSize:10, fontWeight:700, color:colour }}>{value}/{max}</div>
+      </div>
+      <div style={{ height:4, borderRadius:99, background:"#E8EDE8", overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${(value/max)*100}%`, background:colour, borderRadius:99, transition:"width 0.4s" }} />
+      </div>
+    </div>
+  );
+}
+
+function PlanOptionCard({ option, index, selected, onSelect }) {
+  const colours = [C.forest, "#2D6E9E", "#7B5EA7"];
+  const colour  = colours[index] || C.forest;
+  const isSelected = selected === index;
+
+  return (
+    <div onClick={() => onSelect(index)}
+      style={{ borderRadius:16, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour+"08" : "#fff", padding:"16px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", marginBottom:10 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+        <div style={{ fontFamily:"serif", fontSize:15, fontWeight:700, color:"#1a1a1a" }}>{option.name}</div>
+        <div style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour : "#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          {isSelected && <div style={{ width:8, height:8, borderRadius:"50%", background:"#fff" }} />}
+        </div>
+      </div>
+
+      {option.explanation && (
+        <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:12 }}>{option.explanation}</div>
+      )}
+
+      <ScoreBar label="Rotation" value={option.scores.rotation} colour={colour} />
+      <ScoreBar label="Yield"    value={option.scores.yield}    colour={colour} />
+      <ScoreBar label="Ease"     value={option.scores.ease}     colour={colour} />
+
+      <div style={{ marginTop:10, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
+        {option.assignments.map(a => (
+          <div key={a.area_id} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+            <span style={{ fontSize:14 }}>{a.crop_emoji || "🌱"}</span>
+            <span style={{ fontSize:12, color:C.stone }}>{a.area_name}</span>
+            <span style={{ fontSize:12, fontWeight:600, color:"#1a1a1a" }}>→ {a.crop_name}</span>
+          </div>
+        ))}
+        {option.fixed_areas && option.fixed_areas.length > 0 && (
+          <div style={{ fontSize:11, color:C.stone, marginTop:4, fontStyle:"italic" }}>
+            {option.fixed_areas.map(a => a.area_name).join(", ")} — kept as-is
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
+  const [step,        setStep]       = useState("goal");   // "goal" | "generating" | "compare"
+  const [goal,        setGoal]       = useState(null);
+  const [options,     setOptions]    = useState([]);
+  const [selected,    setSelected]   = useState(0);
+  const [saving,      setSaving]     = useState(false);
+  const [err,         setErr]        = useState(null);
+  const [genErr,      setGenErr]     = useState(null);
+
+  const handleGoalSelect = async (goalId) => {
+    setGoal(goalId);
+    setStep("generating");
+    setGenErr(null);
+    try {
+      const result = await apiFetch("/plans/generate", {
+        method: "POST",
+        body: JSON.stringify({ location_id: locationId, goal: goalId }),
+      });
+      setOptions(result.options || []);
+      setSelected(0);
+      setStep("compare");
+    } catch(e) {
+      setGenErr(e.message);
+      setStep("goal");
+    }
+  };
+
+  const handleChoose = async () => {
+    const chosen = options[selected];
+    if (!chosen) return;
     setSaving(true); setErr(null);
     try {
+      // Create the plan
       const plan = await apiFetch("/plans", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, name: name.trim() }),
+        body: JSON.stringify({ location_id: locationId, name: chosen.name }),
       });
+      // Bulk-save assignments
+      await Promise.all(chosen.assignments.map(a =>
+        apiFetch(`/plans/${plan.id}/assignments`, {
+          method: "POST",
+          body: JSON.stringify({
+            area_id:            a.area_id,
+            crop_definition_id: a.crop_definition_id || null,
+            crop_name:          a.crop_name,
+          }),
+        })
+      ));
       onSave(plan);
     } catch(e) { setErr(e.message); setSaving(false); }
   };
 
+  // ── Goal picker ──
+  if (step === "goal") return (
+    <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
+      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
+        <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:4 }}>New plan</div>
+        <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>For {locationName} — what's your goal this season?</div>
+        {genErr && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"10px 14px", background:"#FFF0F0", borderRadius:10 }}>Couldn't generate plans: {genErr}</div>}
+        {PLAN_GOALS.map(g => (
+          <button key={g.id} onClick={() => handleGoalSelect(g.id)}
+            style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+            <span style={{ fontSize:24, flexShrink:0 }}>{g.emoji}</span>
+            <div>
+              <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{g.label}</div>
+              <div style={{ fontSize:12, color:C.stone }}>{g.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ── Generating ──
+  if (step === "generating") return (
+    <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"#fff", borderRadius:20, padding:"36px 28px", textAlign:"center", maxWidth:280 }}>
+        <div style={{ fontSize:36, marginBottom:12 }}>🌱</div>
+        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:8 }}>Planning your garden…</div>
+        <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Analysing your current crops and working out the best rotation options</div>
+      </div>
+    </div>
+  );
+
+  // ── Compare ──
+  const chosenGoal = PLAN_GOALS.find(g => g.id === goal);
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box" }}>
-        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
-        <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:4 }}>New plan</div>
-        <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>For {locationName}</div>
-        <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Plan name</div>
-        <input
-          value={name} onChange={e=>setName(e.target.value)}
-          placeholder="e.g. 2027 rotation, Winter plan…"
-          autoFocus
-          style={{ width:"100%", boxSizing:"border-box", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${name.trim()?C.forest:C.border}`, fontSize:15, outline:"none", marginBottom:err?8:20 }}
-        />
-        {err && <div style={{ fontSize:12, color:C.red, marginBottom:12 }}>{err}</div>}
-        <button onClick={handleSave} disabled={saving||!name.trim()}
-          style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:name.trim()?C.forest:"#ccc", color:"#fff", fontSize:15, fontWeight:700, cursor:name.trim()?"pointer":"default" }}>
-          {saving ? "Creating…" : "Create plan"}
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+          <button onClick={() => setStep("goal")} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0 }}>←</button>
+          <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700 }}>Choose a plan</div>
+        </div>
+        <div style={{ fontSize:12, color:C.stone, marginBottom:16, paddingLeft:30 }}>
+          {chosenGoal?.emoji} {chosenGoal?.label} · {locationName}
+        </div>
+
+        {options.map((opt, i) => (
+          <PlanOptionCard key={i} option={opt} index={i} selected={selected} onSelect={setSelected} />
+        ))}
+
+        {err && <div style={{ fontSize:12, color:C.red, marginBottom:10 }}>{err}</div>}
+
+        <button onClick={handleChoose} disabled={saving}
+          style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginTop:4 }}>
+          {saving ? "Setting up plan…" : "Use this plan →"}
         </button>
       </div>
     </div>
