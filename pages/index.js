@@ -10128,345 +10128,520 @@ function AdminScreen({ isDemo = false }) {
 // Only visible to Mark (or when PRO_ENABLED=true)
 // =============================================================================
 // =============================================================================
-// PLAN SCREEN — Garden Visualiser V7 (Konva — Full Redesign)
-// Realistic illustrated garden. Calm, spatial, premium.
+// PLAN SCREEN — Garden Visualiser (Konva — Premium 2.5D Redesign)
+// Warm soil ground, timber raised beds, drawn crop sprites, consistent lighting.
+// No emoji, no bark chips, no brick border.
 // =============================================================================
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const K = {
-  // Canvas — grass
-  canvasBg:     "#5C7A3E",
-  grassDark:    "#4A6630",
-  grassMid:     "#527038",
-  grassLight:   "#6A8A48",
-  grassPale:    "#7A9A55",
-
-  // Cobblestone border
-  cobbBase:     "#8A8070",
-  cobbLight:    "#A09888",
-  cobbDark:     "#6A6058",
-  cobbMortar:   "#504840",
-
-  // Raised bed — natural oak/pine timber
-  timber:       "#9B7040",
-  timberLight:  "#B88448",
-  timberDark:   "#7A5430",
-  timberGrain:  "#8A6038",
-  soilRich:     "#2E1E14",
-  soilMid:      "#3A2618",
-  soilLight:    "#4A3020",
-  soilHigh:     "#5A3E28",
-
-  // Open ground — cultivated soil
-  groundSoil:   "#3E2A18",
-  groundLight:  "#504030",
-  groundEdge:   "#2A1A0C",
-
-  // Greenhouse — aluminium frame, glass
-  ghFrame:      "#8AA090",
-  ghGlass:      "rgba(200,230,210,0.18)",
-  ghGlassLine:  "rgba(140,190,160,0.45)",
-  ghRidge:      "#6A8878",
-  ghBag:        "#3A2A18",
-
-  // Container — aged terracotta
-  pot:          "#B85C34",
-  potLight:     "#CC7048",
-  potDark:      "#8C4024",
-  potRim:       "#D07050",
-  potSoil:      "#2A1810",
-
-  // Polytunnel — white plastic / hoops
-  tunnelHoop:   "#7A8870",
-  tunnelSkin:   "rgba(235,245,230,0.28)",
-  tunnelBase:   "#5A6858",
-
-  // Crops — natural plant palette
-  leafBright:   "#5A9A30",
-  leafMid:      "#4A8020",
-  leafDark:     "#3A6818",
-  leafSage:     "#7A9A60",
-  stem:         "#6A7A30",
-  rootOrange:   "#D4601A",
-  rootPurple:   "#8A4A7A",
-  fruitRed:     "#CC2A1A",
-  fruitYellow:  "#D4A020",
-  fruitGreen:   "#4A8A20",
-  bark:         "#7A5030",
-  barkLight:    "#9A6840",
+  // Ground — warm compacted soil/mulch
+  g1:"#8E6F52", g2:"#9B7A5A", gD:"#7A5C40", gL:"#A88860",
+  // Timber — light, refined
+  w1:"#C8AA78", w2:"#A88050", wD:"#7A5635", wS:"#906840",
+  // Soil inside beds
+  s1:"#5A3D2A", s2:"#4A3223", sL:"#634535", sH:"#3C2818",
+  // Foliage — slightly desaturated
+  l1:"#6A9A52", l2:"#82AE65", l3:"#4A7838", l1d:"#5A8A44",
+  // Pots
+  pot:"#B06845", potL:"#C8845A", potD:"#8A4E32",
+  // Greenhouse
+  gh:"#D5DBDA", ghS:"#AAB5B2",
 };
 
-// ── Crop family ───────────────────────────────────────────────────────────────
-function getCropFamily(name) {
-  const n = (name||"").toLowerCase();
-  if (/carrot|parsnip|beetroot|radish|turnip|swede/.test(n)) return "root";
-  if (/potato/.test(n)) return "potato";
-  if (/cabbage|kale|broccoli|cauliflower|brussels|kohlrabi/.test(n)) return "brassica";
-  if (/pea|bean|runner|broad|french|mangetout/.test(n)) return "legume";
-  if (/tomato|pepper|chilli/.test(n)) return "tomato";
-  if (/courgette|cucumber|squash|pumpkin|marrow/.test(n)) return "sprawling";
-  if (/apple|pear|plum|cherry|fig/.test(n)) return "tree";
-  if (/berry|strawberry|raspberry|blackberry|gooseberry|currant|blueberry/.test(n)) return "bush";
-  if (/mint|basil|thyme|rosemary|sage|oregano|chive|dill|parsley|coriander/.test(n)) return "herb";
-  if (/lettuce|spinach|chard|rocket|sorrel|endive|salad/.test(n)) return "salad";
-  if (/onion|garlic|leek|shallot/.test(n)) return "allium";
-  if (/sweetcorn|corn/.test(n)) return "corn";
-  return "default";
+// ── Seeded jitter for consistent crop variation ────────────────────────────────
+function _jit(seed, range) {
+  return (((seed * 1664525 + 1013904223) & 0x7fffffff) / 0x7fffffff) * range - range / 2;
 }
 
-// ── Crop renderer — realistic illustrated plants ───────────────────────────────
-function drawCrop(ctx, family, cx, cy, s) {
-  // s = scale factor based on area size
-  switch(family) {
+// ── Ground ─────────────────────────────────────────────────────────────────────
+function _drawGround(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 22); ctx.clip();
+  ctx.fillStyle = K.g1; ctx.fillRect(x, y, w, h);
+  // large very soft tonal patches
+  [
+    [x+w*.2,  y+h*.3,  w*.55, K.gD, .08],
+    [x+w*.7,  y+h*.15, w*.45, K.gL, .07],
+    [x+w*.42, y+h*.65, w*.6,  K.gD, .07],
+    [x+w*.1,  y+h*.78, w*.38, K.gL, .06],
+    [x+w*.82, y+h*.72, w*.4,  K.g2, .06],
+    [x+w*.3,  y+h*.1,  w*.35, K.gL, .05],
+  ].forEach(([cx, cy, r, c, a]) => {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, c); g.addColorStop(.55, c); g.addColorStop(1, "transparent");
+    ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  });
+  // very fine noise
+  ctx.globalAlpha = .04;
+  for (let i = x; i < x+w; i += 4) for (let j = y; j < y+h; j += 5) {
+    const v = (i*17 + j*11) % 15;
+    if (v < 2) { ctx.fillStyle = v < 1 ? K.gD : K.gL; ctx.fillRect(i, j, 1, 1); }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
 
-    case "root": {
-      // Carrot/parsnip — feathery tops + taproot suggestion
-      // Stems
-      for (let i = -1; i <= 1; i++) {
-        ctx.beginPath();
-        ctx.moveTo(cx + i*s*0.18, cy + s*0.2);
-        ctx.quadraticCurveTo(cx + i*s*0.35, cy - s*0.1, cx + i*s*0.15, cy - s*0.55);
-        ctx.strokeStyle = K.leafMid;
-        ctx.lineWidth = s*0.08;
-        ctx.lineCap = "round";
-        ctx.stroke();
-      }
-      // Feathery leaf tips
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.15, cy-s*0.55, s*0.12, s*0.2, -0.4, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx+s*0.05, cy-s*0.62, s*0.1, s*0.22, 0.2, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx+s*0.22, cy-s*0.5, s*0.1, s*0.18, 0.5, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+// ── Raised bed ─────────────────────────────────────────────────────────────────
+function _drawBed(ctx, x, y, w, h, isSelected) {
+  const T = Math.max(5, Math.min(8, w * .06));
+  ctx.save();
 
-    case "potato": {
-      // Potato — leafy mound above ground
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.ellipse(cx, cy-s*0.1, s*0.45, s*0.38, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.25, cy-s*0.05, s*0.28, s*0.22, -0.3, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.2, cy-s*0.18, s*0.25, s*0.2, 0.4, 0, Math.PI*2); ctx.fill();
-      // White flower hint
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.beginPath(); ctx.arc(cx+s*0.08, cy-s*0.42, s*0.08, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // outer shadow — directional, top-left light source
+  ctx.shadowColor = "rgba(0,0,0,0.24)"; ctx.shadowBlur = 16;
+  ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 7;
+  ctx.fillStyle = K.w2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+  ctx.shadowColor = "transparent";
 
-    case "brassica": {
-      // Cabbage/kale — layered round head
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.ellipse(cx, cy, s*0.52, s*0.42, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.08, cy-s*0.05, s*0.38, s*0.32, -0.2, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.05, cy-s*0.1, s*0.26, s*0.22, 0.15, 0, Math.PI*2); ctx.fill();
-      // Heart
-      ctx.fillStyle = "rgba(200,230,180,0.6)";
-      ctx.beginPath(); ctx.ellipse(cx+s*0.05, cy-s*0.08, s*0.12, s*0.1, 0, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // right face — shadow side
+  ctx.fillStyle = K.wD; ctx.globalAlpha = .38;
+  ctx.beginPath(); ctx.roundRect(x+w-T, y+T, T, h-T, [0,6,6,0]); ctx.fill();
+  // bottom face — shadow side
+  ctx.beginPath(); ctx.roundRect(x, y+h-T, w, T, [0,0,6,6]); ctx.fill();
+  ctx.globalAlpha = 1;
 
-    case "legume": {
-      // Peas/beans — climbing vine with tendrils
-      ctx.strokeStyle = K.stem;
-      ctx.lineWidth = s*0.07;
-      ctx.beginPath(); ctx.moveTo(cx, cy+s*0.6); ctx.lineTo(cx+s*0.1, cy-s*0.5); ctx.stroke();
-      // Leaves
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.28, cy+s*0.1, s*0.24, s*0.16, 0.4, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx-s*0.2, cy-s*0.15, s*0.2, s*0.14, -0.3, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx+s*0.22, cy-s*0.38, s*0.22, s*0.15, 0.5, 0, Math.PI*2); ctx.fill();
-      // Pod
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.05, cy+s*0.28, s*0.08, s*0.22, 0.15, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // top rail — lit face
+  const tg = ctx.createLinearGradient(x, y, x+T*.6, y+T);
+  tg.addColorStop(0, K.w1); tg.addColorStop(1, K.w2);
+  ctx.fillStyle = tg; ctx.beginPath(); ctx.roundRect(x, y, w, T, [6,6,0,0]); ctx.fill();
 
-    case "tomato": {
-      // Tomato — stake + bushy plant + red fruits
-      ctx.strokeStyle = K.bark;
-      ctx.lineWidth = s*0.06;
-      ctx.beginPath(); ctx.moveTo(cx+s*0.12, cy+s*0.5); ctx.lineTo(cx+s*0.12, cy-s*0.6); ctx.stroke();
-      // Foliage
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.1, cy-s*0.1, s*0.38, s*0.3, -0.2, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.18, cy-s*0.25, s*0.3, s*0.25, 0.3, 0, Math.PI*2); ctx.fill();
-      // Tomatoes
-      ctx.fillStyle = K.fruitRed;
-      ctx.beginPath(); ctx.arc(cx-s*0.15, cy+s*0.08, s*0.16, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = "#FF5A30";
-      ctx.beginPath(); ctx.arc(cx+s*0.25, cy-s*0.05, s*0.13, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = "#FF9050";
-      ctx.beginPath(); ctx.arc(cx, cy-s*0.35, s*0.11, 0, Math.PI*2); ctx.fill();
-      // Calyx on largest fruit
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.arc(cx-s*0.15, cy+s*0.08-s*0.16, s*0.06, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // left rail — lit face
+  const lg = ctx.createLinearGradient(x, y, x+T, y+T*.5);
+  lg.addColorStop(0, K.w1); lg.addColorStop(1, K.w2);
+  ctx.fillStyle = lg; ctx.globalAlpha = .88;
+  ctx.fillRect(x, y+T, T, h-T*2); ctx.globalAlpha = 1;
 
-    case "sprawling": {
-      // Courgette/squash — big leaves, trailing
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.2, cy+s*0.1, s*0.5, s*0.4, -0.3, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.25, cy-s*0.15, s*0.45, s*0.38, 0.4, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafSage;
-      ctx.beginPath(); ctx.ellipse(cx, cy-s*0.3, s*0.38, s*0.3, 0, 0, Math.PI*2); ctx.fill();
-      // Courgette fruit
-      ctx.fillStyle = K.fruitGreen;
-      ctx.beginPath(); ctx.ellipse(cx-s*0.35, cy+s*0.35, s*0.12, s*0.32, -0.4, 0, Math.PI*2); ctx.fill();
-      // Yellow flower
-      ctx.fillStyle = K.fruitYellow;
-      ctx.beginPath(); ctx.arc(cx+s*0.1, cy+s*0.25, s*0.1, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // wood grain — very subtle
+  ctx.strokeStyle = K.wS; ctx.lineWidth = 0.6; ctx.globalAlpha = .13;
+  for (let i = T+6; i < w-T; i += 12) {
+    ctx.beginPath(); ctx.moveTo(x+i, y+1); ctx.lineTo(x+i+.8, y+T-1); ctx.stroke();
+  }
+  for (let i = T+5; i < h-T; i += 9) {
+    ctx.beginPath(); ctx.moveTo(x+1, y+i); ctx.lineTo(x+T-1, y+i+.5); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 
-    case "tree": {
-      // Apple/pear tree — trunk + rounded canopy
-      ctx.fillStyle = K.bark;
-      ctx.beginPath(); ctx.roundRect(cx-s*0.1, cy+s*0.2, s*0.2, s*0.55, s*0.05); ctx.fill();
-      // Roots suggestion
-      ctx.strokeStyle = K.barkLight;
-      ctx.lineWidth = s*0.06;
-      ctx.beginPath(); ctx.moveTo(cx-s*0.08, cy+s*0.72); ctx.lineTo(cx-s*0.35, cy+s*0.78); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx+s*0.08, cy+s*0.72); ctx.lineTo(cx+s*0.35, cy+s*0.78); ctx.stroke();
-      // Canopy layers
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.arc(cx, cy-s*0.1, s*0.58, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.arc(cx-s*0.18, cy-s*0.2, s*0.4, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.28, s*0.35, 0, Math.PI*2); ctx.fill();
-      // Fruit
-      ctx.fillStyle = K.fruitRed;
-      ctx.beginPath(); ctx.arc(cx-s*0.2, cy+s*0.1, s*0.1, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = "#E8A030";
-      ctx.beginPath(); ctx.arc(cx+s*0.22, cy-s*0.02, s*0.09, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.fruitRed;
-      ctx.beginPath(); ctx.arc(cx, cy-s*0.35, s*0.08, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // top edge highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x+7, y+.5); ctx.lineTo(x+w-7, y+.5); ctx.stroke();
 
-    case "bush": {
-      // Berry bush — rounded multi-stem shrub
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.arc(cx, cy+s*0.05, s*0.52, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.arc(cx-s*0.2, cy-s*0.1, s*0.36, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.arc(cx+s*0.18, cy-s*0.18, s*0.32, 0, Math.PI*2); ctx.fill();
-      // Berries
-      const berryPositions = [[-0.25,0.15],[0.15,0.25],[0.35,-0.05],[-0.05,0.35],[0.25,-0.3]];
-      berryPositions.forEach(([bx,by]) => {
-        ctx.fillStyle = "#6030A0";
-        ctx.beginPath(); ctx.arc(cx+bx*s, cy+by*s, s*0.09, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "rgba(120,60,180,0.5)";
-        ctx.beginPath(); ctx.arc(cx+bx*s-s*0.03, cy+by*s-s*0.03, s*0.04, 0, Math.PI*2); ctx.fill();
-      });
-      break;
-    }
+  // soil fill — radial, offset toward top-left (lit corner richer)
+  const sg = ctx.createRadialGradient(x+w*.35, y+h*.35, 0, x+w*.5, y+h*.55, Math.max(w,h)*.7);
+  sg.addColorStop(0, K.sL); sg.addColorStop(.45, K.s1); sg.addColorStop(1, K.s2);
+  ctx.fillStyle = sg;
+  ctx.beginPath(); ctx.roundRect(x+T, y+T, w-T*2, h-T*2, 3); ctx.fill();
 
-    case "herb": {
-      // Herb — compact mounded cluster
-      ctx.fillStyle = K.leafSage;
-      ctx.beginPath(); ctx.arc(cx, cy, s*0.42, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.arc(cx-s*0.18, cy-s*0.08, s*0.28, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.15, s*0.24, 0, Math.PI*2); ctx.fill();
-      // Tiny flower dots
-      ["#D0A0E0","#E0B0F0","#C890D8"].forEach((c,i) => {
-        ctx.fillStyle = c;
-        ctx.beginPath();
-        ctx.arc(cx + (i-1)*s*0.2, cy-s*0.3 + (i%2)*s*0.08, s*0.06, 0, Math.PI*2);
-        ctx.fill();
-      });
-      break;
-    }
+  // inner top shadow — depth
+  const ig = ctx.createLinearGradient(x+T, y+T, x+T, y+T+10);
+  ig.addColorStop(0, "rgba(0,0,0,0.16)"); ig.addColorStop(1, "transparent");
+  ctx.fillStyle = ig; ctx.fillRect(x+T, y+T, w-T*2, 10);
 
-    case "salad": {
-      // Lettuce/salad — loose open leaves
-      const angles = [-40,-15,10,35,58,-65];
-      angles.forEach((angle, i) => {
-        const rad = angle * Math.PI / 180;
-        const dist = s * 0.3;
-        ctx.fillStyle = i%2===0 ? K.leafBright : K.leafMid;
-        ctx.beginPath();
-        ctx.ellipse(
-          cx + Math.sin(rad)*dist*0.6,
-          cy - Math.cos(rad)*dist*0.6,
-          s*0.22, s*0.35,
-          rad, 0, Math.PI*2
-        );
-        ctx.fill();
-      });
-      // Heart
-      ctx.fillStyle = "rgba(200,240,170,0.8)";
-      ctx.beginPath(); ctx.arc(cx, cy, s*0.15, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // inner right shadow
+  const irg = ctx.createLinearGradient(x+w-T, y+T, x+w-T-8, y+T);
+  irg.addColorStop(0, "rgba(0,0,0,0.10)"); irg.addColorStop(1, "transparent");
+  ctx.fillStyle = irg; ctx.fillRect(x+w-T-8, y+T, 8, h-T*2);
 
-    case "allium": {
-      // Onion/garlic/leek — upright stems with round heads
-      const stems = [-s*0.28, 0, s*0.28];
-      stems.forEach((ox, i) => {
-        ctx.strokeStyle = i===1 ? K.leafMid : K.leafSage;
-        ctx.lineWidth = s*0.1;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(cx+ox, cy+s*0.55);
-        ctx.bezierCurveTo(cx+ox, cy+s*0.2, cx+ox+ox*0.3, cy-s*0.1, cx+ox+ox*0.1, cy-s*0.45);
-        ctx.stroke();
-        // Flower head
-        ctx.fillStyle = i===1 ? "#C0A0D0" : "#D0B0E0";
-        ctx.beginPath(); ctx.arc(cx+ox+ox*0.1, cy-s*0.48, s*0.16, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.4)";
-        ctx.beginPath(); ctx.arc(cx+ox+ox*0.1-s*0.04, cy-s*0.52, s*0.06, 0, Math.PI*2); ctx.fill();
-      });
-      break;
-    }
+  // micro soil texture
+  ctx.globalAlpha = .10;
+  for (let i = 0; i < 8; i++) {
+    const sx = x+T+4 + (i*41)%(w-T*2-8), sy = y+T+3 + (i*27)%(h-T*2-6);
+    ctx.fillStyle = K.sH; ctx.beginPath();
+    ctx.ellipse(sx, sy, 2.5+(i%3)*1.5, 1.5+(i%2)*1.5, (i*37)%Math.PI, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 
-    case "corn": {
-      // Sweetcorn — tall stalks
-      ctx.strokeStyle = K.leafMid;
-      ctx.lineWidth = s*0.1;
-      ctx.beginPath(); ctx.moveTo(cx, cy+s*0.6); ctx.lineTo(cx+s*0.05, cy-s*0.65); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx-s*0.25, cy+s*0.5); ctx.lineTo(cx-s*0.2, cy-s*0.5); ctx.stroke();
-      // Leaves
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.3, cy, s*0.35, s*0.1, 0.5, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx-s*0.4, cy-s*0.2, s*0.32, s*0.09, -0.4, 0, Math.PI*2); ctx.fill();
-      // Cob
-      ctx.fillStyle = K.fruitYellow;
-      ctx.beginPath(); ctx.ellipse(cx+s*0.1, cy+s*0.1, s*0.1, s*0.25, 0.2, 0, Math.PI*2); ctx.fill();
-      break;
-    }
+  // selection glow
+  if (isSelected) {
+    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 9); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(111,175,99,0.10)"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.roundRect(x-5, y-5, w+10, h+10, 11); ctx.stroke();
+  }
+  ctx.restore();
+}
 
-    default: {
-      // Generic plant
-      ctx.fillStyle = K.leafMid;
-      ctx.beginPath(); ctx.arc(cx, cy-s*0.05, s*0.4, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafBright;
-      ctx.beginPath(); ctx.arc(cx-s*0.15, cy-s*0.15, s*0.25, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = K.leafDark;
-      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.1, s*0.22, 0, Math.PI*2); ctx.fill();
+// ── Open ground bed ────────────────────────────────────────────────────────────
+function _drawOpenGround(ctx, x, y, w, h, isSelected) {
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.18)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+  const sg = ctx.createRadialGradient(x+w*.4, y+h*.4, 0, x+w*.5, y+h*.6, Math.max(w,h)*.7);
+  sg.addColorStop(0, K.sL); sg.addColorStop(1, K.s2);
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.fill();
+  ctx.shadowColor = "transparent";
+  // cultivated row lines
+  ctx.strokeStyle = K.s1; ctx.lineWidth = 1; ctx.globalAlpha = .18;
+  const rowSpacing = Math.max(8, h/7);
+  for (let ry = y+rowSpacing; ry < y+h-4; ry += rowSpacing) {
+    ctx.beginPath(); ctx.moveTo(x+6, ry); ctx.lineTo(x+w-6, ry); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  if (isSelected) {
+    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 13); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+// ── Greenhouse ─────────────────────────────────────────────────────────────────
+function _drawGreenhouse(ctx, x, y, w, h, isSelected) {
+  ctx.save();
+  // strong shadow
+  ctx.shadowColor = "rgba(0,0,0,0.26)"; ctx.shadowBlur = 20;
+  ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 9;
+  ctx.fillStyle = "#B8C8C4";
+  ctx.beginPath(); ctx.roundRect(x+2, y+h*.88, w-4, h*.12, [0,0,5,5]); ctx.fill();
+  ctx.shadowColor = "transparent";
+  // glass body
+  ctx.fillStyle = "rgba(205,232,226,0.18)"; ctx.strokeStyle = K.gh; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 5); ctx.fill(); ctx.stroke();
+  // interior shadow gradient
+  const ig = ctx.createLinearGradient(x, y, x+w*.4, y+h*.4);
+  ig.addColorStop(0, "rgba(0,0,0,0.07)"); ig.addColorStop(1, "transparent");
+  ctx.fillStyle = ig; ctx.beginPath(); ctx.roundRect(x+2, y+2, w-4, h-4, 4); ctx.fill();
+  // frame dividers
+  const vd = Math.max(2, Math.floor(w/44));
+  for (let i = 1; i < vd; i++) {
+    ctx.strokeStyle = "rgba(175,210,200,0.40)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x+w*i/vd, y+5); ctx.lineTo(x+w*i/vd, y+h-5); ctx.stroke();
+  }
+  // mid rail
+  ctx.strokeStyle = K.ghS; ctx.lineWidth = 1.8; ctx.globalAlpha = .65;
+  ctx.beginPath(); ctx.moveTo(x, y+h*.44); ctx.lineTo(x+w, y+h*.44); ctx.stroke();
+  ctx.globalAlpha = 1;
+  // ridge beam
+  ctx.strokeStyle = K.gh; ctx.lineWidth = 2.8;
+  ctx.beginPath(); ctx.moveTo(x, y+4); ctx.lineTo(x+w, y+4); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.20)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x+4, y+1); ctx.lineTo(x+w-4, y+1); ctx.stroke();
+  // internal crop silhouettes
+  ctx.globalAlpha = .48;
+  const ic = Math.max(2, Math.floor((w-20)/30));
+  for (let i = 0; i < ic; i++) {
+    const cx = x+14 + i*(w-20)/(ic-1||1), cy = y+h*.62;
+    ctx.fillStyle = "#3F6D38"; ctx.beginPath(); ctx.ellipse(cx, cy, 7, 10, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#B82010"; ctx.beginPath(); ctx.arc(cx-4, cy+3, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#D03020"; ctx.beginPath(); ctx.arc(cx+4, cy, 2.5, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // glass shine
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.beginPath(); ctx.roundRect(x+4, y+5, w*.3, h*.28, [3,3,3,3]); ctx.fill();
+  // shadow on right+bottom frames
+  ctx.strokeStyle = "rgba(0,0,0,0.10)"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x+w-1, y+6); ctx.lineTo(x+w-1, y+h-1); ctx.lineTo(x+5, y+h-1); ctx.stroke();
+  if (isSelected) {
+    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 8); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+// ── Container / pot ────────────────────────────────────────────────────────────
+function _drawContainer(ctx, x, y, w, h, isSelected) {
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.20)"; ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+  const pg = ctx.createLinearGradient(x, y, x+w, y);
+  pg.addColorStop(0, K.potD); pg.addColorStop(.3, K.pot); pg.addColorStop(.68, K.potL); pg.addColorStop(1, K.potD);
+  ctx.fillStyle = pg; ctx.beginPath(); ctx.roundRect(x, y, w, h, 7); ctx.fill();
+  ctx.shadowColor = "transparent";
+  const rg = ctx.createLinearGradient(x, y, x, y+h*.11);
+  rg.addColorStop(0, "#C07048"); rg.addColorStop(1, K.pot);
+  ctx.fillStyle = rg; ctx.beginPath(); ctx.roundRect(x-2, y, w+4, h*.11, [7,7,0,0]); ctx.fill();
+  [.36, .56].forEach(f => {
+    ctx.strokeStyle = K.potD; ctx.lineWidth = .8; ctx.globalAlpha = .18;
+    ctx.beginPath(); ctx.moveTo(x+4, y+h*f); ctx.lineTo(x+w-4, y+h*f); ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = K.s2; ctx.beginPath(); ctx.roundRect(x+4, y+h*.13, w-8, h*.14, [0,0,2,2]); ctx.fill();
+  // very subtle highlight only
+  ctx.fillStyle = "rgba(255,255,255,0.07)"; ctx.beginPath(); ctx.roundRect(x+4, y+6, w*.18, h*.38, 2); ctx.fill();
+  if (isSelected) {
+    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 10); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+// ── Polytunnel ─────────────────────────────────────────────────────────────────
+function _drawPolytunnel(ctx, x, y, w, h, isSelected) {
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.20)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
+  ctx.fillStyle = "#5A6858"; ctx.globalAlpha = .5;
+  ctx.beginPath(); ctx.roundRect(x, y+h*.75, w, h*.25, [0,0,6,6]); ctx.fill();
+  ctx.globalAlpha = 1; ctx.shadowColor = "transparent";
+  ctx.fillStyle = "rgba(235,245,230,0.22)"; ctx.strokeStyle = "#7A8870"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, [w*.1,w*.1,6,6]); ctx.fill(); ctx.stroke();
+  const hoops = Math.max(3, Math.floor(w/28));
+  ctx.globalAlpha = .5;
+  for (let i = 1; i < hoops; i++) {
+    const hx = x + w*i/hoops;
+    ctx.strokeStyle = "#7A8870"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(hx, y+h*.08); ctx.lineTo(hx, y+h); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = K.s2; ctx.globalAlpha = .5;
+  ctx.beginPath(); ctx.roundRect(x+4, y+h*.5, w-8, h*.42, [0,0,4,4]); ctx.fill();
+  ctx.globalAlpha = 1;
+  if (isSelected) {
+    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 12); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+// ── Tree (apple/pear/fruit) ────────────────────────────────────────────────────
+function _drawTree(ctx, x, y, w, h) {
+  ctx.save();
+  const cx = x + w/2;
+  // ground shadow
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.beginPath(); ctx.ellipse(cx+3, y+h-3, w*.3, h*.065, 0, 0, Math.PI*2); ctx.fill();
+  // trunk
+  const tg = ctx.createLinearGradient(cx-5, 0, cx+5, 0);
+  tg.addColorStop(0, "#906040"); tg.addColorStop(.5, "#7A5030"); tg.addColorStop(1, "#5A3820");
+  ctx.fillStyle = tg; ctx.beginPath(); ctx.roundRect(cx-4.5, y+h*.52, 9, h*.46, 2.5); ctx.fill();
+  ctx.strokeStyle = "#7A5030"; ctx.lineWidth = 1.8; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx-4, y+h*.9); ctx.lineTo(cx-w*.22, y+h-.4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+3, y+h*.9); ctx.lineTo(cx+w*.2, y+h-.4); ctx.stroke();
+  // canopy layers
+  ctx.fillStyle = "#3E6D35"; ctx.beginPath(); ctx.arc(cx, y+h*.28, w*.38, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#527845"; ctx.beginPath(); ctx.arc(cx-w*.18, y+h*.22, w*.28, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#628850"; ctx.beginPath(); ctx.arc(cx+w*.15, y+h*.18, w*.26, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "rgba(130,185,100,0.18)"; ctx.beginPath(); ctx.arc(cx-w*.1, y+h*.14, w*.17, 0, Math.PI*2); ctx.fill();
+  // fruit
+  [{dx:-12,dy:18,r:5,c:"#BC2018"},{dx:10,dy:24,r:4.5,c:"#CC3020"},{dx:2,dy:8,r:4,c:"#C02018"},{dx:18,dy:14,r:3.5,c:"#D49020"}].forEach(f => {
+    ctx.fillStyle = "rgba(0,0,0,0.11)"; ctx.beginPath(); ctx.arc(cx+f.dx+1.5, y+f.dy+2, f.r, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(cx+f.dx, y+f.dy, f.r, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.beginPath(); ctx.arc(cx+f.dx-1.2, y+f.dy-1.2, f.r*.32, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+// ── Bush / berry ───────────────────────────────────────────────────────────────
+function _drawBush(ctx, x, y, w, h) {
+  ctx.save();
+  const cx = x+w/2, cy = y+h*.55;
+  ctx.fillStyle = "rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.ellipse(cx+2, y+h-3, w*.35, h*.07, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#3E6D35"; ctx.beginPath(); ctx.arc(cx, cy, w*.42, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#527845"; ctx.beginPath(); ctx.arc(cx-w*.2, cy-h*.08, w*.3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#628850"; ctx.beginPath(); ctx.arc(cx+w*.18, cy-h*.1, w*.26, 0, Math.PI*2); ctx.fill();
+  // berries
+  [[-.25,.1],[.15,.22],[.32,-.04],[-.05,.32],[.24,-.28]].forEach(([bx,by]) => {
+    ctx.fillStyle = "#5A2890"; ctx.beginPath(); ctx.arc(cx+bx*w, cy+by*h, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "rgba(120,60,180,0.45)"; ctx.beginPath(); ctx.arc(cx+bx*w-1.5, cy+by*h-1.5, 1.8, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+// ── Crop sprite system ─────────────────────────────────────────────────────────
+// Each function draws one crop instance at (cx, cy) with scale sc
+
+function _cropCarrot(ctx, cx, cy, sc) {
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,0.10)"; ctx.beginPath(); ctx.ellipse(cx+1, cy+8*sc, 4.5*sc, 1.4, 0, 0, Math.PI*2); ctx.fill();
+  // stems with slight lean variation
+  for (let s = -1; s <= 1; s++) {
+    const lean = _jit(cx*s+cy, 1.5);
+    ctx.strokeStyle = s === 0 ? K.l3 : K.l1d; ctx.lineWidth = 1*sc; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx+s*2.5*sc, cy+4*sc);
+    ctx.quadraticCurveTo(cx+s*4*sc+lean, cy-1*sc, cx+s*1.5*sc+lean, cy-7*sc); ctx.stroke();
+  }
+  ctx.fillStyle = "#588040"; ctx.globalAlpha = .88;
+  ctx.beginPath(); ctx.ellipse(cx-2.5*sc, cy-7*sc, 2.5*sc, 5*sc, -.4+_jit(cx+11,.3), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#6A9850"; ctx.beginPath();
+  ctx.ellipse(cx+1.5*sc, cy-8*sc, 2*sc, 4.5*sc, .3+_jit(cy+13,.25), 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function _cropPotato(ctx, cx, cy, sc) {
+  ctx.fillStyle = "rgba(0,0,0,0.13)"; ctx.beginPath(); ctx.ellipse(cx+1.5, cy+2, 7*sc, 3, 0, 0, Math.PI*2); ctx.fill();
+  const pg = ctx.createRadialGradient(cx-2*sc, cy-2*sc, 1, cx+1*sc, cy+1*sc, 8*sc);
+  pg.addColorStop(0, "#C8A465"); pg.addColorStop(.5, "#A07C38"); pg.addColorStop(1, "#7A5828");
+  ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(cx, cy, 8*sc, 6.5*sc, _jit(cx+cy,.4), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.10)"; ctx.beginPath(); ctx.ellipse(cx-2.5*sc, cy-2*sc, 2*sc, 1.5*sc, -.35, 0, Math.PI*2); ctx.fill();
+}
+
+function _cropOnion(ctx, cx, cy, sc) {
+  ctx.fillStyle = "rgba(0,0,0,0.11)"; ctx.beginPath(); ctx.ellipse(cx+1, cy+2, 6*sc, 2.4, 0, 0, Math.PI*2); ctx.fill();
+  const og = ctx.createRadialGradient(cx-1.5*sc, cy-1*sc, 0, cx+1*sc, cy+1*sc, 6.5*sc);
+  og.addColorStop(0, "#D0A848"); og.addColorStop(.55, "#A88020"); og.addColorStop(1, "#806010");
+  ctx.fillStyle = og; ctx.beginPath(); ctx.ellipse(cx, cy, 6.5*sc, 5.5*sc, _jit(cx*cy,.3), 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = "#4A7038"; ctx.lineWidth = .9*sc; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx+_jit(cx,.8), cy-5.5*sc);
+  ctx.quadraticCurveTo(cx+1.5*sc, cy-10*sc, cx+_jit(cx+1,1)*sc, cy-14*sc); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.ellipse(cx-2*sc, cy-1.5*sc, 1.8*sc, 1.2*sc, -.3, 0, Math.PI*2); ctx.fill();
+}
+
+function _cropLettuce(ctx, cx, cy, sc) {
+  ctx.fillStyle = "rgba(0,0,0,0.09)"; ctx.beginPath(); ctx.ellipse(cx+1, cy+2, 8*sc, 3, 0, 0, Math.PI*2); ctx.fill();
+  const angles = [-55,-22,12,44,75,-85];
+  angles.forEach((a, i) => {
+    const rad = a * Math.PI / 180;
+    ctx.fillStyle = i%2 === 0 ? "#5A8842" : "#6E9C56";
+    ctx.globalAlpha = .85;
+    ctx.beginPath();
+    ctx.ellipse(cx+Math.sin(rad)*4.5*sc, cy-Math.cos(rad)*4.5*sc, 4.5*sc, 7.5*sc, rad+_jit(i*7,.15), 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(0,0,0,0.08)"; ctx.beginPath(); ctx.arc(cx, cy, 3.5*sc, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "rgba(185,230,150,0.65)"; ctx.beginPath(); ctx.arc(cx, cy, 2.5*sc, 0, Math.PI*2); ctx.fill();
+}
+
+// Generic leafy fallback — for brassicas, herbs, salad, legumes etc
+function _cropLeafy(ctx, cx, cy, sc) {
+  ctx.fillStyle = "rgba(0,0,0,0.09)"; ctx.beginPath(); ctx.ellipse(cx+1, cy+2, 7*sc, 2.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = K.l3; ctx.beginPath(); ctx.ellipse(cx, cy, 6*sc, 8*sc, _jit(cx,.25), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = K.l2; ctx.beginPath(); ctx.ellipse(cx-3*sc, cy-2*sc, 4*sc, 6*sc, -.3+_jit(cy,.2), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = K.l1; ctx.beginPath(); ctx.ellipse(cx+3*sc, cy-3*sc, 3.5*sc, 5.5*sc, .4+_jit(cx+cy,.2), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "rgba(170,225,130,0.5)"; ctx.beginPath(); ctx.arc(cx, cy-1*sc, 2*sc, 0, Math.PI*2); ctx.fill();
+}
+
+// Tomato plant
+function _cropTomato(ctx, cx, cy, sc) {
+  ctx.fillStyle = "rgba(0,0,0,0.10)"; ctx.beginPath(); ctx.ellipse(cx+1, cy+9*sc, 5*sc, 2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = "#8B6B3D"; ctx.lineWidth = 1.5*sc;
+  ctx.beginPath(); ctx.moveTo(cx+6*sc, cy+8*sc); ctx.lineTo(cx+6*sc, cy-8*sc); ctx.stroke();
+  ctx.fillStyle = K.l3; ctx.beginPath(); ctx.ellipse(cx, cy, 5*sc, 7*sc, -.15, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = K.l2; ctx.beginPath(); ctx.ellipse(cx-4*sc, cy-2*sc, 3.5*sc, 5*sc, .2, 0, Math.PI*2); ctx.fill();
+  [{x:-5,y:2,r:3,c:"#CC2A1A"},{x:3,y:-1,r:2.5,c:"#E03A20"},{x:-1,y:-7,r:2,c:"#FF6030"}].forEach(t => {
+    ctx.fillStyle = "rgba(0,0,0,0.10)"; ctx.beginPath(); ctx.arc(cx+t.x*sc+1, cy+t.y*sc+1.5, t.r*sc, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(cx+t.x*sc, cy+t.y*sc, t.r*sc, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+// Crop family → sprite function mapping
+function _getCropSprite(name) {
+  const n = (name||"").toLowerCase();
+  if (/carrot|parsnip|beetroot|radish|turnip|swede/.test(n)) return _cropCarrot;
+  if (/potato/.test(n)) return _cropPotato;
+  if (/onion|garlic|leek|shallot/.test(n)) return _cropOnion;
+  if (/lettuce|salad|rocket|spinach|chard|endive|sorrel/.test(n)) return _cropLettuce;
+  if (/tomato|pepper|chilli/.test(n)) return _cropTomato;
+  return _cropLeafy;
+}
+
+// ── Crop grid renderer ─────────────────────────────────────────────────────────
+// Draws a tiled grid of one crop sprite inside a clipped region with organic variation
+function _drawCropGrid(ctx, x, y, w, h, cropName, cellW, cellH) {
+  const spriteFn = _getCropSprite(cropName);
+  const cols = Math.max(1, Math.floor(w / cellW));
+  const rows = Math.max(1, Math.floor(h / cellH));
+  const cw = w / cols, ch = h / rows;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const seed = r*19 + c*37;
+      const sc = 0.92 + ((seed*7)%10) * .014;
+      const jx = _jit(seed, 5), jy = _jit(seed+1, 4);
+      spriteFn(ctx, x + c*cw + cw/2 + jx, y + r*ch + ch/2 + jy, sc);
     }
+  }
+  ctx.restore();
+}
+
+// ── Area renderer — dispatches to correct drawing function ────────────────────
+function _drawAreaShape(ctx, area, x, y, w, h, isSelected) {
+  switch(area.type) {
+    case "raised_bed":   _drawBed(ctx, x, y, w, h, isSelected); break;
+    case "open_ground":  _drawOpenGround(ctx, x, y, w, h, isSelected); break;
+    case "greenhouse":   _drawGreenhouse(ctx, x, y, w, h, isSelected); break;
+    case "container":    _drawContainer(ctx, x, y, w, h, isSelected); break;
+    case "polytunnel":   _drawPolytunnel(ctx, x, y, w, h, isSelected); break;
+    default:             _drawBed(ctx, x, y, w, h, isSelected);
   }
 }
 
-// ── Canvas-based garden renderer ──────────────────────────────────────────────
-// Uses HTML5 Canvas directly via Konva.
-// One Shape per area for maximum performance and control.
+// ── Crops inside an area ───────────────────────────────────────────────────────
+function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
+  const activeCrops = areaCrops.filter(c => c.status !== "planned");
+  if (!activeCrops.length) return;
 
+  // Deduplicate by name
+  const unique = [];
+  const seen = new Set();
+  for (const c of activeCrops) { if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); } }
+
+  const isContainer = area.type === "container";
+  const isGreenhouse = area.type === "greenhouse";
+  const T = (area.type === "raised_bed") ? Math.max(5, Math.min(8, w*.06)) : 4;
+  const INNER_PAD = T + 3;
+
+  const innerX = x + INNER_PAD;
+  const innerY = y + INNER_PAD;
+  const innerW = w - INNER_PAD*2;
+  const innerH = h - INNER_PAD*2;
+
+  if (isGreenhouse) {
+    // Greenhouse: crops in lower portion only (glass top stays clear)
+    const gy = y + h*.46, gh2 = h*.36;
+    const strips = Math.min(unique.length, 3);
+    for (let s = 0; s < strips; s++) {
+      _drawCropGrid(ctx, x+INNER_PAD + s*(innerW/strips), gy, innerW/strips, gh2, unique[s].name, 18, 20);
+    }
+    return;
+  }
+
+  if (isContainer) {
+    // Containers: single centred crop in soil area
+    const cy2 = y + h*.22;
+    const fn = _getCropSprite(unique[0].name);
+    fn(ctx, x+w/2, cy2, 1.0);
+    return;
+  }
+
+  // Standard beds: divide into horizontal strips per crop (max 4)
+  const strips = Math.min(unique.length, 4);
+  const stripH = innerH / strips;
+  const cellW = Math.max(16, Math.min(26, innerW / Math.max(3, Math.floor(innerW/22))));
+  const cellH = Math.max(16, Math.min(24, stripH / Math.max(1, Math.floor(stripH/20))));
+
+  for (let s = 0; s < strips; s++) {
+    _drawCropGrid(ctx, innerX, innerY + s*stripH, innerW, stripH, unique[s].name, cellW, cellH);
+  }
+}
+
+// ── Label — only on selected area, subtle pill inside soil ──────────────────────
+function _drawAreaLabel(ctx, area, x, y, w, h, name) {
+  const isLandscape = w >= h;
+  const T = Math.max(5, Math.min(8, w*.06));
+  const fs = Math.max(7, Math.min(9, Math.min(w,h) * .07));
+  ctx.save();
+  ctx.font = `700 ${fs}px sans-serif`;
+  ctx.textAlign = "center";
+  if (isLandscape) {
+    const textW = Math.min(ctx.measureText(name).width + 10, w - T*2 - 10);
+    const pillH = fs + 5;
+    const px = x + w/2, py = y + h - T - 4 - pillH/2;
+    ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.beginPath();
+    ctx.roundRect(px - textW/2, py - pillH/2, textW, pillH, pillH/2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.72)"; ctx.textBaseline = "middle";
+    ctx.fillText(name, px, py, textW - 6);
+  } else {
+    const maxLen = h - T*2 - 10;
+    const textW = Math.min(ctx.measureText(name).width + 10, maxLen);
+    const pillH = fs + 5;
+    ctx.translate(x + T + 4 + pillH/2, y + h/2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.beginPath();
+    ctx.roundRect(-textW/2, -pillH/2, textW, pillH, pillH/2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.72)"; ctx.textBaseline = "middle";
+    ctx.fillText(name, 0, 0, textW - 6);
+  }
+  ctx.restore();
+}
+
+// ── Main Konva canvas component ────────────────────────────────────────────────
 function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, stageH, stageScale, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
   const stageRef = useRef(null);
   const lastDistRef = useRef(null);
-  const { Stage, Layer, Shape, Rect, Group, Text, Line, Ellipse, Circle } = window.KonvaReact || {};
+  const { Stage, Layer, Shape, Rect, Group, Text } = window.KonvaReact || {};
 
   if (!Stage) return (
-    <div style={{ height:canvasH, display:"flex", alignItems:"center", justifyContent:"center", background:K.canvasBg, color:"rgba(255,255,255,0.5)", fontSize:14 }}>
+    <div style={{ height: canvasH, display: "flex", alignItems: "center", justifyContent: "center", background: K.g1, color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
       Preparing your garden…
     </div>
   );
@@ -10475,401 +10650,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
   const cropsByArea = {};
   for (const area of areas) cropsByArea[area.id] = crops.filter(c => c.area_id === area.id);
 
-  // ── Draw bark/path background ───────────────────────────────────────────
-  const drawBackground = (ctx, w, h) => {
-    // Base grass
-    ctx.fillStyle = K.canvasBg;
-    ctx.fillRect(0, 0, w, h);
-
-    // Tonal variation patches — worn, uneven lawn feel
-    const patches = [
-      { x: w*0.15, y: h*0.2,  r: w*0.28, col: K.grassDark,  a: 0.20 },
-      { x: w*0.7,  y: h*0.12, r: w*0.22, col: K.grassLight, a: 0.15 },
-      { x: w*0.4,  y: h*0.6,  r: w*0.30, col: K.grassDark,  a: 0.18 },
-      { x: w*0.85, y: h*0.75, r: w*0.24, col: K.grassPale,  a: 0.13 },
-      { x: w*0.08, y: h*0.8,  r: w*0.18, col: K.grassMid,   a: 0.14 },
-      { x: w*0.55, y: h*0.38, r: w*0.20, col: K.grassLight, a: 0.11 },
-      { x: w*0.3,  y: h*0.9,  r: w*0.18, col: K.grassDark,  a: 0.12 },
-    ];
-    patches.forEach(p => {
-      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-      grad.addColorStop(0, p.col);
-      grad.addColorStop(1, "transparent");
-      ctx.globalAlpha = p.a;
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-    });
-    ctx.globalAlpha = 1;
-
-    // Grass blades — two passes, different angles for depth
-    // Pass 1: near-vertical blades
-    ctx.globalAlpha = 0.11;
-    for (let i = 0; i < w; i += 4) {
-      for (let j = 0; j < h; j += 6) {
-        const jitter = (i * 7 + j * 13) % 6 - 3;
-        const lean   = (i * 3 + j * 5) % 5 - 2; // slight lean left/right
-        const len    = 4 + (i * 3 + j) % 5;
-        ctx.strokeStyle = (i + j) % 3 === 0 ? K.grassDark : K.grassLight;
-        ctx.lineWidth   = 0.7;
-        ctx.beginPath();
-        ctx.moveTo(i + jitter, j);
-        ctx.lineTo(i + jitter + lean, j + len);
-        ctx.stroke();
-      }
-    }
-    // Pass 2: shorter blades, offset grid — adds density without uniformity
-    ctx.globalAlpha = 0.07;
-    for (let i = 2; i < w; i += 6) {
-      for (let j = 3; j < h; j += 8) {
-        const jitter = (i * 11 + j * 7) % 4 - 2;
-        const len    = 2 + (i + j) % 3;
-        ctx.strokeStyle = (i * j) % 4 === 0 ? K.grassPale : K.grassMid;
-        ctx.lineWidth   = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(i + jitter, j);
-        ctx.lineTo(i + jitter, j + len);
-        ctx.stroke();
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    // Pass 3: fine noise dots — mimics soil/moss variation in worn grass
-    ctx.globalAlpha = 0.05;
-    for (let i = 0; i < w; i += 3) {
-      for (let j = 0; j < h; j += 3) {
-        const v = (i * 13 + j * 7) % 9;
-        if (v < 2) {
-          ctx.fillStyle = v === 0 ? K.grassDark : K.grassPale;
-          ctx.fillRect(i, j, 1, 1);
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    // Cobblestone border — thin band around the entire canvas edge
-    const BW = 18; // border width in px
-    const COBB_W = 22;
-    const COBB_H = 12;
-    const MORTAR = 2;
-
-    ctx.save();
-    // Clip to border band only (exclude inner grass area)
-    ctx.beginPath();
-    ctx.rect(0, 0, w, h);
-    ctx.rect(BW, BW, w - BW*2, h - BW*2); // inner cutout — fills even-odd
-    ctx.clip("evenodd");
-
-    // Draw cobblestone pattern across full canvas — will be clipped to border
-    for (let row = 0; row * COBB_H < h + COBB_H; row++) {
-      const offsetX = (row % 2 === 1) ? COBB_W * 0.5 : 0;
-      for (let col = -1; col * COBB_W < w + COBB_W; col++) {
-        const cx = col * (COBB_W + MORTAR) + offsetX;
-        const cy = row * (COBB_H + MORTAR);
-        const cw = COBB_W - 1;
-        const ch = COBB_H - 1;
-        // Stone base
-        const tone = (row * 3 + col * 7) % 3;
-        ctx.fillStyle = tone === 0 ? K.cobbDark : tone === 1 ? K.cobbBase : K.cobbLight;
-        ctx.beginPath();
-        ctx.roundRect(cx, cy, cw, ch, 2);
-        ctx.fill();
-        // Highlight top-left edge
-        ctx.fillStyle = "rgba(255,255,255,0.08)";
-        ctx.beginPath();
-        ctx.roundRect(cx, cy, cw, 3, [2,2,0,0]);
-        ctx.fill();
-      }
-    }
-    // Mortar colour as base fill (shows in gaps)
-    ctx.fillStyle = K.cobbMortar;
-    // Already clipped — just overdraw mortar gaps with a faint overlay
-    ctx.globalAlpha = 0.3;
-    ctx.fillRect(0, 0, w, h);
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  };
-
-  // ── Draw individual area ────────────────────────────────────────────────
-  const drawArea = (ctx, area, x, y, w, h, isSelected) => {
-    ctx.save();
-
-    switch(area.type) {
-
-      case "raised_bed": {
-        const T = Math.max(4, Math.min(7, w * 0.05)); // thinner, less picture-frame
-
-        // Soft drop shadow
-        ctx.shadowColor = "rgba(0,0,0,0.25)";
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 3;
-
-        // Outer timber frame
-        ctx.fillStyle = K.timber;
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 6);
-        ctx.fill();
-        ctx.shadowColor = "transparent";
-
-        // Subtle timber grain — just on the border band
-        ctx.strokeStyle = K.timberGrain;
-        ctx.lineWidth = 0.6;
-        ctx.globalAlpha = 0.25;
-        for (let i = T+3; i < w-T; i += 9) {
-          ctx.beginPath(); ctx.moveTo(x+i, y+1); ctx.lineTo(x+i, y+T-1); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(x+i, y+h-T+1); ctx.lineTo(x+i, y+h-1); ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-
-        // Soil fill
-        const soilGrad = ctx.createRadialGradient(x+w/2, y+h/2, 0, x+w/2, y+h/2, Math.max(w,h)*0.6);
-        soilGrad.addColorStop(0, K.soilMid);
-        soilGrad.addColorStop(1, K.soilRich);
-        ctx.fillStyle = soilGrad;
-        ctx.beginPath();
-        ctx.roundRect(x+T, y+T, w-T*2, h-T*2, 3);
-        ctx.fill();
-
-        // Soil texture — faint clods
-        for (let i = 0; i < 10; i++) {
-          const sx = x+T+4 + (i*31)%(w-T*2-8);
-          const sy = y+T+3 + (i*17)%(h-T*2-6);
-          ctx.fillStyle = K.soilHigh;
-          ctx.globalAlpha = 0.18;
-          ctx.beginPath();
-          ctx.ellipse(sx, sy, 4+(i%4)*2, 2+(i%3)*2, (i*37)%Math.PI, 0, Math.PI*2);
-          ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-        break;
-      }
-
-      case "open_ground": {
-        // Soft shadow
-        ctx.shadowColor = "rgba(0,0,0,0.2)";
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetY = 3;
-
-        // Soil base with irregular edges
-        ctx.fillStyle = K.groundSoil;
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 12);
-        ctx.fill();
-        ctx.shadowColor = "transparent";
-
-        // Cultivated soil rows — subtle furrows
-        ctx.strokeStyle = K.groundLight;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.2;
-        const rowSpacing = Math.max(8, h / 8);
-        for (let ry = y + rowSpacing; ry < y+h-4; ry += rowSpacing) {
-          ctx.beginPath(); ctx.moveTo(x+6, ry); ctx.lineTo(x+w-6, ry); ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-
-        // Edge darkening
-        const edgeGrad = ctx.createRadialGradient(x+w/2, y+h/2, Math.min(w,h)*0.25, x+w/2, y+h/2, Math.max(w,h)*0.7);
-        edgeGrad.addColorStop(0, "transparent");
-        edgeGrad.addColorStop(1, "rgba(0,0,0,0.3)");
-        ctx.fillStyle = edgeGrad;
-        ctx.beginPath(); ctx.roundRect(x, y, w, h, 12); ctx.fill();
-        break;
-      }
-
-      case "greenhouse": {
-        ctx.shadowColor = "rgba(0,0,0,0.25)";
-        ctx.shadowBlur = 12;
-        ctx.shadowOffsetY = 4;
-
-        // Foundation/base
-        ctx.fillStyle = K.ghFrame;
-        ctx.globalAlpha = 0.4;
-        ctx.beginPath(); ctx.roundRect(x, y+h*0.9, w, h*0.1, [0,0,4,4]); ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.shadowColor = "transparent";
-
-        // Glass panels
-        ctx.fillStyle = K.ghGlass;
-        ctx.strokeStyle = K.ghFrame;
-        ctx.lineWidth = 1.8;
-        ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.fill(); ctx.stroke();
-
-        // Panel divisions — vertical
-        const vDivs = Math.max(2, Math.floor(w/38));
-        for (let i = 1; i < vDivs; i++) {
-          ctx.strokeStyle = K.ghGlassLine;
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.moveTo(x + w*i/vDivs, y+4);
-          ctx.lineTo(x + w*i/vDivs, y+h-4);
-          ctx.stroke();
-        }
-        // Horizontal mid-rail
-        ctx.strokeStyle = K.ghFrame;
-        ctx.lineWidth = 1.8;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath(); ctx.moveTo(x, y+h*0.45); ctx.lineTo(x+w, y+h*0.45); ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        // Ridge beam
-        ctx.strokeStyle = K.ghRidge;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(x, y+6); ctx.lineTo(x+w, y+6); ctx.stroke();
-
-        // Grow bags
-        const bagW = (w-20) / Math.max(2, Math.min(3, Math.floor(w/40)));
-        for (let i = 0; i < Math.min(3, Math.floor(w/40)); i++) {
-          ctx.fillStyle = K.ghBag;
-          ctx.globalAlpha = 0.6;
-          ctx.beginPath();
-          ctx.roundRect(x+10+i*(bagW+4), y+h*0.6, bagW, h*0.28, 4);
-          ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-
-        // Glass shine
-        ctx.fillStyle = "rgba(255,255,255,0.06)";
-        ctx.beginPath(); ctx.roundRect(x+3, y+3, w*0.4, h*0.35, [3,3,3,3]); ctx.fill();
-        break;
-      }
-
-      case "container": {
-        const rimH = Math.max(8, h*0.1);
-
-        ctx.shadowColor = "rgba(0,0,0,0.3)";
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 4;
-
-        // Pot body — slightly tapered via roundRect
-        const potGrad = ctx.createLinearGradient(x, y, x+w, y);
-        potGrad.addColorStop(0, K.potDark);
-        potGrad.addColorStop(0.3, K.pot);
-        potGrad.addColorStop(0.7, K.potLight);
-        potGrad.addColorStop(1, K.potDark);
-        ctx.fillStyle = potGrad;
-        ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
-        ctx.shadowColor = "transparent";
-
-        // Rim
-        const rimGrad = ctx.createLinearGradient(x, y, x, y+rimH);
-        rimGrad.addColorStop(0, K.potRim);
-        rimGrad.addColorStop(1, K.pot);
-        ctx.fillStyle = rimGrad;
-        ctx.beginPath(); ctx.roundRect(x-2, y, w+4, rimH, [8,8,0,0]); ctx.fill();
-
-        // Horizontal rings
-        ctx.strokeStyle = K.potDark;
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.3;
-        [0.35, 0.55, 0.72].forEach(frac => {
-          ctx.beginPath(); ctx.moveTo(x+4, y+h*frac); ctx.lineTo(x+w-4, y+h*frac); ctx.stroke();
-        });
-        ctx.globalAlpha = 1;
-
-        // Soil
-        ctx.fillStyle = K.potSoil;
-        ctx.beginPath(); ctx.roundRect(x+4, y+rimH+2, w-8, h-rimH-8, [0,0,4,4]); ctx.fill();
-
-        // Shine
-        ctx.fillStyle = "rgba(255,255,255,0.12)";
-        ctx.beginPath(); ctx.roundRect(x+4, y+4, w*0.25, h*0.45, 3); ctx.fill();
-        break;
-      }
-
-      case "polytunnel": {
-        ctx.shadowColor = "rgba(0,0,0,0.2)";
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetY = 4;
-
-        // Base/ground strip
-        ctx.fillStyle = K.tunnelBase;
-        ctx.globalAlpha = 0.5;
-        ctx.beginPath(); ctx.roundRect(x, y+h*0.75, w, h*0.25, [0,0,6,6]); ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.shadowColor = "transparent";
-
-        // Plastic skin — translucent with rounded top
-        ctx.fillStyle = K.tunnelSkin;
-        ctx.strokeStyle = K.tunnelHoop;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, [w*0.12, w*0.12, 6, 6]);
-        ctx.fill(); ctx.stroke();
-
-        // Hoop ribs
-        const hoops = Math.max(3, Math.floor(w/28));
-        ctx.strokeStyle = K.tunnelHoop;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.55;
-        for (let i = 1; i < hoops; i++) {
-          const hx = x + w*i/hoops;
-          ctx.beginPath(); ctx.moveTo(hx, y+h*0.08); ctx.lineTo(hx, y+h); ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-
-        // Ridge line
-        ctx.strokeStyle = K.tunnelHoop;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.7;
-        ctx.beginPath(); ctx.moveTo(x, y+h*0.08); ctx.lineTo(x+w, y+h*0.08); ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        // Soil floor
-        ctx.fillStyle = K.soilRich;
-        ctx.globalAlpha = 0.55;
-        ctx.beginPath(); ctx.roundRect(x+4, y+h*0.5, w-8, h*0.42, [0,0,4,4]); ctx.fill();
-        ctx.globalAlpha = 1;
-
-        // Shine on skin
-        ctx.fillStyle = "rgba(255,255,255,0.08)";
-        ctx.beginPath(); ctx.roundRect(x+4, y+4, w*0.35, h*0.35, 4); ctx.fill();
-        break;
-      }
-
-      default: {
-        ctx.shadowColor = "rgba(0,0,0,0.2)";
-        ctx.shadowBlur = 6;
-        ctx.fillStyle = K.groundSoil;
-        ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.fill();
-        ctx.shadowColor = "transparent";
-      }
-    }
-
-    // Selection outline — dashed green
-    if (isSelected) {
-      ctx.strokeStyle = "#6FAF63";
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([7, 3]);
-      ctx.shadowColor = "rgba(111,175,99,0.4)";
-      ctx.shadowBlur = 6;
-      ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 12); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.shadowColor = "transparent";
-    }
-
-    ctx.restore();
-  };
-
-  // ── Emoji tiling — fills a bed with rows of small emoji ──────────────────
-  const tileEmoji = (ctx, emoji, innerX, innerY, innerW, innerH, emojiSize) => {
-    const cols = Math.max(1, Math.floor(innerW / (emojiSize * 1.5)));
-    const rows = Math.max(1, Math.floor(innerH / (emojiSize * 1.6)));
-    const cellW = innerW / cols;
-    const cellH = innerH / rows;
-    ctx.font = `${emojiSize}px serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const ex = innerX + c * cellW + cellW / 2;
-        const ey = innerY + r * cellH + cellH / 2;
-        ctx.fillText(emoji, ex, ey);
-      }
-    }
-  };
-
-  // ── Pinch-to-zoom handlers ────────────────────────────────────────────────
+  // Pinch-to-zoom
   const handleTouchMove = (e) => {
     const touches = e.evt.touches;
     if (touches.length !== 2) { lastDistRef.current = null; return; }
@@ -10877,36 +10658,31 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     const dist = Math.sqrt(dx*dx + dy*dy);
-    if (lastDistRef.current !== null && onZoomChange) {
-      const delta = dist - lastDistRef.current;
-      onZoomChange(delta);
-    }
+    if (lastDistRef.current !== null && onZoomChange) onZoomChange(dist - lastDistRef.current);
     lastDistRef.current = dist;
   };
   const handleTouchEnd = () => { lastDistRef.current = null; };
 
   const sc = stageScale || 1;
+
   return (
     <Stage
       ref={stageRef}
       width={stageW || canvasW}
       height={stageH || canvasH}
-      scaleX={sc}
-      scaleY={sc}
+      scaleX={sc} scaleY={sc}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       <Layer>
-        {/* Background */}
+        {/* Ground */}
         <Shape
-          sceneFunc={(ctx, shape) => {
-            drawBackground(ctx, canvasW, canvasH);
-            ctx.fillStrokeShape(shape);
-          }}
+          sceneFunc={(ctx) => { _drawGround(ctx, 0, 0, canvasW, canvasH); }}
           width={canvasW} height={canvasH}
+          listening={false}
         />
 
-        {/* Each area */}
+        {/* Areas */}
         {areas.map(area => {
           const isRotated = area.rotation === 90 || area.rotation === 270;
           const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
@@ -10917,18 +10693,15 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
           const areaCrops = cropsByArea[area.id] || [];
-          const T = area.type==="raised_bed" ? Math.max(6,Math.min(12,w*0.08)) : 4;
-          const LABEL_H = Math.max(14, Math.min(18, h*0.14));
-          const labelSize = Math.max(7, Math.min(11, w*0.09));
-          const name = area.name.replace(/^"|"$/g, "");
-
-          const unique = [];
-          const seen = new Set();
-          for (const c of areaCrops) { if(!seen.has(c.name)){seen.add(c.name);unique.push(c);} }
+          const name = area.name.replace(/^"|"$/g, "").toUpperCase();
 
           const handleR = 14;
           const handleX = w + 6;
           const handleY = -6;
+
+          // Special area types that use tree/bush rendering instead of crop grid
+          const isTree = area.type === "tree" || /apple|pear|plum|cherry|fig/.test((area.name||"").toLowerCase());
+          const isBush = /berry|bush|blueberry|raspberry|gooseberry|currant/.test((area.name||"").toLowerCase());
 
           return (
             <Group key={area.id}
@@ -10942,168 +10715,93 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
               onClick={() => onTap(area.id)}
               onTap={() => onTap(area.id)}
             >
-              {/* Explicit hit rect — constrains tap/drag to exact bed bounds only */}
+              {/* Explicit hit rect — constrain to bed bounds only */}
               <Rect x={0} y={0} width={w} height={h} fill="transparent" />
 
-              {/* Area shape — listening disabled so hit rect is the only target */}
-              <Shape
-                sceneFunc={(ctx, shape) => {
-                  drawArea(ctx, area, 0, 0, w, h, isSelected);
-                  ctx.fillStrokeShape(shape);
-                }}
-                width={w} height={h}
-                x={0} y={0}
-                listening={false}
-              />
-
-              {/* Crop emoji tiling — planned crops excluded, no label */}
+              {/* Area shape */}
               <Shape
                 sceneFunc={(ctx) => {
-                  // Filter out planned — only show active crops visually
-                  const activeCrops = areaCrops.filter(c => c.status !== "planned");
-                  const activeUnique = [];
-                  const activeSeen = new Set();
-                  for (const c of activeCrops) { if(!activeSeen.has(c.name)){activeSeen.add(c.name);activeUnique.push(c);} }
-                  if (!activeUnique.length) return;
-                  ctx.save();
-                  // Tighter clip — extra padding to prevent overhang
-                  const PAD = T + 4;
-                  ctx.beginPath();
-                  ctx.rect(PAD, PAD, w - PAD*2, h - PAD*2);
-                  ctx.clip();
-
-                  const isLandscape = w >= h;
-                  const innerX = PAD + 2;
-                  const innerY = PAD + 2;
-                  const innerW = w - PAD*2 - 4;
-                  const innerH = h - PAD*2 - 4;
-                  const emojiSize = Math.max(10, Math.min(18, Math.min(innerW, innerH) * 0.22));
-                  const strips = Math.min(activeUnique.length, 4);
-                  const stripH = innerH / strips;
-                  for (let s = 0; s < strips; s++) {
-                    const crop = activeUnique[s];
-                    tileEmoji(ctx, getCropEmoji(crop.name), innerX, innerY + s*stripH, innerW, stripH, emojiSize);
+                  if (isTree) {
+                    _drawTree(ctx, 0, 0, w, h);
+                  } else if (isBush) {
+                    _drawBush(ctx, 0, 0, w, h);
+                  } else {
+                    _drawAreaShape(ctx, area, 0, 0, w, h, isSelected);
                   }
-                  if (activeUnique.length > 4) {
-                    ctx.font = "bold 9px sans-serif";
-                    ctx.fillStyle = "rgba(255,255,255,0.6)";
-                    ctx.textAlign = "right";
-                    ctx.textBaseline = "bottom";
-                    ctx.fillText(`+${activeUnique.length - 4}`, w - T - 6, h - T - 6);
-                  }
-                  ctx.restore();
                 }}
                 width={w} height={h}
                 listening={false}
               />
 
-              {/* Empty state — only show if no active crops */}
-              {areaCrops.filter(c => c.status !== "planned").length === 0 && (
-                <Text x={0} y={h/2-7} width={w} align="center"
-                  text="Empty" fontSize={9}
-                  fill="rgba(255,255,255,0.22)" fontStyle="italic"
+              {/* Crops */}
+              {!isTree && !isBush && (
+                <Shape
+                  sceneFunc={(ctx) => { _drawAreaCrops(ctx, area, 0, 0, w, h, areaCrops); }}
+                  width={w} height={h}
                   listening={false}
                 />
               )}
 
-              {/* Area name — inside soil, bottom for landscape / left-rotated for portrait */}
-              <Shape
-                sceneFunc={(ctx) => {
-                  const label = name.toUpperCase();
-                  const isLandscape = w >= h;
-                  const fs = Math.max(6, Math.min(9, Math.min(w,h) * 0.07));
-                  ctx.save();
-                  ctx.font = `700 ${fs}px sans-serif`;
-                  ctx.textAlign = "center";
-                  if (isLandscape) {
-                    const textW = Math.min(ctx.measureText(label).width + 8, w - T*2 - 10);
-                    const pillH = fs + 5;
-                    const px = w/2;
-                    const py = h - T - 4 - pillH/2;
-                    // Dark pill background
-                    ctx.fillStyle = "rgba(0,0,0,0.38)";
-                    ctx.beginPath();
-                    ctx.roundRect(px - textW/2, py - pillH/2, textW, pillH, pillH/2);
-                    ctx.fill();
-                    // Label text
-                    ctx.fillStyle = "#fff";
-                    ctx.globalAlpha = 0.9;
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(label, px, py, textW - 6);
-                  } else {
-                    const maxLen = h - T*2 - 10;
-                    const textW = Math.min(ctx.measureText(label).width + 8, maxLen);
-                    const pillH = fs + 5;
-                    // Rotated pill along left side, inside soil
-                    ctx.translate(T + 4 + pillH/2, h/2);
-                    ctx.rotate(-Math.PI / 2);
-                    ctx.fillStyle = "rgba(0,0,0,0.38)";
-                    ctx.beginPath();
-                    ctx.roundRect(-textW/2, -pillH/2, textW, pillH, pillH/2);
-                    ctx.fill();
-                    ctx.fillStyle = "#fff";
-                    ctx.globalAlpha = 0.9;
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(label, 0, 0, textW - 6);
-                  }
-                  ctx.restore();
-                }}
-                width={w} height={h}
-                listening={false}
-              />
+              {/* Label — selected only */}
+              {isSelected && (
+                <Shape
+                  sceneFunc={(ctx) => { _drawAreaLabel(ctx, area, 0, 0, w, h, name); }}
+                  width={w} height={h}
+                  listening={false}
+                />
+              )}
 
-              {/* Rotate handle — wrapped in non-listening Group so it doesn't expand hit area */}
+              {/* Rotate handle — in non-listening wrapper so it doesn't expand hit area */}
               {isSelected && onRotate && (
                 <Group listening={false}>
-                <Group
-                  x={handleX} y={handleY}
-                  draggable
-                  listening={true}
-                  dragBoundFunc={() => ({ x: ax + handleX, y: ay + handleY })}
-                  onDragMove={e => {
-                    const stage = e.target.getStage();
-                    const pos = stage.getPointerPosition();
-                    const centrX = ax + w/2;
-                    const centrY = ay + h/2;
-                    const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
-                    const snapped = Math.round(angle / 45) * 45;
-                    const normalised = ((snapped % 360) + 360) % 360;
-                    onRotate(area.id, normalised, false);
-                  }}
-                  onDragEnd={e => {
-                    const stage = e.target.getStage();
-                    const pos = stage.getPointerPosition();
-                    const centrX = ax + w/2;
-                    const centrY = ay + h/2;
-                    const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
-                    const snapped = Math.round(angle / 45) * 45;
-                    const normalised = ((snapped % 360) + 360) % 360;
-                    onRotate(area.id, normalised, true);
-                    e.target.x(handleX);
-                    e.target.y(handleY);
-                  }}
-                >
-                  <Shape
-                    sceneFunc={(ctx, shape) => {
-                      ctx.beginPath();
-                      ctx.arc(0, 0, handleR, 0, Math.PI*2);
-                      ctx.fillStyle = "#2F5D50";
-                      ctx.fill();
-                      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-                      ctx.lineWidth = 1.5;
-                      ctx.stroke();
-                      ctx.font = `bold ${handleR}px sans-serif`;
-                      ctx.fillStyle = "#fff";
-                      ctx.textAlign = "center";
-                      ctx.textBaseline = "middle";
-                      ctx.fillText("\u21bb", 0, 1);
-                      ctx.fillStrokeShape(shape);
+                  <Group
+                    x={handleX} y={handleY}
+                    draggable
+                    listening={true}
+                    dragBoundFunc={() => ({ x: ax + handleX, y: ay + handleY })}
+                    onDragMove={e => {
+                      const stage = e.target.getStage();
+                      const pos = stage.getPointerPosition();
+                      const centrX = ax + w/2, centrY = ay + h/2;
+                      const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
+                      const normalised = ((Math.round(angle/45)*45 % 360) + 360) % 360;
+                      onRotate(area.id, normalised, false);
                     }}
-                    width={handleR*2} height={handleR*2}
-                    x={-handleR} y={-handleR}
-                  />
+                    onDragEnd={e => {
+                      const stage = e.target.getStage();
+                      const pos = stage.getPointerPosition();
+                      const centrX = ax + w/2, centrY = ay + h/2;
+                      const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
+                      const normalised = ((Math.round(angle/45)*45 % 360) + 360) % 360;
+                      onRotate(area.id, normalised, true);
+                      e.target.x(handleX); e.target.y(handleY);
+                    }}
+                  >
+                    <Shape
+                      sceneFunc={(ctx, shape) => {
+                        ctx.beginPath(); ctx.arc(0, 0, handleR, 0, Math.PI*2);
+                        ctx.fillStyle = "#2F5D50"; ctx.fill();
+                        ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
+                        ctx.font = `bold ${handleR}px sans-serif`;
+                        ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.fillText("↻", 0, 1);
+                        ctx.fillStrokeShape(shape);
+                      }}
+                      width={handleR*2} height={handleR*2}
+                      x={-handleR} y={-handleR}
+                    />
+                  </Group>
                 </Group>
-                </Group>
+              )}
+
+              {/* Empty state */}
+              {!isTree && !isBush && areaCrops.filter(c => c.status !== "planned").length === 0 && (
+                <Text
+                  x={0} y={h/2-7} width={w} align="center"
+                  text="Empty" fontSize={9}
+                  fill="rgba(255,255,255,0.22)" fontStyle="italic"
+                  listening={false}
+                />
               )}
             </Group>
           );
@@ -11112,7 +10810,6 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
     </Stage>
   );
 }
-
 // ── Konva loader ──────────────────────────────────────────────────────────────
 function useKonva() {
   const [ready, setReady] = useState(false);
