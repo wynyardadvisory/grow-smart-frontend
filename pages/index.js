@@ -10549,18 +10549,35 @@ function _getCropSprite(name) {
 // ── Crop grid renderer ─────────────────────────────────────────────────────────
 // Draws a tiled grid of one crop sprite inside a clipped region with organic variation
 function _drawCropGrid(ctx, x, y, w, h, cropName, cellW, cellH) {
-  const spriteFn = _getCropSprite(cropName);
-  const cols = Math.max(1, Math.floor(w / cellW));
-  const rows = Math.max(1, Math.floor(h / cellH));
-  const cw = w / cols, ch = h / rows;
+  // Use emoji rendered via fillText — looks great over photo soil texture
+  const emoji = getCropEmoji(cropName);
+
+  // Emoji size — small enough for a grid, legible enough to recognise
+  const emojiSize = Math.max(10, Math.min(16, Math.min(cellW, cellH) * 0.75));
+
+  // Grid: fill the area with 3-4 rows, as many cols as fit
+  const PAD = 2; // inner padding so emojis don't touch edges
+  const usableW = w - PAD * 2;
+  const usableH = h - PAD * 2;
+  const cols = Math.max(1, Math.floor(usableW / (emojiSize + 2)));
+  const rows = Math.max(1, Math.min(4, Math.floor(usableH / (emojiSize + 2))));
+  const cw = usableW / cols;
+  const ch = usableH / rows;
+
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.font = `${emojiSize}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const seed = r*19 + c*37;
-      const sc = 0.92 + ((seed*7)%10) * .014;
-      const jx = _jit(seed, 5), jy = _jit(seed+1, 4);
-      spriteFn(ctx, x + c*cw + cw/2 + jx, y + r*ch + ch/2 + jy, sc);
+      const seed = r * 19 + c * 37;
+      const jx = _jit(seed, 1.5);
+      const jy = _jit(seed + 1, 1.5);
+      const ex = x + PAD + c * cw + cw / 2 + jx;
+      const ey = y + PAD + r * ch + ch / 2 + jy;
+      ctx.fillText(emoji, ex, ey);
     }
   }
   ctx.restore();
@@ -10590,40 +10607,44 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
 
   const isContainer = area.type === "container";
   const isGreenhouse = area.type === "greenhouse";
-  const T = (area.type === "raised_bed") ? Math.max(5, Math.min(8, w*.06)) : 4;
-  const INNER_PAD = T + 3;
 
+  // Padding from edges — enough to clear bed frame photo border
+  const INNER_PAD = 8;
   const innerX = x + INNER_PAD;
   const innerY = y + INNER_PAD;
-  const innerW = w - INNER_PAD*2;
-  const innerH = h - INNER_PAD*2;
+  const innerW = w - INNER_PAD * 2;
+  const innerH = h - INNER_PAD * 2;
 
   if (isGreenhouse) {
-    // Greenhouse: crops in lower portion only (glass top stays clear)
     const gy = y + h*.46, gh2 = h*.36;
     const strips = Math.min(unique.length, 3);
     for (let s = 0; s < strips; s++) {
-      _drawCropGrid(ctx, x+INNER_PAD + s*(innerW/strips), gy, innerW/strips, gh2, unique[s].name, 18, 20);
+      _drawCropGrid(ctx, innerX + s*(innerW/strips), gy, innerW/strips, gh2, unique[s].name, 20, 20);
     }
     return;
   }
 
   if (isContainer) {
-    // Containers: single centred crop in soil area
-    const cy2 = y + h*.22;
-    const fn = _getCropSprite(unique[0].name);
-    fn(ctx, x+w/2, cy2, 1.0);
+    // Single emoji centred in pot
+    const emoji = getCropEmoji(unique[0].name);
+    const sz = Math.max(12, Math.min(20, w * 0.35));
+    ctx.save();
+    ctx.font = `${sz}px serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(emoji, x + w/2, y + h * 0.45);
+    ctx.restore();
     return;
   }
 
-  // Standard beds: divide into horizontal strips per crop (max 4)
+  // Standard beds: divide into horizontal strips per unique crop (max 4)
   const strips = Math.min(unique.length, 4);
   const stripH = innerH / strips;
-  const cellW = Math.max(16, Math.min(26, innerW / Math.max(3, Math.floor(innerW/22))));
-  const cellH = Math.max(16, Math.min(24, stripH / Math.max(1, Math.floor(stripH/20))));
+  // Cell size — small so we get 3-4 rows within each strip
+  const cellW = Math.max(14, Math.min(22, innerW / Math.max(3, Math.floor(innerW / 18))));
+  const cellH = Math.max(14, Math.min(20, stripH / Math.max(1, Math.floor(stripH / 16))));
 
   for (let s = 0; s < strips; s++) {
-    _drawCropGrid(ctx, innerX, innerY + s*stripH, innerW, stripH, unique[s].name, cellW, cellH);
+    _drawCropGrid(ctx, innerX, innerY + s * stripH, innerW, stripH, unique[s].name, cellW, cellH);
   }
 }
 
