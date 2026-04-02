@@ -10460,7 +10460,7 @@ function drawCrop(ctx, family, cx, cy, s) {
 // Uses HTML5 Canvas directly via Konva.
 // One Shape per area for maximum performance and control.
 
-function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
+function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, stageH, stageScale, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
   const stageRef = useRef(null);
   const lastDistRef = useRef(null);
   const { Stage, Layer, Shape, Rect, Group, Text, Line, Ellipse, Circle } = window.KonvaReact || {};
@@ -10529,6 +10529,19 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
         ctx.moveTo(i + jitter, j);
         ctx.lineTo(i + jitter, j + len);
         ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Pass 3: fine noise dots — mimics soil/moss variation in worn grass
+    ctx.globalAlpha = 0.05;
+    for (let i = 0; i < w; i += 3) {
+      for (let j = 0; j < h; j += 3) {
+        const v = (i * 13 + j * 7) % 9;
+        if (v < 2) {
+          ctx.fillStyle = v === 0 ? K.grassDark : K.grassPale;
+          ctx.fillRect(i, j, 1, 1);
+        }
       }
     }
     ctx.globalAlpha = 1;
@@ -10872,11 +10885,14 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
   };
   const handleTouchEnd = () => { lastDistRef.current = null; };
 
+  const sc = stageScale || 1;
   return (
     <Stage
       ref={stageRef}
-      width={canvasW}
-      height={canvasH}
+      width={stageW || canvasW}
+      height={stageH || canvasH}
+      scaleX={sc}
+      scaleY={sc}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
@@ -10986,30 +11002,45 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                 />
               )}
 
-              {/* Area name — drawn inside the timber frame border, never over soil */}
+              {/* Area name — inside soil, bottom for landscape / left-rotated for portrait */}
               <Shape
                 sceneFunc={(ctx) => {
                   const label = name.toUpperCase();
                   const isLandscape = w >= h;
+                  const fs = Math.max(6, Math.min(9, Math.min(w,h) * 0.07));
                   ctx.save();
-                  ctx.globalAlpha = 0.55;
-                  ctx.fillStyle = "#fff";
+                  ctx.font = `700 ${fs}px sans-serif`;
+                  ctx.textAlign = "center";
                   if (isLandscape) {
-                    // Centred in the bottom timber band
-                    const fs = Math.max(5, Math.min(8, T * 0.75));
-                    ctx.font = `700 ${fs}px sans-serif`;
-                    ctx.textAlign = "center";
+                    const textW = Math.min(ctx.measureText(label).width + 8, w - T*2 - 10);
+                    const pillH = fs + 5;
+                    const px = w/2;
+                    const py = h - T - 4 - pillH/2;
+                    // Dark pill background
+                    ctx.fillStyle = "rgba(0,0,0,0.38)";
+                    ctx.beginPath();
+                    ctx.roundRect(px - textW/2, py - pillH/2, textW, pillH, pillH/2);
+                    ctx.fill();
+                    // Label text
+                    ctx.fillStyle = "#fff";
+                    ctx.globalAlpha = 0.9;
                     ctx.textBaseline = "middle";
-                    ctx.fillText(label, w/2, h - T/2, w - T*2 - 8);
+                    ctx.fillText(label, px, py, textW - 6);
                   } else {
-                    // Centred in the left timber band, rotated
-                    const fs = Math.max(5, Math.min(8, T * 0.75));
-                    ctx.font = `700 ${fs}px sans-serif`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.translate(T/2, h/2);
+                    const maxLen = h - T*2 - 10;
+                    const textW = Math.min(ctx.measureText(label).width + 8, maxLen);
+                    const pillH = fs + 5;
+                    // Rotated pill along left side, inside soil
+                    ctx.translate(T + 4 + pillH/2, h/2);
                     ctx.rotate(-Math.PI / 2);
-                    ctx.fillText(label, 0, 0, h - T*2 - 8);
+                    ctx.fillStyle = "rgba(0,0,0,0.38)";
+                    ctx.beginPath();
+                    ctx.roundRect(-textW/2, -pillH/2, textW, pillH, pillH/2);
+                    ctx.fill();
+                    ctx.fillStyle = "#fff";
+                    ctx.globalAlpha = 0.9;
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(label, 0, 0, textW - 6);
                   }
                   ctx.restore();
                 }}
@@ -11241,10 +11272,12 @@ function PlanScreen() {
   const gardenW=loc?.width_m||Math.max(6,...areas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1;
   const gardenH=loc?.length_m||Math.max(6,...areas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1;
   const CANVAS_PAD=24;
-  const basePxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
-  const pxPerM=basePxPerM*zoom;
+  // pxPerM always at zoom=1 — Konva stage handles scaling via stageScale
+  const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
   const canvasW=Math.max(containerW,gardenW*pxPerM+CANVAS_PAD*2);
   const canvasH=gardenH*pxPerM+CANVAS_PAD*2;
+  const stageW=containerW;
+  const stageH=Math.max(300,canvasH*zoom);
 
   const handleDragEnd=async(areaId,x,y)=>{
     setAreas(prev=>prev.map(a=>a.id===areaId?{...a,layout_x:x,layout_y:y}:a));
@@ -11339,8 +11372,8 @@ function PlanScreen() {
         )}
       </div>
 
-      {/* Canvas container */}
-      <div ref={containerRef} style={{width:"100%",borderRadius:18,overflow:"hidden",border:"1px solid rgba(0,0,0,0.1)",boxShadow:"0 4px 24px rgba(0,0,0,0.14)",overflowX:"auto",overflowY:"auto",maxHeight:540,position:"relative"}}>
+      {/* Canvas container — overflow hidden, Konva stage handles zoom internally */}
+      <div ref={containerRef} style={{width:"100%",borderRadius:18,overflow:"hidden",border:"1px solid rgba(0,0,0,0.1)",boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
         {savedToast&&(
           <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
             ✓ Layout saved
@@ -11349,7 +11382,8 @@ function PlanScreen() {
         {konvaReady?(
           <GardenKonvaCanvas
             areas={areas} crops={crops}
-            pxPerM={pxPerM} canvasW={canvasW} canvasH={Math.max(300,canvasH)}
+            pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
+            stageW={stageW} stageH={stageH} stageScale={zoom}
             activeBlock={activeBlock}
             onTap={id=>setActiveBlock(id===activeBlock?null:id)}
             onDragEnd={handleDragEnd}
