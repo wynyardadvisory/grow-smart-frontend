@@ -10519,80 +10519,48 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
     switch(area.type) {
 
       case "raised_bed": {
-        const T = Math.max(6, Math.min(12, w * 0.08)); // timber thickness proportional
+        const T = Math.max(4, Math.min(7, w * 0.05)); // thinner, less picture-frame
 
-        // Drop shadow
-        ctx.shadowColor = "rgba(0,0,0,0.35)";
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 4;
+        // Soft drop shadow
+        ctx.shadowColor = "rgba(0,0,0,0.25)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 3;
 
         // Outer timber frame
         ctx.fillStyle = K.timber;
         ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 8);
+        ctx.roundRect(x, y, w, h, 6);
         ctx.fill();
         ctx.shadowColor = "transparent";
 
-        // Timber plank texture — horizontal lines
+        // Subtle timber grain — just on the border band
         ctx.strokeStyle = K.timberGrain;
-        ctx.lineWidth = 0.8;
-        ctx.globalAlpha = 0.35;
-        for (let i = T+4; i < h-T; i += 6) {
-          ctx.beginPath(); ctx.moveTo(x+T, y+i); ctx.lineTo(x+w-T, y+i); ctx.stroke();
-        }
-        // Vertical grain on side planks
-        for (let i = T+4; i < w-T; i += 10) {
-          ctx.beginPath(); ctx.moveTo(x+i, y); ctx.lineTo(x+i, y+T); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(x+i, y+h-T); ctx.lineTo(x+i, y+h); ctx.stroke();
+        ctx.lineWidth = 0.6;
+        ctx.globalAlpha = 0.25;
+        for (let i = T+3; i < w-T; i += 9) {
+          ctx.beginPath(); ctx.moveTo(x+i, y+1); ctx.lineTo(x+i, y+T-1); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x+i, y+h-T+1); ctx.lineTo(x+i, y+h-1); ctx.stroke();
         }
         ctx.globalAlpha = 1;
-
-        // Timber edge highlight (top face)
-        const grad = ctx.createLinearGradient(x, y, x, y+T);
-        grad.addColorStop(0, K.timberLight);
-        grad.addColorStop(1, K.timber);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, T, [8,8,0,0]);
-        ctx.fill();
-
-        // Bottom plank
-        ctx.fillStyle = K.timberDark;
-        ctx.beginPath();
-        ctx.roundRect(x, y+h-T, w, T, [0,0,8,8]);
-        ctx.fill();
-
-        // Left/right planks
-        ctx.fillStyle = K.timber;
-        ctx.globalAlpha = 0.7;
-        ctx.fillRect(x, y+T, T, h-T*2);
-        ctx.fillRect(x+w-T, y+T, T, h-T*2);
-        ctx.globalAlpha = 1;
-
-        // Corner bolts
-        [[x+T/2, y+T/2],[x+w-T/2, y+T/2],[x+T/2, y+h-T/2],[x+w-T/2, y+h-T/2]].forEach(([bx,by]) => {
-          ctx.fillStyle = K.timberDark;
-          ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = K.timberLight;
-          ctx.beginPath(); ctx.arc(bx-0.8, by-0.8, 1.2, 0, Math.PI*2); ctx.fill();
-        });
 
         // Soil fill
         const soilGrad = ctx.createRadialGradient(x+w/2, y+h/2, 0, x+w/2, y+h/2, Math.max(w,h)*0.6);
         soilGrad.addColorStop(0, K.soilMid);
         soilGrad.addColorStop(1, K.soilRich);
         ctx.fillStyle = soilGrad;
-        ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
+        ctx.beginPath();
+        ctx.roundRect(x+T, y+T, w-T*2, h-T*2, 3);
+        ctx.fill();
 
-        // Soil texture — random pebbles/clods
-        for (let i = 0; i < 12; i++) {
-          const sx = x+T+6 + (i*29)%(w-T*2-12);
-          const sy = y+T+4 + (i*19)%(h-T*2-8);
+        // Soil texture — faint clods
+        for (let i = 0; i < 10; i++) {
+          const sx = x+T+4 + (i*31)%(w-T*2-8);
+          const sy = y+T+3 + (i*17)%(h-T*2-6);
           ctx.fillStyle = K.soilHigh;
-          ctx.globalAlpha = 0.25;
+          ctx.globalAlpha = 0.18;
           ctx.beginPath();
-          ctx.ellipse(sx, sy, 5+(i%4)*3, 3+(i%3)*2, (i*37)%Math.PI, 0, Math.PI*2);
+          ctx.ellipse(sx, sy, 4+(i%4)*2, 2+(i%3)*2, (i*37)%Math.PI, 0, Math.PI*2);
           ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -10906,51 +10874,39 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                 x={-3} y={-3}
               />
 
-              {/* Crop emoji tiling */}
+              {/* Crop emoji tiling — planned crops excluded, no label */}
               <Shape
                 sceneFunc={(ctx) => {
-                  if (!areaCrops.length) return;
+                  // Filter out planned — only show active crops visually
+                  const activeCrops = areaCrops.filter(c => c.status !== "planned");
+                  const activeUnique = [];
+                  const activeSeen = new Set();
+                  for (const c of activeCrops) { if(!activeSeen.has(c.name)){activeSeen.add(c.name);activeUnique.push(c);} }
+                  if (!activeUnique.length) return;
                   ctx.save();
+                  // Tighter clip — extra padding to prevent overhang
+                  const PAD = T + 4;
                   ctx.beginPath();
-                  ctx.rect(T, LABEL_H + T/2, w - T*2, h - LABEL_H - T*1.5);
+                  ctx.rect(PAD, PAD, w - PAD*2, h - PAD*2);
                   ctx.clip();
 
-                  const firstFamily = getCropFamily(unique[0]?.name);
-                  const isSingleLarge = unique.length === 1 && (firstFamily === "tree" || firstFamily === "bush");
-
-                  if (isSingleLarge) {
-                    const bigSize = Math.max(20, Math.min(40, Math.min(w,h) * 0.38));
-                    ctx.font = `${bigSize}px serif`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(getCropEmoji(unique[0].name), w/2, (LABEL_H + T/2 + h) / 2);
-                  } else {
-                    const innerX = T + 2;
-                    const innerY = LABEL_H + T/2 + 2;
-                    const innerW = w - T*2 - 4;
-                    const innerH = h - LABEL_H - T*1.5 - 4;
-                    const emojiSize = Math.max(10, Math.min(18, Math.min(innerW, innerH) * 0.22));
-                    const strips = Math.min(unique.length, 4);
-                    const stripH = innerH / strips;
-                    for (let s = 0; s < strips; s++) {
-                      const crop = unique[s];
-                      const fam = getCropFamily(crop.name);
-                      if (fam === "tree" || fam === "bush") {
-                        ctx.font = `${emojiSize * 1.4}px serif`;
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        ctx.fillText(getCropEmoji(crop.name), innerX + innerW/2, innerY + s*stripH + stripH/2);
-                      } else {
-                        tileEmoji(ctx, getCropEmoji(crop.name), innerX, innerY + s*stripH, innerW, stripH, emojiSize);
-                      }
-                    }
-                    if (unique.length > 4) {
-                      ctx.font = "bold 9px sans-serif";
-                      ctx.fillStyle = "rgba(255,255,255,0.6)";
-                      ctx.textAlign = "right";
-                      ctx.textBaseline = "bottom";
-                      ctx.fillText(`+${unique.length - 4}`, w - T - 4, h - T - 4);
-                    }
+                  const innerX = PAD + 2;
+                  const innerY = PAD + 2;
+                  const innerW = w - PAD*2 - 4;
+                  const innerH = h - PAD*2 - 4;
+                  const emojiSize = Math.max(10, Math.min(18, Math.min(innerW, innerH) * 0.22));
+                  const strips = Math.min(activeUnique.length, 4);
+                  const stripH = innerH / strips;
+                  for (let s = 0; s < strips; s++) {
+                    const crop = activeUnique[s];
+                    tileEmoji(ctx, getCropEmoji(crop.name), innerX, innerY + s*stripH, innerW, stripH, emojiSize);
+                  }
+                  if (activeUnique.length > 4) {
+                    ctx.font = "bold 9px sans-serif";
+                    ctx.fillStyle = "rgba(255,255,255,0.6)";
+                    ctx.textAlign = "right";
+                    ctx.textBaseline = "bottom";
+                    ctx.fillText(`+${activeUnique.length - 4}`, w - T - 6, h - T - 6);
                   }
                   ctx.restore();
                 }}
@@ -10958,28 +10914,14 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                 listening={false}
               />
 
-              {/* Empty state */}
-              {areaCrops.length===0 && (
+              {/* Empty state — only show if no active crops */}
+              {areaCrops.filter(c => c.status !== "planned").length === 0 && (
                 <Text x={0} y={h/2-7} width={w} align="center"
-                  text="Ready to plant" fontSize={10}
-                  fill="rgba(255,255,255,0.28)" fontStyle="italic"
+                  text="Empty" fontSize={9}
+                  fill="rgba(255,255,255,0.22)" fontStyle="italic"
                   listening={false}
                 />
               )}
-
-              {/* Label */}
-              <Text
-                x={T+5} y={T+3}
-                text={name.toUpperCase()}
-                fontSize={labelSize}
-                fill="rgba(255,255,255,0.6)"
-                fontStyle="600"
-                fontFamily="sans-serif"
-                width={w-T*2-10}
-                ellipsis={true} wrap="none"
-                letterSpacing={0.5}
-                listening={false}
-              />
 
               {/* Rotate handle — draggable when selected */}
               {isSelected && onRotate && (
