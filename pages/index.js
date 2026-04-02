@@ -11103,7 +11103,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                     x={-handleR} y={-handleR}
                   />
                 </Group>
-                </Group>{/* end non-listening rotate wrapper */}
+                </Group>
               )}
             </Group>
           );
