@@ -10911,13 +10911,9 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           const isRotated = area.rotation === 90 || area.rotation === 270;
           const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
           const rawH = isRotated ? (area.width_m||2) : (area.length_m||2);
-          // Preserve aspect ratio — scale up proportionally if too small, don't force square
-          const rawWpx = rawW * pxPerM;
-          const rawHpx = rawH * pxPerM;
-          const MIN = 50;
-          const scale = Math.max(1, MIN / Math.min(rawWpx, rawHpx));
-          const w = Math.max(MIN, rawWpx * scale);
-          const h = Math.max(MIN, rawHpx * scale);
+          const MIN = 65;
+          const w = Math.max(MIN, rawW * pxPerM);
+          const h = Math.max(MIN, rawH * pxPerM);
           const ax = PAD + (area.layout_x||0) * pxPerM;
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
@@ -10982,8 +10978,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                   const innerY = PAD + 2;
                   const innerW = w - PAD*2 - 4;
                   const innerH = h - PAD*2 - 4;
-                  // Size emoji to get roughly 2 rows — not too many, not too few
-                  const emojiSize = Math.max(10, Math.min(16, Math.min(innerW, innerH) * 0.18));
+                  const emojiSize = Math.max(10, Math.min(18, Math.min(innerW, innerH) * 0.22));
                   const strips = Math.min(activeUnique.length, 4);
                   const stripH = innerH / strips;
                   for (let s = 0; s < strips; s++) {
