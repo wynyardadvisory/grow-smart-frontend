@@ -10573,7 +10573,7 @@ function _drawCropGrid(ctx, x, y, w, h, cropName, cellW, cellH) {
   const usableW = w - PAD * 2;
   const usableH = h - PAD * 2;
   const cols = Math.max(1, Math.floor(usableW / (emojiSize + 2)));
-  const rows = Math.max(1, Math.min(4, Math.floor(usableH / (emojiSize + 2))));
+  const rows = Math.max(1, Math.min(3, Math.floor(usableH / (emojiSize + 2))));
   const cw = usableW / cols;
   const ch = usableH / rows;
   ctx.save();
