@@ -10911,9 +10911,13 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           const isRotated = area.rotation === 90 || area.rotation === 270;
           const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
           const rawH = isRotated ? (area.width_m||2) : (area.length_m||2);
-          const MIN = 65;
-          const w = Math.max(MIN, rawW * pxPerM);
-          const h = Math.max(MIN, rawH * pxPerM);
+          // Preserve aspect ratio — scale up proportionally if too small, don't force square
+          const rawWpx = rawW * pxPerM;
+          const rawHpx = rawH * pxPerM;
+          const MIN = 50;
+          const scale = Math.max(1, MIN / Math.min(rawWpx, rawHpx));
+          const w = Math.max(MIN, rawWpx * scale);
+          const h = Math.max(MIN, rawHpx * scale);
           const ax = PAD + (area.layout_x||0) * pxPerM;
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
@@ -10973,13 +10977,13 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                   ctx.rect(PAD, PAD, w - PAD*2, h - PAD*2);
                   ctx.clip();
 
-                  const LABEL_RESERVE = 14; // space reserved for label pill
                   const isLandscape = w >= h;
-                  const innerX = PAD + 2 + (isLandscape ? 0 : LABEL_RESERVE);
+                  const innerX = PAD + 2;
                   const innerY = PAD + 2;
-                  const innerW = w - PAD*2 - 4 - (isLandscape ? 0 : LABEL_RESERVE);
-                  const innerH = h - PAD*2 - 4 - (isLandscape ? LABEL_RESERVE : 0);
-                  const emojiSize = Math.max(9, Math.min(16, Math.min(innerW, innerH) * 0.20));
+                  const innerW = w - PAD*2 - 4;
+                  const innerH = h - PAD*2 - 4;
+                  // Size emoji to get roughly 2 rows — not too many, not too few
+                  const emojiSize = Math.max(10, Math.min(16, Math.min(innerW, innerH) * 0.18));
                   const strips = Math.min(activeUnique.length, 4);
                   const stripH = innerH / strips;
                   for (let s = 0; s < strips; s++) {
