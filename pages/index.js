@@ -10236,21 +10236,57 @@ function _drawGround(ctx, x, y, w, h) {
 // ── Raised bed ─────────────────────────────────────────────────────────────────
 function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.save();
+
+  // Drop shadow
   ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 14;
   ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 6;
   ctx.fillStyle = "#8B6914";
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 5); ctx.fill();
   ctx.shadowColor = "transparent";
+
+  // Clip to bed shape
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 5); ctx.clip();
+
   if (_bedImgCache.state === "ready" && _bedImgCache.img) {
+    // 1. Draw the full bed photo (gives us the wooden frame)
     ctx.drawImage(_bedImgCache.img, x, y, w, h);
+
+    // 2. Overlay real soil texture over the interior only
+    // Frame proportions measured from 105x200 source: 14.3% L/R, 5% top, 7% bottom
+    const fL = Math.round(w * 0.143);
+    const fR = Math.round(w * 0.143);
+    const fT = Math.round(h * 0.05);
+    const fB = Math.round(h * 0.07);
+    const ix = x + fL, iy = y + fT;
+    const iw = w - fL - fR, ih = h - fT - fB;
+
+    if (_soilTextureCache.state === "ready" && _soilTextureCache.img && iw > 0 && ih > 0) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(ix, iy, iw, ih); ctx.clip();
+      const soilPat = ctx.createPattern(_soilTextureCache.img, "repeat");
+      if (soilPat) {
+        // Base dark fill first so any gaps are covered
+        ctx.fillStyle = "#3a2510"; ctx.fillRect(ix, iy, iw, ih);
+        ctx.globalAlpha = 0.88;
+        ctx.fillStyle = soilPat; ctx.fillRect(ix, iy, iw, ih);
+        ctx.globalAlpha = 1;
+      }
+      // Subtle inner shadow to blend frame edge into soil
+      const shadow = ctx.createLinearGradient(ix, iy, ix, iy + Math.min(8, ih * 0.12));
+      shadow.addColorStop(0, "rgba(0,0,0,0.20)"); shadow.addColorStop(1, "transparent");
+      ctx.fillStyle = shadow; ctx.fillRect(ix, iy, iw, ih);
+      ctx.restore();
+    }
   } else {
+    // Fallback: procedural frame + soil
     const T = Math.max(5, Math.min(8, w * .06));
     ctx.fillStyle = K.w2; ctx.fillRect(x, y, w, h);
     const sg = ctx.createRadialGradient(x+w*.35,y+h*.35,0,x+w*.5,y+h*.55,Math.max(w,h)*.7);
     sg.addColorStop(0, K.sL); sg.addColorStop(.45, K.s1); sg.addColorStop(1, K.s2);
-    ctx.fillStyle = sg; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = sg; ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
   }
+
+  // Selection glow
   if (isSelected) {
     ctx.strokeStyle = "rgba(111,175,99,0.60)"; ctx.lineWidth = 3; ctx.setLineDash([5,3]);
     ctx.beginPath(); ctx.roundRect(x+1, y+1, w-2, h-2, 5); ctx.stroke(); ctx.setLineDash([]);
