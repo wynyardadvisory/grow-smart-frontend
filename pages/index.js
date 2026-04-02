@@ -10943,14 +10943,14 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
               onClick={() => onTap(area.id)}
               onTap={() => onTap(area.id)}
             >
-              {/* Area shape */}
+              {/* Area shape — exactly Group bounds, no offset so hit areas don't overlap */}
               <Shape
                 sceneFunc={(ctx, shape) => {
                   drawArea(ctx, area, 0, 0, w, h, isSelected);
                   ctx.fillStrokeShape(shape);
                 }}
-                width={w+10} height={h+10}
-                x={-3} y={-3}
+                width={w} height={h}
+                x={0} y={0}
               />
 
               {/* Crop emoji tiling — planned crops excluded, no label */}
@@ -11202,7 +11202,7 @@ function PlanScreen() {
   const [activeBlock, setActiveBlock] = useState(null);
   const [detailArea,  setDetailArea]  = useState(null);
   const [savedToast,  setSavedToast]  = useState(false);
-  const [zoom,        setZoom]        = useState(1);
+  const [zoom,        setZoom]        = useState(0.82); // slightly zoomed out so garden fits on load
 
   const containerRef   = useRef(null);
   const autoLayoutDone = useRef(false);
@@ -11272,12 +11272,13 @@ function PlanScreen() {
   const gardenW=loc?.width_m||Math.max(6,...areas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1;
   const gardenH=loc?.length_m||Math.max(6,...areas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1;
   const CANVAS_PAD=24;
-  // pxPerM always at zoom=1 — Konva stage handles scaling via stageScale
+  // pxPerM always at zoom=1 — Konva stage scaleX/scaleY handles zoom
   const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
-  const canvasW=Math.max(containerW,gardenW*pxPerM+CANVAS_PAD*2);
+  const canvasW=gardenW*pxPerM+CANVAS_PAD*2;
   const canvasH=gardenH*pxPerM+CANVAS_PAD*2;
+  // Stage viewport = container width, height scales with zoom but capped
   const stageW=containerW;
-  const stageH=Math.max(300,canvasH*zoom);
+  const stageH=Math.min(600, Math.max(300, canvasH*zoom));
 
   const handleDragEnd=async(areaId,x,y)=>{
     setAreas(prev=>prev.map(a=>a.id===areaId?{...a,layout_x:x,layout_y:y}:a));
