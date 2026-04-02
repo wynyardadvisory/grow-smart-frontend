@@ -10316,12 +10316,26 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
 function _drawOpenGround(ctx, x, y, w, h, isSelected) {
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.18)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
-  const sg = ctx.createRadialGradient(x+w*.4, y+h*.4, 0, x+w*.5, y+h*.6, Math.max(w,h)*.7);
-  sg.addColorStop(0, K.sL); sg.addColorStop(1, K.s2);
-  ctx.fillStyle = sg; ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.fill(); // shadow shape
   ctx.shadowColor = "transparent";
-  // cultivated row lines
-  ctx.strokeStyle = K.s1; ctx.lineWidth = 1; ctx.globalAlpha = .18;
+
+  // Clip to shape then fill with soil texture or gradient fallback
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.clip();
+  if (_soilTextureCache.state === "ready" && _soilTextureCache.img) {
+    const soilPat = ctx.createPattern(_soilTextureCache.img, "repeat");
+    if (soilPat) {
+      ctx.fillStyle = K.s2; ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 0.85; ctx.fillStyle = soilPat; ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 1;
+    }
+  } else {
+    const sg = ctx.createRadialGradient(x+w*.4, y+h*.4, 0, x+w*.5, y+h*.6, Math.max(w,h)*.7);
+    sg.addColorStop(0, K.sL); sg.addColorStop(1, K.s2);
+    ctx.fillStyle = sg; ctx.fillRect(x, y, w, h);
+  }
+
+  // cultivated row lines over the texture
+  ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 1; ctx.globalAlpha = .25;
   const rowSpacing = Math.max(8, h/7);
   for (let ry = y+rowSpacing; ry < y+h-4; ry += rowSpacing) {
     ctx.beginPath(); ctx.moveTo(x+6, ry); ctx.lineTo(x+w-6, ry); ctx.stroke();
