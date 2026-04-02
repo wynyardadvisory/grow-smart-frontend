@@ -10253,10 +10253,10 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
 
     // 2. Overlay real soil texture over the interior only
     // Frame proportions measured from 105x200 source: 14.3% L/R, 5% top, 7% bottom
-    const fL = Math.round(w * 0.143);
-    const fR = Math.round(w * 0.143);
-    const fT = Math.round(h * 0.05);
-    const fB = Math.round(h * 0.07);
+    const fL = Math.round(w * 0.11);
+    const fR = Math.round(w * 0.11);
+    const fT = Math.round(h * 0.03);
+    const fB = Math.round(h * 0.04);
     const ix = x + fL, iy = y + fT;
     const iw = w - fL - fR, ih = h - fT - fB;
 
