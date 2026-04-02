@@ -5135,29 +5135,8 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
   crop }) {
 
   // Normalise legacy crop prop
-  const initialScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
+  const resolvedScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
   const resolvedConflict = conflictTaskType || crop?.task_type || null;
-
-  // If no scope provided, show a picker first
-  const needsPicker = !initialScope;
-  const [pickerStep,    setPickerStep]    = useState(needsPicker ? "what" : null); // "what"|"crop"|"area"|null
-  const [pickerCrops,   setPickerCrops]   = useState([]);
-  const [pickerAreas,   setPickerAreas]   = useState([]);
-  const [pickerLoading, setPickerLoading] = useState(false);
-  const [resolvedScope, setResolvedScope] = useState(initialScope);
-
-  // Fetch crops + areas when picker opens
-  const { useEffect: _ue } = React;
-  _ue(() => {
-    if (!needsPicker) return;
-    setPickerLoading(true);
-    Promise.all([apiFetch("/crops"), apiFetch("/locations")]).then(([cropsData, locsData]) => {
-      setPickerCrops(cropsData || []);
-      const areas = (locsData || []).flatMap(l => (l.growing_areas || []).map(a => ({ ...a, locationName: l.name })));
-      setPickerAreas(areas);
-      setPickerLoading(false);
-    }).catch(() => setPickerLoading(false));
-  }, [needsPicker]);
 
   const [saving,      setSaving]      = useState(false);
   const [done,        setDone]        = useState(null);
@@ -5228,185 +5207,82 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
   const scopeLabel = resolvedScope?.name || "garden";
   const actionDefs = { watered: "💧", fed: "🌿", pruned_mulched: "✂️", weeded: "🌱", other: "📝" };
 
-  // ── Scope picker UI ────────────────────────────────────────────────────────
-  const renderPicker = () => {
-    if (pickerStep === "what") {
-      return (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>What were you working on?</div>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button onClick={() => setPickerStep("crop")}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
-              <div style={{ fontSize: 22, width: 32, flexShrink: 0 }}>🌿</div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>A specific crop</div>
-                <div style={{ fontSize: 11, color: C.stone }}>Pick which crop you were tending</div>
-              </div>
-            </button>
-            {pickerAreas.length > 0 && (
-              <button onClick={() => setPickerStep("area")}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
-                <div style={{ fontSize: 22, width: 32, flexShrink: 0 }}>🪴</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>A bed or area</div>
-                  <div style={{ fontSize: 11, color: C.stone }}>Pick a raised bed, border or container</div>
-                </div>
-              </button>
-            )}
-          </div>
-          {pickerLoading && <div style={{ fontSize: 12, color: C.stone, textAlign: "center", marginTop: 16 }}>Loading your garden…</div>}
-        </>
-      );
-    }
-
-    if (pickerStep === "crop") {
-      return (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <button onClick={() => setPickerStep("what")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Which crop?</div>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, marginLeft: "auto" }}>×</button>
-          </div>
-          {pickerLoading ? (
-            <div style={{ fontSize: 12, color: C.stone, textAlign: "center", padding: "20px 0" }}>Loading…</div>
-          ) : pickerCrops.length === 0 ? (
-            <div style={{ fontSize: 13, color: C.stone, textAlign: "center", padding: "20px 0" }}>No crops found</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "55vh", overflowY: "auto" }}>
-              {pickerCrops.map(c => (
-                <button key={c.id}
-                  onClick={() => { setResolvedScope({ type: "crop", id: c.id, name: c.name }); setPickerStep(null); }}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{c.name}</div>
-                  {c.area_name && <div style={{ fontSize: 11, color: C.stone, marginLeft: "auto" }}>{c.area_name}</div>}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      );
-    }
-
-    if (pickerStep === "area") {
-      return (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <button onClick={() => setPickerStep("what")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Which area?</div>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, marginLeft: "auto" }}>×</button>
-          </div>
-          {pickerLoading ? (
-            <div style={{ fontSize: 12, color: C.stone, textAlign: "center", padding: "20px 0" }}>Loading…</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "55vh", overflowY: "auto" }}>
-              {pickerAreas.map(a => (
-                <button key={a.id}
-                  onClick={() => { setResolvedScope({ type: "area", id: a.id, name: a.name }); setPickerStep(null); }}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{a.name}</div>
-                  {a.locationName && <div style={{ fontSize: 11, color: C.stone, marginLeft: "auto" }}>{a.locationName}</div>}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      );
-    }
-
-    return null;
-  };
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
-
-        {/* ── Scope picker steps ── */}
-        {pickerStep && renderPicker()}
-
-        {/* ── Main activity UI (shown when scope is resolved) ── */}
-        {!pickerStep && (
-          done ? (
-            <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
-              {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
+        {done ? (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
+            {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
             </div>
-          ) : (
-            <>
-              {/* Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {needsPicker && (
-                    <button onClick={() => setPickerStep("what")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-                  )}
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
-                </div>
-                <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
-              </div>
-              <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
-                {scopeType === "crop"     && `For: ${scopeLabel}`}
-                {scopeType === "area"     && `Area: ${scopeLabel}`}
-                {scopeType === "location" && `Location: ${scopeLabel}`}
-              </div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
+              {scopeType === "crop"     && `For: ${scopeLabel}`}
+              {scopeType === "area"     && `Area: ${scopeLabel}`}
+              {scopeType === "location" && `Location: ${scopeLabel}`}
+            </div>
 
-              {/* Date selector */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-                {[["today","Today"],["yesterday","Yesterday"],["custom","Choose date"]].map(([val, lbl]) => (
-                  <button key={val} onClick={() => setDateChoice(val)}
-                    style={{ flex: 1, padding: "7px 4px", fontSize: 12, fontWeight: dateChoice === val ? 700 : 400,
-                      background: dateChoice === val ? C.forest : C.offwhite,
-                      color: dateChoice === val ? "#fff" : C.stone,
-                      border: `1px solid ${dateChoice === val ? C.forest : C.border}`,
-                      borderRadius: 8, cursor: "pointer" }}>
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-              {dateChoice === "custom" && (
-                <input type="date" value={customDate} max={todayISO}
-                  onChange={e => setCustomDate(e.target.value)}
-                  style={{ ...inputStyle, marginBottom: 14 }} />
-              )}
+            {/* Date selector */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {[["today","Today"],["yesterday","Yesterday"],["custom","Choose date"]].map(([val, lbl]) => (
+                <button key={val} onClick={() => setDateChoice(val)}
+                  style={{ flex: 1, padding: "7px 4px", fontSize: 12, fontWeight: dateChoice === val ? 700 : 400,
+                    background: dateChoice === val ? C.forest : C.offwhite,
+                    color: dateChoice === val ? "#fff" : C.stone,
+                    border: `1px solid ${dateChoice === val ? C.forest : C.border}`,
+                    borderRadius: 8, cursor: "pointer" }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {dateChoice === "custom" && (
+              <input type="date" value={customDate} max={todayISO}
+                onChange={e => setCustomDate(e.target.value)}
+                style={{ ...inputStyle, marginBottom: 14 }} />
+            )}
 
-              {/* Activity buttons */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-                {ACTIONS.map(a => (
-                  <button key={a.type}
-                    onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
-                    disabled={saving}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
-                    <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
-                      <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+            {/* Activity buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              {ACTIONS.map(a => (
+                <button key={a.type}
+                  onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
+                  disabled={saving}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
+                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
 
-              {/* Other expanded form */}
-              {showOther && (
-                <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
-                  <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
-                    placeholder="e.g. Applied copper fungicide, staked tomatoes…"
-                    style={{ ...inputStyle, marginBottom: 8 }}
-                    autoFocus />
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                    placeholder="Notes (optional)"
-                    style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
-                  <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
-                    style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
-                    {saving ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              )}
-            </>
-          )
+            {/* Other expanded form */}
+            {showOther && (
+              <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
+                <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
+                  placeholder="e.g. Applied copper fungicide, staked tomatoes…"
+                  style={{ ...inputStyle, marginBottom: 8 }}
+                  autoFocus />
+                <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
+                <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
+                  style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -10577,8 +10453,9 @@ function drawCrop(ctx, family, cx, cy, s) {
 // Uses HTML5 Canvas directly via Konva.
 // One Shape per area for maximum performance and control.
 
-function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onTap, onDragEnd }) {
+function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
   const stageRef = useRef(null);
+  const lastDistRef = useRef(null);
   const { Stage, Layer, Shape, Rect, Group, Text, Line, Ellipse, Circle } = window.KonvaReact || {};
 
   if (!Stage) return (
@@ -10924,45 +10801,51 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
     ctx.restore();
   };
 
-  // ── Crop placement ──────────────────────────────────────────────────────
-  const getT = (type) => Math.max(6, Math.min(12, 80 * 0.08)); // approximate timber
-
-  const placeCrops = (area, x, y, w, h) => {
-    const areaCrops = cropsByArea[area.id] || [];
-    if (!areaCrops.length) return [];
-    const T = area.type === "raised_bed" ? Math.max(6, Math.min(12, w*0.08)) : 4;
-    const LABEL_H = Math.max(14, Math.min(18, h*0.14));
-    const PAD_INNER = T + 8;
-
-    const unique = [];
-    const seen = new Set();
-    for (const c of areaCrops) {
-      if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); }
+  // ── Emoji tiling — fills a bed with rows of small emoji ──────────────────
+  const tileEmoji = (ctx, emoji, innerX, innerY, innerW, innerH, emojiSize) => {
+    const cols = Math.max(1, Math.floor(innerW / (emojiSize * 1.5)));
+    const rows = Math.max(1, Math.floor(innerH / (emojiSize * 1.6)));
+    const cellW = innerW / cols;
+    const cellH = innerH / rows;
+    ctx.font = `${emojiSize}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const offsetX = (r % 2 === 1) ? cellW * 0.25 : 0;
+        const ex = innerX + c * cellW + cellW / 2 + offsetX;
+        const ey = innerY + r * cellH + cellH / 2;
+        ctx.fillText(emoji, ex, ey);
+      }
     }
-    const shown = unique.slice(0, 6);
-    const cols = Math.min(shown.length, Math.max(1, Math.floor((w-PAD_INNER*2) / 36)));
-    const rows = Math.ceil(shown.length / cols);
-    const cellW = (w - PAD_INNER*2) / cols;
-    const cellH = (h - PAD_INNER - LABEL_H - 4) / rows;
-    const s = Math.max(10, Math.min(22, Math.min(cellW, cellH) * 0.42));
-
-    return shown.map((crop, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const jX = (i%3===0?-3:i%3===1?3:-1);
-      const jY = (i%2===0?-2:2);
-      return {
-        cx: x + PAD_INNER + col*cellW + cellW*0.5 + jX,
-        cy: y + LABEL_H + PAD_INNER*0.5 + row*cellH + cellH*0.5 + jY,
-        crop, s,
-      };
-    });
   };
 
+  // ── Pinch-to-zoom handlers ────────────────────────────────────────────────
+  const handleTouchMove = (e) => {
+    const touches = e.evt.touches;
+    if (touches.length !== 2) { lastDistRef.current = null; return; }
+    e.evt.preventDefault();
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (lastDistRef.current !== null && onZoomChange) {
+      const delta = dist - lastDistRef.current;
+      onZoomChange(delta);
+    }
+    lastDistRef.current = dist;
+  };
+  const handleTouchEnd = () => { lastDistRef.current = null; };
+
   return (
-    <Stage ref={stageRef} width={canvasW} height={canvasH}>
+    <Stage
+      ref={stageRef}
+      width={canvasW}
+      height={canvasH}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <Layer>
-        {/* Background — drawn as a custom Shape */}
+        {/* Background */}
         <Shape
           sceneFunc={(ctx, shape) => {
             drawBackground(ctx, canvasW, canvasH);
@@ -10988,11 +10871,13 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
           const labelSize = Math.max(7, Math.min(11, w*0.09));
           const name = area.name.replace(/^"|"$/g, "");
 
-          // Unique crops for display
           const unique = [];
           const seen = new Set();
           for (const c of areaCrops) { if(!seen.has(c.name)){seen.add(c.name);unique.push(c);} }
-          const shown = unique.slice(0,6);
+
+          const handleR = 14;
+          const handleX = w + 6;
+          const handleY = -6;
 
           return (
             <Group key={area.id}
@@ -11006,7 +10891,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
               onClick={() => onTap(area.id)}
               onTap={() => onTap(area.id)}
             >
-              {/* Area shape — drawn via custom Shape */}
+              {/* Area shape */}
               <Shape
                 sceneFunc={(ctx, shape) => {
                   drawArea(ctx, area, 0, 0, w, h, isSelected);
@@ -11016,51 +10901,68 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                 x={-3} y={-3}
               />
 
-              {/* Crop illustrations — each as a Shape */}
-              {shown.map((crop, i) => {
-                const cols = Math.min(shown.length, Math.max(1, Math.floor((w-T*2-16)/36)));
-                const rows = Math.ceil(shown.length/cols);
-                const cellW = (w-T*2-16)/cols;
-                const cellH = (h-T*2-LABEL_H-8)/Math.max(1,rows);
-                const s = Math.max(10, Math.min(22, Math.min(cellW,cellH)*0.42));
-                const col = i%cols;
-                const row = Math.floor(i/cols);
-                const jX = (i%3===0?-3:i%3===1?3:-1);
-                const jY = (i%2===0?-2:2);
-                const cx = T+8+col*cellW+cellW*0.5+jX;
-                const cy = LABEL_H+T+4+row*cellH+cellH*0.5+jY;
-                const family = getCropFamily(crop.name);
+              {/* Crop emoji tiling */}
+              <Shape
+                sceneFunc={(ctx) => {
+                  if (!areaCrops.length) return;
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.rect(T, LABEL_H + T/2, w - T*2, h - LABEL_H - T*1.5);
+                  ctx.clip();
 
-                return (
-                  <Shape key={i}
-                    sceneFunc={(ctx) => {
-                      ctx.save();
-                      drawCrop(ctx, family, cx, cy, s);
-                      ctx.restore();
-                    }}
-                    width={s*2+10} height={s*2+10}
-                    x={cx-s-5} y={cy-s-5}
-                    listening={false}
-                  />
-                );
-              })}
+                  const firstFamily = getCropFamily(unique[0]?.name);
+                  const isSingleLarge = unique.length === 1 && (firstFamily === "tree" || firstFamily === "bush");
 
-              {/* Overflow count */}
-              {unique.length>6 && (
-                <Text x={w-22} y={h-14} text={`+${unique.length-6}`}
-                  fontSize={9} fill="rgba(255,255,255,0.55)" fontStyle="bold"
-                />
-              )}
+                  if (isSingleLarge) {
+                    const bigSize = Math.max(20, Math.min(40, Math.min(w,h) * 0.38));
+                    ctx.font = `${bigSize}px serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(getCropEmoji(unique[0].name), w/2, (LABEL_H + T/2 + h) / 2);
+                  } else {
+                    const innerX = T + 2;
+                    const innerY = LABEL_H + T/2 + 2;
+                    const innerW = w - T*2 - 4;
+                    const innerH = h - LABEL_H - T*1.5 - 4;
+                    const emojiSize = Math.max(10, Math.min(18, Math.min(innerW, innerH) * 0.22));
+                    const strips = Math.min(unique.length, 4);
+                    const stripH = innerH / strips;
+                    for (let s = 0; s < strips; s++) {
+                      const crop = unique[s];
+                      const fam = getCropFamily(crop.name);
+                      if (fam === "tree" || fam === "bush") {
+                        ctx.font = `${emojiSize * 1.4}px serif`;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(getCropEmoji(crop.name), innerX + innerW/2, innerY + s*stripH + stripH/2);
+                      } else {
+                        tileEmoji(ctx, getCropEmoji(crop.name), innerX, innerY + s*stripH, innerW, stripH, emojiSize);
+                      }
+                    }
+                    if (unique.length > 4) {
+                      ctx.font = "bold 9px sans-serif";
+                      ctx.fillStyle = "rgba(255,255,255,0.6)";
+                      ctx.textAlign = "right";
+                      ctx.textBaseline = "bottom";
+                      ctx.fillText(`+${unique.length - 4}`, w - T - 4, h - T - 4);
+                    }
+                  }
+                  ctx.restore();
+                }}
+                width={w} height={h}
+                listening={false}
+              />
 
               {/* Empty state */}
               {areaCrops.length===0 && (
                 <Text x={0} y={h/2-7} width={w} align="center"
                   text="Ready to plant" fontSize={10}
                   fill="rgba(255,255,255,0.28)" fontStyle="italic"
+                  listening={false}
                 />
               )}
 
-              {/* Label — top left, small caps, subtle */}
+              {/* Label */}
               <Text
                 x={T+5} y={T+3}
                 text={name.toUpperCase()}
@@ -11073,6 +10975,57 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                 letterSpacing={0.5}
                 listening={false}
               />
+
+              {/* Rotate handle — draggable when selected */}
+              {isSelected && onRotate && (
+                <Group
+                  x={handleX} y={handleY}
+                  draggable
+                  dragBoundFunc={() => ({ x: ax + handleX, y: ay + handleY })}
+                  onDragMove={e => {
+                    const stage = e.target.getStage();
+                    const pos = stage.getPointerPosition();
+                    const centrX = ax + w/2;
+                    const centrY = ay + h/2;
+                    const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
+                    const snapped = Math.round(angle / 45) * 45;
+                    const normalised = ((snapped % 360) + 360) % 360;
+                    onRotate(area.id, normalised, false);
+                  }}
+                  onDragEnd={e => {
+                    const stage = e.target.getStage();
+                    const pos = stage.getPointerPosition();
+                    const centrX = ax + w/2;
+                    const centrY = ay + h/2;
+                    const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
+                    const snapped = Math.round(angle / 45) * 45;
+                    const normalised = ((snapped % 360) + 360) % 360;
+                    onRotate(area.id, normalised, true);
+                    e.target.x(handleX);
+                    e.target.y(handleY);
+                  }}
+                >
+                  <Shape
+                    sceneFunc={(ctx, shape) => {
+                      ctx.beginPath();
+                      ctx.arc(0, 0, handleR, 0, Math.PI*2);
+                      ctx.fillStyle = "#2F5D50";
+                      ctx.fill();
+                      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+                      ctx.lineWidth = 1.5;
+                      ctx.stroke();
+                      ctx.font = `bold ${handleR}px sans-serif`;
+                      ctx.fillStyle = "#fff";
+                      ctx.textAlign = "center";
+                      ctx.textBaseline = "middle";
+                      ctx.fillText("\u21bb", 0, 1);
+                      ctx.fillStrokeShape(shape);
+                    }}
+                    width={handleR*2} height={handleR*2}
+                    x={-handleR} y={-handleR}
+                  />
+                </Group>
+              )}
             </Group>
           );
         })}
@@ -11261,13 +11214,19 @@ function PlanScreen() {
     }catch(e){console.error("[Visualiser] save failed:",e.message);}
   };
 
-  const handleRotate=async(areaId)=>{
+  const handleRotate=async(areaId, angle, save)=>{
     const area=areas.find(a=>a.id===areaId);
     if(!area) return;
-    const newR=((area.rotation||0)+90)%360;
+    const newR = angle !== undefined ? angle : ((area.rotation||0)+90)%360;
     setAreas(prev=>prev.map(a=>a.id===areaId?{...a,rotation:newR}:a));
-    try{await apiFetch(`/areas/${areaId}`,{method:"PUT",body:JSON.stringify({rotation:newR})});}
-    catch(e){console.error("[Visualiser] rotate failed:",e.message);}
+    if(save !== false){
+      try{await apiFetch(`/areas/${areaId}`,{method:"PUT",body:JSON.stringify({rotation:newR})});}
+      catch(e){console.error("[Visualiser] rotate failed:",e.message);}
+    }
+  };
+
+  const handleZoomChange=(delta)=>{
+    setZoom(z=>Math.min(2.5,Math.max(0.4,+(z+delta*0.01).toFixed(2))));
   };
 
   const totalCrops=crops.filter(c=>areas.some(a=>a.id===c.area_id)).length;
@@ -11353,6 +11312,9 @@ function PlanScreen() {
             activeBlock={activeBlock}
             onTap={id=>setActiveBlock(id===activeBlock?null:id)}
             onDragEnd={handleDragEnd}
+            onRotate={handleRotate}
+            onZoomChange={handleZoomChange}
+            zoom={zoom}
           />
         ):(
           <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:K.canvasBg,color:"rgba(255,255,255,0.5)",fontSize:14}}>
