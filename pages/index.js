@@ -10943,7 +10943,10 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
               onClick={() => onTap(area.id)}
               onTap={() => onTap(area.id)}
             >
-              {/* Area shape — exactly Group bounds, no offset so hit areas don't overlap */}
+              {/* Explicit hit rect — constrains tap/drag to exact bed bounds only */}
+              <Rect x={0} y={0} width={w} height={h} fill="transparent" />
+
+              {/* Area shape — listening disabled so hit rect is the only target */}
               <Shape
                 sceneFunc={(ctx, shape) => {
                   drawArea(ctx, area, 0, 0, w, h, isSelected);
@@ -10951,6 +10954,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                 }}
                 width={w} height={h}
                 x={0} y={0}
+                listening={false}
               />
 
               {/* Crop emoji tiling — planned crops excluded, no label */}
@@ -11048,11 +11052,13 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                 listening={false}
               />
 
-              {/* Rotate handle — draggable when selected */}
+              {/* Rotate handle — wrapped in non-listening Group so it doesn't expand hit area */}
               {isSelected && onRotate && (
+                <Group listening={false}>
                 <Group
                   x={handleX} y={handleY}
                   draggable
+                  listening={true}
                   dragBoundFunc={() => ({ x: ax + handleX, y: ay + handleY })}
                   onDragMove={e => {
                     const stage = e.target.getStage();
@@ -11097,6 +11103,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
                     x={-handleR} y={-handleR}
                   />
                 </Group>
+                </Group>{/* end non-listening rotate wrapper */}
               )}
             </Group>
           );
@@ -11269,8 +11276,11 @@ function PlanScreen() {
     if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
   },[areas.length,selectedLoc]);
 
-  const gardenW=loc?.width_m||Math.max(6,...areas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1;
-  const gardenH=loc?.length_m||Math.max(6,...areas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1;
+  // Always use actual area extents — loc dimensions may be smaller than placed beds
+  const actualW = areas.length ? Math.max(...areas.map(a=>(a.layout_x||0)+(a.width_m||2))) + 1 : 6;
+  const actualH = areas.length ? Math.max(...areas.map(a=>(a.layout_y||0)+(a.length_m||2))) + 1 : 6;
+  const gardenW = Math.max(actualW, loc?.width_m||0);
+  const gardenH = Math.max(actualH, loc?.length_m||0);
   const CANVAS_PAD=24;
   // pxPerM always at zoom=1 — Konva stage scaleX/scaleY handles zoom
   const pxPerM=Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
