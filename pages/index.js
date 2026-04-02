@@ -3466,7 +3466,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
 
       {showLogActivity && (
         <LogActionSheet
-          scope={locations[0] ? { type: "location", id: locations[0].id, name: locations[0].name } : { type: "location", id: "unknown", name: "garden" }}
+          scope={null}
           onClose={() => setShowLogActivity(false)}
           onLogged={() => { setShowLogActivity(false); load(true); }}
         />
@@ -5126,120 +5126,229 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 // Reusable bottom sheet for logging manual garden activity.
 // Props:
 //   scope      — { type: 'crop'|'area'|'location', id, name } | null
-//                null = Today entry point, user chooses scope from their locations/areas
+//                null = general entry (Today button) — user picks action then scope
 //   onClose    — called on dismiss
 //   onLogged   — called after successful save (triggers parent refresh)
-//   conflictTaskType — optional string, hides conflicting action buttons (e.g. "feed")
+//   conflictTaskType — optional string, hides conflicting action buttons
 function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
-  // Legacy prop support — old callers pass { crop } object
+  // Legacy prop support
   crop }) {
 
   // Normalise legacy crop prop
-  const resolvedScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
+  const presetScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
   const resolvedConflict = conflictTaskType || crop?.task_type || null;
+
+  // step: "action" | "scope" | "confirm"
+  const [step,          setStep]         = useState("action");
+  const [pickedAction,  setPickedAction] = useState(null);
+  const [pickedScope,   setPickedScope]  = useState(presetScope);
+  const [scopeOptions,  setScopeOptions] = useState([]); // locations/areas/crops for picker
+  const [loadingScope,  setLoadingScope] = useState(false);
 
   const [saving,      setSaving]      = useState(false);
   const [done,        setDone]        = useState(null);
   const [otherLabel,  setOtherLabel]  = useState("");
   const [notes,       setNotes]       = useState("");
   const [showOther,   setShowOther]   = useState(false);
-  const [dateChoice,  setDateChoice]  = useState("today"); // "today"|"yesterday"|"custom"
+  const [dateChoice,  setDateChoice]  = useState("today");
   const [customDate,  setCustomDate]  = useState(() => new Date().toISOString().split("T")[0]);
 
   const todayISO     = new Date().toISOString().split("T")[0];
   const yesterdayISO = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const performedAt  = dateChoice === "today"     ? new Date().toISOString()
+                     : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
+                     : new Date(customDate + "T12:00:00").toISOString();
 
-  const performedAt = dateChoice === "today"     ? new Date().toISOString()
-                    : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
-                    : new Date(customDate + "T12:00:00").toISOString();
-
-  // Actions vary by scope type — feed is crop-only
+  // Action definitions with correct scope rules per spec:
+  // watered      → location or area
+  // fed          → crop, area, or location
+  // weeded       → location only
+  // pruned_mulched → crop only
+  // other        → location or area
   const ALL_ACTIONS = [
-    { type: "watered",        emoji: "💧", label: "Watered",         desc: "Update watering schedule",         scopes: ["crop","area","location"], conflicts: ["water"] },
-    { type: "fed",            emoji: "🌿", label: "Fed",             desc: "Reset feeding schedule from today", scopes: ["crop"],                   conflicts: ["feed"] },
-    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching",          scopes: ["crop","area","location"], conflicts: ["prune","mulch"] },
-    { type: "weeded",         emoji: "🌱", label: "Weeded",          desc: "Log weeding",                       scopes: ["crop","area","location"], conflicts: [] },
-    { type: "other",          emoji: "📝", label: "Other",           desc: "Record something else",             scopes: ["crop","area","location"], conflicts: [] },
+    { type: "watered",        emoji: "💧", label: "Watered",          desc: "Suppress upcoming water tasks",     scopeTypes: ["location","area"],            conflicts: ["water"] },
+    { type: "fed",            emoji: "🌿", label: "Fed",              desc: "Reset feeding schedule from today",  scopeTypes: ["crop","area","location"],    conflicts: ["feed"]  },
+    { type: "weeded",         emoji: "🌱", label: "Weeded",           desc: "Log weeding across the garden",     scopeTypes: ["location"],                  conflicts: []        },
+    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching a crop",   scopeTypes: ["crop"],                      conflicts: ["prune","mulch"] },
+    { type: "other",          emoji: "📝", label: "Other",            desc: "Record anything else",              scopeTypes: ["location","area","crop"],    conflicts: []        },
   ];
 
-  const scopeType = resolvedScope?.type || "crop";
-  const ACTIONS = ALL_ACTIONS
-    .filter(a => a.scopes.includes(scopeType))
-    .filter(a => !a.conflicts.includes(resolvedConflict));
+  const ACTIONS = ALL_ACTIONS.filter(a => !a.conflicts.includes(resolvedConflict));
 
-  const logAction = async (actionType) => {
-    if (saving) return;
-    if (actionType === "other" && !otherLabel.trim()) return;
+  // When a preset scope exists, filter actions to what's valid for that scope
+  const VISIBLE_ACTIONS = presetScope
+    ? ACTIONS.filter(a => a.scopeTypes.includes(presetScope.type))
+    : ACTIONS;
+
+  // Load scope options after action is picked (only when no preset scope)
+  const loadScopeOptions = async (actionType) => {
+    const action = ALL_ACTIONS.find(a => a.type === actionType);
+    if (!action) return;
+    const types = action.scopeTypes;
+    setLoadingScope(true);
+    try {
+      const opts = [];
+      if (types.includes("location") || types.includes("area")) {
+        const locs = await apiFetch("/locations");
+        if (types.includes("location")) {
+          (locs || []).forEach(l => opts.push({ type: "location", id: l.id, name: l.name, sub: "Whole garden" }));
+        }
+        if (types.includes("area")) {
+          const areas = await apiFetch("/areas");
+          (areas || []).forEach(a => opts.push({ type: "area", id: a.id, name: a.name, sub: "Bed / area" }));
+        }
+      }
+      if (types.includes("crop")) {
+        const crops = await apiFetch("/crops");
+        (crops || []).filter(c => c.active !== false).forEach(c =>
+          opts.push({ type: "crop", id: c.id, name: c.name, sub: "Crop" })
+        );
+      }
+      // If only one option and it's location-only (weeded), auto-select it
+      if (opts.length === 1 || (actionType === "weeded" && opts.filter(o => o.type === "location").length === 1)) {
+        const loc = opts.find(o => o.type === "location");
+        if (loc) { setPickedScope(loc); setStep("confirm"); setLoadingScope(false); return; }
+      }
+      setScopeOptions(opts);
+      setStep("scope");
+    } catch(e) { console.error("[LogAction] scope load failed:", e); }
+    setLoadingScope(false);
+  };
+
+  const handleActionPick = async (actionType) => {
+    setPickedAction(actionType);
+    if (presetScope) {
+      // Scope already known — go straight to confirm
+      setPickedScope(presetScope);
+      setStep("confirm");
+    } else {
+      await loadScopeOptions(actionType);
+    }
+  };
+
+  const logAction = async () => {
+    if (saving || !pickedScope || !pickedAction) return;
+    if (pickedAction === "other" && !otherLabel.trim()) return;
     setSaving(true);
     try {
       let result;
-      // Guard: if scope has no id, log gracefully and exit
-      if (!resolvedScope || !resolvedScope.id || resolvedScope.id === "unknown") {
-        setDone({ action_type: actionType, hint: "Activity noted" });
-        setTimeout(() => onLogged(), 1500);
-        return;
-      }
-      if (scopeType === "crop") {
-        // Use existing crop endpoint for crop scope (backward compat)
-        result = await apiFetch(`/crops/${resolvedScope.id}/log-action`, {
+      if (pickedScope.type === "crop") {
+        result = await apiFetch(`/crops/${pickedScope.id}/log-action`, {
           method: "POST",
           body: JSON.stringify({
-            action_type:  actionType,
+            action_type:  pickedAction,
             notes:        notes || null,
-            custom_label: actionType === "other" ? otherLabel.trim() : null,
+            custom_label: pickedAction === "other" ? otherLabel.trim() : null,
             performed_at: performedAt,
           }),
         });
       } else {
-        // Use generic endpoint for area/location scope
         result = await apiFetch("/activity/log", {
           method: "POST",
           body: JSON.stringify({
-            activity_type: actionType,
-            scope_type:    scopeType,
-            scope_id:      resolvedScope.id,
+            activity_type: pickedAction,
+            scope_type:    pickedScope.type,
+            scope_id:      pickedScope.id,
             notes:         notes || null,
-            custom_label:  actionType === "other" ? otherLabel.trim() : null,
+            custom_label:  pickedAction === "other" ? otherLabel.trim() : null,
             performed_at:  performedAt,
           }),
         });
       }
       const hint = result?.next_action_hint || null;
-      setDone({ action_type: actionType, hint });
+      setDone({ action_type: pickedAction, hint });
       setTimeout(() => onLogged(), 2000);
     } catch(e) {
       console.error("[LogAction] failed:", e);
       setSaving(false);
-      // Show error inline so user knows it failed
-      setDone({ action_type: actionType, hint: "Something went wrong — please try again", error: true });
-      setTimeout(() => { setDone(null); }, 3000);
+      setDone({ action_type: pickedAction, hint: "Something went wrong — please try again", error: true });
+      setTimeout(() => { setDone(null); setSaving(false); }, 3000);
     }
   };
 
-  const scopeLabel = resolvedScope?.name || "garden";
   const actionDefs = { watered: "💧", fed: "🌿", pruned_mulched: "✂️", weeded: "🌱", other: "📝" };
+  const currentAction = ALL_ACTIONS.find(a => a.type === pickedAction);
+
+  const sheetStyle = { background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" };
+  const dragBar = <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 18px" }} />;
+
+  const headerRow = (title, onBack) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone, padding: 0 }}>‹</button>}
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", flex: 1 }}>{title}</div>
+      <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
+    </div>
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
+      <div style={sheetStyle}>
+        {dragBar}
+
+        {/* ── Done state ── */}
         {done ? (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: done.error ? C.red : "#1a1a1a", marginBottom: 6 }}>
+              {done.error ? "Not saved" : "Logged"}
+            </div>
             {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
           </div>
-        ) : (
+
+        /* ── Step 1: pick action ── */
+        ) : step === "action" ? (
           <>
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
+            {headerRow("Log activity")}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {VISIBLE_ACTIONS.map(a => (
+                <button key={a.type} onClick={() => handleActionPick(a.type)}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ fontSize: 22, width: 30, flexShrink: 0 }}>{a.emoji}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
+                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
+                  </div>
+                </button>
+              ))}
             </div>
+          </>
+
+        /* ── Loading scope ── */
+        ) : loadingScope ? (
+          <div style={{ textAlign: "center", padding: "40px 0", color: C.stone, fontSize: 14 }}>Loading…</div>
+
+        /* ── Step 2: pick scope ── */
+        ) : step === "scope" ? (
+          <>
+            {headerRow(`${currentAction?.emoji} ${currentAction?.label} — where?`, () => { setStep("action"); setPickedAction(null); setScopeOptions([]); })}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {scopeOptions.map(opt => (
+                <button key={opt.id} onClick={() => { setPickedScope(opt); setStep("confirm"); }}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ fontSize: 18 }}>
+                    {opt.type === "location" ? "📍" : opt.type === "area" ? "🪴" : "🌱"}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{opt.name}</div>
+                    <div style={{ fontSize: 11, color: C.stone }}>{opt.sub}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+
+        /* ── Step 3: confirm + date + notes ── */
+        ) : step === "confirm" ? (
+          <>
+            {headerRow(
+              `${currentAction?.emoji} ${currentAction?.label}`,
+              presetScope ? null : () => { setStep("scope"); setPickedScope(null); }
+            )}
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
-              {scopeType === "crop"     && `For: ${scopeLabel}`}
-              {scopeType === "area"     && `Area: ${scopeLabel}`}
-              {scopeType === "location" && `Location: ${scopeLabel}`}
+              {pickedScope?.type === "location" && `Logging for: ${pickedScope.name}`}
+              {pickedScope?.type === "area"     && `Area: ${pickedScope.name}`}
+              {pickedScope?.type === "crop"     && `Crop: ${pickedScope.name}`}
             </div>
 
             {/* Date selector */}
@@ -5261,41 +5370,29 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
                 style={{ ...inputStyle, marginBottom: 14 }} />
             )}
 
-            {/* Activity buttons */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-              {ACTIONS.map(a => (
-                <button key={a.type}
-                  onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
-                  disabled={saving}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
-                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Other expanded form */}
-            {showOther && (
-              <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
+            {/* Other label */}
+            {pickedAction === "other" && (
+              <div style={{ marginBottom: 12 }}>
                 <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
-                  placeholder="e.g. Applied copper fungicide, staked tomatoes…"
-                  style={{ ...inputStyle, marginBottom: 8 }}
-                  autoFocus />
-                <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="Notes (optional)"
-                  style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
-                <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
-                  style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
-                  {saving ? "Saving…" : "Save"}
-                </button>
+                  placeholder="What did you do? e.g. Applied fungicide…"
+                  style={{ ...inputStyle, marginBottom: 8 }} autoFocus />
               </div>
             )}
+
+            {/* Notes */}
+            <textarea value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="Notes (optional)"
+              style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 14 }} />
+
+            <button onClick={logAction}
+              disabled={saving || (pickedAction === "other" && !otherLabel.trim())}
+              style={{ width: "100%", background: (pickedAction === "other" && !otherLabel.trim()) ? "#ccc" : C.forest,
+                border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700,
+                color: "#fff", cursor: saving ? "default" : "pointer", fontFamily: "serif" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
