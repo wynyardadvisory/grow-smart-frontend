@@ -10134,12 +10134,18 @@ function AdminScreen({ isDemo = false }) {
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const K = {
-  // Canvas — muted earthy path/bark
+  // Canvas — grass
   canvasBg:     "#5C7A3E",
   grassDark:    "#4A6630",
   grassMid:     "#527038",
   grassLight:   "#6A8A48",
   grassPale:    "#7A9A55",
+
+  // Cobblestone border
+  cobbBase:     "#8A8070",
+  cobbLight:    "#A09888",
+  cobbDark:     "#6A6058",
+  cobbMortar:   "#504840",
 
   // Raised bed — natural oak/pine timber
   timber:       "#9B7040",
@@ -10471,18 +10477,19 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
 
   // ── Draw bark/path background ───────────────────────────────────────────
   const drawBackground = (ctx, w, h) => {
-    // Base grass — muted olive/sage, not bright
+    // Base grass
     ctx.fillStyle = K.canvasBg;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle colour variation patches — worn allotment ground feel
+    // Tonal variation patches — worn, uneven lawn feel
     const patches = [
-      { x: w*0.15, y: h*0.2,  r: w*0.22, col: K.grassDark,  a: 0.18 },
-      { x: w*0.7,  y: h*0.15, r: w*0.18, col: K.grassLight, a: 0.14 },
-      { x: w*0.4,  y: h*0.6,  r: w*0.25, col: K.grassDark,  a: 0.16 },
-      { x: w*0.85, y: h*0.7,  r: w*0.2,  col: K.grassPale,  a: 0.12 },
-      { x: w*0.1,  y: h*0.8,  r: w*0.15, col: K.grassMid,   a: 0.13 },
-      { x: w*0.55, y: h*0.35, r: w*0.16, col: K.grassLight, a: 0.10 },
+      { x: w*0.15, y: h*0.2,  r: w*0.28, col: K.grassDark,  a: 0.20 },
+      { x: w*0.7,  y: h*0.12, r: w*0.22, col: K.grassLight, a: 0.15 },
+      { x: w*0.4,  y: h*0.6,  r: w*0.30, col: K.grassDark,  a: 0.18 },
+      { x: w*0.85, y: h*0.75, r: w*0.24, col: K.grassPale,  a: 0.13 },
+      { x: w*0.08, y: h*0.8,  r: w*0.18, col: K.grassMid,   a: 0.14 },
+      { x: w*0.55, y: h*0.38, r: w*0.20, col: K.grassLight, a: 0.11 },
+      { x: w*0.3,  y: h*0.9,  r: w*0.18, col: K.grassDark,  a: 0.12 },
     ];
     patches.forEach(p => {
       const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
@@ -10494,22 +10501,79 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
     });
     ctx.globalAlpha = 1;
 
-    // Grass blade texture — short vertical strokes, very faint
-    ctx.globalAlpha = 0.09;
-    for (let i = 0; i < w; i += 5) {
-      for (let j = 0; j < h; j += 7) {
-        const jitter = (i * 7 + j * 13) % 5 - 2;
-        const len    = 3 + (i * 3 + j) % 4;
-        const tone   = (i + j) % 3 === 0 ? K.grassDark : K.grassLight;
-        ctx.strokeStyle = tone;
-        ctx.lineWidth   = 0.8;
+    // Grass blades — two passes, different angles for depth
+    // Pass 1: near-vertical blades
+    ctx.globalAlpha = 0.11;
+    for (let i = 0; i < w; i += 4) {
+      for (let j = 0; j < h; j += 6) {
+        const jitter = (i * 7 + j * 13) % 6 - 3;
+        const lean   = (i * 3 + j * 5) % 5 - 2; // slight lean left/right
+        const len    = 4 + (i * 3 + j) % 5;
+        ctx.strokeStyle = (i + j) % 3 === 0 ? K.grassDark : K.grassLight;
+        ctx.lineWidth   = 0.7;
         ctx.beginPath();
         ctx.moveTo(i + jitter, j);
-        ctx.lineTo(i + jitter * 0.5, j + len);
+        ctx.lineTo(i + jitter + lean, j + len);
+        ctx.stroke();
+      }
+    }
+    // Pass 2: shorter blades, offset grid — adds density without uniformity
+    ctx.globalAlpha = 0.07;
+    for (let i = 2; i < w; i += 6) {
+      for (let j = 3; j < h; j += 8) {
+        const jitter = (i * 11 + j * 7) % 4 - 2;
+        const len    = 2 + (i + j) % 3;
+        ctx.strokeStyle = (i * j) % 4 === 0 ? K.grassPale : K.grassMid;
+        ctx.lineWidth   = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(i + jitter, j);
+        ctx.lineTo(i + jitter, j + len);
         ctx.stroke();
       }
     }
     ctx.globalAlpha = 1;
+
+    // Cobblestone border — thin band around the entire canvas edge
+    const BW = 18; // border width in px
+    const COBB_W = 22;
+    const COBB_H = 12;
+    const MORTAR = 2;
+
+    ctx.save();
+    // Clip to border band only (exclude inner grass area)
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.rect(BW, BW, w - BW*2, h - BW*2); // inner cutout — fills even-odd
+    ctx.clip("evenodd");
+
+    // Draw cobblestone pattern across full canvas — will be clipped to border
+    for (let row = 0; row * COBB_H < h + COBB_H; row++) {
+      const offsetX = (row % 2 === 1) ? COBB_W * 0.5 : 0;
+      for (let col = -1; col * COBB_W < w + COBB_W; col++) {
+        const cx = col * (COBB_W + MORTAR) + offsetX;
+        const cy = row * (COBB_H + MORTAR);
+        const cw = COBB_W - 1;
+        const ch = COBB_H - 1;
+        // Stone base
+        const tone = (row * 3 + col * 7) % 3;
+        ctx.fillStyle = tone === 0 ? K.cobbDark : tone === 1 ? K.cobbBase : K.cobbLight;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cw, ch, 2);
+        ctx.fill();
+        // Highlight top-left edge
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cw, 3, [2,2,0,0]);
+        ctx.fill();
+      }
+    }
+    // Mortar colour as base fill (shows in gaps)
+    ctx.fillStyle = K.cobbMortar;
+    // Already clipped — just overdraw mortar gaps with a faint overlay
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    ctx.restore();
   };
 
   // ── Draw individual area ────────────────────────────────────────────────
@@ -10922,28 +10986,28 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, activeBlock
                 />
               )}
 
-              {/* Area name — small, along longest edge */}
+              {/* Area name — drawn inside the timber frame border, never over soil */}
               <Shape
                 sceneFunc={(ctx) => {
                   const label = name.toUpperCase();
                   const isLandscape = w >= h;
                   ctx.save();
-                  ctx.globalAlpha = 0.45;
+                  ctx.globalAlpha = 0.55;
                   ctx.fillStyle = "#fff";
                   if (isLandscape) {
-                    // Along bottom edge, horizontal
-                    const fs = Math.max(6, Math.min(9, w * 0.06));
-                    ctx.font = `600 ${fs}px sans-serif`;
+                    // Centred in the bottom timber band
+                    const fs = Math.max(5, Math.min(8, T * 0.75));
+                    ctx.font = `700 ${fs}px sans-serif`;
                     ctx.textAlign = "center";
-                    ctx.textBaseline = "bottom";
-                    ctx.fillText(label, w/2, h - T - 2, w - T*2 - 8);
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(label, w/2, h - T/2, w - T*2 - 8);
                   } else {
-                    // Rotated along left edge, reading bottom-to-top
-                    const fs = Math.max(6, Math.min(9, h * 0.05));
-                    ctx.font = `600 ${fs}px sans-serif`;
+                    // Centred in the left timber band, rotated
+                    const fs = Math.max(5, Math.min(8, T * 0.75));
+                    ctx.font = `700 ${fs}px sans-serif`;
                     ctx.textAlign = "center";
-                    ctx.textBaseline = "top";
-                    ctx.translate(T + fs, h/2);
+                    ctx.textBaseline = "middle";
+                    ctx.translate(T/2, h/2);
                     ctx.rotate(-Math.PI / 2);
                     ctx.fillText(label, 0, 0, h - T*2 - 8);
                   }
