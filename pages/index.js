@@ -5392,10 +5392,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         method: "PUT",
         body: JSON.stringify({
           ...editForm,
-          sown_date:  editForm.sown_date || null,   // never send empty string
-          variety_id: isOther ? null : (editForm.variety_id || null),
-          variety:    isOther ? (editForm.variety || null) : (editVarieties.find(v => v.id === editForm.variety_id)?.name || editForm.variety || null),
-          status:     editForm.status || "growing",
+          sown_date:     editForm.sown_date  || null,
+          variety_id:    isOther ? null : (editForm.variety_id || null),
+          variety:       isOther ? (editForm.variety || null) : (editVarieties.find(v => v.id === editForm.variety_id)?.name || editForm.variety || null),
+          status:        editForm.status        || "growing",
+          grown_from:    editForm.grown_from    || null,
+          lifecycle_mode: editForm.lifecycle_mode || "seasonal",
         }),
       });
       setEditing(null);
