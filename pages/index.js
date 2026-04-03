@@ -1295,8 +1295,8 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
 // BADGES & CHALLENGES
 // =============================================================================
 
-const BADGE_CATEGORIES = ["tasks","planning","sowing","harvest","photos","consistency","seasonal"];
-const CATEGORY_LABELS  = { tasks:"Tasks", planning:"Planning", sowing:"Sowing", harvest:"Harvest", photos:"Photos & Sharing", consistency:"Consistency", seasonal:"Seasonal" };
+const BADGE_CATEGORIES = ["getting_started","progress","variety","harvest","seasonal","tasks","planning","sowing","photos","consistency"];
+const CATEGORY_LABELS  = { getting_started:"Getting Started", progress:"Progress", variety:"Variety", harvest:"Harvest", seasonal:"Seasonal", tasks:"Tasks", planning:"Planning", sowing:"Sowing", photos:"Photos & Sharing", consistency:"Consistency" };
 
 function useBadges() {
   const [badges, setBadges] = useState(null);
@@ -1517,19 +1517,7 @@ function BadgesPage() {
             </div>
           )}
 
-          {/* Streak */}
-          <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginTop:16 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <span style={{ fontSize:28 }}>🔥</span>
-                <div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a" }}>Current Streak</div>
-                  <div style={{ fontSize:12, color:C.stone }}>Longest: {counters.longest_streak_days || 0} days</div>
-                </div>
-              </div>
-              <div style={{ fontSize:28, fontWeight:700, fontFamily:"serif", color:C.forest }}>{counters.current_streak_days || 0}<span style={{ fontSize:14, fontWeight:400, color:C.stone }}> days</span></div>
-            </div>
-          </div>
+          {/* Streak card removed — replaced by real garden activity badges */}
         </div>
       )}
 
