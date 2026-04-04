@@ -10834,22 +10834,35 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
     return;
   }
 
-  // Raised bed: 2 rows of 3 emojis per unique crop (max 3 crops)
-  // Each crop gets its own row; within each row, 3 copies of the emoji spread evenly
-  const COLS = 3;
-  const rowCount = crops.length; // 1, 2 or 3
-  const sz = Math.max(11, Math.min(16, Math.min(innerW / (COLS * 1.6), innerH / (rowCount * 1.8))));
+  // Raised bed: always 6 emojis in a 2×3 grid (landscape) or 3×2 grid (portrait)
+  // Up to 3 unique crops — each gets 2 emojis. 1 crop = 6 of same, 2 crops = 3+3, 3 crops = 2+2+2
+  const isLandscape = innerW >= innerH;
+  // landscape = 2 rows × 3 cols; portrait = 3 rows × 2 cols
+  const GRID_ROWS = isLandscape ? 2 : 3;
+  const GRID_COLS = isLandscape ? 3 : 2;
+  // Build sequence of 6 emojis — 2 of each crop (cycling if fewer than 3)
+  const cropList = crops.slice(0, 3);
+  const emojiSeq = [];
+  // Fill 6 slots: 2 per crop, in crop order
+  const perCrop = Math.floor(6 / cropList.length);
+  cropList.forEach(c => {
+    for (let i = 0; i < perCrop; i++) emojiSeq.push(getCropEmoji(c.name));
+  });
+  // Top up to 6 if rounding left gaps
+  while (emojiSeq.length < 6) emojiSeq.push(getCropEmoji(cropList[0].name));
+
+  const sz = Math.max(10, Math.min(15, Math.min(innerW / (GRID_COLS * 1.7), innerH / (GRID_ROWS * 1.8))));
   ctx.save();
   ctx.font = `${sz}px serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  crops.forEach((c, row) => {
-    const rowY = innerY + (row + 0.5) * (innerH / rowCount);
-    const emoji = getCropEmoji(c.name);
-    for (let col = 0; col < COLS; col++) {
-      const ex = innerX + (col + 0.5) * (innerW / COLS);
-      ctx.fillText(emoji, ex, rowY);
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const idx = row * GRID_COLS + col;
+      const ex = innerX + (col + 0.5) * (innerW / GRID_COLS);
+      const ey = innerY + (row + 0.5) * (innerH / GRID_ROWS);
+      ctx.fillText(emojiSeq[idx], ex, ey);
     }
-  });
+  }
   ctx.restore();
 }
 
