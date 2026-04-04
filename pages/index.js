@@ -7601,6 +7601,17 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   const [logLoading, setLogLoading] = useState(false);
   const [allHarvests, setAllHarvests] = useState([]);
 
+  // Email preferences state
+  const [marketingEmails,     setMarketingEmails]     = useState(true);
+  const [emailPrefLoading,    setEmailPrefLoading]    = useState(false);
+  const [emailPrefSaved,      setEmailPrefSaved]      = useState(false);
+
+  // Delete account state
+  const [showDeleteModal,     setShowDeleteModal]     = useState(false);
+  const [deleteConfirmStep,   setDeleteConfirmStep]   = useState(1); // 1 = first modal, 2 = final confirm
+  const [deleting,            setDeleting]            = useState(false);
+  const [deleteError,         setDeleteError]         = useState(null);
+
   const loadHarvests = async (year) => {
     setLogLoading(true);
     try {
@@ -7622,6 +7633,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       .then(p => {
         const f = { name: p.name || "", postcode: p.postcode || "", photo_url: p.photo_url || null };
         setForm(f);
+        // email_unsubscribed is the inverse of marketing_emails_enabled
+        setMarketingEmails(!p.email_unsubscribed);
         try { localStorage.setItem(PROFILE_CACHE, JSON.stringify({ form: f, ts: Date.now() })); } catch(e) {}
         setLoading(false);
       })
@@ -7658,6 +7671,36 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       setTimeout(() => setPwSaved(false), 3000);
     } catch (e) { setPwError(e.message); }
     setPwSaving(false);
+  };
+
+  const saveEmailPreference = async (enabled) => {
+    setEmailPrefLoading(true);
+    setMarketingEmails(enabled);
+    try {
+      await apiFetch("/auth/email-preferences", {
+        method: "POST",
+        body: JSON.stringify({ marketing_emails_enabled: enabled }),
+      });
+      setEmailPrefSaved(true);
+      setTimeout(() => setEmailPrefSaved(false), 2500);
+    } catch (e) {
+      // Revert optimistic update on failure
+      setMarketingEmails(!enabled);
+    }
+    setEmailPrefLoading(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiFetch("/auth/account", { method: "DELETE" });
+      // Sign out locally — auth record is gone server-side
+      await supabase.auth.signOut();
+    } catch (e) {
+      setDeleteError(e.message || "Something went wrong. Please try again.");
+      setDeleting(false);
+    }
   };
 
   if (loading) return <Spinner />;
@@ -7845,6 +7888,35 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {/* Pro subscription section — only visible when PRO_ENABLED=true */}
       {PRO_ENABLED && <ProSubscriptionSection />}
 
+      {/* Email preferences */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+        <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Email preferences</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Manage product updates and marketing emails</div>
+          </div>
+          {/* Toggle */}
+          <button
+            onClick={() => !emailPrefLoading && saveEmailPreference(!marketingEmails)}
+            style={{
+              width: 44, height: 26, borderRadius: 13, border: "none", cursor: emailPrefLoading ? "default" : "pointer",
+              background: marketingEmails ? C.forest : "#ccc",
+              position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1,
+            }}>
+            <span style={{
+              position: "absolute", top: 3, left: marketingEmails ? 21 : 3,
+              width: 20, height: 20, borderRadius: "50%", background: "#fff",
+              transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+            }} />
+          </button>
+        </div>
+        {emailPrefSaved && (
+          <div style={{ padding: "8px 16px", background: "#edf7ec", borderTop: `1px solid ${C.leaf}`, fontSize: 12, color: "#2d7a28", fontWeight: 600 }}>
+            ✓ {marketingEmails ? "You're subscribed to product updates" : "You've been unsubscribed from marketing emails"}
+          </div>
+        )}
+      </div>
+
       {/* Sign out */}
       <button
         onClick={() => supabase.auth.signOut()}
@@ -7852,7 +7924,75 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         Sign Out
       </button>
 
-      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>Vercro — version 1.0</div>
+      {/* Delete account */}
+      <button
+        onClick={() => { setShowDeleteModal(true); setDeleteConfirmStep(1); setDeleteError(null); }}
+        style={{ width: "100%", background: "none", border: `1px solid #fca5a5`, borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#dc2626", marginBottom: 24 }}>
+        Delete account
+      </button>
+
+      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 32 }}>Vercro — version 1.0</div>
+
+      {/* ── Delete account modal ─────────────────────────────────────────── */}
+      {showDeleteModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}
+          onClick={e => { if (e.target === e.currentTarget && !deleting) { setShowDeleteModal(false); setDeleteConfirmStep(1); } }}>
+          <div style={{
+            background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 40px",
+            width: "100%", maxWidth: 480, boxSizing: "border-box",
+          }}>
+            {deleteConfirmStep === 1 ? (
+              <>
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 12 }}>
+                  Delete account?
+                </div>
+                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 24 }}>
+                  This will permanently delete your Vercro account and personal profile data. We may retain anonymised gardening activity data to help improve Vercro.
+                </div>
+                <button
+                  onClick={() => setDeleteConfirmStep(2)}
+                  style={{ width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+                  Continue
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#dc2626", marginBottom: 12 }}>
+                  Are you sure?
+                </div>
+                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 8 }}>
+                  This cannot be undone. Your account, profile, and all personal data will be permanently removed.
+                </div>
+                {deleteError && (
+                  <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#dc2626", fontSize: 13 }}>
+                    {deleteError}
+                  </div>
+                )}
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  style={{ width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: deleting ? "default" : "pointer", opacity: deleting ? 0.6 : 1, marginBottom: 10 }}>
+                  {deleting ? "Deleting…" : "Yes, delete my account"}
+                </button>
+                <button
+                  onClick={() => { setDeleteConfirmStep(1); setDeleteError(null); }}
+                  disabled={deleting}
+                  style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+                  Go back
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
