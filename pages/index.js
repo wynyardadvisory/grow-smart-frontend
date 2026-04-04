@@ -10823,39 +10823,32 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   }
 
   if (isOpenGround) {
-    // Open ground: one emoji per crop, spread evenly across the full area
-    // Use a simple grid pattern — distribute across rows/cols
-    const count = crops.length;
-    const sz = Math.max(14, Math.min(24, Math.min(innerW, innerH) / 2.2));
-    ctx.save();
-    ctx.font = `${sz}px serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (count === 1) {
-      ctx.fillText(getCropEmoji(crops[0].name), innerX + innerW/2, innerY + innerH/2);
-    } else if (count === 2) {
-      ctx.fillText(getCropEmoji(crops[0].name), innerX + innerW * 0.28, innerY + innerH/2);
-      ctx.fillText(getCropEmoji(crops[1].name), innerX + innerW * 0.72, innerY + innerH/2);
-    } else {
-      // 3 crops — triangle spread
-      ctx.fillText(getCropEmoji(crops[0].name), innerX + innerW * 0.2,  innerY + innerH * 0.3);
-      ctx.fillText(getCropEmoji(crops[1].name), innerX + innerW * 0.8,  innerY + innerH * 0.3);
-      ctx.fillText(getCropEmoji(crops[2].name), innerX + innerW * 0.5,  innerY + innerH * 0.72);
+    // Open ground: revert to crop grid — strips per unique crop
+    const strips = Math.min(crops.length, 4);
+    const stripH = innerH / strips;
+    const cellW  = Math.max(14, Math.min(20, innerW / Math.max(3, Math.floor(innerW / 16))));
+    const cellH  = Math.max(14, Math.min(18, stripH / Math.max(1, Math.floor(stripH / 14))));
+    for (let s = 0; s < strips; s++) {
+      _drawCropGrid(ctx, innerX, innerY + s * stripH, innerW, stripH, crops[s].name, cellW, cellH);
     }
-    ctx.restore();
     return;
   }
 
-  // Raised bed (and polytunnel fallback): one large emoji per crop, spaced horizontally
-  const count = crops.length;
-  const isLandscape = innerW >= innerH;
-  const sz = Math.max(14, Math.min(22, Math.min(innerW / (count * 1.5), innerH * 0.55)));
+  // Raised bed: 2 rows of 3 emojis per unique crop (max 3 crops)
+  // Each crop gets its own row; within each row, 3 copies of the emoji spread evenly
+  const COLS = 3;
+  const rowCount = crops.length; // 1, 2 or 3
+  const sz = Math.max(11, Math.min(16, Math.min(innerW / (COLS * 1.6), innerH / (rowCount * 1.8))));
   ctx.save();
   ctx.font = `${sz}px serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const midY = innerY + innerH / 2;
-  crops.forEach((c, i) => {
-    const ex = innerX + (i + 0.5) * (innerW / count);
-    ctx.fillText(getCropEmoji(c.name), ex, midY);
+  crops.forEach((c, row) => {
+    const rowY = innerY + (row + 0.5) * (innerH / rowCount);
+    const emoji = getCropEmoji(c.name);
+    for (let col = 0; col < COLS; col++) {
+      const ex = innerX + (col + 0.5) * (innerW / COLS);
+      ctx.fillText(emoji, ex, rowY);
+    }
   });
   ctx.restore();
 }
