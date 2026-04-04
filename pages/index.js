@@ -10524,52 +10524,94 @@ function _drawGreenhouse(ctx, x, y, w, h, isSelected) {
 // ── Container / pot ────────────────────────────────────────────────────────────
 function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
   ctx.save();
+  const cx = x + w/2, cy = y + h/2;
+  const rx = w/2, ry = h/2;
 
-  // Drop shadow
-  ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 10;
-  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 5;
-  ctx.fillStyle = "#8B5030";
-  ctx.beginPath(); ctx.ellipse(x+w/2, y+h/2, w/2, h/2, 0, 0, Math.PI*2); ctx.fill();
+  // ── Drop shadow ──────────────────────────────────────────────────────────────
+  ctx.shadowColor = "rgba(0,0,0,0.30)"; ctx.shadowBlur = 12;
+  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 6;
+  ctx.fillStyle = "#7A4020";
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); ctx.fill();
   ctx.shadowColor = "transparent";
 
-  if (_potImgCache.state === "ready" && _potImgCache.img) {
-    // Draw the pot photo as the entire background — it already includes the soil
-    ctx.drawImage(_potImgCache.img, x, y, w, h);
-  } else {
-    // Fallback: procedural pot with soil
-    const pg = ctx.createLinearGradient(x, y, x+w, y);
-    pg.addColorStop(0, K.potD); pg.addColorStop(.3, K.pot); pg.addColorStop(.68, K.potL); pg.addColorStop(1, K.potD);
-    ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(x+w/2, y+h/2, w/2, h/2, 0, 0, Math.PI*2); ctx.fill();
-    // Soil inside
-    ctx.fillStyle = K.s1;
-    ctx.beginPath(); ctx.ellipse(x+w/2, y+h*0.46, w*0.36, h*0.28, 0, 0, Math.PI*2); ctx.fill();
-  }
+  // ── Outer rim — terracotta gradient ──────────────────────────────────────────
+  const rimG = ctx.createRadialGradient(cx - rx*0.25, cy - ry*0.2, 0, cx, cy, rx*1.1);
+  rimG.addColorStop(0,   "#D4895A");
+  rimG.addColorStop(0.4, "#B86A38");
+  rimG.addColorStop(0.75,"#9A4E22");
+  rimG.addColorStop(1,   "#7A3810");
+  ctx.fillStyle = rimG;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); ctx.fill();
 
-  // Draw crop emojis centred in the soil bowl area
-  if (cropEmojis && cropEmojis.length > 0) {
-    // Soil bowl centre is roughly at 46% from top, radius ~36% of w
-    const bowlCX = x + w / 2;
-    const bowlCY = y + h * 0.46;
-    const bowlR  = w * 0.32;
-    const count = cropEmojis.length;
-    const sz = Math.max(10, Math.min(18, (w * 0.38) / Math.max(1, count)));
-    ctx.font = `${sz}px serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (count === 1) {
-      ctx.fillText(cropEmojis[0], bowlCX, bowlCY);
-    } else {
-      // Spread emojis in a small circle inside the bowl
-      cropEmojis.slice(0, 4).forEach((em, i) => {
-        const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
-        const r = bowlR * 0.42;
-        ctx.fillText(em, bowlCX + Math.cos(angle) * r, bowlCY + Math.sin(angle) * r);
-      });
+  // ── Scalloped rim edge (8 bumps) ─────────────────────────────────────────────
+  const bumps = 8;
+  const bumpR = rx * 0.10;
+  ctx.fillStyle = "#C07848";
+  for (let i = 0; i < bumps; i++) {
+    const ang = (i / bumps) * Math.PI * 2;
+    const bx = cx + Math.cos(ang) * (rx - bumpR * 0.6);
+    const by = cy + Math.sin(ang) * (ry - bumpR * 0.6);
+    ctx.beginPath(); ctx.arc(bx, by, bumpR, 0, Math.PI*2); ctx.fill();
+  }
+  // Thin inner rim ring
+  ctx.strokeStyle = "rgba(255,200,140,0.25)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx*0.80, ry*0.80, 0, 0, Math.PI*2); ctx.stroke();
+
+  // ── Soil interior ────────────────────────────────────────────────────────────
+  const soilRX = rx * 0.72, soilRY = ry * 0.68;
+  const soilCY = cy + ry * 0.04; // slightly lower than centre
+
+  // Dark soil base
+  ctx.fillStyle = "#2A1508";
+  ctx.beginPath(); ctx.ellipse(cx, soilCY, soilRX, soilRY, 0, 0, Math.PI*2); ctx.fill();
+
+  // Soil texture overlay
+  if (_soilTextureCache.state === "ready" && _soilTextureCache.img) {
+    const pat = ctx.createPattern(_soilTextureCache.img, "repeat");
+    if (pat) {
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(cx, soilCY, soilRX, soilRY, 0, 0, Math.PI*2); ctx.clip();
+      ctx.globalAlpha = 0.80; ctx.fillStyle = pat;
+      ctx.fillRect(cx - soilRX, soilCY - soilRY, soilRX*2, soilRY*2);
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
   }
 
+  // Inner depth shadow around soil edge
+  const depthG = ctx.createRadialGradient(cx, soilCY, soilRX*0.45, cx, soilCY, soilRX*0.98);
+  depthG.addColorStop(0, "transparent");
+  depthG.addColorStop(1, "rgba(0,0,0,0.45)");
+  ctx.fillStyle = depthG;
+  ctx.beginPath(); ctx.ellipse(cx, soilCY, soilRX, soilRY, 0, 0, Math.PI*2); ctx.fill();
+
+  // ── Crop emojis spread across the soil bowl ────────────────────────────────
+  if (cropEmojis && cropEmojis.length > 0) {
+    const count = Math.min(cropEmojis.length, 4);
+    // Scale emoji size down a bit more when multiple crops
+    const sz = Math.max(9, Math.min(17, (soilRX * 1.1) / Math.max(1.2, count)));
+    ctx.font = `${sz}px serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (count === 1) {
+      ctx.fillText(cropEmojis[0], cx, soilCY);
+    } else {
+      // Spread emojis in a circle using 70% of soil radius for good spacing
+      const spreadR = soilRX * 0.62;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+        ctx.fillText(cropEmojis[i], cx + Math.cos(angle) * spreadR, soilCY + Math.sin(angle) * spreadR * 0.7);
+      }
+    }
+  }
+
+  // ── Highlight sheen ───────────────────────────────────────────────────────────
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.beginPath(); ctx.ellipse(cx - rx*0.22, cy - ry*0.25, rx*0.28, ry*0.18, -0.4, 0, Math.PI*2); ctx.fill();
+
+  // ── Selection ring ────────────────────────────────────────────────────────────
   if (isSelected) {
-    ctx.strokeStyle = "rgba(111,175,99,0.60)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
-    ctx.beginPath(); ctx.ellipse(x+w/2, y+h/2, w/2+3, h/2+3, 0, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(111,175,99,0.65)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx+4, ry+4, 0, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
