@@ -10430,12 +10430,11 @@ function _sketchHachure(ctx, x, y, w, h, seed, opts={}) {
 // ── Raised bed — pencil sketch style ──────────────────────────────────────────
 function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.save();
-  const seed = Math.round(x*7+y*13+w*3+h*5);
-  const DEPTH = Math.max(8, Math.min(18, h * 0.18));
-  const TILT  = 0.40;  // reduced from 0.55 — less perspective compression, beds look more proportional
-  const th    = h * TILT;
-  const DX    = -DEPTH * 0.55;
-  const DY    = DEPTH * 0.85;
+  const seed  = Math.round(x*7+y*13+w*3+h*5);
+  const DEPTH = 12; // fixed pixel depth — same for all beds regardless of size
+  const DX    = -DEPTH * 0.6;
+  const DY    = DEPTH * 0.8;
+  const th    = h; // top face uses full height — no TILT distortion
 
   // ── Top face (white, hachured) ───────────────────────────────────────────
   ctx.fillStyle = "#ffffff";
@@ -10951,10 +10950,9 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   // Always show crop names — join with line break if multiple, never "N crops"
   const lines = unique.slice(0, 3).map(c => c.name);
 
-  // Top face height for raised beds (TILT=0.40), full height for others
-  const TILT = 0.40;
+  // Top face uses full height — no TILT distortion
   const isBed = area.type === "raised_bed";
-  const topH  = isBed ? h * TILT : h;
+  const topH  = h;
 
   // Rotate along longest axis — if width > topH, landscape (no rotation needed);
   // if topH > width significantly, rotate text 90° to run along the length
@@ -11086,8 +11084,9 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
 
         {/* Areas */}
         {areas.map(area => {
-          const w = (area.width_m||2) * pxPerM;
-          const h = (area.length_m||2) * pxPerM;
+          const rot90 = area.rotation === 90 || area.rotation === 270;
+          const w = (rot90 ? (area.length_m||2) : (area.width_m||2)) * pxPerM;
+          const h = (rot90 ? (area.width_m||2) : (area.length_m||2)) * pxPerM;
           const ax = PAD + (area.layout_x||0) * pxPerM;
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
