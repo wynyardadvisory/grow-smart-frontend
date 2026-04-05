@@ -10342,127 +10342,139 @@ function _ensureBedImg(onReady) {
   img.src = BED_IMG_DATA;
 }
 
-// ── Ground ─────────────────────────────────────────────────────────────────────
+// ── Ground — sketch paper background ──────────────────────────────────────────
 function _drawGround(ctx, x, y, w, h) {
   ctx.save();
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 22); ctx.clip();
-  ctx.fillStyle = K.g1; ctx.fillRect(x, y, w, h);
-
-  // Overlay bark texture if loaded
-  if (_textureCache.state === "ready" && _textureCache.img) {
-    const pat = ctx.createPattern(_textureCache.img, "repeat");
-    if (pat) { ctx.globalAlpha = 0.85; ctx.fillStyle = pat; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; }
+  // Paper background
+  ctx.fillStyle = "#faf8f4"; ctx.fillRect(x, y, w, h);
+  // Subtle grain dots
+  const gr = _sketchSeededRand(42);
+  for(let i=0;i<300;i++){
+    ctx.fillStyle="rgba(0,0,0,0.018)";
+    ctx.beginPath();ctx.arc(x+gr()*w,y+gr()*h,gr()*1.6,0,Math.PI*2);ctx.fill();
   }
-
-  // large very soft tonal patches
-  [
-    [x+w*.2,  y+h*.3,  w*.55, K.gD, .07],
-    [x+w*.7,  y+h*.15, w*.45, K.gL, .06],
-    [x+w*.42, y+h*.65, w*.6,  K.gD, .06],
-    [x+w*.1,  y+h*.78, w*.38, K.gL, .05],
-    [x+w*.82, y+h*.72, w*.4,  K.g2, .05],
-    [x+w*.3,  y+h*.1,  w*.35, K.gL, .04],
-  ].forEach(([cx, cy, r, c, a]) => {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, c); g.addColorStop(.55, c); g.addColorStop(1, "transparent");
-    ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
-  });
-  ctx.globalAlpha = .03;
-  for (let i = x; i < x+w; i += 4) for (let j = y; j < y+h; j += 5) {
-    const v = (i*17 + j*11) % 15;
-    if (v < 2) { ctx.fillStyle = v < 1 ? K.gD : K.gL; ctx.fillRect(i, j, 1, 1); }
+  // Ground scribble texture
+  const gr2=_sketchSeededRand(99);
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  for(let i=0;i<200;i++){
+    const gx=x+gr2()*w,gy=y+gr2()*h;
+    ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=0.4+gr2()*0.5; ctx.globalAlpha=0.04+gr2()*0.05;
+    const segs=2+Math.floor(gr2()*2); ctx.beginPath(); ctx.moveTo(gx,gy);
+    let cx2=gx,cy2=gy;
+    for(let s=0;s<segs;s++){const a=gr2()*Math.PI*2,l=2+gr2()*6;cx2+=Math.cos(a)*l;cy2+=Math.sin(a)*l*0.6;ctx.lineTo(cx2,cy2);}
+    ctx.stroke();
   }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha=1;
   ctx.restore();
 }
 
-// ── Raised bed ─────────────────────────────────────────────────────────────────
+// ── Sketch helpers (shared by all draw functions) ──────────────────────────────
+function _sketchSeededRand(seed) {
+  let s = seed;
+  return function() { s=(s*16807+0)%2147483647; return (s-1)/2147483646; };
+}
+function _sketchEdge(ctx, x1, y1, x2, y2, rand, opts={}) {
+  const {wobble=1.8,strokesPerUnit=0.10,lineWidth=1.5,alpha=0.82,color="#1a1a1a"}=opts;
+  const len=Math.sqrt((x2-x1)**2+(y2-y1)**2);
+  const strokes=Math.max(2,Math.floor(len*strokesPerUnit));
+  const dx=(x2-x1)/strokes,dy=(y2-y1)/strokes;
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lineWidth; ctx.lineCap="round"; ctx.globalAlpha=alpha;
+  let px=x1+(rand()-0.5)*wobble*0.4,py=y1+(rand()-0.5)*wobble*0.4;
+  for(let i=0;i<strokes;i++){
+    const nx=x1+dx*(i+1)+(rand()-0.5)*wobble,ny=y1+dy*(i+1)+(rand()-0.5)*wobble;
+    if(rand()>0.90){px=nx;py=ny;continue;}
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(nx,ny);ctx.stroke();px=nx;py=ny;
+  }
+  ctx.restore();
+}
+function _sketchRect(ctx, x, y, w, h, seed, opts={}) {
+  const rand=_sketchSeededRand(seed);
+  _sketchEdge(ctx,x,y,x+w,y,rand,opts);
+  _sketchEdge(ctx,x+w,y,x+w,y+h,rand,opts);
+  _sketchEdge(ctx,x+w,y+h,x,y+h,rand,opts);
+  _sketchEdge(ctx,x,y+h,x,y,rand,opts);
+}
+function _sketchHachure(ctx, x, y, w, h, seed, opts={}) {
+  const {alpha=0.10,density=0.018}=opts;
+  const rand=_sketchSeededRand(seed+777);
+  const count=Math.floor(w*h*density);
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); ctx.lineCap="round";
+  for(let i=0;i<count;i++){
+    const lx=x+rand()*w, ly=y+rand()*h;
+    const angle=-0.7+rand()*1.4, len=4+rand()*18;
+    const dc=rand();
+    ctx.strokeStyle="#1a1a1a";
+    ctx.lineWidth=dc>0.88?1.1+rand()*0.7:0.35+rand()*0.6;
+    ctx.globalAlpha=dc>0.88?alpha*(1.8+rand()*1.2):alpha*(0.25+rand()*1.0);
+    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+Math.cos(angle)*len,ly+Math.sin(angle)*len);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── Raised bed — pencil sketch style ──────────────────────────────────────────
 function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.save();
+  const seed = Math.round(x*7+y*13+w*3+h*5);
 
-  // Drop shadow
-  ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 14;
-  ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 6;
-  ctx.fillStyle = "#8B6914";
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 5); ctx.fill();
-  ctx.shadowColor = "transparent";
+  // White fill
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, w, h);
 
-  // Clip to bed shape
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 5); ctx.clip();
+  // Scatter hachure inside
+  _sketchHachure(ctx, x, y, w, h, seed, {alpha:0.10, density:0.016});
 
-  if (_bedImgCache.state === "ready" && _bedImgCache.img) {
-    // 1. Draw the full bed photo (gives us the wooden frame)
-    ctx.drawImage(_bedImgCache.img, x, y, w, h);
+  // Sketchy border — outer rect
+  _sketchRect(ctx, x, y, w, h, seed, {wobble:2.0, strokesPerUnit:0.10, lineWidth:2.0, alpha:0.88, color:"#1a1a1a"});
 
-    // 2. Overlay real soil texture over the interior only
-    // Frame proportions measured from 105x200 source: 14.3% L/R, 5% top, 7% bottom
-    const fL = Math.round(w * 0.11);
-    const fR = Math.round(w * 0.11);
-    const fT = Math.round(h * 0.03);
-    const fB = Math.round(h * 0.04);
-    const ix = x + fL, iy = y + fT;
-    const iw = w - fL - fR, ih = h - fT - fB;
+  // Inner border — suggests wooden frame
+  const T = Math.max(4, Math.min(8, Math.min(w,h)*0.07));
+  _sketchRect(ctx, x+T, y+T, w-T*2, h-T*2, seed+10, {wobble:1.2, strokesPerUnit:0.07, lineWidth:0.9, alpha:0.35, color:"#1a1a1a"});
 
-    if (_soilTextureCache.state === "ready" && _soilTextureCache.img && iw > 0 && ih > 0) {
-      ctx.save();
-      ctx.beginPath(); ctx.rect(ix, iy, iw, ih); ctx.clip();
-      const soilPat = ctx.createPattern(_soilTextureCache.img, "repeat");
-      if (soilPat) {
-        // Base dark fill first so any gaps are covered
-        ctx.fillStyle = "#3a2510"; ctx.fillRect(ix, iy, iw, ih);
-        ctx.globalAlpha = 0.88;
-        ctx.fillStyle = soilPat; ctx.fillRect(ix, iy, iw, ih);
-        ctx.globalAlpha = 1;
-      }
-      // Subtle inner shadow to blend frame edge into soil
-      const shadow = ctx.createLinearGradient(ix, iy, ix, iy + Math.min(8, ih * 0.12));
-      shadow.addColorStop(0, "rgba(0,0,0,0.20)"); shadow.addColorStop(1, "transparent");
-      ctx.fillStyle = shadow; ctx.fillRect(ix, iy, iw, ih);
-      ctx.restore();
-    }
-  } else {
-    // Fallback: procedural frame + soil
-    const T = Math.max(5, Math.min(8, w * .06));
-    ctx.fillStyle = K.w2; ctx.fillRect(x, y, w, h);
-    const sg = ctx.createRadialGradient(x+w*.35,y+h*.35,0,x+w*.5,y+h*.55,Math.max(w,h)*.7);
-    sg.addColorStop(0, K.sL); sg.addColorStop(.45, K.s1); sg.addColorStop(1, K.s2);
-    ctx.fillStyle = sg; ctx.fillRect(x+T, y+T, w-T*2, h-T*2);
-  }
+  // Corner post X marks
+  const cs=5;
+  [[x,y],[x+w,y],[x+w,y+h],[x,y+h]].forEach(([px,py])=>{
+    ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=1.1; ctx.globalAlpha=0.50;
+    ctx.beginPath();ctx.rect(px-cs/2,py-cs/2,cs,cs);ctx.stroke();
+    ctx.globalAlpha=0.30;
+    ctx.beginPath();ctx.moveTo(px-cs/2+1,py-cs/2+1);ctx.lineTo(px+cs/2-1,py+cs/2-1);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px+cs/2-1,py-cs/2+1);ctx.lineTo(px-cs/2+1,py+cs/2-1);ctx.stroke();
+    ctx.restore();
+  });
 
-  // Selection glow
+  // Selection ring
   if (isSelected) {
-    ctx.strokeStyle = "rgba(111,175,99,0.60)"; ctx.lineWidth = 3; ctx.setLineDash([5,3]);
-    ctx.beginPath(); ctx.roundRect(x+1, y+1, w-2, h-2, 5); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
 
-// ── Open ground
-
-// ── Open ground bed ────────────────────────────────────────────────────────────
+// ── Open ground — pencil sketch style ─────────────────────────────────────────
 function _drawOpenGround(ctx, x, y, w, h, isSelected) {
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.18)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
-  ctx.fillStyle = K.s2; ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.fill();
-  ctx.shadowColor = "transparent";
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 10); ctx.clip();
-  if (_soilTextureCache.state === "ready" && _soilTextureCache.img) {
-    const pat = ctx.createPattern(_soilTextureCache.img, "repeat");
-    if (pat) { ctx.globalAlpha = 0.85; ctx.fillStyle = pat; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; }
-  } else {
-    const sg = ctx.createRadialGradient(x+w*.4,y+h*.4,0,x+w*.5,y+h*.6,Math.max(w,h)*.7);
-    sg.addColorStop(0, K.sL); sg.addColorStop(1, K.s2);
-    ctx.fillStyle = sg; ctx.fillRect(x, y, w, h);
-  }
-  ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 1; ctx.globalAlpha = .22;
-  const rowSpacing = Math.max(8, h/7);
-  for (let ry = y+rowSpacing; ry < y+h-4; ry += rowSpacing) {
-    ctx.beginPath(); ctx.moveTo(x+6, ry); ctx.lineTo(x+w-6, ry); ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
+  const seed = Math.round(x*11+y*7+w*5+h*3);
+
+  // Light grey fill — soil
+  ctx.fillStyle = "#e4e4e4";
+  ctx.fillRect(x, y, w, h);
+
+  // Heavier scatter hachure — suggests rough ground
+  _sketchHachure(ctx, x, y, w, h, seed,   {alpha:0.13, density:0.022});
+  _sketchHachure(ctx, x, y, w, h, seed+3, {alpha:0.07, density:0.010});
+
+  // Sketchy border
+  _sketchRect(ctx, x, y, w, h, seed, {wobble:2.0, strokesPerUnit:0.07, lineWidth:1.5, alpha:0.65, color:"#333"});
+
+  // Dashed inner line
+  ctx.save(); ctx.strokeStyle="#aaa"; ctx.lineWidth=0.9; ctx.globalAlpha=0.45; ctx.setLineDash([5,5]);
+  const ins=5;
+  ctx.beginPath(); ctx.rect(x+ins,y+ins,w-ins*2,h-ins*2); ctx.stroke();
+  ctx.restore();
+
   if (isSelected) {
-    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
-    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 13); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
@@ -10521,60 +10533,85 @@ function _drawGreenhouse(ctx, x, y, w, h, isSelected) {
   ctx.restore();
 }
 
-// ── Container / pot ────────────────────────────────────────────────────────────
+// ── Container / pot — pencil sketch style ─────────────────────────────────────
 function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
   ctx.save();
+  const seed = Math.round(x*9+y*11+w*7+h*3);
+  const rand = _sketchSeededRand(seed);
 
-  // Always draw as a square-ish pot centred in available space
-  const size = Math.min(w, h);
+  // Draw as a single pot centred in the area
+  const rx = w * 0.42;
+  const ry = h * 0.22;  // squashed ellipse for top-down oval look
   const cx = x + w/2;
-  const cy = y + h/2;
-  const px = cx - size/2;
-  const py = cy - size/2;
+  const cy = y + h * 0.38;
+  const cylH = h * 0.45;
+  const iRx = rx * 0.72;
+  const iRy = ry * 0.68;
 
-  // Drop shadow under the pot
-  ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 10;
-  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 5;
-  ctx.fillStyle = "rgba(0,0,0,0.01)";
-  ctx.beginPath(); ctx.ellipse(cx, cy + size*0.02, size*0.46, size*0.46, 0, 0, Math.PI*2); ctx.fill();
-  ctx.shadowColor = "transparent";
+  // Cylinder body fill
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fillRect(cx-rx, cy, rx*2, cylH);
 
-  if (_potImgCache.state === "ready" && _potImgCache.img) {
-    // Transparent PNG — bark shows through, pot drawn on top
-    ctx.drawImage(_potImgCache.img, px, py, size, size);
-  } else {
-    // Fallback: procedural terracotta pot
-    const rimG = ctx.createRadialGradient(cx - size*0.15, cy - size*0.15, 0, cx, cy, size*0.52);
-    rimG.addColorStop(0, "#D4895A"); rimG.addColorStop(0.5, "#B86A38"); rimG.addColorStop(1, "#7A3810");
-    ctx.fillStyle = rimG;
-    ctx.beginPath(); ctx.ellipse(cx, cy, size*0.48, size*0.48, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = "#2A1508";
-    ctx.beginPath(); ctx.ellipse(cx, cy, size*0.34, size*0.34, 0, 0, Math.PI*2); ctx.fill();
+  // Top rim fill
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+  ctx.fillStyle = "#f0f0f0"; ctx.fill();
+
+  // Inner soil fill
+  ctx.beginPath(); ctx.ellipse(cx, cy, iRx, iRy, 0, 0, Math.PI*2);
+  ctx.fillStyle = "#e0e0e0"; ctx.fill();
+
+  // Soil hachure
+  _sketchHachure(ctx, cx-iRx, cy-iRy, iRx*2, iRy*2, seed+5, {alpha:0.10, density:0.015});
+
+  // Sketch outlines — wobbly ellipses
+  const N=36;
+  function sketchEll(erx,ery,seedOff,lw,al){
+    const r=_sketchSeededRand(seed+seedOff);
+    for(let i=0;i<N;i++){
+      const a1=(i/N)*Math.PI*2,a2=((i+1)/N)*Math.PI*2;
+      const rw1=1+(r()-0.5)*0.10,rw2=1+(r()-0.5)*0.10;
+      if(r()>0.93) continue;
+      ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+      ctx.lineWidth=lw+(r()-0.5)*0.35; ctx.globalAlpha=al+(r()-0.5)*0.12;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a1)*erx*rw1,cy+Math.sin(a1)*ery*rw1);
+      ctx.lineTo(cx+Math.cos(a2)*erx*rw2,cy+Math.sin(a2)*ery*rw2);
+      ctx.stroke(); ctx.restore();
+    }
+  }
+  sketchEll(rx,ry,10,1.7,0.82);
+  sketchEll(iRx,iRy,20,1.0,0.50);
+
+  // Bottom arc (front half only)
+  const rb=_sketchSeededRand(seed+30);
+  for(let i=0;i<N/2;i++){
+    const a1=(i/(N/2))*Math.PI,a2=((i+1)/(N/2))*Math.PI;
+    if(rb()>0.94) continue;
+    ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+    ctx.lineWidth=1.3+(rb()-0.5)*0.3; ctx.globalAlpha=0.68+(rb()-0.5)*0.15;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(a1)*rx,cy+cylH+Math.sin(a1)*ry*0.4);
+    ctx.lineTo(cx+Math.cos(a2)*rx,cy+cylH+Math.sin(a2)*ry*0.4);
+    ctx.stroke(); ctx.restore();
   }
 
-  // Crop emojis — centred in the soil bowl (inner ~55% of the image)
+  // Side lines
+  const rv=_sketchSeededRand(seed+40);
+  _sketchEdge(ctx,cx-rx,cy,cx-rx,cy+cylH,rv,{wobble:1.5,strokesPerUnit:0.08,lineWidth:1.5,alpha:0.78,color:"#1a1a1a"});
+  _sketchEdge(ctx,cx+rx,cy,cx+rx,cy+cylH,rv,{wobble:1.5,strokesPerUnit:0.08,lineWidth:1.1,alpha:0.55,color:"#1a1a1a"});
+
+  // Crop label inside soil
   if (cropEmojis && cropEmojis.length > 0) {
-    const soilR = size * 0.27; // radius of the soil bowl in the image
-    const soilCX = cx;
-    const soilCY = cy + size * 0.01;
-    const count = Math.min(cropEmojis.length, 4);
-    const sz = Math.max(9, Math.min(16, (soilR * 1.3) / Math.max(1, count)));
-    ctx.font = `${sz}px serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (count === 1) {
-      ctx.fillText(cropEmojis[0], soilCX, soilCY);
-    } else {
-      const spreadR = soilR * 0.65;
-      for (let i = 0; i < count; i++) {
-        const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
-        ctx.fillText(cropEmojis[i], soilCX + Math.cos(angle) * spreadR, soilCY + Math.sin(angle) * spreadR * 0.85);
-      }
-    }
+    ctx.save();
+    const sz = Math.max(10, Math.min(16, rx*0.5));
+    ctx.font = `${sz}px serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(cropEmojis.slice(0,2).join(" "), cx, cy);
+    ctx.restore();
   }
 
   if (isSelected) {
-    ctx.strokeStyle = "rgba(111,175,99,0.65)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
-    ctx.beginPath(); ctx.ellipse(cx, cy, size*0.50, size*0.50, 0, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
@@ -10778,93 +10815,32 @@ function _drawAreaShape(ctx, area, x, y, w, h, isSelected, areaCrops) {
   }
 }
 
-// ── Crops inside an area ───────────────────────────────────────────────────────
+// ── Crops inside an area — sketch style text label ────────────────────────────
 function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   const activeCrops = areaCrops.filter(c => c.status !== "planned");
   if (!activeCrops.length) return;
+  if (area.type === "container") return;
 
-  // Deduplicate by name — max 3 unique crops shown
   const unique = [];
   const seen = new Set();
   for (const c of activeCrops) { if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); } }
-  const crops = unique.slice(0, 3);
 
-  const isContainer  = area.type === "container";
-  const isGreenhouse = area.type === "greenhouse";
-  const isRaisedBed  = area.type === "raised_bed" || !area.type;
-  const isOpenGround = area.type === "open_ground";
+  const label = unique.length === 1
+    ? unique[0].name
+    : unique.length > 1 ? `${unique.length} crops` : "";
 
-  if (isContainer) return; // handled inside _drawContainer
+  if (!label) return;
 
-  // Inner bounds — account for raised bed photo frame
-  const padL = isRaisedBed ? Math.round(w * 0.17) : 6;
-  const padR = isRaisedBed ? Math.round(w * 0.17) : 6;
-  const padT = isRaisedBed ? Math.round(h * 0.07) : 6;
-  const padB = isRaisedBed ? Math.round(h * 0.09) : 6;
-  const innerX = x + padL;
-  const innerY = y + padT;
-  const innerW = w - padL - padR;
-  const innerH = h - padT - padB;
-
-  if (isGreenhouse) {
-    // Greenhouse: one emoji per crop, spaced horizontally in lower half
-    const gy = y + h * 0.62;
-    const count = crops.length;
-    const sz = Math.max(12, Math.min(20, innerW / (count * 1.8)));
-    ctx.save();
-    ctx.font = `${sz}px serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    crops.forEach((c, i) => {
-      const ex = innerX + (i + 0.5) * (innerW / count);
-      ctx.fillText(getCropEmoji(c.name), ex, gy);
-    });
-    ctx.restore();
-    return;
-  }
-
-  if (isOpenGround) {
-    // Open ground: revert to crop grid — strips per unique crop
-    const strips = Math.min(crops.length, 4);
-    const stripH = innerH / strips;
-    const cellW  = Math.max(14, Math.min(20, innerW / Math.max(3, Math.floor(innerW / 16))));
-    const cellH  = Math.max(14, Math.min(18, stripH / Math.max(1, Math.floor(stripH / 14))));
-    for (let s = 0; s < strips; s++) {
-      _drawCropGrid(ctx, innerX, innerY + s * stripH, innerW, stripH, crops[s].name, cellW, cellH);
-    }
-    return;
-  }
-
-  // Raised bed: always 6 emojis in a 2×3 grid (landscape) or 3×2 grid (portrait)
-  // Up to 3 unique crops — each gets 2 emojis. 1 crop = 6 of same, 2 crops = 3+3, 3 crops = 2+2+2
-  const isLandscape = innerW >= innerH;
-  // landscape = 2 rows × 3 cols; portrait = 3 rows × 2 cols
-  const GRID_ROWS = isLandscape ? 2 : 3;
-  const GRID_COLS = isLandscape ? 3 : 2;
-  // Build sequence of 6 emojis — 2 of each crop (cycling if fewer than 3)
-  const cropList = crops.slice(0, 3);
-  const emojiSeq = [];
-  // Fill 6 slots: 2 per crop, in crop order
-  const perCrop = Math.floor(6 / cropList.length);
-  cropList.forEach(c => {
-    for (let i = 0; i < perCrop; i++) emojiSeq.push(getCropEmoji(c.name));
-  });
-  // Top up to 6 if rounding left gaps
-  while (emojiSeq.length < 6) emojiSeq.push(getCropEmoji(cropList[0].name));
-
-  const sz = Math.max(10, Math.min(15, Math.min(innerW / (GRID_COLS * 1.7), innerH / (GRID_ROWS * 1.8))));
+  const fs = Math.max(10, Math.min(16, Math.min(w, h) * 0.18));
   ctx.save();
-  ctx.font = `${sz}px serif`;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (let row = 0; row < GRID_ROWS; row++) {
-    for (let col = 0; col < GRID_COLS; col++) {
-      const idx = row * GRID_COLS + col;
-      const ex = innerX + (col + 0.5) * (innerW / GRID_COLS);
-      const ey = innerY + (row + 0.5) * (innerH / GRID_ROWS);
-      ctx.fillText(emojiSeq[idx], ex, ey);
-    }
-  }
+  ctx.font = `${fs}px 'Caveat', cursive`;
+  ctx.fillStyle = "#1a1a1a";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, x + w/2, y + h/2);
   ctx.restore();
 }
+
 
 // ── Label — only on selected area, subtle pill inside soil ──────────────────────
 function _drawAreaLabel(ctx, area, x, y, w, h, name) {
@@ -11730,10 +11706,10 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
     const PAD=40;
     const rawW=areas.reduce((m,a)=>Math.max(m,(a.width_m||2)+(a.layout_x||0)),0)||6;
     const rawH=areas.reduce((m,a)=>Math.max(m,(a.length_m||2)+(a.layout_y||0)),0)||6;
-    // Use separate x/y scales to preserve aspect ratio correctly
-    const scaleX=Math.min((W-PAD*2)/rawW,60);
-    const scaleY=Math.min((H-PAD*2)/rawH,60);
-    const scale=Math.min(scaleX,scaleY);
+    // Scale x and y independently to fill canvas, preserving real-world proportions
+    const scaleX=(W-PAD*2)/rawW;
+    const scaleY=(H-PAD*2)/(rawH*TILT+rawH*0.3); // account for TILT compression + depth
+    const scale=Math.min(scaleX,scaleY,60);
 
     // Group container areas to draw as pot clusters
     const containerAreas=areas.filter(a=>a.area_type==="container"||a.area_type==="pot");
@@ -11743,8 +11719,8 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
     otherAreas.forEach((area,idx)=>{
       const x=PAD+(area.layout_x||0)*scale;
       const y=PAD+(area.layout_y||0)*scale;
-      const w=(area.width_m||2)*scale;
-      const h=(area.length_m||2)*scale;
+      const w=(area.width_m||2)*scale;   // width in x
+      const h=(area.length_m||2)*scale;  // length in y — keeps rectangle proportions
       const areaCrops=crops.filter(c=>c.area_id===area.id);
       const label=areaCrops.length===1?areaCrops[0].name:(areaCrops.length>1?`${areaCrops.length} crops`:area.name||"");
       const seed=1000+idx*7;
@@ -12150,14 +12126,24 @@ function PlanScreen() {
             {planToast||"✓ Layout saved"}
           </div>
         )}
-        <GardenSketchCanvas
-          areas={areas}
-          crops={planCrops}
-          activeBlock={activeBlock}
-          onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
-          width={stageW}
-          height={Math.max(300, stageH)}
-        />
+        {konvaReady ? (
+          <GardenKonvaCanvas
+            areas={areas}
+            crops={planCrops}
+            pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
+            stageW={stageW} stageH={stageH} stageScale={zoom}
+            activeBlock={isPlanMode ? null : activeBlock}
+            onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
+            onDragEnd={handleDragEnd}
+            onRotate={handleRotate}
+            onZoomChange={handleZoomChange}
+            zoom={zoom}
+          />
+        ) : (
+          <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:"#faf8f4",color:"#999",fontSize:14}}>
+            Loading…
+          </div>
+        )}
       </div>
       </div>
 
