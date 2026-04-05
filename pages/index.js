@@ -10714,10 +10714,6 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
       ctx.rotate(rot);
       ctx.font=`${sz}px 'Caveat',cursive`;
       ctx.textAlign="center"; ctx.textBaseline="middle";
-      const tw = ctx.measureText(label).width;
-      const padX=sz*0.5, padY=sz*0.28;
-      ctx.fillStyle="#e0e0e0"; ctx.globalAlpha=1; // match soil colour — no visible box
-      ctx.beginPath(); ctx.roundRect(-tw/2-padX,-sz/2-padY,tw+padX*2,sz+padY*2,3); ctx.fill();
       ctx.fillStyle="#2a2a2a"; ctx.globalAlpha=0.80;
       ctx.fillText(label, 0, 0);
       ctx.restore();
@@ -10985,13 +10981,7 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   const maxTextW = Math.max(...lines.map(l => ctx.measureText(l).width));
   const padX = fs * 0.6, padY = fs * 0.35;
 
-  // Erase hachure behind text — fill with the area's background colour, no visible border
-  const bgColour = area.type === "open_ground" ? "#e4e4e4" : "#ffffff";
-  ctx.fillStyle = bgColour;
-  ctx.globalAlpha = 1;
-  ctx.fillRect(-maxTextW/2 - padX, -totalH/2 - padY, maxTextW + padX*2, totalH + padY*2);
-
-  // Draw text
+  // Draw text directly — no background
   ctx.fillStyle = "#1e1e1e";
   ctx.globalAlpha = 0.88;
 
