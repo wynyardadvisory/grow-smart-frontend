@@ -10955,7 +10955,7 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   // if topH > width significantly, rotate text 90° to run along the length
   const isPortrait = topH > w * 1.4;
   const maxDim = isPortrait ? topH : w;
-  const fs = Math.max(10, Math.min(17, maxDim * 0.16));
+  const fs = Math.max(12, Math.min(20, maxDim * 0.20));
 
   // Centre point is within the top face
   const cy = isBed ? y + topH * 0.50 : y + h * 0.50;
@@ -10979,8 +10979,8 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   const padX = fs * 0.6, padY = fs * 0.35;
 
   // Draw text directly — no background
-  ctx.fillStyle = "#1e1e1e";
-  ctx.globalAlpha = 0.88;
+  ctx.fillStyle = "#111111";
+  ctx.globalAlpha = 1.0;
 
   if (lines.length === 1) {
     ctx.fillText(lines[0], 0, 0);
