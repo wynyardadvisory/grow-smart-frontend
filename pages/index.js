@@ -10416,24 +10416,60 @@ function _sketchHachure(ctx, x, y, w, h, seed, opts={}) {
 function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.save();
   const seed = Math.round(x*7+y*13+w*3+h*5);
+  const DEPTH = Math.max(8, Math.min(18, h * 0.18));
+  const TILT  = 0.55;
+  const th    = h * TILT; // top-face height after perspective tilt
 
-  // White fill
+  // ── Top face (white, hachured) ───────────────────────────────────────────
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(x, y, w, h);
+  ctx.beginPath();
+  ctx.moveTo(x,   y);
+  ctx.lineTo(x+w, y);
+  ctx.lineTo(x+w, y+th);
+  ctx.lineTo(x,   y+th);
+  ctx.closePath();
+  ctx.fill();
+  _sketchHachure(ctx, x, y, w, th, seed, {alpha:0.10, density:0.016});
 
-  // Scatter hachure inside
-  _sketchHachure(ctx, x, y, w, h, seed, {alpha:0.10, density:0.016});
+  // ── Front face (mid-grey) ────────────────────────────────────────────────
+  ctx.fillStyle = "#d4d4d4";
+  ctx.beginPath();
+  ctx.moveTo(x,   y+th);
+  ctx.lineTo(x+w, y+th);
+  ctx.lineTo(x+w, y+th+DEPTH);
+  ctx.lineTo(x,   y+th+DEPTH);
+  ctx.closePath();
+  ctx.fill();
 
-  // Sketchy border — outer rect
-  _sketchRect(ctx, x, y, w, h, seed, {wobble:2.0, strokesPerUnit:0.10, lineWidth:2.0, alpha:0.88, color:"#1a1a1a"});
+  // ── Left face (darker grey) ──────────────────────────────────────────────
+  const DX = -DEPTH * 0.55, DY = DEPTH * 0.85;
+  ctx.fillStyle = "#b0b0b0";
+  ctx.beginPath();
+  ctx.moveTo(x,    y);
+  ctx.lineTo(x+DX, y+DY);
+  ctx.lineTo(x+DX, y+th+DY);
+  ctx.lineTo(x,    y+th);
+  ctx.closePath();
+  ctx.fill();
 
-  // Inner border — suggests wooden frame
-  const T = Math.max(4, Math.min(8, Math.min(w,h)*0.07));
-  _sketchRect(ctx, x+T, y+T, w-T*2, h-T*2, seed+10, {wobble:1.2, strokesPerUnit:0.07, lineWidth:0.9, alpha:0.35, color:"#1a1a1a"});
+  // ── Sketchy outlines ──────────────────────────────────────────────────────
+  // Top face border
+  _sketchRect(ctx, x, y, w, th, seed,    {wobble:2.0, strokesPerUnit:0.10, lineWidth:2.0, alpha:0.88, color:"#1a1a1a"});
+  // Inner top border (wooden frame suggestion)
+  const T = Math.max(4, Math.min(8, Math.min(w,th)*0.07));
+  _sketchRect(ctx, x+T, y+T, w-T*2, th-T*2, seed+10, {wobble:1.2, strokesPerUnit:0.07, lineWidth:0.9, alpha:0.35, color:"#1a1a1a"});
+  // Front face edges
+  const rf = _sketchSeededRand(seed+20);
+  _sketchEdge(ctx, x,   y+th,       x+w, y+th,       rf, {wobble:1.2, strokesPerUnit:0.08, lineWidth:1.4, alpha:0.70, color:"#1a1a1a"});
+  _sketchEdge(ctx, x,   y+th+DEPTH, x+w, y+th+DEPTH, rf, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.2, alpha:0.60, color:"#1a1a1a"});
+  // Left face edges
+  const rl = _sketchSeededRand(seed+30);
+  _sketchEdge(ctx, x, y,    x+DX, y+DY,    rl, {wobble:1.4, strokesPerUnit:0.08, lineWidth:1.4, alpha:0.68, color:"#1a1a1a"});
+  _sketchEdge(ctx, x, y+th, x+DX, y+th+DY, rl, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.55, color:"#1a1a1a"});
 
-  // Corner post X marks
+  // ── Corner post X marks (top face corners) ────────────────────────────────
   const cs=5;
-  [[x,y],[x+w,y],[x+w,y+h],[x,y+h]].forEach(([px,py])=>{
+  [[x,y],[x+w,y],[x+w,y+th],[x,y+th]].forEach(([px,py])=>{
     ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=1.1; ctx.globalAlpha=0.50;
     ctx.beginPath();ctx.rect(px-cs/2,py-cs/2,cs,cs);ctx.stroke();
     ctx.globalAlpha=0.30;
@@ -10442,10 +10478,17 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
     ctx.restore();
   });
 
-  // Selection ring
+  // ── Selection ring ────────────────────────────────────────────────────────
   if (isSelected) {
     ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
-    ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x-4,    y-4);
+    ctx.lineTo(x+w+4,  y-4);
+    ctx.lineTo(x+w+4,  y+th+DEPTH+4);
+    ctx.lineTo(x+DX-4, y+th+DY+4);
+    ctx.lineTo(x+DX-4, y+DY-4);
+    ctx.closePath();
+    ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
@@ -10558,14 +10601,32 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
     const iRy  = sry * 0.68;
     const N    = 40;
 
-    // Shadow hatching on left/bottom of cylinder
+    // Cross-hatch shadow on left side and bottom-left arc — two stroke directions for X effect
     const sh = _sketchSeededRand(potSeed+888);
+    const sh2 = _sketchSeededRand(potSeed+999);
     ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+    // First direction — diagonal strokes down-left
     for(let i=0;i<22;i++){
       const sx=pcx-rx*0.78+sh()*rx*0.42;
       const sy=pcy+cylH*(0.45+sh()*0.48)+(sh()-0.5)*3;
       const ang=Math.PI*0.55+(sh()-0.5)*0.42, len=3+sh()*8;
       ctx.lineWidth=0.5+sh()*0.65; ctx.globalAlpha=0.13+sh()*0.19;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
+    }
+    // Second direction — cross strokes for X-hatch
+    for(let i=0;i<16;i++){
+      const sx=pcx-rx*0.82+sh2()*rx*0.50;
+      const sy=pcy+cylH*(0.40+sh2()*0.52)+(sh2()-0.5)*3;
+      const ang=Math.PI*0.35+(sh2()-0.5)*0.38, len=2+sh2()*7;
+      ctx.lineWidth=0.4+sh2()*0.5; ctx.globalAlpha=0.09+sh2()*0.14;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
+    }
+    // Bottom-left arc shadow strokes
+    for(let i=0;i<18;i++){
+      const t=i/18, a=Math.PI+t*(Math.PI*0.5);
+      const sx=pcx+Math.cos(a)*rx+(sh2()-0.5)*2, sy=pcy+cylH+Math.sin(a)*sry*0.38+sh2()*3;
+      const ang=a+Math.PI*0.4+(sh2()-0.5)*0.4, len=2+sh2()*8;
+      ctx.lineWidth=0.4+sh2()*0.6; ctx.globalAlpha=0.11+sh2()*0.17;
       ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
     }
     ctx.restore();
@@ -10615,13 +10676,18 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
     _sketchEdge(ctx,pcx-rx,pcy,pcx-rx,pcy+cylH,rv,{wobble:1.6,strokesPerUnit:0.08,lineWidth:1.6,alpha:0.80,color:"#1a1a1a"});
     _sketchEdge(ctx,pcx+rx,pcy,pcx+rx,pcy+cylH,rv,{wobble:1.6,strokesPerUnit:0.08,lineWidth:1.1,alpha:0.55,color:"#1a1a1a"});
 
-    // Label inside soil ellipse
+    // Label inside soil ellipse — handwritten pencil style
     if(label){
       ctx.save();
-      const sz=Math.max(8, Math.min(13, rx*0.52));
+      const sz=Math.max(8, Math.min(14, rx*0.55));
+      const lr=_sketchSeededRand(potSeed+77);
+      const rot=(lr()-0.5)*0.07;
+      ctx.translate(pcx, pcy+iRy*0.12);
+      ctx.rotate(rot);
       ctx.font=`${sz}px 'Caveat',cursive`;
-      ctx.fillStyle="#444"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(label, pcx, pcy+iRy*0.12);
+      ctx.fillStyle="#2a2a2a"; ctx.globalAlpha=0.80;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(label, 0, 0);
       ctx.restore();
     }
   }
@@ -10858,13 +10924,19 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
 
   if (!label) return;
 
-  const fs = Math.max(10, Math.min(16, Math.min(w, h) * 0.18));
+  const fs = Math.max(11, Math.min(18, Math.min(w, h) * 0.20));
+  // Seed a tiny rotation so each label looks naturally hand-placed
+  const labelSeed = _sketchSeededRand(Math.round(x*3+y*7+w*2));
+  const rot = (labelSeed() - 0.5) * 0.06; // ±0.03 rad — subtle tilt
   ctx.save();
+  ctx.translate(x + w/2, y + h/2);
+  ctx.rotate(rot);
   ctx.font = `${fs}px 'Caveat', cursive`;
-  ctx.fillStyle = "#1a1a1a";
+  ctx.fillStyle = "#2a2a2a";
+  ctx.globalAlpha = 0.82;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, x + w/2, y + h/2);
+  ctx.fillText(label, 0, 0);
   ctx.restore();
 }
 
