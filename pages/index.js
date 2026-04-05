@@ -10618,47 +10618,6 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
     const iRy  = sry * 0.68;
     const N    = 40;
 
-    // Cross-hatch shadow on left side of cylinder — two sets of parallel lines
-    ctx.save();
-    // Clip to left-side strip of the cylinder
-    ctx.beginPath();
-    ctx.rect(pcx - rx, pcy, rx * 0.65, cylH);
-    ctx.clip();
-    const sh = _sketchSeededRand(potSeed+888);
-    ctx.strokeStyle = "#1a1a1a"; ctx.lineCap = "round";
-    const hSpacing = Math.max(3, rx * 0.18);
-    // First set — diagonal lines angling down-right
-    for(let ox = -rx; ox < rx * 0.65 + cylH; ox += hSpacing){
-      ctx.lineWidth = 0.5 + sh()*0.4; ctx.globalAlpha = 0.18 + sh()*0.12;
-      ctx.beginPath();
-      ctx.moveTo(pcx - rx + ox, pcy);
-      ctx.lineTo(pcx - rx + ox - cylH*0.7, pcy + cylH);
-      ctx.stroke();
-    }
-    // Second set — cross direction
-    for(let ox = -rx; ox < rx * 0.65 + cylH; ox += hSpacing){
-      ctx.lineWidth = 0.4 + sh()*0.3; ctx.globalAlpha = 0.11 + sh()*0.09;
-      ctx.beginPath();
-      ctx.moveTo(pcx - rx + ox - cylH*0.7, pcy);
-      ctx.lineTo(pcx - rx + ox, pcy + cylH);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Bottom-left arc shadow — parallel strokes following the curve
-    ctx.save();
-    const sh2 = _sketchSeededRand(potSeed+999);
-    ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
-    for(let i=0;i<14;i++){
-      const t = i/14;
-      const a = Math.PI + t * (Math.PI * 0.55);
-      const bx = pcx + Math.cos(a)*rx, by = pcy + cylH + Math.sin(a)*sry*0.38;
-      const ang = a + Math.PI*0.38, len = 3 + sh2()*7;
-      ctx.lineWidth = 0.4+sh2()*0.5; ctx.globalAlpha = 0.13+sh2()*0.15;
-      ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+Math.cos(ang)*len, by+Math.sin(ang)*len); ctx.stroke();
-    }
-    ctx.restore();
-
     // Cylinder body fill
     ctx.save(); ctx.beginPath(); ctx.rect(pcx-rx,pcy,rx*2,cylH); ctx.fillStyle="#f0f0f0"; ctx.fill(); ctx.restore();
     // Top rim fill
@@ -10667,6 +10626,44 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
     ctx.save(); ctx.beginPath(); ctx.ellipse(pcx,pcy,iRx,iRy,0,0,Math.PI*2); ctx.fillStyle="#e0e0e0"; ctx.fill(); ctx.restore();
     // Soil hachure
     _sketchHachure(ctx, pcx-iRx, pcy-iRy, iRx*2, iRy*2, potSeed+5, {alpha:0.10, density:0.014});
+
+    // Cross-hatch shadow on left side — drawn AFTER fills so it shows
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pcx - rx, pcy, rx * 0.65, cylH);
+    ctx.clip();
+    const sh = _sketchSeededRand(potSeed+888);
+    ctx.strokeStyle = "#1a1a1a"; ctx.lineCap = "round";
+    const hSpacing = Math.max(3, rx * 0.18);
+    for(let ox = -rx; ox < rx * 0.65 + cylH; ox += hSpacing){
+      ctx.lineWidth = 0.6 + sh()*0.4; ctx.globalAlpha = 0.22 + sh()*0.14;
+      ctx.beginPath();
+      ctx.moveTo(pcx - rx + ox, pcy);
+      ctx.lineTo(pcx - rx + ox - cylH*0.7, pcy + cylH);
+      ctx.stroke();
+    }
+    for(let ox = -rx; ox < rx * 0.65 + cylH; ox += hSpacing){
+      ctx.lineWidth = 0.5 + sh()*0.3; ctx.globalAlpha = 0.14 + sh()*0.10;
+      ctx.beginPath();
+      ctx.moveTo(pcx - rx + ox - cylH*0.7, pcy);
+      ctx.lineTo(pcx - rx + ox, pcy + cylH);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Bottom-left arc shadow
+    ctx.save();
+    const sh2 = _sketchSeededRand(potSeed+999);
+    ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+    for(let i=0;i<14;i++){
+      const t = i/14;
+      const a = Math.PI + t * (Math.PI * 0.55);
+      const bx = pcx + Math.cos(a)*rx, by = pcy + cylH + Math.sin(a)*sry*0.38;
+      const ang = a + Math.PI*0.38, len = 3 + sh2()*7;
+      ctx.lineWidth = 0.5+sh2()*0.5; ctx.globalAlpha = 0.16+sh2()*0.15;
+      ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+Math.cos(ang)*len, by+Math.sin(ang)*len); ctx.stroke();
+    }
+    ctx.restore();
 
     // Wobbly ellipse outlines
     function sketchEll(erx,ery,sOff,lw,al){
