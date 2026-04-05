@@ -11493,6 +11493,292 @@ function CommitPlanModal({ plan, onConfirm, onClose }) {
 }
 
 // ── Main PlanScreen ───────────────────────────────────────────────────────────
+// ── GardenSketchCanvas — pencil sketch garden renderer ────────────────────────
+function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = width, H = height;
+    canvas.width = W; canvas.height = H;
+
+    // ── Seeded random ──────────────────────────────────────────────────────────
+    function seededRand(seed) {
+      let s = seed;
+      return function() { s=(s*16807+0)%2147483647; return (s-1)/2147483646; };
+    }
+
+    // ── Sketch edge ────────────────────────────────────────────────────────────
+    function sketchEdge(x1,y1,x2,y2,rand,opts={}) {
+      const {wobble=2.0,strokesPerUnit=0.09,lineWidth=1.6,alpha=0.82,color="#1a1a1a"}=opts;
+      const len=Math.sqrt((x2-x1)**2+(y2-y1)**2);
+      const strokes=Math.max(3,Math.floor(len*strokesPerUnit));
+      const dx=(x2-x1)/strokes,dy=(y2-y1)/strokes;
+      ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lineWidth; ctx.lineCap="round"; ctx.globalAlpha=alpha;
+      let px=x1+(rand()-0.5)*wobble*0.5,py=y1+(rand()-0.5)*wobble*0.5;
+      for(let i=0;i<strokes;i++){
+        const nx=x1+dx*(i+1)+(rand()-0.5)*wobble,ny=y1+dy*(i+1)+(rand()-0.5)*wobble;
+        if(rand()>0.88){px=nx;py=ny;continue;}
+        ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(nx,ny);ctx.stroke();px=nx;py=ny;
+      }
+      ctx.restore();
+    }
+
+    function sketchPoly(points,seed,opts={}) {
+      const rand=seededRand(seed);
+      for(let i=0;i<points.length-1;i++) sketchEdge(points[i][0],points[i][1],points[i+1][0],points[i+1][1],rand,opts);
+    }
+
+    function fillPoly(points,color) {
+      ctx.save(); ctx.fillStyle=color; ctx.beginPath();
+      points.forEach((p,i)=>i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+
+    function scatterHachure(points,seed,opts={}) {
+      const {alpha=0.12,density=0.018}=opts;
+      const rand=seededRand(seed+777);
+      const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
+      const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+      const count=Math.floor((maxX-minX)*(maxY-minY)*density);
+      ctx.save(); ctx.beginPath();
+      points.forEach((p,i)=>i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+      ctx.closePath(); ctx.clip(); ctx.lineCap="round";
+      for(let i=0;i<count;i++){
+        const lx=minX+rand()*(maxX-minX),ly=minY+rand()*(maxY-minY);
+        const angle=-0.7+rand()*1.4,len=4+rand()*22;
+        const dc=rand();
+        ctx.strokeStyle="#1a1a1a";
+        ctx.lineWidth=dc>0.88?1.2+rand()*0.8:0.4+rand()*0.7;
+        ctx.globalAlpha=dc>0.88?alpha*(1.8+rand()*1.4):alpha*(0.25+rand()*1.1);
+        ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+Math.cos(angle)*len,ly+Math.sin(angle)*len);ctx.stroke();
+        if(rand()>0.60){
+          const ox=lx+(rand()-0.5)*5,oy=ly+(rand()-0.5)*5,a2=angle+(rand()-0.5)*0.5,l2=3+rand()*14,dc2=rand();
+          ctx.globalAlpha=dc2>0.85?alpha*(1.5+rand()):alpha*(0.2+rand()*0.65);
+          ctx.lineWidth=dc2>0.85?1.0+rand()*0.6:0.35+rand()*0.5;
+          ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+Math.cos(a2)*l2,oy+Math.sin(a2)*l2);ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    // ── Perspective constants ──────────────────────────────────────────────────
+    const TILT=0.55,SHEAR=0.18,DEPTH=18;
+
+    function bedFaces(x,y,w,h){
+      const th=h*TILT,sT=y*SHEAR,sB=(y+th)*SHEAR;
+      const tl=[x+sT,y],tr=[x+w+sT,y],br=[x+w+sB,y+th],bl=[x+sB,y+th];
+      const DX=-DEPTH*0.55,DY=DEPTH*0.85;
+      const tll=[tl[0]+DX,tl[1]+DY],bll=[bl[0]+DX,bl[1]+DY];
+      return {
+        top:[tl,tr,br,bl,tl],
+        front:[bl,br,[br[0]+DX,br[1]+DY],[bl[0]+DX,bl[1]+DY],bl],
+        left:[tl,tll,bll,bl,tl]
+      };
+    }
+
+    function drawRaisedBed(x,y,w,h,label,seed,selected){
+      const {top,front,left}=bedFaces(x,y,w,h);
+      fillPoly(top,"#ffffff"); scatterHachure(top,seed,{alpha:0.10,density:0.016});
+      fillPoly(front,"#d8d8d8"); fillPoly(left,"#b8b8b8");
+      const eOpts={wobble:2.2,strokesPerUnit:0.10,lineWidth:2.0,alpha:0.88,color:"#1a1a1a"};
+      sketchPoly(top,seed,eOpts);
+      sketchPoly(front,seed+30,{...eOpts,lineWidth:1.7,alpha:0.78});
+      sketchPoly(left,seed+40,{...eOpts,lineWidth:1.5,alpha:0.68});
+      // corner posts
+      const cs=6;
+      [top[0],top[1],top[2],top[3]].forEach(([px,py])=>{
+        ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=1.2; ctx.globalAlpha=0.55;
+        ctx.beginPath();ctx.rect(px-cs/2,py-cs/2,cs,cs);ctx.stroke();
+        ctx.globalAlpha=0.35;
+        ctx.beginPath();ctx.moveTo(px-cs/2+1,py-cs/2+1);ctx.lineTo(px+cs/2-1,py+cs/2-1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(px+cs/2-1,py-cs/2+1);ctx.lineTo(px-cs/2+1,py+cs/2-1);ctx.stroke();
+        ctx.restore();
+      });
+      if(selected){
+        ctx.save(); ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
+        const tl=top[0],tr=top[1],br=top[2],bl=top[3];
+        ctx.beginPath();ctx.moveTo(tl[0]-5,tl[1]-5);ctx.lineTo(tr[0]+5,tr[1]-5);
+        ctx.lineTo(br[0]+5,br[1]+DEPTH+5);ctx.lineTo(tl[0]-DEPTH*0.55-5,bl[1]+DEPTH+5);
+        ctx.closePath();ctx.stroke();ctx.restore();
+      }
+      const tcx=(top[0][0]+top[1][0]+top[2][0]+top[3][0])/4;
+      const tcy=(top[0][1]+top[1][1]+top[2][1]+top[3][1])/4;
+      ctx.save();
+      ctx.font=`${Math.min(19,Math.max(12,w/7))}px 'Caveat',cursive`;
+      ctx.fillStyle="#1a1a1a"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(label||"",tcx+tcy*SHEAR*0.3,tcy);
+      ctx.restore();
+    }
+
+    function drawOpenGround(x,y,w,h,label,seed){
+      const {top}=bedFaces(x,y,w,h);
+      fillPoly(top,"#e4e4e4");
+      scatterHachure(top,seed,{alpha:0.13,density:0.022});
+      scatterHachure(top,seed+3,{alpha:0.07,density:0.010});
+      sketchPoly(top,seed,{wobble:2.2,strokesPerUnit:0.07,lineWidth:1.6,alpha:0.68,color:"#333"});
+      ctx.save(); ctx.strokeStyle="#aaa"; ctx.lineWidth=0.9; ctx.globalAlpha=0.45; ctx.setLineDash([5,5]);
+      const pts=top.slice(0,4),ins=4;
+      ctx.beginPath();ctx.moveTo(pts[0][0]+ins,pts[0][1]+ins);ctx.lineTo(pts[1][0]-ins,pts[1][1]+ins);
+      ctx.lineTo(pts[2][0]-ins,pts[2][1]-ins);ctx.lineTo(pts[3][0]+ins,pts[3][1]-ins);ctx.closePath();ctx.stroke();
+      ctx.restore();
+      const tcx=(top[0][0]+top[1][0]+top[2][0]+top[3][0])/4;
+      const tcy=(top[0][1]+top[1][1]+top[2][1]+top[3][1])/4;
+      ctx.save(); ctx.font="12px 'Caveat',cursive"; ctx.fillStyle="#444";
+      ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label||"",tcx,tcy); ctx.restore();
+    }
+
+    function drawPot(cx,cy,rx,ry,label,seed){
+      const rand=seededRand(seed);
+      const scx=cx+cy*SHEAR,sry=ry*TILT,cylH=sry*2.2;
+      const iRx=rx*0.72,iRy=sry*0.68;
+      // shadow hatching
+      const sh=seededRand(seed+888);
+      ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+      for(let i=0;i<28;i++){
+        const t=i/28;
+        const sx=scx-rx*0.85+sh()*rx*0.5;
+        const sy=cy+cylH*(0.42+t*0.52)+(sh()-0.5)*4;
+        const outAngle=Math.PI*0.55+(sh()-0.5)*0.5,len=4+sh()*11;
+        ctx.lineWidth=0.5+sh()*0.75; ctx.globalAlpha=0.16+sh()*0.22;
+        ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(outAngle)*len,sy+Math.sin(outAngle)*len);ctx.stroke();
+        if(sh()>0.38){
+          const ca=outAngle-0.9-sh()*0.5,cl=3+sh()*8;
+          ctx.lineWidth=0.4+sh()*0.5; ctx.globalAlpha=0.10+sh()*0.13;
+          ctx.beginPath();ctx.moveTo(sx+(sh()-0.5)*2,sy+(sh()-0.5)*2);ctx.lineTo(sx+Math.cos(ca)*cl,sy+Math.sin(ca)*cl);ctx.stroke();
+        }
+      }
+      for(let i=0;i<20;i++){
+        const t=i/20,a=Math.PI+t*(Math.PI*0.5);
+        const sx=scx+Math.cos(a)*rx+(sh()-0.5)*3,sy=cy+cylH+Math.sin(a)*sry*0.4+1+sh()*3;
+        const outAngle=a+Math.PI*0.4+(sh()-0.5)*0.4,len=3+sh()*9;
+        ctx.lineWidth=0.45+sh()*0.65; ctx.globalAlpha=0.14+sh()*0.19;
+        ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(outAngle)*len,sy+Math.sin(outAngle)*len);ctx.stroke();
+        if(sh()>0.42){
+          const ca=outAngle-0.8-sh()*0.5,cl=2+sh()*7;
+          ctx.lineWidth=0.35+sh()*0.4; ctx.globalAlpha=0.08+sh()*0.12;
+          ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(ca)*cl,sy+Math.sin(ca)*cl);ctx.stroke();
+        }
+      }
+      ctx.restore();
+      // fills
+      ctx.save(); ctx.beginPath(); ctx.rect(scx-rx,cy,rx*2,cylH); ctx.fillStyle="#f0f0f0"; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(scx,cy,rx,sry,0,0,Math.PI*2); ctx.fillStyle="#f0f0f0"; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(scx,cy,iRx,iRy,0,0,Math.PI*2); ctx.fillStyle="#e0e0e0"; ctx.fill(); ctx.restore();
+      const soilPts=Array.from({length:32},(_,i)=>{const a=i/32*Math.PI*2;return[scx+Math.cos(a)*iRx,cy+Math.sin(a)*iRy];});
+      scatterHachure(soilPts,seed+5,{alpha:0.10,density:0.013});
+      // outlines
+      const N=44;
+      function sketchEll(ex,ey,erx,ery,sOff,lw,al){
+        const r=seededRand(seed+sOff);
+        for(let i=0;i<N;i++){
+          const a1=(i/N)*Math.PI*2,a2=((i+1)/N)*Math.PI*2;
+          const rw1=1+(r()-0.5)*0.12,rw2=1+(r()-0.5)*0.12;
+          if(r()>0.94) continue;
+          ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+          ctx.lineWidth=lw+(r()-0.5)*0.4; ctx.globalAlpha=al+(r()-0.5)*0.15;
+          ctx.beginPath();ctx.moveTo(ex+Math.cos(a1)*erx*rw1,ey+Math.sin(a1)*ery*rw1);
+          ctx.lineTo(ex+Math.cos(a2)*erx*rw2,ey+Math.sin(a2)*ery*rw2);ctx.stroke();ctx.restore();
+        }
+      }
+      sketchEll(scx,cy,rx,sry,10,1.8,0.82);
+      sketchEll(scx,cy,iRx,iRy,20,1.1,0.55);
+      const rb=seededRand(seed+30);
+      for(let i=0;i<N/2;i++){
+        const a1=(i/(N/2))*Math.PI,a2=((i+1)/(N/2))*Math.PI;
+        const rw1=1+(rb()-0.5)*0.09,rw2=1+(rb()-0.5)*0.09;
+        if(rb()>0.95) continue;
+        ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+        ctx.lineWidth=1.4+(rb()-0.5)*0.3; ctx.globalAlpha=0.72+(rb()-0.5)*0.15;
+        ctx.beginPath();ctx.moveTo(scx+Math.cos(a1)*rx*rw1,cy+cylH+Math.sin(a1)*sry*0.4*rw1);
+        ctx.lineTo(scx+Math.cos(a2)*rx*rw2,cy+cylH+Math.sin(a2)*sry*0.4*rw2);ctx.stroke();ctx.restore();
+      }
+      const rv=seededRand(seed+40);
+      sketchEdge(scx-rx+(rv()-0.5)*1.5,cy,scx-rx+(rv()-0.5)*2,cy+cylH,rv,{wobble:1.8,strokesPerUnit:0.08,lineWidth:1.6,alpha:0.80,color:"#1a1a1a"});
+      sketchEdge(scx+rx+(rv()-0.5)*1.5,cy,scx+rx+(rv()-0.5)*2,cy+cylH,rv,{wobble:1.8,strokesPerUnit:0.08,lineWidth:1.2,alpha:0.60,color:"#1a1a1a"});
+      if(label){
+        ctx.save(); ctx.font="13px 'Caveat',cursive"; ctx.fillStyle="#333";
+        ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(label,scx,cy+iRy*0.2); ctx.restore();
+      }
+    }
+
+    // ── Background ─────────────────────────────────────────────────────────────
+    ctx.fillStyle="#faf8f4"; ctx.fillRect(0,0,W,H);
+    const gr=seededRand(42);
+    for(let i=0;i<220;i++){ctx.fillStyle="rgba(0,0,0,0.022)";ctx.beginPath();ctx.arc(gr()*W,gr()*H,gr()*1.8,0,Math.PI*2);ctx.fill();}
+    const gr2=seededRand(99); ctx.save(); ctx.lineCap="round"; ctx.lineJoin="round";
+    for(let i=0;i<280;i++){
+      const gx=gr2()*W,gy=gr2()*H;
+      ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=0.5+gr2()*0.6; ctx.globalAlpha=0.055+gr2()*0.065;
+      const segs=2+Math.floor(gr2()*3); ctx.beginPath(); ctx.moveTo(gx,gy);
+      let cx2=gx,cy2=gy;
+      for(let s=0;s<segs;s++){const a=gr2()*Math.PI*2,l=3+gr2()*8;cx2+=Math.cos(a)*l;cy2+=Math.sin(a)*l*0.55;ctx.lineTo(cx2,cy2);}
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── Layout areas ───────────────────────────────────────────────────────────
+    if(!areas.length){
+      ctx.save(); ctx.font="16px 'Caveat',cursive"; ctx.fillStyle="#999";
+      ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("No areas yet",W/2,H/2); ctx.restore();
+      return;
+    }
+
+    // Figure out bounding box of all areas to auto-fit
+    const PAD=40;
+    const rawW=areas.reduce((m,a)=>Math.max(m,(a.width_m||2)+(a.layout_x||0)),0)||6;
+    const rawH=areas.reduce((m,a)=>Math.max(m,(a.length_m||2)+(a.layout_y||0)),0)||6;
+    const scale=Math.min((W-PAD*2)/rawW,(H-PAD*2)/rawH,60);
+
+    // Group container areas to draw as pot clusters
+    const containerAreas=areas.filter(a=>a.area_type==="container"||a.area_type==="pot");
+    const otherAreas=areas.filter(a=>a.area_type!=="container"&&a.area_type!=="pot");
+
+    // Draw non-container areas
+    otherAreas.forEach((area,idx)=>{
+      const x=PAD+(area.layout_x||0)*scale;
+      const y=PAD+(area.layout_y||0)*scale;
+      const w=(area.width_m||2)*scale;
+      const h=(area.length_m||2)*scale;
+      const areaCrops=crops.filter(c=>c.area_id===area.id);
+      const label=areaCrops.length===1?areaCrops[0].name:(areaCrops.length>1?`${areaCrops.length} crops`:area.name||"");
+      const seed=1000+idx*7;
+      const selected=activeBlock===area.id;
+      if(area.area_type==="open_ground"||area.area_type==="in_ground") drawOpenGround(x,y,w,h,label,seed);
+      else drawRaisedBed(x,y,w,h,label,seed,selected);
+    });
+
+    // Draw container areas as pot clusters
+    if(containerAreas.length>0){
+      const potCrops=containerAreas.flatMap(a=>crops.filter(c=>c.area_id===a.id));
+      const uniqueLabels=[...new Set(potCrops.map(c=>c.name))];
+      const isSingle=uniqueLabels.length<=1;
+      const label=uniqueLabels[0]||containerAreas[0]?.name||"";
+      // Position pots in bottom-centre of canvas
+      const potCX=W*0.45,potCY=H*0.72;
+      drawPot(potCX-70,potCY+8,38,28,isSingle?null:uniqueLabels[1]||null,3002);
+      drawPot(potCX,potCY,52,40,label,3001);
+      drawPot(potCX+75,potCY+28,28,21,isSingle?null:uniqueLabels[2]||null,3003);
+    }
+
+  }, [areas, crops, activeBlock, width, height]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={Math.max(300, height)}
+      style={{display:"block",width:"100%",height:"auto",fontFamily:"'Caveat',cursive"}}
+      onClick={e=>{
+        if(!onTap) return;
+        // simple hit test — just pass null for now, full hit test can be added later
+      }}
+    />
+  );
+}
+
 function PlanScreen() {
   const PLAN_VIEW_CACHE = "vercro_plan_view_v1";
   const _savedView = (() => { try { const v = localStorage.getItem(PLAN_VIEW_CACHE); return v ? JSON.parse(v) : null; } catch(e) { return null; } })();
@@ -11843,24 +12129,14 @@ function PlanScreen() {
             {planToast||"✓ Layout saved"}
           </div>
         )}
-        {konvaReady ? (
-          <GardenKonvaCanvas
-            areas={areas}
-            crops={planCrops}
-            pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
-            stageW={stageW} stageH={stageH} stageScale={zoom}
-            activeBlock={isPlanMode ? null : activeBlock}
-            onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
-            onDragEnd={handleDragEnd}
-            onRotate={handleRotate}
-            onZoomChange={handleZoomChange}
-            zoom={zoom}
-          />
-        ) : (
-          <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:K.canvasBg,color:"rgba(255,255,255,0.5)",fontSize:14}}>
-            Preparing your garden…
-          </div>
-        )}
+        <GardenSketchCanvas
+          areas={areas}
+          crops={planCrops}
+          activeBlock={activeBlock}
+          onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
+          width={stageW}
+          height={Math.max(300, stageH)}
+        />
       </div>
       </div>
 
