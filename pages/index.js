@@ -10944,18 +10944,29 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   for (const c of activeCrops) { if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); } }
   if (!unique.length) return;
 
+  // Strip parenthetical suffixes e.g. "(from seed)", "(variety)" — show just the crop name
+  const cleanName = (name) => name.replace(/\s*\(.*?\)\s*/g, "").trim();
+
   // Always show crop names — join with line break if multiple, never "N crops"
-  const lines = unique.slice(0, 3).map(c => c.name);
+  const lines = unique.slice(0, 3).map(c => cleanName(c.name));
 
   // Top face uses full height — no TILT distortion
   const isBed = area.type === "raised_bed";
   const topH  = h;
 
-  // Rotate along longest axis — if width > topH, landscape (no rotation needed);
-  // if topH > width significantly, rotate text 90° to run along the length
+  // Rotate along longest axis
   const isPortrait = topH > w * 1.4;
   const maxDim = isPortrait ? topH : w;
-  const fs = Math.max(12, Math.min(20, maxDim * 0.20));
+
+  // Size font to fit — measure against available width, scale down if needed
+  let fs = Math.max(10, Math.min(18, maxDim * 0.16));
+  // Rough check: if longest line would overflow, reduce
+  const availW = isPortrait ? topH * 0.85 : w * 0.85;
+  const approxCharW = fs * 0.55;
+  const longestChars = Math.max(...lines.map(l => l.length));
+  if (longestChars * approxCharW > availW) {
+    fs = Math.max(8, Math.floor(availW / (longestChars * 0.55)));
+  }
 
   // Centre point is within the top face
   const cy = isBed ? y + topH * 0.50 : y + h * 0.50;
