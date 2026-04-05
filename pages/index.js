@@ -10716,7 +10716,7 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
       ctx.textAlign="center"; ctx.textBaseline="middle";
       const tw = ctx.measureText(label).width;
       const padX=sz*0.5, padY=sz*0.28;
-      ctx.fillStyle="rgba(255,255,255,0.80)"; ctx.globalAlpha=1;
+      ctx.fillStyle="#f0f0f0"; ctx.globalAlpha=1; // match pot soil colour — fully opaque
       ctx.beginPath(); ctx.roundRect(-tw/2-padX,-sz/2-padY,tw+padX*2,sz+padY*2,3); ctx.fill();
       ctx.fillStyle="#2a2a2a"; ctx.globalAlpha=0.80;
       ctx.fillText(label, 0, 0);
@@ -10985,8 +10985,8 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   const maxTextW = Math.max(...lines.map(l => ctx.measureText(l).width));
   const padX = fs * 0.6, padY = fs * 0.35;
 
-  // White fill behind text — clears hachure lines
-  ctx.fillStyle = "rgba(255,255,255,0.82)";
+  // White fill behind text — fully opaque to block hachure lines
+  ctx.fillStyle = "#f5f3ee"; // match ground colour
   ctx.globalAlpha = 1;
   ctx.beginPath();
   ctx.roundRect(-maxTextW/2 - padX, -totalH/2 - padY, maxTextW + padX*2, totalH + padY*2, 4);
