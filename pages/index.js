@@ -10536,80 +10536,107 @@ function _drawGreenhouse(ctx, x, y, w, h, isSelected) {
 // ── Container / pot — pencil sketch style ─────────────────────────────────────
 function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
   ctx.save();
-  const seed = Math.round(x*9+y*11+w*7+h*3);
-  const rand = _sketchSeededRand(seed);
 
-  // Draw as a single pot centred in the area
-  const rx = w * 0.42;
-  const ry = h * 0.22;  // squashed ellipse for top-down oval look
-  const cx = x + w/2;
-  const cy = y + h * 0.38;
-  const cylH = h * 0.45;
-  const iRx = rx * 0.72;
-  const iRy = ry * 0.68;
+  // Three-pot cluster — painter's order: back-left, back-right (large), front-centre small
+  // Matches the sketch design: different-sized pots grouped together with TILT perspective.
+  const TILT = 0.55;
+  const baseSeed = Math.round(x*9+y*11+w*7+h*3);
+  const unit = Math.min(w, h) * 0.28;
 
-  // Cylinder body fill
-  ctx.fillStyle = "#f0f0f0";
-  ctx.fillRect(cx-rx, cy, rx*2, cylH);
+  // Pot positions as fractions of bounding box [cxFrac, cyFrac, rxScale, labelIndex, seedOffset]
+  // drawn back-to-front so front pot overlaps correctly
+  const pots = [
+    { cxF:0.30, cyF:0.38, rxS:0.80, labelIdx:1, s:1001 }, // back-left medium
+    { cxF:0.62, cyF:0.30, rxS:1.10, labelIdx:0, s:1002 }, // back-right large (main)
+    { cxF:0.48, cyF:0.62, rxS:0.56, labelIdx:2, s:1003 }, // front-centre small
+  ];
 
-  // Top rim fill
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
-  ctx.fillStyle = "#f0f0f0"; ctx.fill();
+  function drawOnePot(pcx, pcy, rx, label, potSeed) {
+    const sry  = rx * TILT;   // squashed rim — perspective
+    const cylH = sry * 2.0;   // cylinder body height
+    const iRx  = rx  * 0.72;
+    const iRy  = sry * 0.68;
+    const N    = 40;
 
-  // Inner soil fill
-  ctx.beginPath(); ctx.ellipse(cx, cy, iRx, iRy, 0, 0, Math.PI*2);
-  ctx.fillStyle = "#e0e0e0"; ctx.fill();
+    // Shadow hatching on left/bottom of cylinder
+    const sh = _sketchSeededRand(potSeed+888);
+    ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+    for(let i=0;i<22;i++){
+      const sx=pcx-rx*0.78+sh()*rx*0.42;
+      const sy=pcy+cylH*(0.45+sh()*0.48)+(sh()-0.5)*3;
+      const ang=Math.PI*0.55+(sh()-0.5)*0.42, len=3+sh()*8;
+      ctx.lineWidth=0.5+sh()*0.65; ctx.globalAlpha=0.13+sh()*0.19;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
+    }
+    ctx.restore();
 
-  // Soil hachure
-  _sketchHachure(ctx, cx-iRx, cy-iRy, iRx*2, iRy*2, seed+5, {alpha:0.10, density:0.015});
+    // Cylinder body fill
+    ctx.save(); ctx.beginPath(); ctx.rect(pcx-rx,pcy,rx*2,cylH); ctx.fillStyle="#f0f0f0"; ctx.fill(); ctx.restore();
+    // Top rim fill
+    ctx.save(); ctx.beginPath(); ctx.ellipse(pcx,pcy,rx,sry,0,0,Math.PI*2); ctx.fillStyle="#f0f0f0"; ctx.fill(); ctx.restore();
+    // Inner soil fill
+    ctx.save(); ctx.beginPath(); ctx.ellipse(pcx,pcy,iRx,iRy,0,0,Math.PI*2); ctx.fillStyle="#e0e0e0"; ctx.fill(); ctx.restore();
+    // Soil hachure
+    _sketchHachure(ctx, pcx-iRx, pcy-iRy, iRx*2, iRy*2, potSeed+5, {alpha:0.10, density:0.014});
 
-  // Sketch outlines — wobbly ellipses
-  const N=36;
-  function sketchEll(erx,ery,seedOff,lw,al){
-    const r=_sketchSeededRand(seed+seedOff);
-    for(let i=0;i<N;i++){
-      const a1=(i/N)*Math.PI*2,a2=((i+1)/N)*Math.PI*2;
-      const rw1=1+(r()-0.5)*0.10,rw2=1+(r()-0.5)*0.10;
-      if(r()>0.93) continue;
+    // Wobbly ellipse outlines
+    function sketchEll(erx,ery,sOff,lw,al){
+      const r=_sketchSeededRand(potSeed+sOff);
+      for(let i=0;i<N;i++){
+        const a1=(i/N)*Math.PI*2, a2=((i+1)/N)*Math.PI*2;
+        const rw1=1+(r()-0.5)*0.11, rw2=1+(r()-0.5)*0.11;
+        if(r()>0.94) continue;
+        ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+        ctx.lineWidth=lw+(r()-0.5)*0.38; ctx.globalAlpha=al+(r()-0.5)*0.14;
+        ctx.beginPath();
+        ctx.moveTo(pcx+Math.cos(a1)*erx*rw1, pcy+Math.sin(a1)*ery*rw1);
+        ctx.lineTo(pcx+Math.cos(a2)*erx*rw2, pcy+Math.sin(a2)*ery*rw2);
+        ctx.stroke(); ctx.restore();
+      }
+    }
+    sketchEll(rx,sry,10,1.8,0.82);   // outer rim
+    sketchEll(iRx,iRy,20,1.1,0.52);  // inner rim / soil
+
+    // Bottom arc — front half only
+    const rb=_sketchSeededRand(potSeed+30);
+    for(let i=0;i<N/2;i++){
+      const a1=(i/(N/2))*Math.PI, a2=((i+1)/(N/2))*Math.PI;
+      if(rb()>0.95) continue;
       ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
-      ctx.lineWidth=lw+(r()-0.5)*0.35; ctx.globalAlpha=al+(r()-0.5)*0.12;
+      ctx.lineWidth=1.4+(rb()-0.5)*0.3; ctx.globalAlpha=0.70+(rb()-0.5)*0.15;
       ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(a1)*erx*rw1,cy+Math.sin(a1)*ery*rw1);
-      ctx.lineTo(cx+Math.cos(a2)*erx*rw2,cy+Math.sin(a2)*ery*rw2);
+      ctx.moveTo(pcx+Math.cos(a1)*rx, pcy+cylH+Math.sin(a1)*sry*0.38);
+      ctx.lineTo(pcx+Math.cos(a2)*rx, pcy+cylH+Math.sin(a2)*sry*0.38);
       ctx.stroke(); ctx.restore();
     }
-  }
-  sketchEll(rx,ry,10,1.7,0.82);
-  sketchEll(iRx,iRy,20,1.0,0.50);
 
-  // Bottom arc (front half only)
-  const rb=_sketchSeededRand(seed+30);
-  for(let i=0;i<N/2;i++){
-    const a1=(i/(N/2))*Math.PI,a2=((i+1)/(N/2))*Math.PI;
-    if(rb()>0.94) continue;
-    ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
-    ctx.lineWidth=1.3+(rb()-0.5)*0.3; ctx.globalAlpha=0.68+(rb()-0.5)*0.15;
-    ctx.beginPath();
-    ctx.moveTo(cx+Math.cos(a1)*rx,cy+cylH+Math.sin(a1)*ry*0.4);
-    ctx.lineTo(cx+Math.cos(a2)*rx,cy+cylH+Math.sin(a2)*ry*0.4);
-    ctx.stroke(); ctx.restore();
-  }
+    // Side lines
+    const rv=_sketchSeededRand(potSeed+40);
+    _sketchEdge(ctx,pcx-rx,pcy,pcx-rx,pcy+cylH,rv,{wobble:1.6,strokesPerUnit:0.08,lineWidth:1.6,alpha:0.80,color:"#1a1a1a"});
+    _sketchEdge(ctx,pcx+rx,pcy,pcx+rx,pcy+cylH,rv,{wobble:1.6,strokesPerUnit:0.08,lineWidth:1.1,alpha:0.55,color:"#1a1a1a"});
 
-  // Side lines
-  const rv=_sketchSeededRand(seed+40);
-  _sketchEdge(ctx,cx-rx,cy,cx-rx,cy+cylH,rv,{wobble:1.5,strokesPerUnit:0.08,lineWidth:1.5,alpha:0.78,color:"#1a1a1a"});
-  _sketchEdge(ctx,cx+rx,cy,cx+rx,cy+cylH,rv,{wobble:1.5,strokesPerUnit:0.08,lineWidth:1.1,alpha:0.55,color:"#1a1a1a"});
-
-  // Crop label inside soil
-  if (cropEmojis && cropEmojis.length > 0) {
-    ctx.save();
-    const sz = Math.max(10, Math.min(16, rx*0.5));
-    ctx.font = `${sz}px serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(cropEmojis.slice(0,2).join(" "), cx, cy);
-    ctx.restore();
+    // Label inside soil ellipse
+    if(label){
+      ctx.save();
+      const sz=Math.max(8, Math.min(13, rx*0.52));
+      ctx.font=`${sz}px 'Caveat',cursive`;
+      ctx.fillStyle="#444"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(label, pcx, pcy+iRy*0.12);
+      ctx.restore();
+    }
   }
 
-  if (isSelected) {
+  // Labels: main pot gets first crop name, others get subsequent (or nothing)
+  const labels = cropEmojis && cropEmojis.length > 0
+    ? [cropEmojis[0]||null, cropEmojis[1]||null, cropEmojis[2]||null]
+    : [null, null, null];
+
+  // Draw back-to-front
+  for(const p of pots){
+    drawOnePot(x + w*p.cxF, y + h*p.cyF, unit*p.rxS, labels[p.labelIdx], baseSeed+p.s);
+  }
+
+  if(isSelected){
     ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
@@ -10809,7 +10836,7 @@ function _drawAreaShape(ctx, area, x, y, w, h, isSelected, areaCrops) {
     case "raised_bed":   _drawBed(ctx, x, y, w, h, isSelected); break;
     case "open_ground":  _drawOpenGround(ctx, x, y, w, h, isSelected); break;
     case "greenhouse":   _drawGreenhouse(ctx, x, y, w, h, isSelected); break;
-    case "container":    _drawContainer(ctx, x, y, w, h, isSelected, (areaCrops||[]).filter(c=>c.status!=="planned").map(c=>getCropEmoji(c.name))); break;
+    case "container":    _drawContainer(ctx, x, y, w, h, isSelected, (areaCrops||[]).filter(c=>c.status!=="planned").map(c=>c.name)); break;
     case "polytunnel":   _drawPolytunnel(ctx, x, y, w, h, isSelected); break;
     default:             _drawBed(ctx, x, y, w, h, isSelected);
   }
