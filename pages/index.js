@@ -10704,7 +10704,7 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
     _sketchEdge(ctx,pcx-rx,pcy,pcx-rx,pcy+cylH,rv,{wobble:1.6,strokesPerUnit:0.08,lineWidth:1.6,alpha:0.80,color:"#1a1a1a"});
     _sketchEdge(ctx,pcx+rx,pcy,pcx+rx,pcy+cylH,rv,{wobble:1.6,strokesPerUnit:0.08,lineWidth:1.1,alpha:0.55,color:"#1a1a1a"});
 
-    // Label inside soil ellipse — handwritten pencil style
+    // Label inside soil ellipse — handwritten pencil style with clear background
     if(label){
       ctx.save();
       const sz=Math.max(8, Math.min(14, rx*0.55));
@@ -10713,8 +10713,12 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
       ctx.translate(pcx, pcy+iRy*0.12);
       ctx.rotate(rot);
       ctx.font=`${sz}px 'Caveat',cursive`;
-      ctx.fillStyle="#2a2a2a"; ctx.globalAlpha=0.80;
       ctx.textAlign="center"; ctx.textBaseline="middle";
+      const tw = ctx.measureText(label).width;
+      const padX=sz*0.5, padY=sz*0.28;
+      ctx.fillStyle="rgba(255,255,255,0.80)"; ctx.globalAlpha=1;
+      ctx.beginPath(); ctx.roundRect(-tw/2-padX,-sz/2-padY,tw+padX*2,sz+padY*2,3); ctx.fill();
+      ctx.fillStyle="#2a2a2a"; ctx.globalAlpha=0.80;
       ctx.fillText(label, 0, 0);
       ctx.restore();
     }
@@ -10972,17 +10976,29 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   ctx.translate(cx, cy);
   ctx.rotate(rot);
   ctx.font = `${fs}px 'Caveat', cursive`;
-  ctx.fillStyle = "#1e1e1e";
-  ctx.globalAlpha = 0.88;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
+  // Measure text block so we can clear the hachure behind it
+  const lineH = fs * 1.15;
+  const totalH = lines.length === 1 ? fs : lineH * lines.length;
+  const maxTextW = Math.max(...lines.map(l => ctx.measureText(l).width));
+  const padX = fs * 0.6, padY = fs * 0.35;
+
+  // White fill behind text — clears hachure lines
+  ctx.fillStyle = "rgba(255,255,255,0.82)";
+  ctx.globalAlpha = 1;
+  ctx.beginPath();
+  ctx.roundRect(-maxTextW/2 - padX, -totalH/2 - padY, maxTextW + padX*2, totalH + padY*2, 4);
+  ctx.fill();
+
+  // Draw text
+  ctx.fillStyle = "#1e1e1e";
+  ctx.globalAlpha = 0.88;
 
   if (lines.length === 1) {
     ctx.fillText(lines[0], 0, 0);
   } else {
-    // Multiple lines — stack them
-    const lineH = fs * 1.15;
-    const totalH = lineH * lines.length;
     lines.forEach((line, i) => {
       ctx.fillText(line, 0, -totalH/2 + lineH*i + lineH/2);
     });
