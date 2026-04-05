@@ -11086,9 +11086,8 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
 
         {/* Areas */}
         {areas.map(area => {
-          const isRotated = area.rotation === 90 || area.rotation === 270;
-          const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
-          const rawH = isRotated ? (area.width_m||2) : (area.length_m||2);
+          const rawW = area.width_m||2;
+          const rawH = area.length_m||2;
           const w = rawW * pxPerM;
           const h = rawH * pxPerM;
           const ax = PAD + (area.layout_x||0) * pxPerM;
