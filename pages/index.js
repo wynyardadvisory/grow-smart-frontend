@@ -11730,7 +11730,10 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
     const PAD=40;
     const rawW=areas.reduce((m,a)=>Math.max(m,(a.width_m||2)+(a.layout_x||0)),0)||6;
     const rawH=areas.reduce((m,a)=>Math.max(m,(a.length_m||2)+(a.layout_y||0)),0)||6;
-    const scale=Math.min((W-PAD*2)/rawW,(H-PAD*2)/rawH,60);
+    // Use separate x/y scales to preserve aspect ratio correctly
+    const scaleX=Math.min((W-PAD*2)/rawW,60);
+    const scaleY=Math.min((H-PAD*2)/rawH,60);
+    const scale=Math.min(scaleX,scaleY);
 
     // Group container areas to draw as pot clusters
     const containerAreas=areas.filter(a=>a.area_type==="container"||a.area_type==="pot");
@@ -11756,11 +11759,12 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
       const uniqueLabels=[...new Set(potCrops.map(c=>c.name))];
       const isSingle=uniqueLabels.length<=1;
       const label=uniqueLabels[0]||containerAreas[0]?.name||"";
-      // Position pots in bottom-centre of canvas
       const potCX=W*0.45,potCY=H*0.72;
-      drawPot(potCX-70,potCY+8,38,28,isSingle?null:uniqueLabels[1]||null,3002);
-      drawPot(potCX,potCY,52,40,label,3001);
-      drawPot(potCX+75,potCY+28,28,21,isSingle?null:uniqueLabels[2]||null,3003);
+      // Position pots - give them proportional rx/ry for oval look
+      const potScale=scale*0.8;
+      drawPot(potCX-70,potCY+8,potScale*1.5,potScale*0.9,isSingle?null:uniqueLabels[1]||null,3002);
+      drawPot(potCX,potCY,potScale*2.0,potScale*1.2,label,3001);
+      drawPot(potCX+75,potCY+28,potScale*1.1,potScale*0.7,isSingle?null:uniqueLabels[2]||null,3003);
     }
 
   }, [areas, crops, activeBlock, width, height]);
@@ -11770,10 +11774,27 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
       ref={canvasRef}
       width={width}
       height={Math.max(300, height)}
-      style={{display:"block",width:"100%",height:"auto",fontFamily:"'Caveat',cursive"}}
+      style={{display:"block",width:"100%",height:"auto",fontFamily:"'Caveat',cursive",cursor:"pointer"}}
       onClick={e=>{
-        if(!onTap) return;
-        // simple hit test — just pass null for now, full hit test can be added later
+        if(!onTap||!areas.length) return;
+        const rect=e.currentTarget.getBoundingClientRect();
+        const scaleRatio=width/rect.width;
+        const mx=(e.clientX-rect.left)*scaleRatio;
+        const my=(e.clientY-rect.top)*scaleRatio;
+        const PAD=40;
+        const rawW=areas.reduce((m,a)=>Math.max(m,(a.width_m||2)+(a.layout_x||0)),0)||6;
+        const rawH=areas.reduce((m,a)=>Math.max(m,(a.length_m||2)+(a.layout_y||0)),0)||6;
+        const scale=Math.min((width-PAD*2)/rawW,(height-PAD*2)/rawH,60);
+        const TILT=0.55,DEPTH=18;
+        let hit=null;
+        areas.filter(a=>a.area_type!=="container"&&a.area_type!=="pot").forEach(area=>{
+          const x=PAD+(area.layout_x||0)*scale;
+          const y=PAD+(area.layout_y||0)*scale;
+          const w=(area.width_m||2)*scale;
+          const th=(area.length_m||2)*scale*TILT;
+          if(mx>=x&&mx<=x+w&&my>=y&&my<=y+th+DEPTH) hit=area.id;
+        });
+        onTap(hit);
       }}
     />
   );
