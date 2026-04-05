@@ -10432,8 +10432,8 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.save();
   const seed = Math.round(x*7+y*13+w*3+h*5);
   const DEPTH = Math.max(8, Math.min(18, h * 0.18));
-  const TILT  = 0.55;
-  const th    = h * TILT; // top-face height after perspective tilt
+  const TILT  = 0.40;  // reduced from 0.55 — less perspective compression, beds look more proportional
+  const th    = h * TILT;
   const DX    = -DEPTH * 0.55;
   const DY    = DEPTH * 0.85;
 
@@ -10951,8 +10951,8 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   // Always show crop names — join with line break if multiple, never "N crops"
   const lines = unique.slice(0, 3).map(c => c.name);
 
-  // Top face height for raised beds (TILT=0.55), full height for others
-  const TILT = 0.55;
+  // Top face height for raised beds (TILT=0.40), full height for others
+  const TILT = 0.40;
   const isBed = area.type === "raised_bed";
   const topH  = isBed ? h * TILT : h;
 
@@ -11086,11 +11086,11 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
 
         {/* Areas */}
         {areas.map(area => {
-          const rawW = area.width_m||2;
-          const rawH = area.length_m||2;
+          const isRotated = area.rotation === 90 || area.rotation === 270;
+          const rawW = isRotated ? (area.length_m||2) : (area.width_m||2);
+          const rawH = isRotated ? (area.width_m||2) : (area.length_m||2);
           const w = rawW * pxPerM;
           const h = rawH * pxPerM;
-          const rot = area.rotation || 0;
           const ax = PAD + (area.layout_x||0) * pxPerM;
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
@@ -11108,9 +11108,6 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           return (
             <Group key={area.id}
               x={ax} y={ay}
-              rotation={rot}
-              offsetX={rot ? w/2 : 0}
-              offsetY={rot ? h/2 : 0}
               draggable
               onDragEnd={e => {
                 const nx = (e.target.x() - PAD) / pxPerM;
