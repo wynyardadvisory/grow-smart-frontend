@@ -11090,6 +11090,7 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           const rawH = area.length_m||2;
           const w = rawW * pxPerM;
           const h = rawH * pxPerM;
+          const rot = area.rotation || 0;
           const ax = PAD + (area.layout_x||0) * pxPerM;
           const ay = PAD + (area.layout_y||0) * pxPerM;
           const isSelected = activeBlock === area.id;
@@ -11107,6 +11108,9 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           return (
             <Group key={area.id}
               x={ax} y={ay}
+              rotation={rot}
+              offsetX={rot ? w/2 : 0}
+              offsetY={rot ? h/2 : 0}
               draggable
               onDragEnd={e => {
                 const nx = (e.target.x() - PAD) / pxPerM;
