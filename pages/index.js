@@ -10542,53 +10542,92 @@ function _drawOpenGround(ctx, x, y, w, h, isSelected) {
 // ── Greenhouse ─────────────────────────────────────────────────────────────────
 function _drawGreenhouse(ctx, x, y, w, h, isSelected) {
   ctx.save();
-  // strong shadow
-  ctx.shadowColor = "rgba(0,0,0,0.26)"; ctx.shadowBlur = 20;
-  ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 9;
-  ctx.fillStyle = "#B8C8C4";
-  ctx.beginPath(); ctx.roundRect(x+2, y+h*.88, w-4, h*.12, [0,0,5,5]); ctx.fill();
-  ctx.shadowColor = "transparent";
-  // glass body
-  ctx.fillStyle = "rgba(205,232,226,0.18)"; ctx.strokeStyle = K.gh; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 5); ctx.fill(); ctx.stroke();
-  // interior shadow gradient
-  const ig = ctx.createLinearGradient(x, y, x+w*.4, y+h*.4);
-  ig.addColorStop(0, "rgba(0,0,0,0.07)"); ig.addColorStop(1, "transparent");
-  ctx.fillStyle = ig; ctx.beginPath(); ctx.roundRect(x+2, y+2, w-4, h-4, 4); ctx.fill();
-  // frame dividers
-  const vd = Math.max(2, Math.floor(w/44));
-  for (let i = 1; i < vd; i++) {
-    ctx.strokeStyle = "rgba(175,210,200,0.40)"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(x+w*i/vd, y+5); ctx.lineTo(x+w*i/vd, y+h-5); ctx.stroke();
+  const seed = Math.round(x*7+y*13+w*3+h*5);
+  const DEPTH = 12, DX = -DEPTH*0.6, DY = DEPTH*0.8;
+
+  // Glass body fill
+  ctx.fillStyle = "#f4f9f8";
+  ctx.fillRect(x, y, w, h);
+  _sketchHachure(ctx, x, y, w, h, seed, {alpha:0.04, density:0.006});
+
+  // Glass pane vertical lines
+  const panes = Math.max(2, Math.floor(w/40));
+  for(let i=1;i<panes;i++){
+    const px = x + w*(i/panes);
+    const rv = _sketchSeededRand(seed+i*10);
+    _sketchEdge(ctx, px, y, px, y+h, rv, {wobble:0.7, strokesPerUnit:0.05, lineWidth:0.9, alpha:0.28, color:"#888"});
   }
-  // mid rail
-  ctx.strokeStyle = K.ghS; ctx.lineWidth = 1.8; ctx.globalAlpha = .65;
-  ctx.beginPath(); ctx.moveTo(x, y+h*.44); ctx.lineTo(x+w, y+h*.44); ctx.stroke();
-  ctx.globalAlpha = 1;
-  // ridge beam
-  ctx.strokeStyle = K.gh; ctx.lineWidth = 2.8;
-  ctx.beginPath(); ctx.moveTo(x, y+4); ctx.lineTo(x+w, y+4); ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.20)"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x+4, y+1); ctx.lineTo(x+w-4, y+1); ctx.stroke();
-  // internal crop silhouettes
-  ctx.globalAlpha = .48;
-  const ic = Math.max(2, Math.floor((w-20)/30));
-  for (let i = 0; i < ic; i++) {
-    const cx = x+14 + i*(w-20)/(ic-1||1), cy = y+h*.62;
-    ctx.fillStyle = "#3F6D38"; ctx.beginPath(); ctx.ellipse(cx, cy, 7, 10, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = "#B82010"; ctx.beginPath(); ctx.arc(cx-4, cy+3, 3, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = "#D03020"; ctx.beginPath(); ctx.arc(cx+4, cy, 2.5, 0, Math.PI*2); ctx.fill();
+  // Horizontal mid rail
+  const rr = _sketchSeededRand(seed+99);
+  _sketchEdge(ctx, x, y+h*0.46, x+w, y+h*0.46, rr, {wobble:0.5, strokesPerUnit:0.05, lineWidth:1.0, alpha:0.35, color:"#888"});
+
+  // Wooden benches along top and bottom long edges
+  const bDepth = h * 0.20, bFace = 5, bSeed = seed+200;
+  // Back bench
+  ctx.fillStyle = "#e8ddd0";
+  ctx.fillRect(x+5, y+3, w-10, bDepth);
+  _sketchHachure(ctx, x+5, y+3, w-10, bDepth, bSeed, {alpha:0.12, density:0.022});
+  const planks = 4;
+  for(let i=1;i<planks;i++){
+    const py = y+3 + bDepth*(i/planks);
+    const rp = _sketchSeededRand(bSeed+i*7);
+    _sketchEdge(ctx, x+5, py, x+w-5, py, rp, {wobble:0.5, strokesPerUnit:0.05, lineWidth:0.7, alpha:0.25, color:"#7a6a5a"});
   }
-  ctx.globalAlpha = 1;
-  // glass shine
-  ctx.fillStyle = "rgba(255,255,255,0.07)";
-  ctx.beginPath(); ctx.roundRect(x+4, y+5, w*.3, h*.28, [3,3,3,3]); ctx.fill();
-  // shadow on right+bottom frames
-  ctx.strokeStyle = "rgba(0,0,0,0.10)"; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(x+w-1, y+6); ctx.lineTo(x+w-1, y+h-1); ctx.lineTo(x+5, y+h-1); ctx.stroke();
+  ctx.fillStyle = "#d4c8b8"; ctx.fillRect(x+5, y+3+bDepth, w-10, bFace);
+  _sketchRect(ctx, x+5, y+3, w-10, bDepth+bFace, bSeed+1, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.60, color:"#5a4a3a"});
+  // Front bench
+  const fbY = y + h - bDepth - bFace - 3;
+  ctx.fillStyle = "#e8ddd0";
+  ctx.fillRect(x+5, fbY, w-10, bDepth);
+  _sketchHachure(ctx, x+5, fbY, w-10, bDepth, bSeed+50, {alpha:0.12, density:0.022});
+  for(let i=1;i<planks;i++){
+    const py = fbY + bDepth*(i/planks);
+    const rp = _sketchSeededRand(bSeed+50+i*7);
+    _sketchEdge(ctx, x+5, py, x+w-5, py, rp, {wobble:0.5, strokesPerUnit:0.05, lineWidth:0.7, alpha:0.25, color:"#7a6a5a"});
+  }
+  ctx.fillStyle = "#d4c8b8"; ctx.fillRect(x+5, fbY+bDepth, w-10, bFace);
+  _sketchRect(ctx, x+5, fbY, w-10, bDepth+bFace, bSeed+51, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.60, color:"#5a4a3a"});
+
+  // Front depth face
+  ctx.fillStyle = "#d0d0d0";
+  ctx.beginPath();
+  ctx.moveTo(x, y+h); ctx.lineTo(x+w, y+h);
+  ctx.lineTo(x+w, y+h+DEPTH); ctx.lineTo(x+DX, y+h+DY);
+  ctx.closePath(); ctx.fill();
+  // Left depth face
+  ctx.fillStyle = "#b8b8b8";
+  ctx.beginPath();
+  ctx.moveTo(x, y); ctx.lineTo(x+DX, y+DY);
+  ctx.lineTo(x+DX, y+h+DY); ctx.lineTo(x, y+h);
+  ctx.closePath(); ctx.fill();
+
+  // Outer frame sketch
+  _sketchRect(ctx, x, y, w, h, seed, {wobble:1.6, strokesPerUnit:0.09, lineWidth:1.8, alpha:0.82, color:"#1a1a1a"});
+  const T = 5;
+  _sketchRect(ctx, x+T, y+T, w-T*2, h-T*2, seed+10, {wobble:0.8, strokesPerUnit:0.06, lineWidth:0.8, alpha:0.28, color:"#1a1a1a"});
+  // Depth edges
+  const rd = _sketchSeededRand(seed+30);
+  _sketchEdge(ctx, x, y+h, x+DX, y+h+DY, rd, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.2, alpha:0.60, color:"#1a1a1a"});
+  _sketchEdge(ctx, x+w, y+h, x+w, y+h+DEPTH, rd, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.55, color:"#1a1a1a"});
+  _sketchEdge(ctx, x+w, y+h+DEPTH, x+DX, y+h+DY, rd, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.55, color:"#1a1a1a"});
+  // Left depth
+  const rl = _sketchSeededRand(seed+31);
+  _sketchEdge(ctx, x, y, x+DX, y+DY, rl, {wobble:0.9, strokesPerUnit:0.08, lineWidth:1.2, alpha:0.58, color:"#1a1a1a"});
+  _sketchEdge(ctx, x+DX, y+DY, x+DX, y+h+DY, rl, {wobble:0.9, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.52, color:"#1a1a1a"});
+  // Corner posts
+  const cs=5;
+  [[x,y],[x+w,y],[x+w,y+h],[x,y+h]].forEach(([px,py])=>{
+    ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=1.1; ctx.globalAlpha=0.50;
+    ctx.beginPath();ctx.rect(px-cs/2,py-cs/2,cs,cs);ctx.stroke();
+    ctx.globalAlpha=0.30;
+    ctx.beginPath();ctx.moveTo(px-cs/2+1,py-cs/2+1);ctx.lineTo(px+cs/2-1,py+cs/2-1);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px+cs/2-1,py-cs/2+1);ctx.lineTo(px-cs/2+1,py+cs/2-1);ctx.stroke();
+    ctx.restore();
+  });
+
   if (isSelected) {
-    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
-    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
@@ -10737,26 +10776,101 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
 // ── Polytunnel ─────────────────────────────────────────────────────────────────
 function _drawPolytunnel(ctx, x, y, w, h, isSelected) {
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.20)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
-  ctx.fillStyle = "#5A6858"; ctx.globalAlpha = .5;
-  ctx.beginPath(); ctx.roundRect(x, y+h*.75, w, h*.25, [0,0,6,6]); ctx.fill();
-  ctx.globalAlpha = 1; ctx.shadowColor = "transparent";
-  ctx.fillStyle = "rgba(235,245,230,0.22)"; ctx.strokeStyle = "#7A8870"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, [w*.1,w*.1,6,6]); ctx.fill(); ctx.stroke();
-  const hoops = Math.max(3, Math.floor(w/28));
-  ctx.globalAlpha = .5;
-  for (let i = 1; i < hoops; i++) {
-    const hx = x + w*i/hoops;
-    ctx.strokeStyle = "#7A8870"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(hx, y+h*.08); ctx.lineTo(hx, y+h); ctx.stroke();
+  const TILT=0.45, DX=-16, DY=14, seed=Math.round(x*7+y*13+w*3+h*5);
+  const th=h*TILT;
+  const TL=[x,y], TR=[x+w,y], BR=[x+w,y+th], BL=[x,y+th];
+  const archH=th*0.9, ridgeY=y-archH;
+  const nHoops=Math.max(4,Math.floor(w/36));
+  const skinColour="rgba(238,238,238,0.60)";
+
+  // Base front face
+  ctx.fillStyle="#c0c0c0";
+  ctx.beginPath();
+  ctx.moveTo(BL[0],BL[1]);ctx.lineTo(BR[0],BR[1]);
+  ctx.lineTo(BR[0]+DX,BR[1]+DY);ctx.lineTo(BL[0]+DX,BL[1]+DY);
+  ctx.closePath();ctx.fill();
+  // Base top soil
+  ctx.fillStyle="#dedad4";
+  ctx.beginPath();
+  ctx.moveTo(TL[0],TL[1]);ctx.lineTo(TR[0],TR[1]);
+  ctx.lineTo(BR[0],BR[1]);ctx.lineTo(BL[0],BL[1]);
+  ctx.closePath();ctx.fill();
+  _sketchHachure(ctx,x,y,w,th,seed+10,{alpha:0.09,density:0.014});
+  // Left depth face — full height to ridge
+  ctx.fillStyle="#b0b0b0";
+  ctx.beginPath();
+  ctx.moveTo(TL[0],ridgeY);ctx.lineTo(TL[0]+DX,ridgeY+DY);
+  ctx.lineTo(BL[0]+DX,BL[1]+DY);ctx.lineTo(BL[0],BL[1]);
+  ctx.lineTo(TL[0],TL[1]);ctx.closePath();ctx.fill();
+  _sketchHachure(ctx,TL[0]+DX-2,ridgeY,Math.abs(DX)+4,BL[1]+DY-ridgeY,seed+77,{alpha:0.11,density:0.018});
+
+  // Plastic skin fills
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(TL[0],TL[1]);ctx.lineTo(TL[0],ridgeY);
+  ctx.lineTo(TR[0],ridgeY);ctx.lineTo(TR[0],TR[1]);
+  ctx.closePath();ctx.fillStyle=skinColour;ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(TR[0],TR[1]);ctx.lineTo(TR[0],ridgeY);
+  ctx.lineTo(BR[0],ridgeY);ctx.lineTo(BR[0],BR[1]);
+  ctx.closePath();ctx.fillStyle=skinColour;ctx.fill();
+  ctx.restore();
+
+  // Interior hoops — curved arches
+  for(let i=1;i<nHoops;i++){
+    const t=i/nHoops;
+    const topX=TL[0]+w*t,topY=TL[1];
+    const botX=BL[0]+w*t,botY=BL[1];
+    const midX=(topX+botX)/2;
+    const rh=_sketchSeededRand(seed+i*17);
+    ctx.save();ctx.strokeStyle="#1a1a1a";ctx.lineCap="round";
+    ctx.lineWidth=1.2+(rh()-0.5)*0.25;ctx.globalAlpha=0.55+(rh()-0.5)*0.10;
+    ctx.beginPath();
+    ctx.moveTo(topX,topY);
+    ctx.quadraticCurveTo(midX+(rh()-0.5)*3,ridgeY+(rh()-0.5)*3,midX,ridgeY);
+    ctx.quadraticCurveTo(midX+(rh()-0.5)*3,ridgeY+(rh()-0.5)*3,botX,botY);
+    ctx.stroke();ctx.restore();
   }
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = K.s2; ctx.globalAlpha = .5;
-  ctx.beginPath(); ctx.roundRect(x+4, y+h*.5, w-8, h*.42, [0,0,4,4]); ctx.fill();
-  ctx.globalAlpha = 1;
+
+  // Ridge line
+  const rr=_sketchSeededRand(seed+99);
+  _sketchEdge(ctx,TL[0],ridgeY,TR[0],ridgeY,rr,{wobble:0.8,strokesPerUnit:0.07,lineWidth:1.5,alpha:0.78,color:"#1a1a1a"});
+
+  // Front end cap
+  ctx.save();ctx.strokeStyle="#1a1a1a";ctx.lineCap="round";ctx.lineWidth=1.8;ctx.globalAlpha=0.82;
+  ctx.beginPath();
+  ctx.moveTo(TR[0],TR[1]);
+  ctx.quadraticCurveTo(TR[0]+10,(TR[1]+ridgeY)/2,TR[0],ridgeY);
+  ctx.quadraticCurveTo(TR[0]+10,(ridgeY+BR[1])/2,BR[0],BR[1]);
+  ctx.stroke();ctx.restore();
+
+  // Back end cap
+  ctx.save();ctx.strokeStyle="#1a1a1a";ctx.lineCap="round";ctx.lineWidth=1.7;ctx.globalAlpha=0.78;
+  ctx.beginPath();
+  ctx.moveTo(TL[0],TL[1]);
+  ctx.quadraticCurveTo(TL[0]-18,(TL[1]+ridgeY)/2,TL[0],ridgeY);
+  ctx.quadraticCurveTo(BL[0]-18,(ridgeY+BL[1])/2,BL[0],BL[1]);
+  ctx.stroke();ctx.restore();
+
+  // Left face outline
+  const rl=_sketchSeededRand(seed+31);
+  _sketchEdge(ctx,TL[0],ridgeY,TL[0]+DX,ridgeY+DY,rl,{wobble:0.9,strokesPerUnit:0.08,lineWidth:1.3,alpha:0.65,color:"#1a1a1a"});
+  _sketchEdge(ctx,TL[0]+DX,ridgeY+DY,BL[0]+DX,BL[1]+DY,rl,{wobble:0.9,strokesPerUnit:0.07,lineWidth:1.2,alpha:0.58,color:"#1a1a1a"});
+
+  // Base outline
+  const rb=_sketchSeededRand(seed+30);
+  _sketchEdge(ctx,TL[0],TL[1],TR[0],TR[1],rb,{wobble:1.4,strokesPerUnit:0.09,lineWidth:1.9,alpha:0.86,color:"#1a1a1a"});
+  _sketchEdge(ctx,BL[0],BL[1],BR[0],BR[1],rb,{wobble:1.4,strokesPerUnit:0.09,lineWidth:1.9,alpha:0.86,color:"#1a1a1a"});
+  _sketchEdge(ctx,BL[0]+DX,BL[1]+DY,BR[0]+DX,BR[1]+DY,rb,{wobble:1.1,strokesPerUnit:0.08,lineWidth:1.4,alpha:0.68,color:"#1a1a1a"});
+  _sketchEdge(ctx,BL[0],BL[1],BL[0]+DX,BL[1]+DY,rb,{wobble:0.9,strokesPerUnit:0.08,lineWidth:1.3,alpha:0.62,color:"#1a1a1a"});
+  _sketchEdge(ctx,BR[0],BR[1],BR[0]+DX,BR[1]+DY,rb,{wobble:0.9,strokesPerUnit:0.08,lineWidth:1.3,alpha:0.62,color:"#1a1a1a"});
+  _sketchEdge(ctx,TL[0],TL[1],TL[0]+DX,TL[1]+DY,rb,{wobble:0.9,strokesPerUnit:0.08,lineWidth:1.2,alpha:0.58,color:"#1a1a1a"});
+
   if (isSelected) {
-    ctx.strokeStyle = "rgba(111,175,99,0.50)"; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
-    ctx.beginPath(); ctx.roundRect(x-3, y-3, w+6, h+6, 12); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
 }
