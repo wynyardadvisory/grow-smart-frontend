@@ -10346,23 +10346,38 @@ function _ensureBedImg(onReady) {
 function _drawGround(ctx, x, y, w, h) {
   ctx.save();
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 22); ctx.clip();
-  // Paper background
-  ctx.fillStyle = "#faf8f4"; ctx.fillRect(x, y, w, h);
-  // Subtle grain dots
-  const gr = _sketchSeededRand(42);
-  for(let i=0;i<300;i++){
-    ctx.fillStyle="rgba(0,0,0,0.018)";
-    ctx.beginPath();ctx.arc(x+gr()*w,y+gr()*h,gr()*1.6,0,Math.PI*2);ctx.fill();
-  }
-  // Ground scribble texture
+  // Paper background — warm off-white
+  ctx.fillStyle = "#f5f3ee"; ctx.fillRect(x, y, w, h);
+
+  // Dense ground scribble — much darker, longer strokes, more coverage
   const gr2=_sketchSeededRand(99);
   ctx.lineCap="round"; ctx.lineJoin="round";
-  for(let i=0;i<200;i++){
-    const gx=x+gr2()*w,gy=y+gr2()*h;
-    ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=0.4+gr2()*0.5; ctx.globalAlpha=0.04+gr2()*0.05;
-    const segs=2+Math.floor(gr2()*2); ctx.beginPath(); ctx.moveTo(gx,gy);
+  for(let i=0;i<600;i++){
+    const gx=x+gr2()*w, gy=y+gr2()*h;
+    ctx.strokeStyle="#1a1a1a";
+    ctx.lineWidth=0.5+gr2()*0.9;
+    ctx.globalAlpha=0.10+gr2()*0.13;
+    const segs=2+Math.floor(gr2()*3);
+    ctx.beginPath(); ctx.moveTo(gx,gy);
     let cx2=gx,cy2=gy;
-    for(let s=0;s<segs;s++){const a=gr2()*Math.PI*2,l=2+gr2()*6;cx2+=Math.cos(a)*l;cy2+=Math.sin(a)*l*0.6;ctx.lineTo(cx2,cy2);}
+    for(let s=0;s<segs;s++){
+      const a=gr2()*Math.PI*2, l=4+gr2()*12;
+      cx2+=Math.cos(a)*l; cy2+=Math.sin(a)*l*0.55;
+      ctx.lineTo(cx2,cy2);
+    }
+    ctx.stroke();
+  }
+  // Second pass — slightly longer arcing strokes for variation
+  const gr3=_sketchSeededRand(77);
+  for(let i=0;i<300;i++){
+    const gx=x+gr3()*w, gy=y+gr3()*h;
+    ctx.strokeStyle="#1a1a1a";
+    ctx.lineWidth=0.3+gr3()*0.6;
+    ctx.globalAlpha=0.06+gr3()*0.09;
+    const len=8+gr3()*20;
+    const a=gr3()*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(gx,gy);
+    ctx.lineTo(gx+Math.cos(a)*len, gy+Math.sin(a)*len*0.4);
     ctx.stroke();
   }
   ctx.globalAlpha=1;
@@ -10419,6 +10434,8 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
   const DEPTH = Math.max(8, Math.min(18, h * 0.18));
   const TILT  = 0.55;
   const th    = h * TILT; // top-face height after perspective tilt
+  const DX    = -DEPTH * 0.55;
+  const DY    = DEPTH * 0.85;
 
   // ── Top face (white, hachured) ───────────────────────────────────────────
   ctx.fillStyle = "#ffffff";
@@ -10431,18 +10448,19 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.fill();
   _sketchHachure(ctx, x, y, w, th, seed, {alpha:0.10, density:0.016});
 
-  // ── Front face (mid-grey) ────────────────────────────────────────────────
-  ctx.fillStyle = "#d4d4d4";
+  // ── Front face — trapezoid so bottom-left corner meets left face ──────────
+  // Top-left of front = (x, y+th), bottom-left = (x+DX, y+th+DY)
+  // Top-right of front = (x+w, y+th), bottom-right = (x+w, y+th+DEPTH)
+  ctx.fillStyle = "#d0d0d0";
   ctx.beginPath();
-  ctx.moveTo(x,   y+th);
-  ctx.lineTo(x+w, y+th);
-  ctx.lineTo(x+w, y+th+DEPTH);
-  ctx.lineTo(x,   y+th+DEPTH);
+  ctx.moveTo(x,    y+th);
+  ctx.lineTo(x+w,  y+th);
+  ctx.lineTo(x+w,  y+th+DEPTH);
+  ctx.lineTo(x+DX, y+th+DY);
   ctx.closePath();
   ctx.fill();
 
   // ── Left face (darker grey) ──────────────────────────────────────────────
-  const DX = -DEPTH * 0.55, DY = DEPTH * 0.85;
   ctx.fillStyle = "#b0b0b0";
   ctx.beginPath();
   ctx.moveTo(x,    y);
@@ -10453,21 +10471,20 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
   ctx.fill();
 
   // ── Sketchy outlines ──────────────────────────────────────────────────────
-  // Top face border
-  _sketchRect(ctx, x, y, w, th, seed,    {wobble:2.0, strokesPerUnit:0.10, lineWidth:2.0, alpha:0.88, color:"#1a1a1a"});
-  // Inner top border (wooden frame suggestion)
+  _sketchRect(ctx, x, y, w, th, seed, {wobble:2.0, strokesPerUnit:0.10, lineWidth:2.0, alpha:0.88, color:"#1a1a1a"});
   const T = Math.max(4, Math.min(8, Math.min(w,th)*0.07));
   _sketchRect(ctx, x+T, y+T, w-T*2, th-T*2, seed+10, {wobble:1.2, strokesPerUnit:0.07, lineWidth:0.9, alpha:0.35, color:"#1a1a1a"});
-  // Front face edges
+  // Front face edges — top and angled bottom
   const rf = _sketchSeededRand(seed+20);
-  _sketchEdge(ctx, x,   y+th,       x+w, y+th,       rf, {wobble:1.2, strokesPerUnit:0.08, lineWidth:1.4, alpha:0.70, color:"#1a1a1a"});
-  _sketchEdge(ctx, x,   y+th+DEPTH, x+w, y+th+DEPTH, rf, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.2, alpha:0.60, color:"#1a1a1a"});
+  _sketchEdge(ctx, x,   y+th,      x+w,  y+th,      rf, {wobble:1.2, strokesPerUnit:0.08, lineWidth:1.4, alpha:0.70, color:"#1a1a1a"});
+  _sketchEdge(ctx, x+w, y+th+DEPTH, x+DX, y+th+DY,  rf, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.2, alpha:0.60, color:"#1a1a1a"});
+  _sketchEdge(ctx, x+w, y+th,      x+w,  y+th+DEPTH, rf, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.55, color:"#1a1a1a"});
   // Left face edges
   const rl = _sketchSeededRand(seed+30);
   _sketchEdge(ctx, x, y,    x+DX, y+DY,    rl, {wobble:1.4, strokesPerUnit:0.08, lineWidth:1.4, alpha:0.68, color:"#1a1a1a"});
   _sketchEdge(ctx, x, y+th, x+DX, y+th+DY, rl, {wobble:1.0, strokesPerUnit:0.07, lineWidth:1.1, alpha:0.55, color:"#1a1a1a"});
 
-  // ── Corner post X marks (top face corners) ────────────────────────────────
+  // ── Corner post X marks ───────────────────────────────────────────────────
   const cs=5;
   [[x,y],[x+w,y],[x+w,y+th],[x,y+th]].forEach(([px,py])=>{
     ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineWidth=1.1; ctx.globalAlpha=0.50;
@@ -10491,6 +10508,7 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
     ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
+  return { th }; // expose top-face height for label positioning
 }
 
 // ── Open ground — pencil sketch style ─────────────────────────────────────────
@@ -10601,33 +10619,44 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
     const iRy  = sry * 0.68;
     const N    = 40;
 
-    // Cross-hatch shadow on left side and bottom-left arc — two stroke directions for X effect
+    // Cross-hatch shadow on left side of cylinder — two sets of parallel lines
+    ctx.save();
+    // Clip to left-side strip of the cylinder
+    ctx.beginPath();
+    ctx.rect(pcx - rx, pcy, rx * 0.65, cylH);
+    ctx.clip();
     const sh = _sketchSeededRand(potSeed+888);
+    ctx.strokeStyle = "#1a1a1a"; ctx.lineCap = "round";
+    const hSpacing = Math.max(3, rx * 0.18);
+    // First set — diagonal lines angling down-right
+    for(let ox = -rx; ox < rx * 0.65 + cylH; ox += hSpacing){
+      ctx.lineWidth = 0.5 + sh()*0.4; ctx.globalAlpha = 0.18 + sh()*0.12;
+      ctx.beginPath();
+      ctx.moveTo(pcx - rx + ox, pcy);
+      ctx.lineTo(pcx - rx + ox - cylH*0.7, pcy + cylH);
+      ctx.stroke();
+    }
+    // Second set — cross direction
+    for(let ox = -rx; ox < rx * 0.65 + cylH; ox += hSpacing){
+      ctx.lineWidth = 0.4 + sh()*0.3; ctx.globalAlpha = 0.11 + sh()*0.09;
+      ctx.beginPath();
+      ctx.moveTo(pcx - rx + ox - cylH*0.7, pcy);
+      ctx.lineTo(pcx - rx + ox, pcy + cylH);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Bottom-left arc shadow — parallel strokes following the curve
+    ctx.save();
     const sh2 = _sketchSeededRand(potSeed+999);
-    ctx.save(); ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
-    // First direction — diagonal strokes down-left
-    for(let i=0;i<22;i++){
-      const sx=pcx-rx*0.78+sh()*rx*0.42;
-      const sy=pcy+cylH*(0.45+sh()*0.48)+(sh()-0.5)*3;
-      const ang=Math.PI*0.55+(sh()-0.5)*0.42, len=3+sh()*8;
-      ctx.lineWidth=0.5+sh()*0.65; ctx.globalAlpha=0.13+sh()*0.19;
-      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
-    }
-    // Second direction — cross strokes for X-hatch
-    for(let i=0;i<16;i++){
-      const sx=pcx-rx*0.82+sh2()*rx*0.50;
-      const sy=pcy+cylH*(0.40+sh2()*0.52)+(sh2()-0.5)*3;
-      const ang=Math.PI*0.35+(sh2()-0.5)*0.38, len=2+sh2()*7;
-      ctx.lineWidth=0.4+sh2()*0.5; ctx.globalAlpha=0.09+sh2()*0.14;
-      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
-    }
-    // Bottom-left arc shadow strokes
-    for(let i=0;i<18;i++){
-      const t=i/18, a=Math.PI+t*(Math.PI*0.5);
-      const sx=pcx+Math.cos(a)*rx+(sh2()-0.5)*2, sy=pcy+cylH+Math.sin(a)*sry*0.38+sh2()*3;
-      const ang=a+Math.PI*0.4+(sh2()-0.5)*0.4, len=2+sh2()*8;
-      ctx.lineWidth=0.4+sh2()*0.6; ctx.globalAlpha=0.11+sh2()*0.17;
-      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(ang)*len,sy+Math.sin(ang)*len); ctx.stroke();
+    ctx.strokeStyle="#1a1a1a"; ctx.lineCap="round";
+    for(let i=0;i<14;i++){
+      const t = i/14;
+      const a = Math.PI + t * (Math.PI * 0.55);
+      const bx = pcx + Math.cos(a)*rx, by = pcy + cylH + Math.sin(a)*sry*0.38;
+      const ang = a + Math.PI*0.38, len = 3 + sh2()*7;
+      ctx.lineWidth = 0.4+sh2()*0.5; ctx.globalAlpha = 0.13+sh2()*0.15;
+      ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+Math.cos(ang)*len, by+Math.sin(ang)*len); ctx.stroke();
     }
     ctx.restore();
 
@@ -10917,26 +10946,49 @@ function _drawAreaCrops(ctx, area, x, y, w, h, areaCrops) {
   const unique = [];
   const seen = new Set();
   for (const c of activeCrops) { if (!seen.has(c.name)) { seen.add(c.name); unique.push(c); } }
+  if (!unique.length) return;
 
-  const label = unique.length === 1
-    ? unique[0].name
-    : unique.length > 1 ? `${unique.length} crops` : "";
+  // Always show crop names — join with line break if multiple, never "N crops"
+  const lines = unique.slice(0, 3).map(c => c.name);
 
-  if (!label) return;
+  // Top face height for raised beds (TILT=0.55), full height for others
+  const TILT = 0.55;
+  const isBed = area.type === "raised_bed";
+  const topH  = isBed ? h * TILT : h;
 
-  const fs = Math.max(11, Math.min(18, Math.min(w, h) * 0.20));
-  // Seed a tiny rotation so each label looks naturally hand-placed
+  // Rotate along longest axis — if width > topH, landscape (no rotation needed);
+  // if topH > width significantly, rotate text 90° to run along the length
+  const isPortrait = topH > w * 1.4;
+  const maxDim = isPortrait ? topH : w;
+  const fs = Math.max(10, Math.min(17, maxDim * 0.16));
+
+  // Centre point is within the top face
+  const cy = isBed ? y + topH * 0.50 : y + h * 0.50;
+  const cx = x + w / 2;
+
   const labelSeed = _sketchSeededRand(Math.round(x*3+y*7+w*2));
-  const rot = (labelSeed() - 0.5) * 0.06; // ±0.03 rad — subtle tilt
+  const wobble = (labelSeed() - 0.5) * 0.05;
+  const rot = isPortrait ? -Math.PI/2 + wobble : wobble;
+
   ctx.save();
-  ctx.translate(x + w/2, y + h/2);
+  ctx.translate(cx, cy);
   ctx.rotate(rot);
   ctx.font = `${fs}px 'Caveat', cursive`;
-  ctx.fillStyle = "#2a2a2a";
-  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = "#1e1e1e";
+  ctx.globalAlpha = 0.88;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, 0, 0);
+
+  if (lines.length === 1) {
+    ctx.fillText(lines[0], 0, 0);
+  } else {
+    // Multiple lines — stack them
+    const lineH = fs * 1.15;
+    const totalH = lineH * lines.length;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, 0, -totalH/2 + lineH*i + lineH/2);
+    });
+  }
   ctx.restore();
 }
 
