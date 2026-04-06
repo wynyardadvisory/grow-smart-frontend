@@ -1,4 +1,3 @@
-
 /**
  * GROW SMART — Main App
  * React PWA. Connects to the Grow Smart API.
@@ -11369,7 +11368,7 @@ function useKonva() {
 }
 
 // ── Area detail sheet ─────────────────────────────────────────────────────────
-function AreaDetailSheet({ area, crops, onClose }) {
+function AreaDetailSheet({ area, crops, lockedAssignment, onClose }) {
   const baseColor = {
     raised_bed: K.timber, open_ground: K.groundLight,
     greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop,
@@ -11421,6 +11420,21 @@ function AreaDetailSheet({ area, crops, onClose }) {
               </div>
             </div>
           ))}
+          {lockedAssignment && (
+            <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <span style={{ fontSize:13 }}>🔒</span>
+                <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.5 }}>
+                  Planned next — {lockedAssignment.planned_year}
+                </div>
+              </div>
+              <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a" }}>{lockedAssignment.crop_name}</div>
+              <div style={{ fontSize:11, color:C.stone, marginTop:3 }}>
+                Locked in · this bed is committed for {lockedAssignment.planned_year}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop:20, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"14px 16px" }}>
             <div style={{ fontSize:11, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Area insights</div>
             <div style={{ display:"flex", gap:8 }}>
@@ -12490,6 +12504,7 @@ function PlanScreen() {
   const [error,        setError]        = useState(null);
   const [selectedLoc,  setSelectedLoc]  = useState(_savedView?.selectedLoc || null);
   const [areas,        setAreas]        = useState([]);
+  const [lockedAssignments, setLockedAssignments] = useState([]);
   const [activeBlock,  setActiveBlock]  = useState(null);
   const [detailArea,   setDetailArea]   = useState(null);
   const [savedToast,   setSavedToast]   = useState(false);
@@ -12577,6 +12592,9 @@ function PlanScreen() {
     autoLayoutDone.current = false;
     setActiveBlock(null);
     setAreas(loc.growing_areas||[]);
+    apiFetch(`/area-plan-assignments?location_id=${loc.id}`)
+      .then(d => setLockedAssignments(d||[]))
+      .catch(() => setLockedAssignments([]));
   }, [selectedLoc]);
 
   useEffect(()=>{
@@ -12901,6 +12919,7 @@ function PlanScreen() {
         <AreaDetailSheet
           area={selectedAreaObj}
           crops={selectedAreaCrops}
+          lockedAssignment={lockedAssignments.find(a => a.area_id === selectedAreaObj.id) || null}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
         />
       )}
@@ -12919,6 +12938,12 @@ function PlanScreen() {
             } catch(e) { setAssignments([]); }
             skipAssignmentFetch.current = true;
             setSelectedPlanId(plan.id);
+            // Reload locked assignments so canvas shows Next: labels immediately
+            if (selectedLoc) {
+              apiFetch(`/area-plan-assignments?location_id=${selectedLoc}`)
+                .then(d => setLockedAssignments(d||[]))
+                .catch(() => {});
+            }
           }}
           onClose={()=>setShowCreatePlan(false)}
         />
