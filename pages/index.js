@@ -11704,7 +11704,304 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
   );
 }
 
-function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
+// =============================================================================
+// INFRASTRUCTURE ROI SECTION
+// Lives inside CreatePlanSheet result step — Pro only.
+// Session-only: no persistence until user applies to plan.
+// =============================================================================
+
+const INFRA_TYPES = [
+  { id:"greenhouse",     label:"Greenhouse",      emoji:"🏡", benefit:"Extend season, unlock tender crops" },
+  { id:"polytunnel",     label:"Polytunnel",       emoji:"⛺", benefit:"Frost protection, boost fruiting" },
+  { id:"raised_bed",     label:"Raised bed",       emoji:"🪴", benefit:"Better drainage and soil warmth" },
+  { id:"irrigation",     label:"Irrigation",       emoji:"💧", benefit:"Less watering effort, better yields" },
+  { id:"water_butt",     label:"Water butt",       emoji:"🪣", benefit:"Save time and water in dry spells" },
+  { id:"compost_system", label:"Compost system",   emoji:"♻️", benefit:"Improve soil health over time" },
+];
+
+function InfrastructureROISection({ locationId, areas, isPro, onApply }) {
+  const [selected,    setSelected]    = useState(null);   // infrastructure_type id
+  const [size,        setSize]        = useState("medium");
+  const [targetIds,   setTargetIds]   = useState([]);     // empty = whole garden
+  const [customCost,  setCustomCost]  = useState("");
+  const [result,      setResult]      = useState(null);
+  const [loading,     setLoading]     = useState(false);
+  const [err,         setErr]         = useState(null);
+  const [showDetail,  setShowDetail]  = useState(false);
+  const [applied,     setApplied]     = useState(false);
+
+  const rotatableAreas = (areas||[]).filter(a =>
+    !["container","pot"].includes(a.type)
+  );
+
+  const runModel = async (type, sz, tIds, cost) => {
+    setLoading(true); setErr(null); setResult(null);
+    try {
+      const body = {
+        location_id:      locationId,
+        infrastructure_type: type,
+        size:             sz,
+        target_area_ids:  tIds,
+      };
+      if (cost && !isNaN(Number(cost))) body.custom_cost_gbp = Number(cost);
+      const r = await apiFetch("/infrastructure/model", { method:"POST", body: JSON.stringify(body) });
+      setResult(r);
+    } catch(e) { setErr(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleSelect = (id) => {
+    setSelected(id); setResult(null); setApplied(false);
+    setShowDetail(false);
+    runModel(id, size, targetIds, customCost);
+  };
+
+  const handleSizeChange = (sz) => {
+    setSize(sz);
+    if (selected) runModel(selected, sz, targetIds, customCost);
+  };
+
+  const handleApply = () => {
+    if (!result || !selected) return;
+    onApply({
+      infrastructure_type:       selected,
+      infrastructure_cost_label: result.cost?.cost_range_label || null,
+      roi_summary: {
+        size,
+        yield_gain_kg:    result.gains?.harvest_kg_delta,
+        value_gain_gbp:   result.gains?.value_gbp_delta,
+        payback_seasons:  result.roi?.payback_seasons,
+        confidence:       result.roi?.confidence,
+      },
+    });
+    setApplied(true);
+  };
+
+  if (!isPro) return (
+    <div style={{ marginTop:20, padding:"16px 14px", background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>🏡 Improve your garden</div>
+      <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:10 }}>
+        See whether adding a greenhouse, raised bed or irrigation could increase harvest and value — with payback estimates.
+      </div>
+      <div style={{ fontSize:11, color:C.stone, padding:"7px 10px", background:"#fff", borderRadius:8, border:"1px solid #E3E7E1", textAlign:"center" }}>🔒 Pro feature</div>
+    </div>
+  );
+
+  return (
+    <div style={{ marginTop:20 }}>
+      <div style={{ height:1, background:C.border, marginBottom:16 }} />
+      <div style={{ fontFamily:"serif", fontSize:16, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>
+        Improve your garden
+      </div>
+      <div style={{ fontSize:12, color:C.stone, marginBottom:14, lineHeight:1.5 }}>
+        See whether adding infrastructure could increase your harvest, value or ease.
+      </div>
+
+      {/* Infrastructure type cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+        {INFRA_TYPES.map(t => (
+          <button key={t.id} onClick={() => handleSelect(t.id)}
+            style={{
+              padding:"10px 10px 8px", borderRadius:12,
+              border:`1.5px solid ${selected===t.id ? C.forest : C.border}`,
+              background: selected===t.id ? "#F0F5F3" : "#fff",
+              cursor:"pointer", textAlign:"left",
+            }}>
+            <div style={{ fontSize:20, marginBottom:3 }}>{t.emoji}</div>
+            <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>{t.label}</div>
+            <div style={{ fontSize:10, color:C.stone, lineHeight:1.4 }}>{t.benefit}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <div style={{ textAlign:"center", padding:"20px 0", color:C.stone, fontSize:13 }}>
+          Modelling…
+        </div>
+      )}
+      {err && (
+        <div style={{ fontSize:12, color:C.red, padding:"8px 12px", background:"#fff0f0", borderRadius:8, marginBottom:10 }}>
+          {err}
+        </div>
+      )}
+
+      {/* Result panel */}
+      {result && !loading && (
+        <div style={{ background:"#F7F8F5", border:`1.5px solid ${C.forest}44`, borderRadius:14, overflow:"hidden", marginBottom:10 }}>
+
+          {/* Incompatibility warning */}
+          {result.incompatible && (
+            <div style={{ padding:"14px 14px", fontSize:12, color:C.stone, lineHeight:1.5 }}>
+              <div style={{ fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>Less relevant for your setup</div>
+              {result.incompatibility_note}
+            </div>
+          )}
+
+          {!result.incompatible && (
+            <>
+              {/* Size + target controls */}
+              <div style={{ padding:"12px 14px 0", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                <div style={{ fontSize:11, color:C.stone, fontWeight:600 }}>Size:</div>
+                {["small","medium","large"].map(s => (
+                  <button key={s} onClick={() => handleSizeChange(s)}
+                    style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${size===s?C.forest:C.border}`,
+                      background:size===s?C.forest:"#fff", color:size===s?"#fff":C.stone,
+                      fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                    {s.charAt(0).toUpperCase()+s.slice(1)}
+                  </button>
+                ))}
+                <div style={{ fontSize:11, color:C.stone, marginLeft:8 }}>Cost: {result.cost?.cost_range_label}</div>
+              </div>
+
+              {/* Target areas multi-select — only show if 2+ areas */}
+              {rotatableAreas.length > 1 && (
+                <div style={{ padding:"8px 14px 0", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+                  <div style={{ fontSize:11, color:C.stone, fontWeight:600 }}>Areas:</div>
+                  <button
+                    onClick={() => { setTargetIds([]); runModel(selected, size, [], customCost); }}
+                    style={{ padding:"3px 9px", borderRadius:20, border:`1px solid ${targetIds.length===0?C.forest:C.border}`,
+                      background:targetIds.length===0?C.forest:"#fff", color:targetIds.length===0?"#fff":C.stone,
+                      fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                    All
+                  </button>
+                  {rotatableAreas.map(a => {
+                    const isOn = targetIds.includes(a.id);
+                    return (
+                      <button key={a.id} onClick={() => {
+                        const next = isOn ? targetIds.filter(x=>x!==a.id) : [...targetIds, a.id];
+                        setTargetIds(next);
+                        runModel(selected, size, next, customCost);
+                      }}
+                        style={{ padding:"3px 9px", borderRadius:20, border:`1px solid ${isOn?C.forest:C.border}`,
+                          background:isOn?C.forest:"#fff", color:isOn?"#fff":C.stone,
+                          fontSize:11, fontWeight:600, cursor:"pointer",
+                          maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {a.name?.replace(/^"|"$/g,"")}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Lead metrics */}
+              <div style={{ display:"flex", padding:"14px 14px 10px", gap:0 }}>
+                {[
+                  { label:"Harvest gain",   value: result.gains?.harvest_kg_delta != null ? `+${result.gains.harvest_kg_delta}kg` : "—" },
+                  { label:"Value / season", value: result.gains?.value_gbp_delta   != null ? `+£${result.gains.value_gbp_delta}`   : "—" },
+                  { label:"Payback",        value: result.roi?.payback_seasons != null ? `~${result.roi.payback_seasons} seasons` : "—" },
+                ].map((m,i,arr) => (
+                  <div key={i} style={{ flex:1, textAlign:"center", borderRight: i<arr.length-1 ? `1px solid ${C.border}` : "none", paddingBottom:4 }}>
+                    <div style={{ fontSize:16, fontWeight:700, color:C.forest, fontFamily:"serif" }}>{m.value}</div>
+                    <div style={{ fontSize:9, color:C.stone, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{m.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Effort + season */}
+              <div style={{ padding:"0 14px 10px", display:"flex", gap:8, flexWrap:"wrap" }}>
+                {result.gains?.effort_change?.direction && (
+                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:8, padding:"5px 9px", border:`1px solid ${C.border}` }}>
+                    {result.gains.effort_change.direction === "easier" ? "✅" : result.gains.effort_change.direction === "harder" ? "⚠️" : "⚖️"} {result.gains.effort_change.note}
+                  </div>
+                )}
+                {result.gains?.season_extension?.label && (
+                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:8, padding:"5px 9px", border:`1px solid ${C.border}` }}>
+                    📅 {result.gains.season_extension.label}
+                  </div>
+                )}
+              </div>
+
+              {/* Crop unlocks */}
+              {result.gains?.crop_unlocks?.length > 0 && (
+                <div style={{ padding:"0 14px 10px" }}>
+                  <div style={{ fontSize:11, color:C.stone, fontWeight:600, marginBottom:4 }}>Crops you can now grow reliably:</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                    {result.gains.crop_unlocks.map(crop => (
+                      <span key={crop} style={{ fontSize:11, padding:"3px 8px", background:"#fff", border:`1px solid ${C.border}`, borderRadius:20, color:"#1a1a1a" }}>{crop}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Deep dive toggle */}
+              <details style={{ padding:"0 14px 10px" }}>
+                <summary style={{ fontSize:11, color:C.forest, cursor:"pointer", listStyle:"none", fontWeight:600 }}>
+                  More details ▾
+                </summary>
+                <div style={{ marginTop:10 }}>
+                  {/* Confidence */}
+                  <div style={{ fontSize:11, color:C.stone, marginBottom:8, fontStyle:"italic" }}>
+                    {result.roi?.confidence_note}
+                  </div>
+                  {/* 3-year outlook */}
+                  {result.roi?.value_gain_3yr != null && (
+                    <div style={{ fontSize:12, marginBottom:6 }}>
+                      <span style={{ color:C.stone }}>3-year estimated gain: </span>
+                      <span style={{ fontWeight:700, color:C.forest }}>£{result.roi.value_gain_3yr}</span>
+                      {result.roi.net_3yr != null && (
+                        <span style={{ color:C.stone }}> · Net 3yr: {result.roi.net_3yr >= 0 ? `+£${result.roi.net_3yr}` : `-£${Math.abs(result.roi.net_3yr)}`}</span>
+                      )}
+                    </div>
+                  )}
+                  {/* Things to know */}
+                  {result.gains?.things_to_know?.length > 0 && (
+                    <div style={{ marginTop:8 }}>
+                      <div style={{ fontSize:11, fontWeight:600, color:C.stone, marginBottom:4 }}>Things to know:</div>
+                      {result.gains.things_to_know.map((t,i) => (
+                        <div key={i} style={{ fontSize:11, color:C.stone, marginBottom:3, paddingLeft:10 }}>· {t}</div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Affected areas */}
+                  {result.affected_areas?.length > 0 && (
+                    <div style={{ marginTop:10 }}>
+                      <div style={{ fontSize:11, fontWeight:600, color:C.stone, marginBottom:4 }}>Per area:</div>
+                      {result.affected_areas.map((a,i) => (
+                        <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.stone, marginBottom:3 }}>
+                          <span>{a.area_name?.replace(/^"|"$/g,"")}</span>
+                          <span style={{ color:C.forest, fontWeight:600 }}>
+                            {a.baseline_yield_kg}kg → {a.modelled_yield_kg}kg
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Custom cost input */}
+                  <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8 }}>
+                    <div style={{ fontSize:11, color:C.stone, whiteSpace:"nowrap" }}>Adjust cost: £</div>
+                    <input
+                      type="number" value={customCost} placeholder={String(result.cost?.assumed_gbp||"")}
+                      onChange={e => setCustomCost(e.target.value)}
+                      onBlur={() => { if (customCost) runModel(selected, size, targetIds, customCost); }}
+                      style={{ width:80, padding:"5px 8px", borderRadius:8, border:`1px solid ${C.border}`, fontSize:12, outline:"none" }}
+                    />
+                  </div>
+                </div>
+              </details>
+
+              {/* Apply CTA */}
+              <div style={{ padding:"0 14px 14px" }}>
+                {applied ? (
+                  <div style={{ fontSize:12, color:C.forest, fontWeight:700, textAlign:"center", padding:"10px 0" }}>
+                    ✅ Infrastructure assumptions applied to this plan
+                  </div>
+                ) : (
+                  <button onClick={handleApply}
+                    style={{ width:"100%", padding:"12px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    Apply to this plan
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreatePlanSheet({ locationId, locationName, areas = [], isPro = false, onSave, onClose }) {
   // Steps: "generating" | "baseline" | "ask_year_round" | "ask_improve" | "ask_preference" | "result" | "saving"
   const [step,            setStep]           = useState("generating");
   const [baseline,        setBaseline]       = useState(null);
@@ -11716,6 +12013,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const [preference,   setPreference]  = useState("balanced");
   const [err,          setErr]         = useState(null);
   const [saving,       setSaving]      = useState(false);
+  const [infraMeta,    setInfraMeta]   = useState(null); // set when user applies an infrastructure scenario
 
   // Generate baseline on mount
   useEffect(() => {
@@ -11767,6 +12065,27 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
             crop_name:          a.crop_name,
           }),
         });
+      }
+      // Commit locked area assignments — include infrastructure metadata if an ROI
+      // scenario was applied during this session
+      const lockable = (plan.assignments||[]).filter(a =>
+        !a.is_fixed && a.crop_name && a.crop_name !== "To be decided"
+      );
+      if (lockable.length > 0) {
+        const commitBody = {
+          location_id: locationId,
+          assignments: lockable.map(a => ({
+            area_id:     a.area_id,
+            crop_def_id: a.crop_definition_id || null,
+            crop_name:   a.crop_name,
+            category:    a.category || null,
+          })),
+          ...(infraMeta || {}),
+        };
+        await apiFetch("/area-plan-assignments/commit", {
+          method: "POST",
+          body: JSON.stringify(commitBody),
+        }).catch(() => {}); // non-fatal — plan is already saved
       }
       onSave(created);
     } catch(e) { setErr(e.message); setSaving(false); }
@@ -12020,6 +12339,13 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
           Use this plan →
         </button>
+
+        <InfrastructureROISection
+          locationId={locationId}
+          areas={areas}
+          isPro={isPro}
+          onApply={(meta) => setInfraMeta(meta)}
+        />
       </Sheet>
     );
   }
@@ -12928,6 +13254,8 @@ function PlanScreen() {
         <CreatePlanSheet
           locationId={selectedLoc}
           locationName={loc.name}
+          areas={areas}
+          isPro={isPro}
           onSave={async (plan) => {
             setPlans(prev => [plan, ...prev]);
             setShowCreatePlan(false);
