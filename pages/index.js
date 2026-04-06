@@ -3239,25 +3239,6 @@ function Dashboard({ onTabChange, isDemo = false }) {
         </div>
       )}
 
-      {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Garden progress</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { label: "Active crops",       value: cropCount,      emoji: "🌱" },
-            { label: "In harvest window",  value: harvestCount,   emoji: "🌾" },
-            { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
-            { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
-          ].map(({ label, value, emoji, highlight }) => (
-            <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: highlight ? C.amber : C.forest, fontFamily: "serif", lineHeight: 1 }}>{value}</div>
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── HARVEST CARD ────────────────────────────────────────────────────── */}
       <TodayHarvestCard
         recentHarvests={recentHarvests}
@@ -3308,6 +3289,25 @@ function Dashboard({ onTabChange, isDemo = false }) {
           </div>
         </div>
       )}
+
+      {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Garden progress</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { label: "Active crops",       value: cropCount,      emoji: "🌱" },
+            { label: "In harvest window",  value: harvestCount,   emoji: "🌾" },
+            { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
+            { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
+          ].map(({ label, value, emoji, highlight }) => (
+            <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: highlight ? C.amber : C.forest, fontFamily: "serif", lineHeight: 1 }}>{value}</div>
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
       <TipsSection />
