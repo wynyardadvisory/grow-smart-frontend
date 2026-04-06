@@ -11456,28 +11456,54 @@ function ScoreBar({ label, value, max = 10, colour = C.forest }) {
   );
 }
 
-function PlanOptionCard({ option, index, selected, onSelect }) {
-  const colours = [C.forest, "#2D6E9E", "#7B5EA7"];
-  const colour  = colours[index] || C.forest;
+function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
+  const colours    = [C.forest, "#2D6E9E", "#7B5EA7"];
+  const colour     = colours[index] || C.forest;
   const isSelected = selected === index;
+  const m          = option.metrics || {};
 
   return (
     <div onClick={() => onSelect(index)}
       style={{ borderRadius:16, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour+"08" : "#fff", padding:"16px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", marginBottom:10 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-        <div style={{ fontFamily:"serif", fontSize:15, fontWeight:700, color:"#1a1a1a" }}>{option.name}</div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ fontFamily:"serif", fontSize:15, fontWeight:700, color:"#1a1a1a" }}>{option.name}</div>
+          {recommended && (
+            <div style={{ fontSize:10, fontWeight:700, color:"#fff", background:C.forest, borderRadius:99, padding:"2px 7px" }}>Recommended</div>
+          )}
+        </div>
         <div style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour : "#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {isSelected && <div style={{ width:8, height:8, borderRadius:"50%", background:"#fff" }} />}
         </div>
       </div>
 
-      {option.explanation && (
-        <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:12 }}>{option.explanation}</div>
+      {(option.summary || option.explanation) && (
+        <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:12 }}>{option.summary || option.explanation}</div>
       )}
 
-      <ScoreBar label="Rotation" value={option.scores.rotation} colour={colour} />
-      <ScoreBar label="Yield"    value={option.scores.yield}    colour={colour} />
-      <ScoreBar label="Ease"     value={option.scores.ease}     colour={colour} />
+      {/* Performance strip — show if new metrics exist, else fall back to score bars */}
+      {m.harvest_kg != null ? (
+        <div style={{ display:"flex", background:"#f8faf8", borderRadius:10, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
+          {[
+            { label:"Harvest",    value: `${m.harvest_kg}kg` },
+            { label:"Shop Value", value: m.shop_value_gbp != null ? `£${Math.round(m.shop_value_gbp)}` : "—" },
+            { label:"Space Use",  value: m.space_use_delta_pct != null ? `${m.space_use_delta_pct>0?"+":""}${m.space_use_delta_pct}%` : "—" },
+            { label:"Effort",     value: m.effort_level || "—",
+              color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":colour },
+          ].map((item, i, arr) => (
+            <div key={i} style={{ flex:1, padding:"8px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
+              <div style={{ fontSize:14, fontWeight:700, color:item.color||colour, fontFamily:"serif", letterSpacing:-0.3 }}>{item.value}</div>
+              <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.4, marginTop:1 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <ScoreBar label="Rotation" value={(option.scores||{}).rotation||0} colour={colour} />
+          <ScoreBar label="Yield"    value={(option.scores||{}).yield||0}    colour={colour} />
+          <ScoreBar label="Ease"     value={(option.scores||{}).ease||0}     colour={colour} />
+        </>
+      )}
 
       <div style={{ marginTop:10, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
         {option.assignments.map(a => (
@@ -11497,14 +11523,121 @@ function PlanOptionCard({ option, index, selected, onSelect }) {
   );
 }
 
+// ── Plan Performance Strip ────────────────────────────────────────────────────
+function PlanPerformanceStrip({ plan }) {
+  if (!plan) return null;
+  const m = plan.metrics || {};
+  const items = [
+    { label:"Harvest",    value: m.harvest_kg     != null ? `${m.harvest_kg}kg`                                               : "—" },
+    { label:"Shop Value", value: m.shop_value_gbp  != null ? `£${Math.round(m.shop_value_gbp)}`                               : "—" },
+    { label:"Space Use",  value: m.space_use_delta_pct != null ? `${m.space_use_delta_pct>0?"+":""}${m.space_use_delta_pct}%` : "—" },
+    { label:"Effort",     value: m.effort_level   || "—",
+      color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":"#2f5d50" },
+  ];
+  return (
+    <div style={{ display:"flex", borderTop:"1px solid rgba(0,0,0,0.08)", background:"#f8faf8", borderRadius:"0 0 14px 14px" }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ flex:1, padding:"10px 8px", textAlign:"center",
+          borderRight: i<items.length-1 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
+          <div style={{ fontSize:17, fontWeight:700, color:item.color||"#2f5d50", fontFamily:"serif", letterSpacing:-0.3 }}>
+            {item.value}
+          </div>
+          <div style={{ fontSize:10, color:"#888", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>
+            {item.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Compare Plans Sheet ───────────────────────────────────────────────────────
+function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommendedId }) {
+  if (!options?.length) return null;
+
+  const EFFORT_RANK_UI   = { "Easy":0, "Moderate":1, "High":2 };
+  const ROTATION_RANK_UI = { "Excellent":3, "Good":2, "Fair":1, "Weak":0 };
+  const SPREAD_RANK_UI   = { "Excellent":3, "Good":2, "Short Peak":1, "Heavy Mid-Season":0 };
+
+  const rows = [
+    { key:"harvest_kg",            label:"Harvest",        fmt:v=>v!=null?`${v}kg`:"—",                              bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
+    { key:"shop_value_gbp",        label:"Shop Value",     fmt:v=>v!=null?`£${Math.round(v)}`:"—",                   bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
+    { key:"space_use_delta_pct",   label:"Space Use",      fmt:v=>v!=null?`${v>0?"+":""}${v}%`:"—",                  bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
+    { key:"effort_level",          label:"Effort",         fmt:v=>v||"—",   isStr:true,
+      bestFn: vals => { const r=vals.map(v=>EFFORT_RANK_UI[v]??99); const min=Math.min(...r); return vals[r.indexOf(min)]; } },
+    { key:"rotation_level",        label:"Rotation",       fmt:v=>v||"—",   isStr:true,
+      bestFn: vals => { const r=vals.map(v=>ROTATION_RANK_UI[v]??-1); const max=Math.max(...r); return vals[r.indexOf(max)]; } },
+    { key:"harvest_spread_level",  label:"Harvest Spread", fmt:v=>v||"—",   isStr:true,
+      bestFn: vals => { const r=vals.map(v=>SPREAD_RANK_UI[v]??-1); const max=Math.max(...r); return vals[r.indexOf(max)]; } },
+  ];
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
+      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
+        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:16 }}>Compare plans</div>
+
+        {/* Plan selector buttons */}
+        <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+          {options.map((opt, i) => (
+            <button key={i} onClick={() => { onSelect(i); onClose(); }}
+              style={{ flex:1, padding:"10px 4px", borderRadius:10, border:"none", cursor:"pointer",
+                background: i===selectedIdx ? "#2f5d50" : "#f0f4f0",
+                color: i===selectedIdx ? "#fff" : "#1a1a1a",
+                fontSize:12, fontWeight:700 }}>
+              {opt.name}
+              {opt.id===recommendedId && (
+                <div style={{ fontSize:9, opacity:0.85, marginTop:2 }}>★ Recommended</div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Comparison table */}
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+          <tbody>
+            {rows.map(({ key, label, fmt, bestFn, isStr }) => {
+              const vals    = options.map(o => o.metrics?.[key]);
+              const bestVal = bestFn(vals);
+              return (
+                <tr key={key} style={{ borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
+                  <td style={{ padding:"9px 0", color:"#888", fontWeight:600, width:"32%", fontSize:12 }}>{label}</td>
+                  {options.map((opt, i) => {
+                    const val    = opt.metrics?.[key];
+                    const isBest = isStr ? val===bestVal : val!=null && val===bestVal;
+                    return (
+                      <td key={i} style={{ padding:"9px 4px", textAlign:"center",
+                        fontWeight: isBest?700:400,
+                        color: isBest?"#2f5d50":"#1a1a1a" }}>
+                        {fmt(val)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div style={{ marginTop:14, fontSize:11, color:"#aaa", textAlign:"center" }}>
+          Based on typical UK shop prices for when your crops are likely to be ready.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
-  const [step,        setStep]       = useState("goal");   // "goal" | "generating" | "compare"
-  const [goal,        setGoal]       = useState(null);
-  const [options,     setOptions]    = useState([]);
-  const [selected,    setSelected]   = useState(0);
-  const [saving,      setSaving]     = useState(false);
-  const [err,         setErr]        = useState(null);
-  const [genErr,      setGenErr]     = useState(null);
+  const [step,          setStep]         = useState("goal");
+  const [goal,          setGoal]         = useState(null);
+  const [options,       setOptions]      = useState([]);
+  const [selected,      setSelected]     = useState(0);
+  const [recommendedId, setRecommendedId]= useState(null);
+  const [saving,        setSaving]       = useState(false);
+  const [err,           setErr]          = useState(null);
+  const [genErr,        setGenErr]       = useState(null);
+  const [showCompare,   setShowCompare]  = useState(false);
 
   const handleGoalSelect = async (goalId) => {
     setGoal(goalId);
@@ -11515,8 +11648,12 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         method: "POST",
         body: JSON.stringify({ location_id: locationId, goal: goalId }),
       });
-      setOptions(result.options || []);
-      setSelected(0);
+      const opts = result.options || [];
+      setOptions(opts);
+      setRecommendedId(result.recommended_plan_id || null);
+      // Pre-select recommended plan if present
+      const recIdx = opts.findIndex(o => o.id === result.recommended_plan_id);
+      setSelected(recIdx >= 0 ? recIdx : 0);
       setStep("compare");
     } catch(e) {
       setGenErr(e.message);
@@ -11587,30 +11724,48 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── Compare ──
   const chosenGoal = PLAN_GOALS.find(g => g.id === goal);
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
-      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
-        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
-          <button onClick={() => setStep("goal")} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0 }}>←</button>
-          <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700 }}>Choose a plan</div>
+    <>
+      <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
+        onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+        <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
+          <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+            <button onClick={() => setStep("goal")} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0 }}>←</button>
+            <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700 }}>Choose a plan</div>
+          </div>
+          <div style={{ fontSize:12, color:C.stone, marginBottom:16, paddingLeft:30 }}>
+            {chosenGoal?.emoji} {chosenGoal?.label} · {locationName}
+          </div>
+
+          {options.map((opt, i) => (
+            <PlanOptionCard key={i} option={opt} index={i} selected={selected} onSelect={setSelected}
+              recommended={opt.id === recommendedId} />
+          ))}
+
+          {err && <div style={{ fontSize:12, color:C.red, marginBottom:10 }}>{err}</div>}
+
+          <button onClick={() => setShowCompare(true)}
+            style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
+            Compare plans →
+          </button>
+
+          <button onClick={handleChoose} disabled={saving}
+            style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+            {saving ? "Setting up plan…" : "Use this plan →"}
+          </button>
         </div>
-        <div style={{ fontSize:12, color:C.stone, marginBottom:16, paddingLeft:30 }}>
-          {chosenGoal?.emoji} {chosenGoal?.label} · {locationName}
-        </div>
-
-        {options.map((opt, i) => (
-          <PlanOptionCard key={i} option={opt} index={i} selected={selected} onSelect={setSelected} />
-        ))}
-
-        {err && <div style={{ fontSize:12, color:C.red, marginBottom:10 }}>{err}</div>}
-
-        <button onClick={handleChoose} disabled={saving}
-          style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginTop:4 }}>
-          {saving ? "Setting up plan…" : "Use this plan →"}
-        </button>
       </div>
-    </div>
+
+      {showCompare && (
+        <ComparePlansSheet
+          options={options}
+          selectedIdx={selected}
+          onSelect={setSelected}
+          onClose={() => setShowCompare(false)}
+          recommendedId={recommendedId}
+        />
+      )}
+    </>
   );
 }
 
