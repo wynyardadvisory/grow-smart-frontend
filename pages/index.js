@@ -11729,7 +11729,23 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     if (!plan) return;
     setSaving(true); setErr(null);
     try {
-      // Commit locked future assignments for rotatable (non-fixed, non-container) beds
+      // Create the plan record first so we have an id
+      const created = await apiFetch("/plans", {
+        method: "POST",
+        body: JSON.stringify({ location_id: locationId, name: plan.label || "Rotated plan" }),
+      });
+      // Save assignments to the plan
+      for (const a of (plan.assignments || [])) {
+        await apiFetch(`/plans/${created.id}/assignments`, {
+          method: "POST",
+          body: JSON.stringify({
+            area_id:            a.area_id,
+            crop_definition_id: a.crop_definition_id || null,
+            crop_name:          a.crop_name,
+          }),
+        });
+      }
+      // Also commit locked future assignments for next year
       const lockable = (plan.assignments || []).filter(a =>
         !a.is_fixed && a.crop_name && a.crop_name !== "To be decided"
       );
@@ -11747,7 +11763,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           }),
         });
       }
-      onSave({ name: plan.label || "Rotated plan" });
+      onSave(created);
     } catch(e) { setErr(e.message); setSaving(false); }
   };
 
