@@ -11483,25 +11483,20 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
 
       {/* Performance strip — show if new metrics exist, else fall back to score bars */}
       {m.harvest_kg != null ? (
-        <>
-          <div style={{ display:"flex", background:"#f8faf8", borderRadius:10, marginBottom: option.value_note ? 6 : 12, overflow:"hidden", border:`1px solid ${C.border}` }}>
-            {[
-              { label:"Harvest",    value: `${m.harvest_kg}kg` },
-              { label:"Shop Value", value: m.shop_value_gbp != null ? `£${Math.round(m.shop_value_gbp)}` : "—" },
-              { label:"Yield/m²",   value: m.yield_per_m2   != null ? `${m.yield_per_m2}kg`               : "—" },
-              { label:"Effort",     value: m.effort_level || "—",
-                color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":colour },
-            ].map((item, i, arr) => (
-              <div key={i} style={{ flex:1, padding:"8px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
-                <div style={{ fontSize:14, fontWeight:700, color:item.color||colour, fontFamily:"serif", letterSpacing:-0.3 }}>{item.value}</div>
-                <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.4, marginTop:1 }}>{item.label}</div>
-              </div>
-            ))}
-          </div>
-          {option.value_note && (
-            <div style={{ fontSize:11, color:C.stone, marginBottom:12, paddingLeft:2, fontStyle:"italic" }}>{option.value_note}</div>
-          )}
-        </>
+        <div style={{ display:"flex", background:"#f8faf8", borderRadius:10, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
+          {[
+            { label:"Harvest",    value: `${m.harvest_kg}kg` },
+            { label:"Shop Value", value: m.shop_value_gbp != null ? `£${Math.round(m.shop_value_gbp)}` : "—" },
+            { label:"Space Use",  value: m.space_use_delta_pct != null ? `${m.space_use_delta_pct>0?"+":""}${m.space_use_delta_pct}%` : "—" },
+            { label:"Effort",     value: m.effort_level || "—",
+              color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":colour },
+          ].map((item, i, arr) => (
+            <div key={i} style={{ flex:1, padding:"8px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
+              <div style={{ fontSize:14, fontWeight:700, color:item.color||colour, fontFamily:"serif", letterSpacing:-0.3 }}>{item.value}</div>
+              <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.4, marginTop:1 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           <ScoreBar label="Rotation" value={(option.scores||{}).rotation||0} colour={colour} />
@@ -11511,18 +11506,54 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
       )}
 
       <div style={{ marginTop:10, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
-        {option.assignments.map(a => (
-          <div key={a.area_id} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-            <span style={{ fontSize:14 }}>{a.crop_emoji || "🌱"}</span>
-            <span style={{ fontSize:12, color:C.stone }}>{a.area_name}</span>
-            <span style={{ fontSize:12, fontWeight:600, color:"#1a1a1a" }}>→ {a.crop_name}</span>
-          </div>
-        ))}
-        {option.fixed_areas && option.fixed_areas.length > 0 && (
-          <div style={{ fontSize:11, color:C.stone, marginTop:4, fontStyle:"italic" }}>
-            {option.fixed_areas.map(a => a.area_name).join(", ")} — kept as-is
+
+        {/* Diff summary — what changed vs baseline */}
+        {option.change_summary && (
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>
+              {option.change_summary}
+            </div>
+            {(option.changes||[]).map((c,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:6, marginBottom:4 }}>
+                <span style={{ fontSize:11, color:C.forest, flexShrink:0, marginTop:1 }}>•</span>
+                <span style={{ fontSize:12, color:"#1a1a1a" }}>
+                  <strong>{c.area_name}</strong> → <strong>{c.to_label}</strong>
+                  {c.from_label && c.from_label !== c.to_label && (
+                    <span style={{ color:C.stone }}> instead of {c.from_label}</span>
+                  )}
+                </span>
+              </div>
+            ))}
+            {(option.changes||[]).length < (option.assignments||[]).length && (
+              <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>
+                All other areas unchanged
+              </div>
+            )}
           </div>
         )}
+
+        {/* Expandable full layout */}
+        <details style={{ marginTop:6 }}>
+          <summary style={{ fontSize:11, color:C.stone, cursor:"pointer", userSelect:"none", listStyle:"none", display:"flex", alignItems:"center", gap:4 }}>
+            <span>View full layout</span>
+            <span style={{ fontSize:9 }}>▼</span>
+          </summary>
+          <div style={{ marginTop:8 }}>
+            {option.assignments.map(a => (
+              <div key={a.area_id} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                <span style={{ fontSize:14 }}>{a.crop_emoji || "🌱"}</span>
+                <span style={{ fontSize:12, color:C.stone }}>{a.area_name}</span>
+                <span style={{ fontSize:12, fontWeight:600, color:"#1a1a1a" }}>→ {a.crop_name}</span>
+              </div>
+            ))}
+            {option.fixed_areas && option.fixed_areas.length > 0 && (
+              <div style={{ fontSize:11, color:C.stone, marginTop:4, fontStyle:"italic" }}>
+                {option.fixed_areas.map(a => a.area_name).join(", ")} — kept as-is
+              </div>
+            )}
+          </div>
+        </details>
+
       </div>
     </div>
   );
@@ -11566,8 +11597,8 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
 
   const rows = [
     { key:"harvest_kg",            label:"Harvest",        fmt:v=>v!=null?`${v}kg`:"—",                              bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
-    { key:"shop_value_gbp",  label:"Shop Value", fmt:v=>v!=null?`£${Math.round(v)}`:"—",  bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
-    { key:"yield_per_m2",    label:"Yield/m²",   fmt:v=>v!=null?`${v}kg/m²`:"—",          bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
+    { key:"shop_value_gbp",        label:"Shop Value",     fmt:v=>v!=null?`£${Math.round(v)}`:"—",                   bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
+    { key:"space_use_delta_pct",   label:"Space Use",      fmt:v=>v!=null?`${v>0?"+":""}${v}%`:"—",                  bestFn: vals => Math.max(...vals.filter(v=>v!=null)) },
     { key:"effort_level",          label:"Effort",         fmt:v=>v||"—",   isStr:true,
       bestFn: vals => { const r=vals.map(v=>EFFORT_RANK_UI[v]??99); const min=Math.min(...r); return vals[r.indexOf(min)]; } },
     { key:"rotation_level",        label:"Rotation",       fmt:v=>v||"—",   isStr:true,
