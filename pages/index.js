@@ -11665,51 +11665,60 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
 }
 
 function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
-  const [step,          setStep]         = useState("goal");
-  const [goal,          setGoal]         = useState(null);
-  const [options,       setOptions]      = useState([]);
-  const [selected,      setSelected]     = useState(0);
-  const [recommendedId, setRecommendedId]= useState(null);
-  const [saving,        setSaving]       = useState(false);
-  const [err,           setErr]          = useState(null);
-  const [genErr,        setGenErr]       = useState(null);
-  const [showCompare,   setShowCompare]  = useState(false);
+  // Steps: "generating" | "baseline" | "ask_year_round" | "ask_improve" | "ask_preference" | "result" | "saving"
+  const [step,         setStep]        = useState("generating");
+  const [baseline,     setBaseline]    = useState(null);
+  const [plan,         setPlan]        = useState(null);
+  const [tip,          setTip]         = useState(null);
+  const [yearRound,    setYearRound]   = useState(false);
+  const [improveCount, setImproveCount]= useState(0);
+  const [preference,   setPreference]  = useState("balanced");
+  const [err,          setErr]         = useState(null);
+  const [saving,       setSaving]      = useState(false);
 
-  const handleGoalSelect = async (goalId) => {
-    setGoal(goalId);
+  // Generate baseline on mount
+  useEffect(() => {
+    apiFetch("/plans/generate", {
+      method: "POST",
+      body: JSON.stringify({ location_id: locationId }),
+    }).then(r => {
+      setBaseline(r.baseline);
+      setPlan(r.plan);
+      setTip(r.tip);
+      setStep("baseline");
+    }).catch(e => { setErr(e.message); setStep("error"); });
+  }, [locationId]);
+
+  // Re-fetch when options change
+  const fetchEnhanced = async (yr, ic, pref) => {
     setStep("generating");
-    setGenErr(null);
     try {
-      const result = await apiFetch("/plans/generate", {
+      const r = await apiFetch("/plans/generate", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, goal: goalId }),
+        body: JSON.stringify({
+          location_id:   locationId,
+          year_round:    yr,
+          improve_count: ic,
+          preference:    pref,
+        }),
       });
-      const opts = result.options || [];
-      setOptions(opts);
-      setRecommendedId(result.recommended_plan_id || null);
-      // Pre-select recommended plan if present
-      const recIdx = opts.findIndex(o => o.id === result.recommended_plan_id);
-      setSelected(recIdx >= 0 ? recIdx : 0);
-      setStep("compare");
-    } catch(e) {
-      setGenErr(e.message);
-      setStep("goal");
-    }
+      setBaseline(r.baseline);
+      setPlan(r.plan);
+      setTip(r.tip);
+      setStep("result");
+    } catch(e) { setErr(e.message); setStep("result"); }
   };
 
-  const handleChoose = async () => {
-    const chosen = options[selected];
-    if (!chosen) return;
+  const handleSave = async () => {
+    if (!plan) return;
     setSaving(true); setErr(null);
     try {
-      const plan = await apiFetch("/plans", {
+      const created = await apiFetch("/plans", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, name: chosen.name }),
+        body: JSON.stringify({ location_id: locationId, name: plan.label }),
       });
-      // Sequential saves to avoid race condition with useEffect assignment fetch
-      const savedAssignments = [];
-      for (const a of chosen.assignments) {
-        const saved = await apiFetch(`/plans/${plan.id}/assignments`, {
+      for (const a of plan.assignments) {
+        await apiFetch(`/plans/${created.id}/assignments`, {
           method: "POST",
           body: JSON.stringify({
             area_id:            a.area_id,
@@ -11717,93 +11726,266 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
             crop_name:          a.crop_name,
           }),
         });
-        savedAssignments.push(saved);
       }
-      onSave(plan);
+      onSave(created);
     } catch(e) { setErr(e.message); setSaving(false); }
   };
 
-  // ── Goal picker ──
-  if (step === "goal") return (
+  const Sheet = ({ children, onBack }) => (
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"85vh", overflowY:"auto" }}>
-        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
-        <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:4 }}>New plan</div>
-        <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>For {locationName} — what's your goal this season?</div>
-        {genErr && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"10px 14px", background:"#FFF0F0", borderRadius:10 }}>Couldn't generate plans: {genErr}</div>}
-        {PLAN_GOALS.map(g => (
-          <button key={g.id} onClick={() => handleGoalSelect(g.id)}
-            style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
-            <span style={{ fontSize:24, flexShrink:0 }}>{g.emoji}</span>
-            <div>
-              <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{g.label}</div>
-              <div style={{ fontSize:12, color:C.stone }}>{g.desc}</div>
-            </div>
-          </button>
-        ))}
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
+        {onBack && (
+          <button onClick={onBack} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0, marginBottom:8 }}>←</button>
+        )}
+        {children}
       </div>
     </div>
   );
 
-  // ── Generating ──
+  // ── Generating spinner ──────────────────────────────────────────────────────
   if (step === "generating") return (
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:20, padding:"36px 28px", textAlign:"center", maxWidth:280 }}>
         <div style={{ fontSize:36, marginBottom:12 }}>🌱</div>
-        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:8 }}>Planning your garden…</div>
-        <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Analysing your current crops and working out the best rotation options</div>
+        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:8 }}>Working out your rotation…</div>
+        <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Keeping your crops, just moving them to better beds</div>
       </div>
     </div>
   );
 
-  // ── Compare ──
-  const chosenGoal = PLAN_GOALS.find(g => g.id === goal);
-  return (
-    <>
-      <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
-        onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-        <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
-          <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
-            <button onClick={() => setStep("goal")} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0 }}>←</button>
-            <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700 }}>Choose a plan</div>
-          </div>
-          <div style={{ fontSize:12, color:C.stone, marginBottom:16, paddingLeft:30 }}>
-            {chosenGoal?.emoji} {chosenGoal?.label} · {locationName}
-          </div>
-
-          {options.map((opt, i) => (
-            <PlanOptionCard key={i} option={opt} index={i} selected={selected} onSelect={setSelected}
-              recommended={opt.id === recommendedId} />
-          ))}
-
-          {err && <div style={{ fontSize:12, color:C.red, marginBottom:10 }}>{err}</div>}
-
-          <button onClick={() => setShowCompare(true)}
-            style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
-            Compare plans →
-          </button>
-
-          <button onClick={handleChoose} disabled={saving}
-            style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
-            {saving ? "Setting up plan…" : "Use this plan →"}
-          </button>
-        </div>
+  if (step === "error") return (
+    <Sheet onBack={onClose}>
+      <div style={{ fontSize:13, color:C.red, padding:"12px 14px", background:"#FFF0F0", borderRadius:10 }}>
+        Couldn't generate plan: {err}
       </div>
-
-      {showCompare && (
-        <ComparePlansSheet
-          options={options}
-          selectedIdx={selected}
-          onSelect={setSelected}
-          onClose={() => setShowCompare(false)}
-          recommendedId={recommendedId}
-        />
-      )}
-    </>
+    </Sheet>
   );
+
+  // ── Helper: metrics strip ───────────────────────────────────────────────────
+  const MetricsStrip = ({ metrics, colour = C.forest }) => {
+    if (!metrics) return null;
+    return (
+      <div style={{ display:"flex", background:"#f8faf8", borderRadius:10, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
+        {[
+          { label:"Harvest",    value: metrics.harvest_kg     != null ? `${metrics.harvest_kg}kg`       : "—" },
+          { label:"Shop Value", value: metrics.shop_value_gbp != null ? `£${metrics.shop_value_gbp}`    : "—" },
+          { label:"Yield/m²",  value: metrics.yield_per_m2   != null ? `${metrics.yield_per_m2}kg`     : "—" },
+        ].map((item, i, arr) => (
+          <div key={i} style={{ flex:1, padding:"10px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
+            <div style={{ fontSize:15, fontWeight:700, color:colour, fontFamily:"serif" }}>{item.value}</div>
+            <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── Assignment list ─────────────────────────────────────────────────────────
+  const AssignmentList = ({ assignments }) => (
+    <div style={{ marginTop:4 }}>
+      {(assignments||[]).map((a,i) => (
+        <div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+          <span style={{ fontSize:13 }}>{a.locked ? "📌" : "🌱"}</span>
+          <span style={{ fontSize:12, color:C.stone, minWidth:80 }}>{a.area_name}</span>
+          <span style={{ fontSize:12, fontWeight:600, color:"#1a1a1a" }}>→ {a.crop_name}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── SCREEN: baseline ────────────────────────────────────────────────────────
+  if (step === "baseline") return (
+    <Sheet>
+      <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:4 }}>Your rotated garden 🌱</div>
+      <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>
+        Same crops, better beds — based on what you're already growing this year.
+      </div>
+      <MetricsStrip metrics={baseline?.metrics} />
+      <AssignmentList assignments={baseline?.assignments} />
+      {tip && (
+        <div style={{ marginTop:12, fontSize:12, color:C.stone, fontStyle:"italic", padding:"10px 12px", background:"#f5f8f5", borderRadius:10, borderLeft:`3px solid ${C.forest}` }}>
+          💡 {tip}
+        </div>
+      )}
+      <div style={{ height:1, background:C.border, margin:"16px 0" }} />
+      <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:4 }}>Want to improve this?</div>
+      <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>We can make a few targeted changes to get more from your garden.</div>
+      <button onClick={() => setStep("ask_year_round")}
+        style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
+        Yes, improve it →
+      </button>
+      <button onClick={handleSave} disabled={saving}
+        style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
+        {saving ? "Setting up…" : "Use this plan as-is"}
+      </button>
+      {err && <div style={{ fontSize:12, color:C.red, marginTop:8 }}>{err}</div>}
+    </Sheet>
+  );
+
+  // ── SCREEN: ask year-round growing ─────────────────────────────────────────
+  if (step === "ask_year_round") return (
+    <Sheet onBack={() => setStep("baseline")}>
+      <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:6 }}>Year-round growing?</div>
+      <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
+        Where beds would sit empty between crops, we can suggest something to fill the gap — using crops you already grow where possible.
+      </div>
+      {[
+        { value:true,  label:"Yes — fill empty windows",     desc:"Add crops between main harvest and next sowing" },
+        { value:false, label:"No — keep it simple",          desc:"Stick to one main crop per bed this season" },
+      ].map(opt => (
+        <button key={String(opt.value)} onClick={() => {
+          setYearRound(opt.value);
+          setStep("ask_improve");
+        }}
+          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+          <div>
+            <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
+            <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
+          </div>
+        </button>
+      ))}
+    </Sheet>
+  );
+
+  // ── SCREEN: ask how many areas to improve ──────────────────────────────────
+  if (step === "ask_improve") return (
+    <Sheet onBack={() => setStep("ask_year_round")}>
+      <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:6 }}>Change any areas?</div>
+      <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
+        We can swap out one or more beds for something that performs better — without changing your whole garden.
+      </div>
+      {[
+        { value:0, label:"No changes",        desc:"Keep all your current crops, rotated" },
+        { value:1, label:"Change 1 area",     desc:"One targeted improvement" },
+        { value:2, label:"Change 2 areas",    desc:"Two targeted improvements" },
+        { value:3, label:"Change 3 or more",  desc:"More ambitious changes" },
+      ].map(opt => (
+        <button key={opt.value} onClick={() => {
+          setImproveCount(opt.value);
+          if (opt.value === 0) {
+            fetchEnhanced(yearRound, 0, preference);
+          } else {
+            setStep("ask_preference");
+          }
+        }}
+          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+          <div>
+            <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
+            <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
+          </div>
+        </button>
+      ))}
+    </Sheet>
+  );
+
+  // ── SCREEN: ask preference ─────────────────────────────────────────────────
+  if (step === "ask_preference") return (
+    <Sheet onBack={() => setStep("ask_improve")}>
+      <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:6 }}>What matters most?</div>
+      <div style={{ fontSize:13, color:C.stone, marginBottom:20 }}>This helps us choose the best crops for the areas we're changing.</div>
+      {[
+        { value:"yield",    label:"More food",      desc:"Prioritise crops that produce the most", emoji:"🥕" },
+        { value:"easy",     label:"Less work",      desc:"Easier crops, lower maintenance",         emoji:"😌" },
+        { value:"balanced", label:"A good balance", desc:"Mix of yield, ease and rotation",         emoji:"⚖️" },
+      ].map(opt => (
+        <button key={opt.value} onClick={() => {
+          setPreference(opt.value);
+          fetchEnhanced(yearRound, improveCount, opt.value);
+        }}
+          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+          <span style={{ fontSize:24, flexShrink:0 }}>{opt.emoji}</span>
+          <div>
+            <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
+            <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
+          </div>
+        </button>
+      ))}
+    </Sheet>
+  );
+
+  // ── SCREEN: result ─────────────────────────────────────────────────────────
+  if (step === "result") {
+    const hasChanges = plan?.change_count > 0;
+    return (
+      <Sheet onBack={() => setStep("ask_preference")}>
+        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:4 }}>
+          {hasChanges ? "Your improved plan" : "Your rotated plan"}
+        </div>
+        <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>
+          {plan?.change_summary || "Same crops, better beds"}
+        </div>
+
+        <MetricsStrip metrics={plan?.metrics} />
+
+        {/* Changes from baseline */}
+        {hasChanges && (
+          <div style={{ marginBottom:14 }}>
+            {(plan.improvements||[]).map((imp,i) => (
+              <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5f8f5", borderRadius:10, borderLeft:`3px solid ${C.forest}` }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                    {imp.area_name} → <span style={{ color:C.forest }}>{imp.to_crop}</span>
+                  </div>
+                  <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>
+                    Instead of {imp.from_crop} · {imp.reason}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {(plan.gap_fills||[]).map((gf,i) => (
+              <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5fbf5", borderRadius:10, borderLeft:`3px solid #4a9a60` }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                    {gf.area_name} + <span style={{ color:"#4a9a60" }}>{gf.crop_name}</span>
+                  </div>
+                  <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>{gf.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Baseline comparison toggle */}
+        <details style={{ marginBottom:14 }}>
+          <summary style={{ fontSize:12, color:C.stone, cursor:"pointer", listStyle:"none", display:"flex", gap:4, alignItems:"center" }}>
+            <span>Compare with rotated baseline</span><span style={{ fontSize:9 }}>▼</span>
+          </summary>
+          <div style={{ marginTop:10, padding:"12px 14px", background:"#f8f8f8", borderRadius:10 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:C.stone, marginBottom:8 }}>Baseline</div>
+            <MetricsStrip metrics={baseline?.metrics} colour={C.stone} />
+            <AssignmentList assignments={baseline?.assignments} />
+          </div>
+        </details>
+
+        {/* Full layout */}
+        <details style={{ marginBottom:16 }}>
+          <summary style={{ fontSize:12, color:C.stone, cursor:"pointer", listStyle:"none", display:"flex", gap:4, alignItems:"center" }}>
+            <span>View full layout</span><span style={{ fontSize:9 }}>▼</span>
+          </summary>
+          <div style={{ marginTop:8 }}>
+            <AssignmentList assignments={plan?.assignments} />
+          </div>
+        </details>
+
+        {err && <div style={{ fontSize:12, color:C.red, marginBottom:8 }}>{err}</div>}
+
+        <button onClick={() => setStep("ask_year_round")}
+          style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
+          ← Adjust options
+        </button>
+        <button onClick={handleSave} disabled={saving}
+          style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+          {saving ? "Setting up plan…" : "Use this plan →"}
+        </button>
+      </Sheet>
+    );
+  }
+
+  return null;
 }
+
 
 // Sheet to assign a crop to an area within a plan
 function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
