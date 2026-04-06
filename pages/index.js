@@ -2392,6 +2392,80 @@ function NotificationDashboardPrompt({ onTabChange }) {
   );
 }
 
+// ── PlantCheckHeroCard — position 2 on Today (Mark only until PRO_ENABLED) ────
+function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen }) {
+  // Only show to Mark until PRO_ENABLED is true — keeps new UI isMark-only
+  if (!isMark) return null;
+
+  const isExpired  = remainingChecks !== null && remainingChecks <= 0;
+  const isUnlimited = remainingChecks === null;
+
+  const title    = isExpired ? "Plant Check Pro" : "Plant Check";
+  const subtitle = isExpired
+    ? "Unlimited diagnosis and harvest-readiness checks."
+    : "Take a photo to spot issues, check growth stage, or see if it's ready to harvest.";
+  const meta = isUnlimited ? null
+    : isExpired ? "No checks remaining"
+    : remainingChecks === 1 ? "1 free check left"
+    : `${remainingChecks} free checks`;
+
+  return (
+    <div onClick={onOpen} style={{
+      background: "#fff",
+      border: `1px solid #D4E8CE`,
+      borderRadius: 14,
+      padding: "14px 16px",
+      marginBottom: 16,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: 14,
+    }}>
+      {/* Icon */}
+      <div style={{
+        width: 44, height: 44, borderRadius: 12,
+        background: isExpired ? "#f5f5f5" : C.forest,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 22, flexShrink: 0,
+      }}>
+        {isExpired ? "🔒" : "📷"}
+      </div>
+      {/* Text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 2 }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: meta ? 5 : 0 }}>
+          {subtitle}
+        </div>
+        {meta && (
+          <div style={{
+            display: "inline-block",
+            fontSize: 11, fontWeight: 700,
+            color: isExpired ? C.red : C.forest,
+            background: isExpired ? C.red + "12" : C.forest + "12",
+            borderRadius: 20, padding: "2px 8px",
+          }}>
+            {meta}
+          </div>
+        )}
+      </div>
+      {/* CTA */}
+      <div style={{
+        flexShrink: 0,
+        padding: "8px 14px",
+        borderRadius: 10,
+        background: isExpired ? "#f5f5f5" : C.forest,
+        color: isExpired ? C.stone : "#fff",
+        fontSize: 12, fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}>
+        {isExpired ? "Upgrade" : "Open camera"}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onTabChange, isDemo = false }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
@@ -2408,6 +2482,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
   const [showPlantCheck,     setShowPlantCheck]     = useState(false);
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
   const plantCheckEnabled = usePlantCheckEnabled();
+  const { isMark } = useProStatus();
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -2804,6 +2879,14 @@ function Dashboard({ onTabChange, isDemo = false }) {
       {/* ── BADGES PILL ────────────────────────────────────────────────────── */}
       <TodayBadgeCard onViewBadges={() => onTabChange("badges")} />
 
+      {/* ── PLANT CHECK HERO — position 2, above Today's focus ───────── */}
+      <PlantCheckHeroCard
+        isMark={isMark}
+        plantCheckEnabled={plantCheckEnabled}
+        remainingChecks={data?.diagnoses_remaining ?? null}
+        onOpen={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
+      />
+
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today&apos;s focus</div>
@@ -3183,6 +3266,14 @@ function Dashboard({ onTabChange, isDemo = false }) {
         onLogHarvest={(h) => setPendingHarvest(h)}
         onViewAll={() => onTabChange("profile")}
       />
+      {/* Harvest → Plant Check nudge (Mark only) */}
+      {isMark && plantCheckEnabled && (
+        <div onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
+          style={{ marginTop: -8, marginBottom: 20, padding: "10px 14px", background: "#f8faf6", border: `1px solid #D4E8CE`, borderRadius: "0 0 12px 12px", borderTop: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14 }}>📷</span>
+          <span style={{ fontSize: 12, color: C.stone }}>Not sure if it's ready? <span style={{ color: C.forest, fontWeight: 700 }}>Check with a photo →</span></span>
+        </div>
+      )}
 
       {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
       {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
@@ -3221,17 +3312,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
       <TipsSection />
 
-      {/* ── PLANT CHECK CARD — Mark only until PRO_ENABLED=true ──────────── */}
-      {plantCheckEnabled && <div
-        onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
-        style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.forest, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🔍</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", fontFamily: "serif" }}>Plant Check</div>
-          <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>Take a photo — get an instant diagnosis</div>
-        </div>
-        <div style={{ fontSize: 18, color: C.stone }}>›</div>
-      </div>}
+      {/* Plant Check hero card now rendered above Today's focus — removed from here */}
 
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
@@ -11368,7 +11449,94 @@ function useKonva() {
 }
 
 // ── Area detail sheet ─────────────────────────────────────────────────────────
-function AreaDetailSheet({ area, crops, lockedAssignment, onClose }) {
+// ── AreaTimelineBlock — Last / Now / Next bed continuity (Mark only) ─────────
+// Props:
+//   lastCrop        — { name, harvested_at } | null  (passed from parent)
+//   currentCrops    — active crop_instances for this area
+//   lockedAssignment — area_plan_assignments row | null
+//   isMark          — only render for Mark account
+//   onPlanNextSeason — callback when "Plan next season" tapped
+function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, onPlanNextSeason }) {
+  if (!isMark) return null;
+
+  // Primary active crop — skip fixed/perennial types
+  const FIXED = new Set(["fruit","perennial"]);
+  const primaryCrop = (currentCrops||[]).find(c =>
+    !FIXED.has(c.crop_def?.category) && c.status !== "harvested"
+  ) || (currentCrops||[])[0] || null;
+
+  const hasLast = !!lastCrop;
+  const hasNow  = !!primaryCrop;
+  const hasNext = !!lockedAssignment;
+
+  // Nothing useful to show — skip render entirely
+  if (!hasNow && !hasNext && !hasLast) return null;
+
+  const Row = ({ label, cropName, meta, isNext, isEmpty, onTap }) => (
+    <div onClick={onTap || undefined}
+      style={{ display:"flex", alignItems:"flex-start", gap:12, paddingTop:10, paddingBottom:10, cursor:onTap?"pointer":"default" }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:16, flexShrink:0, marginTop:3 }}>
+        <div style={{
+          width:10, height:10, borderRadius:"50%",
+          background: isNext ? C.forest : isEmpty ? "#ddd" : C.sage,
+          border: isNext ? `2px solid ${C.forest}` : "2px solid transparent",
+        }} />
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:10, fontWeight:700, color:"#aaa", textTransform:"uppercase", letterSpacing:0.8, marginBottom:2 }}>
+          {label}
+        </div>
+        {isEmpty ? (
+          <div style={{ fontSize:13, color:C.stone, fontStyle:"italic" }}>
+            No crop planned
+            {onTap && <span style={{ color:C.forest, fontWeight:700, fontStyle:"normal" }}> · Plan next season →</span>}
+          </div>
+        ) : (
+          <div style={{ fontSize:15, fontWeight:600, color:"#1a1a1a", lineHeight:1.3 }}>
+            {isNext && <span style={{ marginRight:5 }}>🔒</span>}
+            {cropName}
+          </div>
+        )}
+        {meta && !isEmpty && (
+          <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>{meta}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ margin:"14px 0", background:"#F7FAF7", border:`1px solid #D4E8CE`, borderRadius:12, padding:"4px 14px", position:"relative" }}>
+      {/* Vertical connecting line between dots */}
+      <div style={{ position:"absolute", left:21, top:18, bottom:18, width:2, background:"#D4E8CE", borderRadius:1 }} />
+
+      {hasLast && (
+        <Row
+          label="Last season"
+          cropName={lastCrop.name}
+          meta={lastCrop.harvested_at
+            ? `Harvested ${new Date(lastCrop.harvested_at).toLocaleDateString("en-GB",{month:"short",year:"numeric"})}`
+            : null}
+        />
+      )}
+      <Row
+        label="Now"
+        cropName={primaryCrop?.name || "Empty bed"}
+        meta={primaryCrop?.status ? primaryCrop.status.replace(/_/g," ") : null}
+        isEmpty={!hasNow}
+      />
+      <Row
+        label={hasNext ? `Next · ${lockedAssignment.planned_year}` : "Next"}
+        cropName={lockedAssignment?.crop_name}
+        isNext={hasNext}
+        isEmpty={!hasNext}
+        meta={hasNext ? "Locked in" : null}
+        onTap={!hasNext && onPlanNextSeason ? onPlanNextSeason : undefined}
+      />
+    </div>
+  );
+}
+
+function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMark = false, onPlanNextSeason, onClose }) {
   const baseColor = {
     raised_bed: K.timber, open_ground: K.groundLight,
     greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop,
@@ -11420,6 +11588,15 @@ function AreaDetailSheet({ area, crops, lockedAssignment, onClose }) {
               </div>
             </div>
           ))}
+          {/* Bed timeline — Last / Now / Next (Mark only) */}
+          <AreaTimelineBlock
+            lastCrop={lastCrop}
+            currentCrops={crops}
+            lockedAssignment={lockedAssignment}
+            isMark={isMark}
+            onPlanNextSeason={onPlanNextSeason}
+          />
+
           {lockedAssignment && (
             <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:12 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
@@ -11704,304 +11881,7 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
   );
 }
 
-// =============================================================================
-// INFRASTRUCTURE ROI SECTION
-// Lives inside CreatePlanSheet result step — Pro only.
-// Session-only: no persistence until user applies to plan.
-// =============================================================================
-
-const INFRA_TYPES = [
-  { id:"greenhouse",     label:"Greenhouse",      emoji:"🏡", benefit:"Extend season, unlock tender crops" },
-  { id:"polytunnel",     label:"Polytunnel",       emoji:"⛺", benefit:"Frost protection, boost fruiting" },
-  { id:"raised_bed",     label:"Raised bed",       emoji:"🪴", benefit:"Better drainage and soil warmth" },
-  { id:"irrigation",     label:"Irrigation",       emoji:"💧", benefit:"Less watering effort, better yields" },
-  { id:"water_butt",     label:"Water butt",       emoji:"🪣", benefit:"Save time and water in dry spells" },
-  { id:"compost_system", label:"Compost system",   emoji:"♻️", benefit:"Improve soil health over time" },
-];
-
-function InfrastructureROISection({ locationId, areas, isPro, onApply, planContext = false }) {
-  const [selected,    setSelected]    = useState(null);   // infrastructure_type id
-  const [size,        setSize]        = useState("medium");
-  const [targetIds,   setTargetIds]   = useState([]);     // empty = whole garden
-  const [customCost,  setCustomCost]  = useState("");
-  const [result,      setResult]      = useState(null);
-  const [loading,     setLoading]     = useState(false);
-  const [err,         setErr]         = useState(null);
-  const [showDetail,  setShowDetail]  = useState(false);
-  const [applied,     setApplied]     = useState(false);
-
-  const rotatableAreas = (areas||[]).filter(a =>
-    !["container","pot"].includes(a.type)
-  );
-
-  const runModel = async (type, sz, tIds, cost) => {
-    setLoading(true); setErr(null); setResult(null);
-    try {
-      const body = {
-        location_id:      locationId,
-        infrastructure_type: type,
-        size:             sz,
-        target_area_ids:  tIds,
-      };
-      if (cost && !isNaN(Number(cost))) body.custom_cost_gbp = Number(cost);
-      const r = await apiFetch("/infrastructure/model", { method:"POST", body: JSON.stringify(body) });
-      setResult(r);
-    } catch(e) { setErr(e.message); }
-    finally { setLoading(false); }
-  };
-
-  const handleSelect = (id) => {
-    setSelected(id); setResult(null); setApplied(false);
-    setShowDetail(false);
-    runModel(id, size, targetIds, customCost);
-  };
-
-  const handleSizeChange = (sz) => {
-    setSize(sz);
-    if (selected) runModel(selected, sz, targetIds, customCost);
-  };
-
-  const handleApply = () => {
-    if (!result || !selected) return;
-    onApply({
-      infrastructure_type:       selected,
-      infrastructure_cost_label: result.cost?.cost_range_label || null,
-      roi_summary: {
-        size,
-        yield_gain_kg:    result.gains?.harvest_kg_delta,
-        value_gain_gbp:   result.gains?.value_gbp_delta,
-        payback_seasons:  result.roi?.payback_seasons,
-        confidence:       result.roi?.confidence,
-      },
-    });
-    setApplied(true);
-  };
-
-  if (!isPro) return (
-    <div style={{ marginTop:20, padding:"16px 14px", background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14 }}>
-      <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>🏡 Improve your garden</div>
-      <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:10 }}>
-        See whether adding a greenhouse, raised bed or irrigation could increase harvest and value — with payback estimates.
-      </div>
-      <div style={{ fontSize:11, color:C.stone, padding:"7px 10px", background:"#fff", borderRadius:8, border:"1px solid #E3E7E1", textAlign:"center" }}>🔒 Pro feature</div>
-    </div>
-  );
-
-  return (
-    <div style={{ marginTop:20 }}>
-      <div style={{ height:1, background:C.border, marginBottom:16 }} />
-      <div style={{ fontFamily:"serif", fontSize:16, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>
-        Improve your garden
-      </div>
-      <div style={{ fontSize:12, color:C.stone, marginBottom:14, lineHeight:1.5 }}>
-        See whether adding infrastructure could increase your harvest, value or ease.
-      </div>
-
-      {/* Infrastructure type cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-        {INFRA_TYPES.map(t => (
-          <button key={t.id} onClick={() => handleSelect(t.id)}
-            style={{
-              padding:"10px 10px 8px", borderRadius:12,
-              border:`1.5px solid ${selected===t.id ? C.forest : C.border}`,
-              background: selected===t.id ? "#F0F5F3" : "#fff",
-              cursor:"pointer", textAlign:"left",
-            }}>
-            <div style={{ fontSize:20, marginBottom:3 }}>{t.emoji}</div>
-            <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>{t.label}</div>
-            <div style={{ fontSize:10, color:C.stone, lineHeight:1.4 }}>{t.benefit}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Loading */}
-      {loading && (
-        <div style={{ textAlign:"center", padding:"20px 0", color:C.stone, fontSize:13 }}>
-          Modelling…
-        </div>
-      )}
-      {err && (
-        <div style={{ fontSize:12, color:C.red, padding:"8px 12px", background:"#fff0f0", borderRadius:8, marginBottom:10 }}>
-          {err}
-        </div>
-      )}
-
-      {/* Result panel */}
-      {result && !loading && (
-        <div style={{ background:"#F7F8F5", border:`1.5px solid ${C.forest}44`, borderRadius:14, overflow:"hidden", marginBottom:10 }}>
-
-          {/* Incompatibility warning */}
-          {result.incompatible && (
-            <div style={{ padding:"14px 14px", fontSize:12, color:C.stone, lineHeight:1.5 }}>
-              <div style={{ fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>Less relevant for your setup</div>
-              {result.incompatibility_note}
-            </div>
-          )}
-
-          {!result.incompatible && (
-            <>
-              {/* Size + target controls */}
-              <div style={{ padding:"12px 14px 0", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                <div style={{ fontSize:11, color:C.stone, fontWeight:600 }}>Size:</div>
-                {["small","medium","large"].map(s => (
-                  <button key={s} onClick={() => handleSizeChange(s)}
-                    style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${size===s?C.forest:C.border}`,
-                      background:size===s?C.forest:"#fff", color:size===s?"#fff":C.stone,
-                      fontSize:11, fontWeight:600, cursor:"pointer" }}>
-                    {s.charAt(0).toUpperCase()+s.slice(1)}
-                  </button>
-                ))}
-                <div style={{ fontSize:11, color:C.stone, marginLeft:8 }}>Cost: {result.cost?.cost_range_label}</div>
-              </div>
-
-              {/* Target areas multi-select — only show if 2+ areas */}
-              {rotatableAreas.length > 1 && (
-                <div style={{ padding:"8px 14px 0", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
-                  <div style={{ fontSize:11, color:C.stone, fontWeight:600 }}>Areas:</div>
-                  <button
-                    onClick={() => { setTargetIds([]); runModel(selected, size, [], customCost); }}
-                    style={{ padding:"3px 9px", borderRadius:20, border:`1px solid ${targetIds.length===0?C.forest:C.border}`,
-                      background:targetIds.length===0?C.forest:"#fff", color:targetIds.length===0?"#fff":C.stone,
-                      fontSize:11, fontWeight:600, cursor:"pointer" }}>
-                    All
-                  </button>
-                  {rotatableAreas.map(a => {
-                    const isOn = targetIds.includes(a.id);
-                    return (
-                      <button key={a.id} onClick={() => {
-                        const next = isOn ? targetIds.filter(x=>x!==a.id) : [...targetIds, a.id];
-                        setTargetIds(next);
-                        runModel(selected, size, next, customCost);
-                      }}
-                        style={{ padding:"3px 9px", borderRadius:20, border:`1px solid ${isOn?C.forest:C.border}`,
-                          background:isOn?C.forest:"#fff", color:isOn?"#fff":C.stone,
-                          fontSize:11, fontWeight:600, cursor:"pointer",
-                          maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                        {a.name?.replace(/^"|"$/g,"")}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Lead metrics */}
-              <div style={{ display:"flex", padding:"14px 14px 10px", gap:0 }}>
-                {[
-                  { label:"Harvest gain",   value: result.gains?.harvest_kg_delta != null ? `+${result.gains.harvest_kg_delta}kg` : "—" },
-                  { label:"Value / season", value: result.gains?.value_gbp_delta   != null ? `+£${result.gains.value_gbp_delta}`   : "—" },
-                  { label:"Payback",        value: result.roi?.payback_seasons != null ? `~${result.roi.payback_seasons} seasons` : "—" },
-                ].map((m,i,arr) => (
-                  <div key={i} style={{ flex:1, textAlign:"center", borderRight: i<arr.length-1 ? `1px solid ${C.border}` : "none", paddingBottom:4 }}>
-                    <div style={{ fontSize:16, fontWeight:700, color:C.forest, fontFamily:"serif" }}>{m.value}</div>
-                    <div style={{ fontSize:9, color:C.stone, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{m.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Effort + season */}
-              <div style={{ padding:"0 14px 10px", display:"flex", gap:8, flexWrap:"wrap" }}>
-                {result.gains?.effort_change?.direction && (
-                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:8, padding:"5px 9px", border:`1px solid ${C.border}` }}>
-                    {result.gains.effort_change.direction === "easier" ? "✅" : result.gains.effort_change.direction === "harder" ? "⚠️" : "⚖️"} {result.gains.effort_change.note}
-                  </div>
-                )}
-                {result.gains?.season_extension?.label && (
-                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:8, padding:"5px 9px", border:`1px solid ${C.border}` }}>
-                    📅 {result.gains.season_extension.label}
-                  </div>
-                )}
-              </div>
-
-              {/* Crop unlocks */}
-              {result.gains?.crop_unlocks?.length > 0 && (
-                <div style={{ padding:"0 14px 10px" }}>
-                  <div style={{ fontSize:11, color:C.stone, fontWeight:600, marginBottom:4 }}>Crops you can now grow reliably:</div>
-                  <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                    {result.gains.crop_unlocks.map(crop => (
-                      <span key={crop} style={{ fontSize:11, padding:"3px 8px", background:"#fff", border:`1px solid ${C.border}`, borderRadius:20, color:"#1a1a1a" }}>{crop}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Deep dive toggle */}
-              <details style={{ padding:"0 14px 10px" }}>
-                <summary style={{ fontSize:11, color:C.forest, cursor:"pointer", listStyle:"none", fontWeight:600 }}>
-                  More details ▾
-                </summary>
-                <div style={{ marginTop:10 }}>
-                  {/* Confidence */}
-                  <div style={{ fontSize:11, color:C.stone, marginBottom:8, fontStyle:"italic" }}>
-                    {result.roi?.confidence_note}
-                  </div>
-                  {/* 3-year outlook */}
-                  {result.roi?.value_gain_3yr != null && (
-                    <div style={{ fontSize:12, marginBottom:6 }}>
-                      <span style={{ color:C.stone }}>3-year estimated gain: </span>
-                      <span style={{ fontWeight:700, color:C.forest }}>£{result.roi.value_gain_3yr}</span>
-                      {result.roi.net_3yr != null && (
-                        <span style={{ color:C.stone }}> · Net 3yr: {result.roi.net_3yr >= 0 ? `+£${result.roi.net_3yr}` : `-£${Math.abs(result.roi.net_3yr)}`}</span>
-                      )}
-                    </div>
-                  )}
-                  {/* Things to know */}
-                  {result.gains?.things_to_know?.length > 0 && (
-                    <div style={{ marginTop:8 }}>
-                      <div style={{ fontSize:11, fontWeight:600, color:C.stone, marginBottom:4 }}>Things to know:</div>
-                      {result.gains.things_to_know.map((t,i) => (
-                        <div key={i} style={{ fontSize:11, color:C.stone, marginBottom:3, paddingLeft:10 }}>· {t}</div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Affected areas */}
-                  {result.affected_areas?.length > 0 && (
-                    <div style={{ marginTop:10 }}>
-                      <div style={{ fontSize:11, fontWeight:600, color:C.stone, marginBottom:4 }}>Per area:</div>
-                      {result.affected_areas.map((a,i) => (
-                        <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.stone, marginBottom:3 }}>
-                          <span>{a.area_name?.replace(/^"|"$/g,"")}</span>
-                          <span style={{ color:C.forest, fontWeight:600 }}>
-                            {a.baseline_yield_kg}kg → {a.modelled_yield_kg}kg
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Custom cost input */}
-                  <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8 }}>
-                    <div style={{ fontSize:11, color:C.stone, whiteSpace:"nowrap" }}>Adjust cost: £</div>
-                    <input
-                      type="number" value={customCost} placeholder={String(result.cost?.assumed_gbp||"")}
-                      onChange={e => setCustomCost(e.target.value)}
-                      onBlur={() => { if (customCost) runModel(selected, size, targetIds, customCost); }}
-                      style={{ width:80, padding:"5px 8px", borderRadius:8, border:`1px solid ${C.border}`, fontSize:12, outline:"none" }}
-                    />
-                  </div>
-                </div>
-              </details>
-
-              {/* Apply CTA */}
-              <div style={{ padding:"0 14px 14px" }}>
-                {applied ? (
-                  <div style={{ fontSize:12, color:C.forest, fontWeight:700, textAlign:"center", padding:"10px 0" }}>
-                    ✅ Noted — {planContext ? "infrastructure assumptions added to this plan" : "use this when creating your next plan"}
-                  </div>
-                ) : (
-                  <button onClick={handleApply}
-                    style={{ width:"100%", padding:"12px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>
-                    {planContext ? "Apply to this plan" : "Note this for my plan"}
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CreatePlanSheet({ locationId, locationName, areas = [], isPro = false, onSave, onClose }) {
+function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // Steps: "generating" | "baseline" | "ask_year_round" | "ask_improve" | "ask_preference" | "result" | "saving"
   const [step,            setStep]           = useState("generating");
   const [baseline,        setBaseline]       = useState(null);
@@ -12013,7 +11893,6 @@ function CreatePlanSheet({ locationId, locationName, areas = [], isPro = false, 
   const [preference,   setPreference]  = useState("balanced");
   const [err,          setErr]         = useState(null);
   const [saving,       setSaving]      = useState(false);
-  const [infraMeta,    setInfraMeta]   = useState(null); // set when user applies an infrastructure scenario
 
   // Generate baseline on mount
   useEffect(() => {
@@ -12065,27 +11944,6 @@ function CreatePlanSheet({ locationId, locationName, areas = [], isPro = false, 
             crop_name:          a.crop_name,
           }),
         });
-      }
-      // Commit locked area assignments — include infrastructure metadata if an ROI
-      // scenario was applied during this session
-      const lockable = (plan.assignments||[]).filter(a =>
-        !a.is_fixed && a.crop_name && a.crop_name !== "To be decided"
-      );
-      if (lockable.length > 0) {
-        const commitBody = {
-          location_id: locationId,
-          assignments: lockable.map(a => ({
-            area_id:     a.area_id,
-            crop_def_id: a.crop_definition_id || null,
-            crop_name:   a.crop_name,
-            category:    a.category || null,
-          })),
-          ...(infraMeta || {}),
-        };
-        await apiFetch("/area-plan-assignments/commit", {
-          method: "POST",
-          body: JSON.stringify(commitBody),
-        }).catch(() => {}); // non-fatal — plan is already saved
       }
       onSave(created);
     } catch(e) { setErr(e.message); setSaving(false); }
@@ -12339,7 +12197,6 @@ function CreatePlanSheet({ locationId, locationName, areas = [], isPro = false, 
           style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
           Use this plan →
         </button>
-
       </Sheet>
     );
   }
@@ -12825,6 +12682,7 @@ function PlanScreen() {
   const [selectedLoc,  setSelectedLoc]  = useState(_savedView?.selectedLoc || null);
   const [areas,        setAreas]        = useState([]);
   const [lockedAssignments, setLockedAssignments] = useState([]);
+  const [lastCropByArea,    setLastCropByArea]    = useState({}); // { area_id: { name, harvested_at } }
   const [activeBlock,  setActiveBlock]  = useState(null);
   const [detailArea,   setDetailArea]   = useState(null);
   const [savedToast,   setSavedToast]   = useState(false);
@@ -12915,6 +12773,22 @@ function PlanScreen() {
     apiFetch(`/area-plan-assignments?location_id=${loc.id}`)
       .then(d => setLockedAssignments(d||[]))
       .catch(() => setLockedAssignments([]));
+
+    // Fetch last harvested crop per area (Mark only — for AreaTimelineBlock)
+    if (isMark) {
+      apiFetch(`/crops/history?location_id=${loc.id}`)
+        .then(d => {
+          // d = [{ area_id, name, harvested_at, ... }] — most recent per area
+          const byArea = {};
+          for (const c of (d||[])) {
+            if (!byArea[c.area_id] || c.harvested_at > byArea[c.area_id].harvested_at) {
+              byArea[c.area_id] = c;
+            }
+          }
+          setLastCropByArea(byArea);
+        })
+        .catch(() => setLastCropByArea({}));
+    }
   }, [selectedLoc]);
 
   useEffect(()=>{
@@ -13234,22 +13108,15 @@ function PlanScreen() {
         </div>
       )}
 
-      {/* Infrastructure & ROI — always visible when a location is loaded */}
-      {selectedLoc && (
-        <InfrastructureROISection
-          locationId={selectedLoc}
-          areas={areas}
-          isPro={isPro}
-          onApply={(meta) => {/* standalone — no plan context needed */}}
-        />
-      )}
-
       {/* Sheets & modals */}
       {selectedAreaObj && !isPlanMode && (
         <AreaDetailSheet
           area={selectedAreaObj}
           crops={selectedAreaCrops}
           lockedAssignment={lockedAssignments.find(a => a.area_id === selectedAreaObj.id) || null}
+          lastCrop={lastCropByArea[selectedAreaObj.id] || null}
+          isMark={isMark}
+          onPlanNextSeason={() => { setDetailArea(null); setActiveBlock(null); setShowCreatePlan(true); }}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
         />
       )}
@@ -13258,8 +13125,6 @@ function PlanScreen() {
         <CreatePlanSheet
           locationId={selectedLoc}
           locationName={loc.name}
-          areas={areas}
-          isPro={isPro}
           onSave={async (plan) => {
             setPlans(prev => [plan, ...prev]);
             setShowCreatePlan(false);
