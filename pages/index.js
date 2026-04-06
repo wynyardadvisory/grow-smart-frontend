@@ -1,3 +1,4 @@
+
 /**
  * GROW SMART — Main App
  * React PWA. Connects to the Grow Smart API.
@@ -11149,7 +11150,7 @@ function _drawAreaLabel(ctx, area, x, y, w, h, name) {
 }
 
 // ── Main Konva canvas component ────────────────────────────────────────────────
-function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, stageH, stageScale, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
+function GardenKonvaCanvas({ areas, crops, lockedAssignments = [], pxPerM, canvasW, canvasH, stageW, stageH, stageScale, activeBlock, onTap, onDragEnd, onRotate, onZoomChange, zoom }) {
   const stageRef = useRef(null);
   const lastDistRef = useRef(null);
   const [, forceUpdate] = useState(0);
@@ -11176,6 +11177,8 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
   const PAD = 24;
   const cropsByArea = {};
   for (const area of areas) cropsByArea[area.id] = crops.filter(c => c.area_id === area.id);
+  const lockedByArea = {};
+  for (const a of lockedAssignments) lockedByArea[a.area_id] = a;
 
   // Pinch-to-zoom
   const handleTouchMove = (e) => {
@@ -11219,6 +11222,10 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
           const isSelected = activeBlock === area.id;
           const areaCrops = cropsByArea[area.id] || [];
           const name = area.name.replace(/^"|"$/g, "").toUpperCase();
+          const lockedNext  = lockedByArea[area.id] || null;
+          const lockedLabel = lockedNext
+            ? "Next: " + lockedNext.crop_name.replace(/\s*\(.*?\)/g,"").replace(/\s*→.*/,"").trim()
+            : null;
 
           const handleR = 14;
           const handleX = w + 6;
@@ -11268,6 +11275,25 @@ function GardenKonvaCanvas({ areas, crops, pxPerM, canvasW, canvasH, stageW, sta
               )}
 
               {/* Label removed */}
+
+              {/* Locked next crop badge */}
+              {lockedLabel && !isTree && !isBush && (
+                <Text
+                  text={lockedLabel}
+                  x={4} y={4}
+                  width={w - 8}
+                  fontSize={Math.max(7, Math.min(9, w * 0.07))}
+                  fontStyle="bold"
+                  fill="rgba(255,255,255,0.85)"
+                  align="center"
+                  listening={false}
+                  shadowColor="rgba(0,0,0,0.4)"
+                  shadowBlur={2}
+                  shadowOffsetY={1}
+                  wrap="none"
+                  ellipsis={true}
+                />
+              )}
 
               {/* Rotate handle — in non-listening wrapper so it doesn't expand hit area */}
               {isSelected && onRotate && (
@@ -11343,7 +11369,7 @@ function useKonva() {
 }
 
 // ── Area detail sheet ─────────────────────────────────────────────────────────
-function AreaDetailSheet({ area, crops, lockedAssignment, onClose }) {
+function AreaDetailSheet({ area, crops, onClose }) {
   const baseColor = {
     raised_bed: K.timber, open_ground: K.groundLight,
     greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop,
@@ -11395,22 +11421,6 @@ function AreaDetailSheet({ area, crops, lockedAssignment, onClose }) {
               </div>
             </div>
           ))}
-
-          {/* Locked next-year assignment */}
-          {lockedAssignment && (
-            <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <span style={{ fontSize:13 }}>🔒</span>
-                <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.5 }}>
-                  Planned next — {lockedAssignment.planned_year}
-                </div>
-              </div>
-              <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a" }}>{lockedAssignment.crop_name}</div>
-              <div style={{ fontSize:11, color:C.stone, marginTop:3 }}>
-                Locked in — this bed is committed for {lockedAssignment.planned_year}
-              </div>
-            </div>
-          )}
           <div style={{ marginTop:20, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"14px 16px" }}>
             <div style={{ fontSize:11, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Area insights</div>
             <div style={{ display:"flex", gap:8 }}>
@@ -11682,10 +11692,11 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
 
 function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // Steps: "generating" | "baseline" | "ask_year_round" | "ask_improve" | "ask_preference" | "result" | "saving"
-  const [step,         setStep]        = useState("generating");
-  const [baseline,     setBaseline]    = useState(null);
-  const [plan,         setPlan]        = useState(null);
-  const [tip,          setTip]         = useState(null);
+  const [step,            setStep]           = useState("generating");
+  const [baseline,        setBaseline]       = useState(null);
+  const [plan,            setPlan]           = useState(null);
+  const [tip,             setTip]            = useState(null);
+  const [showLockConfirm, setShowLockConfirm]= useState(false);
   const [yearRound,    setYearRound]   = useState(false);
   const [improveCount, setImproveCount]= useState(0);
   const [preference,   setPreference]  = useState("balanced");
@@ -11729,37 +11740,17 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     if (!plan) return;
     setSaving(true); setErr(null);
     try {
-      // Create the plan record first so we have an id
       const created = await apiFetch("/plans", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, name: plan.label || "Rotated plan" }),
+        body: JSON.stringify({ location_id: locationId, name: plan.label }),
       });
-      // Save assignments to the plan
-      for (const a of (plan.assignments || [])) {
+      for (const a of plan.assignments) {
         await apiFetch(`/plans/${created.id}/assignments`, {
           method: "POST",
           body: JSON.stringify({
             area_id:            a.area_id,
             crop_definition_id: a.crop_definition_id || null,
             crop_name:          a.crop_name,
-          }),
-        });
-      }
-      // Also commit locked future assignments for next year
-      const lockable = (plan.assignments || []).filter(a =>
-        !a.is_fixed && a.crop_name && a.crop_name !== "To be decided"
-      );
-      if (lockable.length) {
-        await apiFetch("/area-plan-assignments/commit", {
-          method: "POST",
-          body: JSON.stringify({
-            location_id: locationId,
-            assignments: lockable.map(a => ({
-              area_id:     a.area_id,
-              crop_def_id: a.crop_definition_id || null,
-              crop_name:   a.crop_name,
-              category:    a.category || null,
-            })),
           }),
         });
       }
@@ -11852,9 +11843,9 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
         Yes, improve it →
       </button>
-      <button onClick={handleSave} disabled={saving}
+      <button onClick={() => setShowLockConfirm(true)}
         style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
-        {saving ? "Setting up…" : "Use this plan as-is"}
+        Use this plan as-is
       </button>
       {err && <div style={{ fontSize:12, color:C.red, marginTop:8 }}>{err}</div>}
     </Sheet>
@@ -12011,11 +12002,41 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
           ← Adjust options
         </button>
-        <button onClick={handleSave} disabled={saving}
+        <button onClick={() => setShowLockConfirm(true)}
           style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
-          {saving ? "Setting up plan…" : "Use this plan →"}
+          Use this plan →
         </button>
       </Sheet>
+    );
+  }
+
+  // ── Lock confirmation modal ─────────────────────────────────────────────────
+  if (showLockConfirm) {
+    const nextYear = new Date().getFullYear() + 1;
+    const lockableCount = (plan?.assignments || []).filter(a =>
+      !a.is_fixed && a.crop_name && a.crop_name !== "To be decided"
+    ).length;
+    return (
+      <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 20px" }}>
+        <div style={{ background:"#fff", borderRadius:20, padding:"28px 24px", maxWidth:360, width:"100%" }}>
+          <div style={{ fontSize:28, textAlign:"center", marginBottom:12 }}>🔒</div>
+          <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, textAlign:"center", marginBottom:10 }}>
+            Lock this plan for {nextYear}?
+          </div>
+          <div style={{ fontSize:13, color:C.stone, lineHeight:1.6, textAlign:"center", marginBottom:24 }}>
+            This will save the next crop for {lockableCount} bed{lockableCount !== 1 ? "s" : ""} in your rotation. You'll see those planned crops in your garden, and Vercro will use them when your current crops finish.
+          </div>
+          {err && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
+          <button onClick={handleSave} disabled={saving}
+            style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
+            {saving ? "Locking plan…" : "Lock plan"}
+          </button>
+          <button onClick={() => setShowLockConfirm(false)} disabled={saving}
+            style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -12469,7 +12490,6 @@ function PlanScreen() {
   const [error,        setError]        = useState(null);
   const [selectedLoc,  setSelectedLoc]  = useState(_savedView?.selectedLoc || null);
   const [areas,        setAreas]        = useState([]);
-  const [lockedAssignments, setLockedAssignments] = useState([]); // area_plan_assignments for current location
   const [activeBlock,  setActiveBlock]  = useState(null);
   const [detailArea,   setDetailArea]   = useState(null);
   const [savedToast,   setSavedToast]   = useState(false);
@@ -12557,10 +12577,6 @@ function PlanScreen() {
     autoLayoutDone.current = false;
     setActiveBlock(null);
     setAreas(loc.growing_areas||[]);
-    // Load locked future assignments for this location
-    apiFetch(`/area-plan-assignments?location_id=${loc.id}`)
-      .then(data => setLockedAssignments(data || []))
-      .catch(() => setLockedAssignments([]));
   }, [selectedLoc]);
 
   useEffect(()=>{
@@ -12818,6 +12834,7 @@ function PlanScreen() {
           <GardenKonvaCanvas
             areas={areas}
             crops={planCrops}
+            lockedAssignments={lockedAssignments}
             pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
             stageW={stageW} stageH={stageH} stageScale={zoom}
             activeBlock={isPlanMode ? null : activeBlock}
@@ -12884,7 +12901,6 @@ function PlanScreen() {
         <AreaDetailSheet
           area={selectedAreaObj}
           crops={selectedAreaCrops}
-          lockedAssignment={lockedAssignments.find(a => a.area_id === selectedAreaObj.id) || null}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
         />
       )}
