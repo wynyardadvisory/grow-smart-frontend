@@ -11719,7 +11719,7 @@ const INFRA_TYPES = [
   { id:"compost_system", label:"Compost system",   emoji:"♻️", benefit:"Improve soil health over time" },
 ];
 
-function InfrastructureROISection({ locationId, areas, isPro, onApply }) {
+function InfrastructureROISection({ locationId, areas, isPro, onApply, planContext = false }) {
   const [selected,    setSelected]    = useState(null);   // infrastructure_type id
   const [size,        setSize]        = useState("medium");
   const [targetIds,   setTargetIds]   = useState([]);     // empty = whole garden
@@ -11984,12 +11984,12 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply }) {
               <div style={{ padding:"0 14px 14px" }}>
                 {applied ? (
                   <div style={{ fontSize:12, color:C.forest, fontWeight:700, textAlign:"center", padding:"10px 0" }}>
-                    ✅ Infrastructure assumptions applied to this plan
+                    ✅ Noted — {planContext ? "infrastructure assumptions added to this plan" : "use this when creating your next plan"}
                   </div>
                 ) : (
                   <button onClick={handleApply}
                     style={{ width:"100%", padding:"12px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>
-                    Apply to this plan
+                    {planContext ? "Apply to this plan" : "Note this for my plan"}
                   </button>
                 )}
               </div>
@@ -12340,12 +12340,6 @@ function CreatePlanSheet({ locationId, locationName, areas = [], isPro = false, 
           Use this plan →
         </button>
 
-        <InfrastructureROISection
-          locationId={locationId}
-          areas={areas}
-          isPro={isPro}
-          onApply={(meta) => setInfraMeta(meta)}
-        />
       </Sheet>
     );
   }
@@ -13238,6 +13232,16 @@ function PlanScreen() {
             );
           })}
         </div>
+      )}
+
+      {/* Infrastructure & ROI — always visible when a location is loaded */}
+      {selectedLoc && (
+        <InfrastructureROISection
+          locationId={selectedLoc}
+          areas={areas}
+          isPro={isPro}
+          onApply={(meta) => {/* standalone — no plan context needed */}}
+        />
       )}
 
       {/* Sheets & modals */}
