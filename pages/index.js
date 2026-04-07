@@ -4671,6 +4671,64 @@ function GardenView({ onNavigateAdd }) {
                               area.soil_temperature_c != null ? `${area.soil_temperature_c}°C` : null,
                             ].filter(Boolean).join(" · ")}
                           </div>
+                          {/* Soil moisture toggle */}
+                          {(() => {
+                            const MOISTURE_OPTIONS = [
+                              { val: "dry",  label: "Dry",  color: C.amber,  bg: "#fdf6e3" },
+                              { val: "ok",   label: "OK",   color: C.forest, bg: "#f0f7f4" },
+                              { val: "wet",  label: "Wet",  color: "#5B8FA8", bg: "#eef4f8" },
+                            ];
+                            const loggedAt = area.soil_moisture_logged_at;
+                            const daysAgo = loggedAt
+                              ? Math.floor((Date.now() - new Date(loggedAt).getTime()) / 86400000)
+                              : null;
+                            const isExpired = daysAgo !== null && daysAgo > 7;
+                            const handleMoisture = async (val) => {
+                              const newVal = area.soil_moisture === val ? null : val;
+                              try {
+                                await apiFetch(`/areas/${area.id}`, {
+                                  method: "PUT",
+                                  body: JSON.stringify({ soil_moisture: newVal || "" }),
+                                });
+                                setLocations(ls => ls.map(l => ({
+                                  ...l,
+                                  growing_areas: (l.growing_areas || []).map(a =>
+                                    a.id === area.id
+                                      ? { ...a, soil_moisture: newVal, soil_moisture_logged_at: newVal ? new Date().toISOString() : null }
+                                      : a
+                                  ),
+                                })));
+                              } catch(e) { console.error("[Moisture]", e.message); }
+                            };
+                            return (
+                              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 10, color: C.stone, marginRight: 2 }}>Soil:</span>
+                                {MOISTURE_OPTIONS.map(opt => {
+                                  const isActive = area.soil_moisture === opt.val && !isExpired;
+                                  return (
+                                    <button key={opt.val} onClick={() => handleMoisture(opt.val)}
+                                      style={{
+                                        padding: "2px 8px",
+                                        fontSize: 10,
+                                        fontWeight: isActive ? 700 : 500,
+                                        borderRadius: 20,
+                                        border: `1px solid ${isActive ? opt.color : C.border}`,
+                                        background: isActive ? opt.bg : "transparent",
+                                        color: isActive ? opt.color : C.stone,
+                                        cursor: "pointer",
+                                      }}>
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
+                                {area.soil_moisture && (
+                                  <span style={{ fontSize: 9, color: isExpired ? C.red : C.stone, fontStyle: "italic" }}>
+                                    {isExpired ? "Expired — update to reactivate" : daysAgo === 0 ? "Today" : `${daysAgo}d ago`}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
