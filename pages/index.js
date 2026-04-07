@@ -8495,14 +8495,68 @@ function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
           </div>
         )}
 
-        {/* Diagnoses remaining count */}
-        {result.diagnoses_remaining !== null && result.diagnoses_remaining !== undefined && (
-          <div style={{ textAlign: "center", fontSize: 12, color: C.stone, marginBottom: 16 }}>
-            {result.diagnoses_remaining === 0
-              ? "You've used all 3 free plant checks"
-              : `${result.diagnoses_remaining} free plant check${result.diagnoses_remaining !== 1 ? "s" : ""} remaining`}
-          </div>
-        )}
+        {/* Diagnoses remaining — nudge on 1st/2nd use, plain count on 0 */}
+        {result.diagnoses_remaining !== null && result.diagnoses_remaining !== undefined && (() => {
+          const rem = result.diagnoses_remaining;
+          // After 1st use (2 remaining) or 2nd use (1 remaining) — show soft nudge
+          if (rem === 2 || rem === 1) {
+            const nudgeText = rem === 2
+              ? "Want to keep checking plants like this?"
+              : "You're using Plant Check like a pro";
+            const nudgeSub = rem === 2
+              ? "Unlimited Plant Check is included with Vercro Pro."
+              : "Unlock unlimited checks with Vercro Pro.";
+            return (
+              <div style={{
+                background: "#f5f9f7",
+                border: `1px solid ${C.border}`,
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{nudgeText}</div>
+                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{nudgeSub}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    // Trigger the full upgrade sheet — rendered at PlantCheck level
+                    // by surfacing via a callback. For now, navigate to upgrade screen.
+                    if (typeof window !== "undefined") {
+                      window.__vercroShowPaywall?.("diagnosis");
+                    }
+                  }}
+                  style={{
+                    background: "none",
+                    border: `1px solid ${C.forest}`,
+                    borderRadius: 8,
+                    padding: "7px 12px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: C.forest,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}>
+                  See what's included →
+                </button>
+              </div>
+            );
+          }
+          // After 3rd use (0 remaining) — plain count (hard block fires on next attempt)
+          if (rem === 0) {
+            return (
+              <div style={{ textAlign: "center", fontSize: 12, color: C.stone, marginBottom: 16 }}>
+                You've used all 3 free plant checks
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <button onClick={onDone}
           style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
@@ -8523,7 +8577,16 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   const [processing, setProcessing] = useState(false);
   const [result,     setResult]     = useState(null);
   const [error,      setError]      = useState(null);
+  const [showNudgePaywall, setShowNudgePaywall] = useState(false);
   const { isPro, isProForDiagnosis } = useProStatus();
+
+  // Allow the nudge CTA inside PlantCheckResult to open the full paywall sheet
+  useEffect(() => {
+    window.__vercroShowPaywall = (trigger) => {
+      if (trigger === "diagnosis") setShowNudgePaywall(true);
+    };
+    return () => { delete window.__vercroShowPaywall; };
+  }, []);
 
   // Check lifetime usage for free users
   const [usageCount, setUsageCount] = useState(null);
@@ -8649,13 +8712,23 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   // ── STEP: result ──────────────────────────────────────────────────────────
   if (step === "result" && result) {
     return (
-      <PlantCheckResult
-        result={result}
-        crop={crop}
-        onClose={() => setStep("photo")}
-        onConfirmUpdate={handleConfirmUpdate}
-        onDone={onDone || onClose}
-      />
+      <>
+        <PlantCheckResult
+          result={result}
+          crop={crop}
+          onClose={() => setStep("photo")}
+          onConfirmUpdate={handleConfirmUpdate}
+          onDone={onDone || onClose}
+        />
+        {/* Nudge paywall — opened by "See what's included →" CTA in the result */}
+        {showNudgePaywall && (
+          <ProPaywallSheet
+            trigger="diagnosis"
+            mode="hard"
+            onClose={() => setShowNudgePaywall(false)}
+          />
+        )}
+      </>
     );
   }
 
