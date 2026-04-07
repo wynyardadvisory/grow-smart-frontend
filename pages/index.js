@@ -8681,8 +8681,9 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   };
 
   const handlePhoto = async (base64) => {
-    // Gate on isProForDiagnosis — plan-based, not flag-based
-    if (!isProForDiagnosis && usageCount >= 3) {
+    // Gate: only active when PRO_ENABLED — no user sees a paywall until flag is flipped.
+    // Mark always bypasses. isProForDiagnosis is plan-based (ignores flag) for paid users.
+    if (PRO_ENABLED && !isProForDiagnosis && usageCount >= 3) {
       setStep("paywall");
       return;
     }
@@ -8699,7 +8700,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         }),
       });
 
-      if (data.upgrade_required) {
+      if (PRO_ENABLED && data.upgrade_required) {
         setStep("paywall");
         return;
       }
@@ -8707,7 +8708,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
       setResult(data);
       setStep("result");
     } catch (e) {
-      if (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks")) {
+      if (PRO_ENABLED && (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks"))) {
         setStep("paywall");
         return;
       }
@@ -8833,9 +8834,8 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 //   onSeeMore — (nudge mode only) called on "See what's included →" tap
 //
 // Trigger rules:
-//   "diagnosis" — always renders (even with PRO_ENABLED=false) so users who
-//                 hit their 3 free checks always have an upgrade path.
-//   all others  — respect PRO_ENABLED flag.
+//   All triggers respect PRO_ENABLED — nothing renders until the flag is flipped.
+//   This ensures no user sees a paywall until you deliberately go live with Pro.
 //
 // Pricing (locked):
 //   £5.99/month  |  £49/year — Early supporter offer (active now)
@@ -8843,11 +8843,8 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const [loading, setLoading] = useState(false);
 
-  // Diagnosis paywall bypasses the PRO_ENABLED flag — users must always be
-  // able to upgrade when they hit their free check limit.
-  const isDiagnosis = trigger === "diagnosis";
-  if (!isDiagnosis && (!PRO_ENABLED || !trigger)) return null;
-  if (!trigger) return null;
+  // All paywalls respect PRO_ENABLED — nothing shows until the flag is flipped.
+  if (!PRO_ENABLED || !trigger) return null;
 
   // ── Content by trigger ──────────────────────────────────────────────────────
   const CONTENT = {
