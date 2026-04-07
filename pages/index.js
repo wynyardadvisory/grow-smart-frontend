@@ -42,6 +42,14 @@ const PRO_ENABLED = process.env.NEXT_PUBLIC_PRO_ENABLED === "true";
 // No other account is affected. Everyone else sees exactly what they always saw.
 const MARK_EMAIL = "mark@wynyardadvisory.co.uk";
 
+// ── Test user IDs ─────────────────────────────────────────────────────────────
+// These users see the full new UI and hit paywalls, but the upgrade CTA shows
+// "coming soon" instead of hitting Stripe. Global PRO_ENABLED stays false so
+// no other users are affected. Remove IDs here when going fully live.
+const TEST_USER_IDS = [
+  "448095f2-d379-4232-90f2-6ac7cebe1c70",
+];
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 // Seasonal palette — subtle shifts by time of year
 const SEASON = (() => {
@@ -97,23 +105,27 @@ async function apiFetch(path, options = {}) {
 // Mark's account always gets isPro=true regardless of PRO_ENABLED or plan.
 // All other users only get Pro if PRO_ENABLED=true AND their plan is pro.
 function useProStatus() {
-  const [isPro,    setIsPro]    = useState(() => {
+  const [isPro,       setIsPro]       = useState(() => {
     try { return localStorage.getItem("vercro_is_pro") === "true"; } catch(e) { return false; }
   });
-  const [plan,     setPlan]     = useState("free");
-  const [loading,  setLoading]  = useState(false);
-  const [isMark,   setIsMark]   = useState(false);
+  const [plan,        setPlan]        = useState("free");
+  const [loading,     setLoading]     = useState(false);
+  const [isMark,      setIsMark]      = useState(false);
+  const [isTestUser,  setIsTestUser]  = useState(false);
 
   useEffect(() => {
-    // Always fetch status — needed for Mark bypass even when PRO_ENABLED=false
+    // Always fetch status — needed for Mark/test bypasses even when PRO_ENABLED=false
     setLoading(true);
     Promise.all([
       apiFetch("/subscription/status").catch(() => null),
       supabase.auth.getSession().catch(() => ({ data: { session: null } })),
     ]).then(([statusData, sessionData]) => {
-      const email = sessionData?.data?.session?.user?.email || "";
+      const email  = sessionData?.data?.session?.user?.email || "";
+      const userId = sessionData?.data?.session?.user?.id    || "";
       const markBypass = email === MARK_EMAIL;
+      const testBypass = TEST_USER_IDS.includes(userId);
       setIsMark(markBypass);
+      setIsTestUser(testBypass);
       const pro = markBypass || statusData?.is_pro === true;
       setIsPro(pro);
       setPlan(markBypass ? "pro" : (statusData?.plan || "free"));
@@ -122,12 +134,12 @@ function useProStatus() {
     .finally(() => setLoading(false));
   }, []);
 
-  // isPro for general Pro UI: Mark account OR (PRO_ENABLED=true AND plan is pro)
-  // isPro for diagnosis: Mark account OR actual plan is pro (regardless of PRO_ENABLED)
-  // This means paid users never get blocked by the diagnosis limit even when Pro UI is hidden.
+  // isPro for general Pro UI: Mark OR (PRO_ENABLED=true AND plan is pro) OR test user
+  // Test users see all new UI and paywalls but are NOT isPro — so paywalls fire correctly.
+  // isPro for diagnosis: Mark OR actual plan is pro (ignores PRO_ENABLED flag)
   const effectiveIsPro = isMark || (PRO_ENABLED && isPro);
-  const isProForDiagnosis = isMark || isPro; // plan-based, ignores flag
-  return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark };
+  const isProForDiagnosis = isMark || isPro;
+  return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark, isTestUser };
 }
 
 // ── Plant Check visibility hook ──────────────────────────────────────────────
@@ -139,7 +151,9 @@ function usePlantCheckEnabled() {
   useEffect(() => {
     if (PRO_ENABLED) { setEnabled(true); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email === MARK_EMAIL) setEnabled(true);
+      const email  = session?.user?.email || "";
+      const userId = session?.user?.id    || "";
+      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId)) setEnabled(true);
     }).catch(() => {});
   }, []);
 
@@ -155,7 +169,9 @@ function useNavEnabled() {
   useEffect(() => {
     if (PRO_ENABLED) { setEnabled(true); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email === MARK_EMAIL) setEnabled(true);
+      const email  = session?.user?.email || "";
+      const userId = session?.user?.id    || "";
+      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId)) setEnabled(true);
     }).catch(() => {});
   }, []);
   return enabled;
@@ -4194,7 +4210,7 @@ function GardenView({ onNavigateAdd }) {
   const [error,     setError]     = useState(null);
   const [boostPaywallArea, setBoostPaywallArea] = useState(null); // set to area to show boost paywall
   const [showLocationPaywall, setShowLocationPaywall] = useState(false);
-  const { isPro, isMark } = useProStatus();
+  const { isPro, isMark, isTestUser: isGardenTestUser } = useProStatus();
 
   // Read lifetime boost count from localStorage
   const getBoostCount = () => {
@@ -4312,7 +4328,7 @@ function GardenView({ onNavigateAdd }) {
           <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{locations.length} location{locations.length !== 1 ? "s" : ""}</div>
         </div>
         <button onClick={() => {
-            if (PRO_ENABLED && !isPro && !isMark && locations.length >= 3) {
+            if ((PRO_ENABLED || isGardenTestUser) && !isPro && !isMark && locations.length >= 3) {
               setShowLocationPaywall(true);
               return;
             }
@@ -4703,6 +4719,8 @@ function GardenView({ onNavigateAdd }) {
                     <button onClick={() => {
                         // Pro and Mark always bypass — don't consume their count
                         if (isPro || isMark) { setSuggestArea(area); return; }
+                        // Test users see the sheet (and hit paywalls inside it)
+                        if (isGardenTestUser && !isPro && !isMark) { incrementBoostCount(); setSuggestArea(area); return; }
                         const count = getBoostCount();
                         if (count >= 3) { setBoostPaywallArea(area); return; }
                         incrementBoostCount();
@@ -8179,11 +8197,13 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 // Free users see upgrade prompt. Pro users see their plan status + manage link.
 
 function ProSubscriptionSection() {
-  const { isPro, plan, loading } = useProStatus();
+  const { isPro, plan, loading, isTestUser } = useProStatus();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [manageLoading,   setManageLoading]   = useState(false);
+  const [comingSoon,      setComingSoon]       = useState(false);
 
   const handleUpgrade = async (priceType = "early") => {
+    if (isTestUser) { setComingSoon(true); return; }
     setCheckoutLoading(true);
     try {
       const data = await apiFetch("/subscription/create-checkout", {
@@ -8288,18 +8308,25 @@ function ProSubscriptionSection() {
             Limited-time offer for early users · Used by growers to plan, track and improve their gardens year-round
           </div>
 
-          {/* CTA */}
-          <button
-            onClick={() => handleUpgrade("early")}
-            disabled={checkoutLoading}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: checkoutLoading ? 0.7 : 1 }}>
-            {checkoutLoading ? "Loading…" : "Upgrade to Pro"}
-          </button>
-
-          {/* Reassurance */}
-          <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
-            Cancel anytime. No commitment.
-          </div>
+          {/* CTA — or coming soon for test users */}
+          {comingSoon ? (
+            <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.forest, marginBottom: 4 }}>Coming soon</div>
+              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>Payments are launching shortly. We'll let you know as soon as Pro is available.</div>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => handleUpgrade("early")}
+                disabled={checkoutLoading}
+                style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: checkoutLoading ? 0.7 : 1 }}>
+                {checkoutLoading ? "Loading…" : "Upgrade to Pro"}
+              </button>
+              <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
+                Cancel anytime. No commitment.
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -8710,7 +8737,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   const [result,     setResult]     = useState(null);
   const [error,      setError]      = useState(null);
   const [showNudgePaywall, setShowNudgePaywall] = useState(false);
-  const { isPro, isProForDiagnosis } = useProStatus();
+  const { isPro, isProForDiagnosis, isTestUser: isDiagTestUser } = useProStatus();
 
   // Allow the nudge CTA inside PlantCheckResult to open the full paywall sheet
   useEffect(() => {
@@ -8737,7 +8764,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   const handlePhoto = async (base64) => {
     // Gate: only active when PRO_ENABLED — no user sees a paywall until flag is flipped.
     // Mark always bypasses. isProForDiagnosis is plan-based (ignores flag) for paid users.
-    if (PRO_ENABLED && !isProForDiagnosis && usageCount >= 3) {
+    if ((PRO_ENABLED || isDiagTestUser) && !isProForDiagnosis && usageCount >= 3) {
       setStep("paywall");
       return;
     }
@@ -8754,7 +8781,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         }),
       });
 
-      if (PRO_ENABLED && data.upgrade_required) {
+      if ((PRO_ENABLED || isDiagTestUser) && data.upgrade_required) {
         setStep("paywall");
         return;
       }
@@ -8762,7 +8789,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
       setResult(data);
       setStep("result");
     } catch (e) {
-      if (PRO_ENABLED && (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks"))) {
+      if ((PRO_ENABLED || isDiagTestUser) && (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks"))) {
         setStep("paywall");
         return;
       }
@@ -8895,10 +8922,14 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 //   £5.99/month  |  £49/year — Early supporter offer (active now)
 //
 function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
-  const [loading, setLoading] = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [comingSoon,   setComingSoon]   = useState(false);
+  const { isTestUser } = useProStatus();
 
   // All paywalls respect PRO_ENABLED — nothing shows until the flag is flipped.
-  if (!PRO_ENABLED || !trigger) return null;
+  // Exception: test users always see paywalls regardless of the flag.
+  if (!PRO_ENABLED && !isTestUser) return null;
+  if (!trigger) return null;
 
   // ── Content by trigger ──────────────────────────────────────────────────────
   const CONTENT = {
@@ -8953,7 +8984,9 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   ];
 
   // ── Upgrade handler ─────────────────────────────────────────────────────────
+  // Test users see "coming soon" instead of hitting Stripe.
   const handleUpgrade = async () => {
+    if (isTestUser) { setComingSoon(true); return; }
     setLoading(true);
     try {
       const data = await apiFetch("/subscription/create-checkout", {
@@ -9079,13 +9112,20 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           Limited-time offer for early users · Used by growers to plan, track and improve their gardens year-round
         </div>
 
-        {/* Primary CTA */}
-        <button
-          onClick={handleUpgrade}
-          disabled={loading}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Loading…" : "Upgrade to Pro"}
-        </button>
+        {/* Primary CTA — or coming soon message for test users */}
+        {comingSoon ? (
+          <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", textAlign: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.forest, marginBottom: 4 }}>Coming soon</div>
+            <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>Payments are launching shortly. We'll let you know as soon as Pro is available.</div>
+          </div>
+        ) : (
+          <button
+            onClick={handleUpgrade}
+            disabled={loading}
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: loading ? 0.7 : 1 }}>
+            {loading ? "Loading…" : "Upgrade to Pro"}
+          </button>
+        )}
 
         {/* Secondary */}
         <button
@@ -9095,9 +9135,11 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         </button>
 
         {/* Reassurance */}
-        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
-          Cancel anytime. No commitment.
-        </div>
+        {!comingSoon && (
+          <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+            Cancel anytime. No commitment.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -13299,7 +13341,7 @@ function PlanScreen() {
   const [containerW,    setContainerW] = useState(360);
   const konvaReady      = useKonva();
 
-  const { isPro, isMark } = useProStatus();
+  const { isPro, isMark, isTestUser: isPlanTestUser } = useProStatus();
   const [showPlanPaywall, setShowPlanPaywall] = useState(false);
 
   useEffect(() => {
@@ -13545,7 +13587,7 @@ function PlanScreen() {
             <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:C.stone,fontSize:12}}>▾</div>
           </div>
           <button onClick={() => {
-              if (PRO_ENABLED && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+              if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
             style={{flexShrink:0,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.forest}`,background:"#fff",color:C.forest,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
@@ -13726,7 +13768,7 @@ function PlanScreen() {
           isMark={isMark}
           onPlanNextSeason={() => {
               setDetailArea(null); setActiveBlock(null);
-              if (PRO_ENABLED && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+              if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
