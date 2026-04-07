@@ -4193,6 +4193,7 @@ function GardenView({ onNavigateAdd }) {
   const [loading,   setLoading]   = useState(!_cachedGarden);
   const [error,     setError]     = useState(null);
   const [boostPaywallArea, setBoostPaywallArea] = useState(null); // set to area to show boost paywall
+  const [showLocationPaywall, setShowLocationPaywall] = useState(false);
   const { isPro, isMark } = useProStatus();
 
   // Read lifetime boost count from localStorage
@@ -4310,7 +4311,14 @@ function GardenView({ onNavigateAdd }) {
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Garden</div>
           <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{locations.length} location{locations.length !== 1 ? "s" : ""}</div>
         </div>
-        <button onClick={() => { setShowAddLocation(!showAddLocation); setShowAddArea(false); }}
+        <button onClick={() => {
+            if (PRO_ENABLED && !isPro && !isMark && locations.length >= 3) {
+              setShowLocationPaywall(true);
+              return;
+            }
+            setShowAddLocation(!showAddLocation);
+            setShowAddArea(false);
+          }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
           + Location
         </button>
@@ -4434,6 +4442,15 @@ function GardenView({ onNavigateAdd }) {
           trigger="boost_area"
           mode="hard"
           onClose={() => setBoostPaywallArea(null)}
+        />
+      )}
+
+      {/* Location limit paywall — shown when free user tries to add a 4th location */}
+      {showLocationPaywall && (
+        <ProPaywallSheet
+          trigger="location"
+          mode="hard"
+          onClose={() => setShowLocationPaywall(false)}
         />
       )}
 
