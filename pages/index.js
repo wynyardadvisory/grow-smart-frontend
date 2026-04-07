@@ -512,12 +512,13 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
   );
 }
 
-function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }) {
+function PlantingSuggestionsSheet({ area, hasCrops = false, boostCount = 0, onClose, onAddCrop }) {
   const [state,       setState]       = useState("loading"); // loading | generating | ready | error
   const [suggestions, setSuggestions] = useState([]);
   const [summary,     setSummary]     = useState(null);
   const [isEmptyArea, setIsEmptyArea] = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
+  const [showNudgePaywall, setShowNudgePaywall] = useState(false);
 
   useEffect(() => { loadOrGenerate(); }, []);
 
@@ -657,10 +658,59 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, onClose, onAddCrop }
                 Based on your garden · {new Date(generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
               </div>
             )}
+
+            {/* Boost nudge — shown after 1st use (count=1) and 2nd use (count=2) */}
+            {(boostCount === 1 || boostCount === 2) && (
+              <div style={{
+                background: "#f5f9f7",
+                border: `1px solid ${C.border}`,
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginTop: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>
+                    {boostCount === 1 ? "Want to keep improving this bed?" : "Try different ideas and improve every bed"}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>
+                    Unlimited suggestions are included with Vercro Pro.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowNudgePaywall(true)}
+                  style={{
+                    background: "none",
+                    border: `1px solid ${C.forest}`,
+                    borderRadius: 8,
+                    padding: "7px 12px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: C.forest,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}>
+                  See what's included →
+                </button>
+              </div>
+            )}
           </>
         )}
 
       </div>
+
+      {/* Nudge paywall sheet */}
+      {showNudgePaywall && (
+        <ProPaywallSheet
+          trigger="boost_area"
+          mode="hard"
+          onClose={() => setShowNudgePaywall(false)}
+        />
+      )}
     </div>
   );
 }
@@ -4136,11 +4186,22 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
   const GARDEN_CACHE = "vercro_garden_v1";
+  const BOOST_COUNT_KEY = "vercro_boost_count";
   const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
   const [locations, setLocations] = useState(_cachedGarden?.locs || []);
   const [crops,     setCrops]     = useState(_cachedGarden?.cropsData || []);
   const [loading,   setLoading]   = useState(!_cachedGarden);
   const [error,     setError]     = useState(null);
+  const [boostPaywallArea, setBoostPaywallArea] = useState(null); // set to area to show boost paywall
+  const { isPro, isMark } = useProStatus();
+
+  // Read lifetime boost count from localStorage
+  const getBoostCount = () => {
+    try { return parseInt(localStorage.getItem(BOOST_COUNT_KEY) || "0", 10); } catch(e) { return 0; }
+  };
+  const incrementBoostCount = () => {
+    try { localStorage.setItem(BOOST_COUNT_KEY, String(getBoostCount() + 1)); } catch(e) {}
+  };
 
   // Add area form state
   const [showAddArea,     setShowAddArea]     = useState(false);
@@ -4353,6 +4414,7 @@ function GardenView({ onNavigateAdd }) {
         <PlantingSuggestionsSheet
           area={suggestArea}
           hasCrops={(cropsByArea[suggestArea?.id] || []).filter(c => c.status !== 'planned').length > 0}
+          boostCount={getBoostCount()}
           onClose={(result) => {
             setSuggestArea(null);
             if (result?.prefill && onNavigateAdd) {
@@ -4363,6 +4425,15 @@ function GardenView({ onNavigateAdd }) {
             }
           }}
           onAddCrop={() => { setSuggestArea(null); load(); }}
+        />
+      )}
+
+      {/* Boost area hard paywall — shown when user has used all 3 free boosts */}
+      {boostPaywallArea && (
+        <ProPaywallSheet
+          trigger="boost_area"
+          mode="hard"
+          onClose={() => setBoostPaywallArea(null)}
         />
       )}
 
@@ -4612,7 +4683,14 @@ function GardenView({ onNavigateAdd }) {
                     {areaCrops.length === 0 && (
                       <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
                     )}
-                    <button onClick={() => setSuggestArea(area)}
+                    <button onClick={() => {
+                        // Pro and Mark always bypass — don't consume their count
+                        if (isPro || isMark) { setSuggestArea(area); return; }
+                        const count = getBoostCount();
+                        if (count >= 3) { setBoostPaywallArea(area); return; }
+                        incrementBoostCount();
+                        setSuggestArea(area);
+                      }}
                       style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                       🌱 Boost this area
                     </button>
