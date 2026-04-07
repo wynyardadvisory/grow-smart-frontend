@@ -8210,6 +8210,13 @@ function ProSubscriptionSection() {
 
   if (loading) return null;
 
+  const BENEFITS = [
+    { icon: "🌱", title: "Diagnose problems early",         body: "and check harvest readiness with a photo" },
+    { icon: "🧭", title: "Plan your garden properly",       body: "See what to grow next and rotate your beds with confidence" },
+    { icon: "📈", title: "Grow more from your space",       body: "Compare plans and understand your yield and value" },
+    { icon: "🏗",  title: "Make smarter long-term choices", body: "Model the impact of a greenhouse or irrigation before you invest" },
+  ];
+
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>
@@ -8217,13 +8224,17 @@ function ProSubscriptionSection() {
       </div>
 
       {isPro ? (
+        /* ── Pro state ── */
         <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <div style={{ fontSize: 24 }}>🌱</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <div style={{ fontSize: 22 }}>🌱</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Vercro Pro</div>
-              <div style={{ fontSize: 12, color: C.stone }}>All features unlocked</div>
+              <div style={{ fontSize: 12, color: C.forest, fontWeight: 600 }}>Pro member · Early supporter price locked</div>
             </div>
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
+            You have unlimited access to Plant Check, plan intelligence, yield metrics, and infrastructure modelling.
           </div>
           <button
             onClick={handleManage}
@@ -8233,35 +8244,61 @@ function ProSubscriptionSection() {
           </button>
         </div>
       ) : (
-        <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px" }}>
-          <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
-            Vercro Pro
+        /* ── Free state — dedicated upgrade screen ── */
+        <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 18px" }}>
+
+          {/* Headline */}
+          <div style={{ fontFamily: "serif", fontSize: 19, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
+            Grow more from your garden — with less guesswork
           </div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 16 }}>
-            Unlimited plant diagnosis, smart garden planning, rotation automation and yield insights.
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 18 }}>
+            Plan ahead, catch problems early, and make better use of every bed with Vercro Pro.
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            {[
-              "📸 Unlimited Plant Check",
-              "📐 Smart garden planning",
-              "🔄 Crop rotation automation",
-              "📊 Yield & ROI insights",
-            ].map(item => (
-              <div key={item} style={{ fontSize: 13, color: "#1a1a1a", padding: "4px 0", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: C.leaf, fontWeight: 700 }}>✓</span> {item}
+          {/* Benefit blocks */}
+          <div style={{ marginBottom: 18 }}>
+            {BENEFITS.map((b, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
+                <div style={{ fontSize: 18, lineHeight: 1, marginTop: 1, flexShrink: 0 }}>{b.icon}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{b.title}</div>
+                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{b.body}</div>
+                </div>
               </div>
             ))}
           </div>
 
+          {/* Pricing block */}
+          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: C.stone }}>Monthly</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>£5.99 / month</div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", borderRadius: 8, padding: "10px 12px", border: `1.5px solid ${C.forest}` }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>£49 / year</div>
+                <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>Early supporter offer</div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px" }}>Best value</div>
+            </div>
+          </div>
+
+          {/* Social proof */}
+          <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
+            Limited-time offer for early users · Used by growers to plan, track and improve their gardens year-round
+          </div>
+
+          {/* CTA */}
           <button
             onClick={() => handleUpgrade("early")}
             disabled={checkoutLoading}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 8 }}>
-            {checkoutLoading ? "Loading…" : "Start Pro — £49/year"}
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: checkoutLoading ? 0.7 : 1 }}>
+            {checkoutLoading ? "Loading…" : "Upgrade to Pro"}
           </button>
+
+          {/* Reassurance */}
           <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
-            Early supporter price · cancel anytime
+            Cancel anytime. No commitment.
           </div>
         </div>
       )}
