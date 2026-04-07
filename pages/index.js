@@ -8672,36 +8672,85 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 // Only renders when PRO_ENABLED=true — pass null/undefined to hide.
 // Usage: <ProPaywall trigger="diagnosis" onClose={() => setShowPaywall(false)} />
 
-function ProPaywall({ trigger, onClose }) {
+// ── ProPaywallSheet ───────────────────────────────────────────────────────────
+// Single paywall component for all upgrade triggers.
+//
+// Props:
+//   trigger  — "diagnosis" | "boost_area" | "location" | "plan" | "upgrade"
+//   mode     — "hard" (default, full sheet) | "nudge" (inline soft prompt)
+//   onClose  — called on dismiss / "Not now"
+//   onSeeMore — (nudge mode only) called on "See what's included →" tap
+//
+// Trigger rules:
+//   "diagnosis" — always renders (even with PRO_ENABLED=false) so users who
+//                 hit their 3 free checks always have an upgrade path.
+//   all others  — respect PRO_ENABLED flag.
+//
+// Pricing (locked):
+//   £5.99/month  |  £49/year — Early supporter offer (active now)
+//
+function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const [loading, setLoading] = useState(false);
 
-  // Diagnosis paywall always works — users need an upgrade path when they hit
-  // their 3 free checks, even while the broader Pro UI is still hidden.
-  // All other paywall triggers (plans, default etc) respect the PRO_ENABLED flag.
-  const diagnosisOnly = trigger === "diagnosis";
-  if (!diagnosisOnly && (!PRO_ENABLED || !trigger)) return null;
+  // Diagnosis paywall bypasses the PRO_ENABLED flag — users must always be
+  // able to upgrade when they hit their free check limit.
+  const isDiagnosis = trigger === "diagnosis";
+  if (!isDiagnosis && (!PRO_ENABLED || !trigger)) return null;
   if (!trigger) return null;
 
-  const MESSAGES = {
+  // ── Content by trigger ──────────────────────────────────────────────────────
+  const CONTENT = {
     diagnosis: {
-      title:  "Unlimited Plant Check",
-      body:   "You've used your 3 free plant checks. Upgrade to Pro for unlimited diagnosis, harvest readiness detection, and treatment plans.",
-      cta:    "Unlock unlimited Plant Check",
+      headline: "Know exactly what's going on in your plants — before it's too late",
+      subtext:  "From spotting problems early to knowing when to harvest — and what to grow next.",
+      nudgeText: "Want to keep checking plants like this?",
+      nudgeSubtext: "Unlimited Plant Check is included with Vercro Pro.",
     },
-    plans: {
-      title:  "Save your garden plans",
-      body:   "Save and compare multiple garden layouts, reuse them next season, and track your performance over time.",
-      cta:    "Unlock garden planning",
+    boost_area: {
+      headline: "Make every bed in your garden more productive",
+      subtext:  "From spotting problems early to knowing when to harvest — and what to grow next.",
+      nudgeText: "Want to keep improving this bed?",
+      nudgeSubtext: "Unlimited suggestions are included with Vercro Pro.",
     },
-    default: {
-      title:  "Grow better with Pro",
-      body:   "Unlock unlimited plant diagnosis, smart planning, rotation automation and yield insights.",
-      cta:    "Upgrade to Pro",
+    plan: {
+      headline: "Know what to grow next — before it becomes a problem",
+      subtext:  "From spotting problems early to knowing when to harvest — and what to grow next.",
+      nudgeText: null,
+      nudgeSubtext: null,
+    },
+    location: {
+      headline: "Growing in more than one space?",
+      subtext:  "Vercro Pro lets you manage multiple gardens, allotments, or growing spaces — all in one place.",
+      nudgeText: null,
+      nudgeSubtext: null,
+      isLocation: true, // different layout — no value blocks, bespoke benefits
+    },
+    upgrade: {
+      headline: "Grow more from your garden — with less guesswork",
+      subtext:  "Plan ahead, catch problems early, and make better use of every bed with Vercro Pro.",
+      nudgeText: null,
+      nudgeSubtext: null,
     },
   };
 
-  const msg = MESSAGES[trigger] || MESSAGES.default;
+  const content = CONTENT[trigger] || CONTENT.upgrade;
 
+  // ── Shared value blocks (used by all non-location hard paywalls) ────────────
+  const VALUE_BLOCKS = [
+    { icon: "🌱", title: "Diagnose problems early",        body: "and check harvest readiness with a photo" },
+    { icon: "🧭", title: "Plan your garden properly",      body: "See what to grow next and rotate your beds with confidence" },
+    { icon: "📈", title: "Grow more from your space",      body: "Compare plans and understand your yield and value" },
+    { icon: "🏗",  title: "Make smarter long-term choices", body: "Model the impact of a greenhouse or irrigation before you invest" },
+  ];
+
+  // ── Location-specific benefits ──────────────────────────────────────────────
+  const LOCATION_BENEFITS = [
+    "Manage unlimited locations",
+    "Plan and track each space separately",
+    "Built for growers who take it seriously",
+  ];
+
+  // ── Upgrade handler ─────────────────────────────────────────────────────────
   const handleUpgrade = async () => {
     setLoading(true);
     try {
@@ -8714,44 +8763,147 @@ function ProPaywall({ trigger, onClose }) {
     setLoading(false);
   };
 
+  // ── NUDGE MODE — inline soft prompt (post-value, 1st/2nd use) ───────────────
+  if (mode === "nudge" && content.nudgeText) {
+    return (
+      <div style={{
+        background: "#f5f9f7",
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: "12px 16px",
+        marginTop: 12,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>
+            {content.nudgeText}
+          </div>
+          <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>
+            {content.nudgeSubtext}
+          </div>
+        </div>
+        <button
+          onClick={onSeeMore || onClose}
+          style={{
+            background: "none",
+            border: `1px solid ${C.forest}`,
+            borderRadius: 8,
+            padding: "7px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: C.forest,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}>
+          See what's included →
+        </button>
+      </div>
+    );
+  }
+
+  // ── HARD MODE — full bottom sheet ───────────────────────────────────────────
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-      onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480 }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
-          <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
-            {msg.title}
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 600, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 44px", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, background: "#E0E0E0", borderRadius: 2, margin: "0 auto 24px" }} />
+
+        {/* Headline */}
+        <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 8, textAlign: "center" }}>
+          {content.headline}
+        </div>
+
+        {/* Subtext */}
+        <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 20, textAlign: "center" }}>
+          {content.subtext}
+        </div>
+
+        {/* Value blocks — standard paywalls */}
+        {!content.isLocation && (
+          <div style={{ marginBottom: 20 }}>
+            {VALUE_BLOCKS.map((b, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
+                <div style={{ fontSize: 20, lineHeight: 1, marginTop: 1, flexShrink: 0 }}>{b.icon}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{b.title}</div>
+                  <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{b.body}</div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
-            {msg.body}
+        )}
+
+        {/* Location benefits — bespoke list */}
+        {content.isLocation && (
+          <div style={{ marginBottom: 20 }}>
+            {LOCATION_BENEFITS.map((b, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.forest, flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 14, color: "#1a1a1a" }}>{b}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pricing block */}
+        <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+          {/* Monthly */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: C.stone }}>Monthly</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>£5.99 / month</div>
+          </div>
+          {/* Annual — highlighted */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", borderRadius: 8, padding: "10px 12px", border: `1.5px solid ${C.forest}` }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>£49 / year</div>
+              <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>Early supporter offer</div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px" }}>Best value</div>
           </div>
         </div>
 
-        <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Vercro Pro</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>£3.99/mo</div>
-          </div>
-          <div style={{ fontSize: 12, color: C.stone }}>or £39/year · early supporter price · cancel anytime</div>
+        {/* Social proof line */}
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
+          Limited-time offer for early users · Used by growers to plan, track and improve their gardens year-round
         </div>
 
+        {/* Primary CTA */}
         <button
           onClick={handleUpgrade}
           disabled={loading}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
-          {loading ? "Loading…" : msg.cta}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Loading…" : "Upgrade to Pro"}
         </button>
+
+        {/* Secondary */}
         <button
           onClick={onClose}
           style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
-          Maybe later
+          Not now
         </button>
+
+        {/* Reassurance */}
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+          Cancel anytime. No commitment.
+        </div>
       </div>
     </div>
   );
 }
+
+// Backwards-compatible alias — existing call sites that use <ProPaywall trigger="diagnosis" />
+// continue to work without any changes needed elsewhere.
+const ProPaywall = ProPaywallSheet;
 
 // ── My Feeds ──────────────────────────────────────────────────────────────────
 
