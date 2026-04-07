@@ -13263,6 +13263,7 @@ function PlanScreen() {
   const konvaReady      = useKonva();
 
   const { isPro, isMark } = useProStatus();
+  const [showPlanPaywall, setShowPlanPaywall] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -13506,7 +13507,10 @@ function PlanScreen() {
             </select>
             <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:C.stone,fontSize:12}}>▾</div>
           </div>
-          <button onClick={()=>setShowCreatePlan(true)}
+          <button onClick={() => {
+              if (PRO_ENABLED && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+              setShowCreatePlan(true);
+            }}
             style={{flexShrink:0,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.forest}`,background:"#fff",color:C.forest,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
             + New plan
           </button>
@@ -13683,8 +13687,21 @@ function PlanScreen() {
           lockedAssignment={lockedAssignments.find(a => a.area_id === selectedAreaObj.id) || null}
           lastCrop={lastCropByArea[selectedAreaObj.id] || null}
           isMark={isMark}
-          onPlanNextSeason={() => { setDetailArea(null); setActiveBlock(null); setShowCreatePlan(true); }}
+          onPlanNextSeason={() => {
+              setDetailArea(null); setActiveBlock(null);
+              if (PRO_ENABLED && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+              setShowCreatePlan(true);
+            }}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
+        />
+      )}
+
+      {/* Plan intelligence paywall */}
+      {showPlanPaywall && (
+        <ProPaywallSheet
+          trigger="plan"
+          mode="hard"
+          onClose={() => setShowPlanPaywall(false)}
         />
       )}
 
