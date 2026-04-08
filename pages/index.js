@@ -160,6 +160,40 @@ function usePlantCheckEnabled() {
   return enabled;
 }
 
+// ── useSwipeToDismiss — adds swipe-down-to-close to bottom sheets ─────────────
+// Usage: const swipeProps = useSwipeToDismiss(onClose);
+// Spread {...swipeProps} onto the inner sheet div (not the backdrop).
+// Fires onClose when the user drags down ≥60px. Ignores horizontal swipes
+// and swipes that start inside a scrollable child.
+function useSwipeToDismiss(onClose) {
+  const startY  = useRef(null);
+  const startX  = useRef(null);
+  const locked  = useRef(false); // true = this swipe was claimed by a scroll child
+
+  const onTouchStart = (e) => {
+    startY.current = e.touches[0].clientY;
+    startX.current = e.touches[0].clientX;
+    locked.current = false;
+  };
+
+  const onTouchMove = (e) => {
+    if (startY.current === null) return;
+    const dy = e.touches[0].clientY - startY.current;
+    const dx = Math.abs(e.touches[0].clientX - startX.current);
+    // If horizontal or scrolling upward, lock this swipe out
+    if (dx > dy || dy < 0) { locked.current = true; }
+  };
+
+  const onTouchEnd = (e) => {
+    if (locked.current || startY.current === null) { startY.current = null; return; }
+    const dy = e.changedTouches[0].clientY - startY.current;
+    startY.current = null;
+    if (dy > 60) onClose();
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd };
+}
+
 // ── Nav redesign visibility hook ─────────────────────────────────────────────
 // Returns true only for Mark's account OR when PRO_ENABLED=true.
 // When false: nav is unchanged, Feeds tab stays, Plan tab hidden.
@@ -8660,6 +8694,7 @@ function ProSubscriptionSection() {
 
 // ── Crop picker for Plant Check ───────────────────────────────────────────────
 function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
+  const swipe = useSwipeToDismiss(onClose);
   const [crops,   setCrops]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState("");
@@ -8690,7 +8725,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
     <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
-        onClick={e => e.stopPropagation()}>
+        onClick={e => e.stopPropagation()} {...swipe}>
 
         {/* Handle */}
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
@@ -8756,7 +8791,7 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
     <div style={{ position: "fixed", inset: 0, zIndex: 710, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
-        onClick={e => e.stopPropagation()}>
+        onClick={e => e.stopPropagation()} {...swipe}>
 
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
@@ -9242,6 +9277,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const [loading,      setLoading]      = useState(false);
   const [comingSoon,   setComingSoon]   = useState(false);
   const { isTestUser } = useProStatus();
+  const swipe = useSwipeToDismiss(onClose);
 
   // All paywalls respect PRO_ENABLED — nothing shows until the flag is flipped.
   // Exception: test users always see paywalls regardless of the flag.
@@ -9366,6 +9402,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       <div
         style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 44px", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()}
+        {...swipe}
       >
         {/* Handle */}
         <div style={{ width: 36, height: 4, background: "#E0E0E0", borderRadius: 2, margin: "0 auto 24px" }} />
@@ -12250,6 +12287,7 @@ function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, o
 }
 
 function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMark = false, onPlanNextSeason, onClose }) {
+  const swipe = useSwipeToDismiss(onClose);
   const baseColor = {
     raised_bed: K.timber, open_ground: K.groundLight,
     greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop,
@@ -12263,7 +12301,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
     <div style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}
       onClick={onClose}>
       <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", width:"100%", maxWidth:480, maxHeight:"82vh", display:"flex", flexDirection:"column" }}
-        onClick={e=>e.stopPropagation()}>
+        onClick={e=>e.stopPropagation()} {...swipe}>
         <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 0" }}>
           <div style={{ width:36, height:4, borderRadius:2, background:"#ddd" }} />
         </div>
@@ -12520,6 +12558,7 @@ function PlanPerformanceStrip({ plan }) {
 // ── Compare Plans Sheet ───────────────────────────────────────────────────────
 function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommendedId }) {
   if (!options?.length) return null;
+  const swipe = useSwipeToDismiss(onClose);
 
   const EFFORT_RANK_UI   = { "Easy":0, "Moderate":1, "High":2 };
   const ROTATION_RANK_UI = { "Excellent":3, "Good":2, "Fair":1, "Weak":0 };
@@ -12540,7 +12579,8 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
+        {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
         <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:16 }}>Compare plans</div>
 
@@ -12840,6 +12880,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const [baseline,        setBaseline]       = useState(null);
   const [plan,            setPlan]           = useState(null);
   const [tip,             setTip]            = useState(null);
+  const swipe = useSwipeToDismiss(onClose);
   const [showLockConfirm, setShowLockConfirm]= useState(false);
   const [yearRound,    setYearRound]   = useState(false);
   const [improveCount, setImproveCount]= useState(0);
@@ -12905,7 +12946,8 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const Sheet = ({ children, onBack }) => (
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
+        {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
         {onBack && (
           <button onClick={onBack} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0, marginBottom:8 }}>←</button>
@@ -13195,6 +13237,7 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
   const [selected,  setSelected]  = useState(currentAssignment?.crop_definition_id || null);
   const [saving,    setSaving]    = useState(false);
   const [removing,  setRemoving]  = useState(false);
+  const swipe = useSwipeToDismiss(onClose);
 
   useEffect(() => {
     apiFetch("/crop-definitions").then(d => setCropDefs(d||[])).catch(()=>{});
@@ -13230,7 +13273,8 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}
+        {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
         <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:2 }}>Plan crop for {area.name}</div>
         <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>In: {plan.name}</div>
