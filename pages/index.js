@@ -14166,12 +14166,68 @@ function PlanScreen() {
 }
 
 
+const TAB_ICONS = {
+  dashboard: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="4" fill="currentColor"/>
+      <line x1="11" y1="1" x2="11" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="11" y1="18" x2="11" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="1" y1="11" x2="4" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="18" y1="11" x2="21" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="3.5" y1="3.5" x2="5.7" y2="5.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="16.3" y1="16.3" x2="18.5" y2="18.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="18.5" y1="3.5" x2="16.3" y2="5.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="5.7" y1="16.3" x2="3.5" y2="18.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  garden: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="6" y1="3" x2="13" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="4" y1="6" x2="8" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M13 12 Q11 13 10.5 15.5 Q12 17 14 16 Q16.5 14.5 15.5 11.5 Z" fill="currentColor"/>
+      <path d="M4 19 Q11 17.5 19 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <circle cx="8" cy="19.5" r="1" fill="currentColor" opacity="0.6"/>
+      <circle cx="15" cy="19.5" r="1" fill="currentColor" opacity="0.6"/>
+    </svg>
+  ),
+  crops: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M11 19 L11 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M11 14 C11 14 7 12 5 8 C8 8 11 10 11 10" fill="currentColor" opacity="0.85"/>
+      <path d="M11 11 C11 11 15 9 17 5 C14 5 11 8 11 8" fill="currentColor" opacity="0.85"/>
+      <path d="M6 19 Q11 17 16 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+    </svg>
+  ),
+  plan: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 19 L3 5 L17 19 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+      <path d="M3 14 L12 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M3 9.5 L7.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="3" cy="19" r="1.2" fill="currentColor"/>
+      <circle cx="3" cy="5" r="1.2" fill="currentColor"/>
+      <circle cx="17" cy="19" r="1.2" fill="currentColor"/>
+    </svg>
+  ),
+  profile: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="7.5" r="3.5" fill="currentColor"/>
+      <path d="M3.5 19 C3.5 15 7 12.5 11 12.5 C15 12.5 18.5 15 18.5 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+    </svg>
+  ),
+  feeds: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 6 Q11 2 18 6 L18 16 Q11 20 4 16 Z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
+      <circle cx="11" cy="11" r="2.5" fill="currentColor"/>
+    </svg>
+  ),
+};
+
 const TABS = [
-  { id: "dashboard", label: "Today",   icon: "◈" },
-  { id: "garden",    label: "Garden",  icon: "⬡" },
-  { id: "crops",     label: "Crops",   icon: "◉" },
-  { id: "feeds",     label: "Feeds",   icon: "🧪" },
-  { id: "profile",   label: "Profile", icon: "👤" },
+  { id: "dashboard", label: "Today",   icon: TAB_ICONS.dashboard },
+  { id: "garden",    label: "Garden",  icon: TAB_ICONS.garden },
+  { id: "crops",     label: "Crops",   icon: TAB_ICONS.crops },
+  { id: "feeds",     label: "Feeds",   icon: TAB_ICONS.feeds },
+  { id: "profile",   label: "Profile", icon: TAB_ICONS.profile },
 ];
 // badges is not a nav tab — accessed from Profile and Today card
 
@@ -14663,16 +14719,16 @@ export default function GrowSmart() {
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20 }}>
         {[...(navEnabled
     ? [
-        { id: "dashboard", label: "Today",   icon: "◈" },
-        { id: "garden",    label: "Garden",  icon: "⬡" },
-        { id: "plan",      label: "Plan",    icon: "◫" },
-        { id: "crops",     label: "Crops",   icon: "◉" },
-        { id: "profile",   label: "Profile", icon: "👤" },
+        { id: "dashboard", label: "Today",   icon: TAB_ICONS.dashboard },
+        { id: "garden",    label: "Garden",  icon: TAB_ICONS.garden },
+        { id: "plan",      label: "Plan",    icon: TAB_ICONS.plan },
+        { id: "crops",     label: "Crops",   icon: TAB_ICONS.crops },
+        { id: "profile",   label: "Profile", icon: TAB_ICONS.profile },
       ]
     : TABS
-  ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []), ...(isViewer && !isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : [])].map(t => (
+  ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...(isViewer && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: t.id === "add" ? 22 : 16, color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
           </button>
         ))}
