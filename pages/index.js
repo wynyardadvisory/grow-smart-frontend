@@ -14678,16 +14678,6 @@ export default function GrowSmart() {
       {/* iOS install banner */}
       {showIOSBanner && <IOSInstallBanner onDismiss={dismissIOSBanner} />}
 
-      {/* Floating Plant Check button — Today tab only */}
-      {tab === "dashboard" && showGlobalPlantCheckEnabled && !showFeedback && !showIOSBanner && (
-        <button
-          onClick={() => setShowGlobalPlantCheck(true)}
-          style={{ position: "fixed", bottom: 90, left: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
-          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-          🔍
-        </button>
-      )}
       {showGlobalPlantCheckEnabled && showGlobalPlantCheck && (
         <PlantCheck
           entry="today"
