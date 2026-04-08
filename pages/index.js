@@ -6637,17 +6637,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     </button>
                   </div>
                 </div>
-                {/* Stage pill — unified with progress */}
-                {(() => {
-                  const stageKey = crop.stage || "seed";
-                  const stageColor = STAGE_COLOR[stageKey] || C.stone;
-                  const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
-                  return (
-                    <span style={{ display: "inline-block", marginTop: 8, fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
-                      {STAGE_LABEL[stageKey] || stageKey}
-                    </span>
-                  );
-                })()}
               </div>
 
               {/* Progress bar */}
@@ -6698,7 +6687,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 }
                 return (
                   <div style={{ marginTop: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
+                        {(() => { const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" }; return STAGE_LABEL[stageKey] || stageKey; })()}
+                      </span>
                       <span style={{ fontSize: 11, color: stageColor, fontWeight: 600 }}>{pct}% grown</span>
                     </div>
                     <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
