@@ -5890,6 +5890,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [confirm,       setConfirm]       = useState(null);
   const [diary,         setDiary]         = useState(null);  // crop to show diary for
   const [timelineCrop,  setTimelineCrop]  = useState(null);  // crop to show timeline for
+  const [cropMenuOpen,  setCropMenuOpen]  = useState(null);  // crop.id of open overflow menu
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
@@ -6308,14 +6309,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                             {harvestStr && <span style={{ fontSize: 11, color: C.stone }}>harvest ~{harvestStr}</span>}
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                           <button onClick={() => setTimelineCrop(sowing)}
-                            style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "3px 9px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}44`, borderRadius: 20, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                             Timeline
                           </button>
-                          <button onClick={() => setConfirm(sowing.id)}
-                            style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.red, cursor: "pointer" }}>
-                            ✕
+                          <button onClick={() => setConfirm(confirm === sowing.id ? null : sowing.id)}
+                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            ⋯
                           </button>
                         </div>
                       </div>
@@ -6588,41 +6589,65 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
                     <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
-                    {(() => {
-                      const stageKey = crop.stage || "seed";
-                      const stageColor = STAGE_COLOR[stageKey] || C.stone;
-                      const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
-                      const label = STAGE_LABEL[stageKey] || stageKey;
-                      return (
-                        <span style={{ display: "inline-block", marginTop: 5, fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
-                          {label}
-                        </span>
-                      );
-                    })()}
+                  </div>
+                  {/* Right: Check + Timeline stacked, overflow menu */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      {plantCheckEnabled && (
+                        <button onClick={() => setCropPlantCheck(crop)}
+                          style={{ height: 30, background: C.forest, border: "none", borderRadius: 8, padding: "0 12px", fontSize: 11, color: "#fff", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          🔍 Check
+                        </button>
+                      )}
+                      <div style={{ position: "relative" }}>
+                        <button
+                          onClick={() => setCropMenuOpen(cropMenuOpen === crop.id ? null : crop.id)}
+                          style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                          ⋯
+                        </button>
+                        {cropMenuOpen === crop.id && (
+                          <>
+                            <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setCropMenuOpen(null)} />
+                            <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 91, minWidth: 130, overflow: "hidden" }}>
+                              <button
+                                onClick={() => { setCropMenuOpen(null); setDiary(crop); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
+                                📷 Photo diary
+                              </button>
+                              <div style={{ height: 1, background: C.border }} />
+                              <button
+                                onClick={() => { setCropMenuOpen(null); startEdit(crop); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
+                                Edit crop
+                              </button>
+                              <div style={{ height: 1, background: C.border }} />
+                              <button
+                                onClick={() => { setCropMenuOpen(null); setConfirm(crop.id); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.red, cursor: "pointer", textAlign: "left" }}>
+                                Delete crop
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <button onClick={() => setTimelineCrop(crop)}
+                      style={{ height: 26, background: "none", border: `1px solid ${C.forest}44`, borderRadius: 20, padding: "0 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      Timeline
+                    </button>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => setTimelineCrop(crop)}
-                    style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
-                    Timeline
-                  </button>
-                  {plantCheckEnabled && <button onClick={() => setCropPlantCheck(crop)}
-                    style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
-                    🔍 Check
-                  </button>}
-                  <button onClick={() => setDiary(crop)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
-                    📷
-                  </button>
-                  <button onClick={() => startEdit(crop)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
-                    Edit
-                  </button>
-                  <button onClick={() => setConfirm(crop.id)}
-                    style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.red, cursor: "pointer" }}>
-                    ✕
-                  </button>
-                </div>
+                {/* Stage pill — unified with progress */}
+                {(() => {
+                  const stageKey = crop.stage || "seed";
+                  const stageColor = STAGE_COLOR[stageKey] || C.stone;
+                  const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
+                  return (
+                    <span style={{ display: "inline-block", marginTop: 8, fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
+                      {STAGE_LABEL[stageKey] || stageKey}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Progress bar */}
@@ -6673,8 +6698,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 }
                 return (
                   <div style={{ marginTop: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, textTransform: "capitalize" }}>{stageKey && stageKey !== "seed" ? stageKey : (crop.grown_from || "seed")}</span>
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 11, color: stageColor, fontWeight: 600 }}>{pct}% grown</span>
                     </div>
                     <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
@@ -6684,14 +6708,22 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 );
               })()}
 
-              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>{crop.area?.name}</span>
-                {crop.sown_date && <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.stone }}>Sown {new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
-                {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.amber }}>🗓 Planned</span>}
-                {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🪟 Indoors</span>}
-                {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
-                {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: C.forest }}>🌳 Established</span>}
-                {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef7`, borderRadius: 20, fontSize: 11, padding: "2px 8px", color: "#2d4fc0" }}>❄️ Overwintered</span>}
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, color: C.stone }}>
+                  {[
+                    crop.area?.name?.replace(/^"|"$/g, ""),
+                    crop.sown_date ? `Sown ${new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </div>
+                {(crop.status === "planned" || crop.status === "sown_indoors" || !crop.crop_def_id || crop.lifecycle_mode === "established" || crop.lifecycle_mode === "overwintered") && (
+                  <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
+                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.amber }}>🗓 Planned</span>}
+                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: "#2d4fc0" }}>🪟 Indoors</span>}
+                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
+                    {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.forest }}>🌳 Established</span>}
+                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: "#2d4fc0" }}>❄️ Overwintered</span>}
+                  </div>
+                )}
               </div>
 
               {/* Missed task note */}
