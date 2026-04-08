@@ -5363,117 +5363,231 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 }
 
 // ── Log activity sheet ────────────────────────────────────────────────────────
-// Reusable bottom sheet for logging manual garden activity.
+// ── LogActivitySheet ─────────────────────────────────────────────────────────
+// Multi-step bottom sheet for logging manual garden activity from the Today page.
+//
+// Step flow:
+//   action  → location (if multiple)  → areas (multi-select, water/prune/weed)
+//                                      → areas → crops (feed)
+//                                      → (other: free text, done immediately)
+//
+// Also used as legacy single-scope logger when scope prop is provided.
 // Props:
-//   scope      — { type: 'crop'|'area'|'location', id, name } | null
-//                null = Today entry point, user chooses scope from their locations/areas
-//   onClose    — called on dismiss
-//   onLogged   — called after successful save (triggers parent refresh)
-//   conflictTaskType — optional string, hides conflicting action buttons (e.g. "feed")
-function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
-  // Legacy prop support — old callers pass { crop } object
-  crop }) {
+//   scope            — { type, id, name } — pre-scoped (bypasses location/area steps)
+//   onClose          — called on dismiss
+//   onLogged         — called after successful save
+//   conflictTaskType — hides matching action button (e.g. "water")
+//   crop             — legacy prop for crop-scoped calls
+function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
 
   // Normalise legacy crop prop
-  const resolvedScope = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
+  const resolvedScope    = scope || (crop ? { type: "crop", id: crop.id, name: crop.name } : null);
   const resolvedConflict = conflictTaskType || crop?.task_type || null;
 
-  const [saving,      setSaving]      = useState(false);
-  const [done,        setDone]        = useState(null);
-  const [otherLabel,  setOtherLabel]  = useState("");
-  const [notes,       setNotes]       = useState("");
-  const [showOther,   setShowOther]   = useState(false);
-  const [dateChoice,  setDateChoice]  = useState("today"); // "today"|"yesterday"|"custom"
-  const [customDate,  setCustomDate]  = useState(() => new Date().toISOString().split("T")[0]);
+  // Multi-step state
+  const [step,          setStep]          = useState("action");    // action | location | areas | crops | other | done
+  const [actionType,    setActionType]    = useState(null);
+  const [locations,     setLocations]     = useState([]);
+  const [areas,         setAreas]         = useState([]);
+  const [selectedLoc,   setSelectedLoc]   = useState(null);        // { id, name }
+  const [selectedAreas, setSelectedAreas] = useState([]);          // [{ id, name }]
+  const [selectedCrops, setSelectedCrops] = useState([]);          // [{ id, name }] (feed only)
+  const [cropsForAreas, setCropsForAreas] = useState([]);          // crops loaded for selected areas
+  const [otherLabel,    setOtherLabel]    = useState("");
+  const [notes,         setNotes]         = useState("");
+  const [dateChoice,    setDateChoice]    = useState("today");
+  const [customDate,    setCustomDate]    = useState(() => new Date().toISOString().split("T")[0]);
+  const [saving,        setSaving]        = useState(false);
+  const [hint,          setHint]          = useState(null);
+  const [loadingData,   setLoadingData]   = useState(false);
 
   const todayISO     = new Date().toISOString().split("T")[0];
   const yesterdayISO = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const performedAt  = dateChoice === "today"     ? new Date().toISOString()
+                     : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
+                     : new Date(customDate + "T12:00:00").toISOString();
 
-  const performedAt = dateChoice === "today"     ? new Date().toISOString()
-                    : dateChoice === "yesterday" ? new Date(yesterdayISO + "T12:00:00").toISOString()
-                    : new Date(customDate + "T12:00:00").toISOString();
+  // Fetch locations+areas when we need the location step
+  const loadLocations = async () => {
+    setLoadingData(true);
+    try {
+      const locs = await apiFetch("/locations");
+      // Each location needs its areas
+      const withAreas = await Promise.all((locs || []).map(async loc => {
+        const locAreas = await apiFetch(`/areas?location_id=${loc.id}`).catch(() => []);
+        return { ...loc, areas: locAreas || [] };
+      }));
+      setLocations(withAreas);
+    } catch(e) { console.error("[LogActivity] failed to load locations:", e.message); }
+    setLoadingData(false);
+  };
 
-  // Actions vary by scope type — feed is crop-only
-  const ALL_ACTIONS = [
-    { type: "watered",        emoji: "💧", label: "Watered",         desc: "Update watering schedule",         scopes: ["crop","area","location"], conflicts: ["water"] },
-    { type: "fed",            emoji: "🌿", label: "Fed",             desc: "Reset feeding schedule from today", scopes: ["crop"],                   conflicts: ["feed"] },
-    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching",          scopes: ["crop","area","location"], conflicts: ["prune","mulch"] },
-    { type: "weeded",         emoji: "🌱", label: "Weeded",          desc: "Log weeding",                       scopes: ["crop","area","location"], conflicts: [] },
-    { type: "other",          emoji: "📝", label: "Other",           desc: "Record something else",             scopes: ["crop","area","location"], conflicts: [] },
-  ];
+  // Load crops for selected areas (feed step)
+  const loadCropsForAreas = async (areaIds) => {
+    setLoadingData(true);
+    try {
+      const crops = await apiFetch("/crops");
+      const filtered = (crops || []).filter(c => areaIds.includes(c.area_id) && c.status !== "finished" && c.active !== false);
+      setCropsForAreas(filtered);
+      setSelectedCrops(filtered); // default: all selected
+    } catch(e) { console.error("[LogActivity] failed to load crops:", e.message); }
+    setLoadingData(false);
+  };
 
-  const scopeType = resolvedScope?.type || "crop";
-  const ACTIONS = ALL_ACTIONS
-    .filter(a => a.scopes.includes(scopeType))
-    .filter(a => !a.conflicts.includes(resolvedConflict));
+  // Pick action — determine next step
+  const handleActionPick = async (type) => {
+    setActionType(type);
+    if (type === "other") { setStep("other"); return; }
 
-  const logAction = async (actionType) => {
-    if (saving) return;
-    if (actionType === "other" && !otherLabel.trim()) return;
+    // If pre-scoped (e.g. from a task card), skip straight to save
+    if (resolvedScope) {
+      await submitLog(type, resolvedScope.type, [resolvedScope.id]);
+      return;
+    }
+
+    // Multi-step flow
+    await loadLocations();
+    setStep("location");
+  };
+
+  // Location selected — move to areas
+  const handleLocationPick = (loc) => {
+    // "all" means every area in every location
+    if (loc === "all") {
+      const allAreas = locations.flatMap(l => l.areas || []);
+      setSelectedAreas(allAreas);
+      if (actionType === "fed") {
+        loadCropsForAreas(allAreas.map(a => a.id));
+        setStep("crops");
+      } else {
+        submitLog(actionType, "area", allAreas.map(a => a.id));
+      }
+      return;
+    }
+    setSelectedLoc(loc);
+    setAreas(loc.areas || []);
+    setSelectedAreas(loc.areas || []); // default all areas selected
+    setStep("areas");
+  };
+
+  // Toggle area selection
+  const toggleArea = (area) => {
+    setSelectedAreas(prev =>
+      prev.find(a => a.id === area.id)
+        ? prev.filter(a => a.id !== area.id)
+        : [...prev, area]
+    );
+  };
+
+  // Toggle crop selection
+  const toggleCrop = (crop) => {
+    setSelectedCrops(prev =>
+      prev.find(c => c.id === crop.id)
+        ? prev.filter(c => c.id !== crop.id)
+        : [...prev, crop]
+    );
+  };
+
+  // Confirm areas step
+  const handleAreaConfirm = () => {
+    if (!selectedAreas.length) return;
+    if (actionType === "fed") {
+      loadCropsForAreas(selectedAreas.map(a => a.id));
+      setStep("crops");
+    } else {
+      submitLog(actionType, "area", selectedAreas.map(a => a.id));
+    }
+  };
+
+  // Submit log to API
+  const submitLog = async (type, scopeType, scopeIds, customLabel = null) => {
     setSaving(true);
     try {
       let result;
-      if (scopeType === "crop") {
-        // Use existing crop endpoint for crop scope (backward compat)
-        result = await apiFetch(`/crops/${resolvedScope.id}/log-action`, {
+      if (scopeType === "crop" && scopeIds.length === 1) {
+        // Legacy crop endpoint
+        result = await apiFetch(`/crops/${scopeIds[0]}/log-action`, {
           method: "POST",
           body: JSON.stringify({
-            action_type:  actionType,
+            action_type:  type,
             notes:        notes || null,
-            custom_label: actionType === "other" ? otherLabel.trim() : null,
+            custom_label: customLabel || null,
             performed_at: performedAt,
           }),
         });
-      } else {
-        // Use generic endpoint for area/location scope
+      } else if (scopeType === "crop") {
+        // Multiple crops via activity/log
         result = await apiFetch("/activity/log", {
           method: "POST",
           body: JSON.stringify({
-            activity_type: actionType,
-            scope_type:    scopeType,
-            scope_id:      resolvedScope.id,
+            activity_type: type,
+            scope_type:    "crop",
+            scope_ids:     scopeIds,
             notes:         notes || null,
-            custom_label:  actionType === "other" ? otherLabel.trim() : null,
+            performed_at:  performedAt,
+          }),
+        });
+      } else {
+        result = await apiFetch("/activity/log", {
+          method: "POST",
+          body: JSON.stringify({
+            activity_type: type,
+            scope_type:    scopeType,
+            scope_ids:     scopeIds,
+            notes:         notes || null,
+            custom_label:  customLabel || null,
             performed_at:  performedAt,
           }),
         });
       }
-      const hint = result?.next_action_hint || null;
-      setDone({ action_type: actionType, hint });
+      setHint(result?.next_action_hint || null);
+      setStep("done");
       setTimeout(() => onLogged(), 2000);
     } catch(e) {
-      console.error("[LogAction] failed:", e);
+      console.error("[LogActivity] failed:", e.message);
       setSaving(false);
-      // Show error inline so user knows it failed
-      setDone({ action_type: actionType, hint: "Something went wrong — please try again", error: true });
-      setTimeout(() => { setDone(null); }, 3000);
+      setHint("Something went wrong — please try again");
+      setStep("done");
+      setTimeout(() => { setHint(null); setStep("action"); }, 3000);
     }
+    setSaving(false);
   };
 
-  const scopeLabel = resolvedScope?.name || "garden";
-  const actionDefs = { watered: "💧", fed: "🌿", pruned_mulched: "✂️", weeded: "🌱", other: "📝" };
+  const ACTIONS = [
+    { type: "watered",        emoji: "💧", label: "Watered",          desc: "Suppress watering tasks",     conflicts: ["water"] },
+    { type: "fed",            emoji: "🌿", label: "Fed",              desc: "Reset feeding schedule",       conflicts: ["feed"] },
+    { type: "pruned_mulched", emoji: "✂️",  label: "Pruned / mulched", desc: "Log pruning or mulching",      conflicts: ["prune","mulch"] },
+    { type: "weeded",         emoji: "🌱", label: "Weeded",           desc: "Log weeding",                  conflicts: [] },
+  ].filter(a => !a.conflicts.includes(resolvedConflict));
+
+  const actionDef = ACTIONS.find(a => a.type === actionType) || {};
+
+  const btnBase = { border: "none", borderRadius: 12, padding: "13px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 };
+  const cardBase = { background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left" };
+  const cardSelected = { ...cardBase, background: C.forest + "14", border: `1.5px solid ${C.forest}` };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
-        {done ? (
+
+        {/* ── DONE ── */}
+        {step === "done" && (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{actionDefs[done.action_type] || "✓"}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Logged</div>
-            {done.hint && <div style={{ fontSize: 13, color: C.stone }}>{done.hint}</div>}
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
+            <div style={{ fontSize: 38, marginBottom: 10 }}>{hint?.includes("wrong") ? "⚠️" : actionDef.emoji || "✓"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+              {hint?.includes("wrong") ? "Something went wrong" : "Logged"}
             </div>
-            <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
-              {scopeType === "crop"     && `For: ${scopeLabel}`}
-              {scopeType === "area"     && `Area: ${scopeLabel}`}
-              {scopeType === "location" && `Location: ${scopeLabel}`}
+            {hint && <div style={{ fontSize: 13, color: C.stone }}>{hint}</div>}
+          </div>
+        )}
+
+        {/* ── ACTION PICKER ── */}
+        {step === "action" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
             </div>
 
             {/* Date selector */}
@@ -5495,41 +5609,181 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType,
                 style={{ ...inputStyle, marginBottom: 14 }} />
             )}
 
-            {/* Activity buttons */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            {/* 2×2 action grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
               {ACTIONS.map(a => (
-                <button key={a.type}
-                  onClick={() => { if (a.type === "other") { setShowOther(true); return; } logAction(a.type); }}
-                  disabled={saving}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, cursor: saving ? "default" : "pointer", textAlign: "left", width: "100%" }}>
-                  <div style={{ fontSize: 20, width: 28, flexShrink: 0 }}>{a.emoji}</div>
+                <button key={a.type} onClick={() => handleActionPick(a.type)} disabled={saving}
+                  style={{ ...btnBase, background: C.offwhite, border: `1px solid ${C.border}`, padding: "16px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+                  <span style={{ fontSize: 24 }}>{a.emoji}</span>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{a.label}</div>
-                    <div style={{ fontSize: 11, color: C.stone }}>{a.desc}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{a.label}</div>
+                    <div style={{ fontSize: 10, color: C.stone, marginTop: 1 }}>{a.desc}</div>
                   </div>
                 </button>
               ))}
             </div>
 
-            {/* Other expanded form */}
-            {showOther && (
-              <div style={{ marginTop: 4, padding: "14px", background: C.offwhite, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
-                <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
-                  placeholder="e.g. Applied copper fungicide, staked tomatoes…"
-                  style={{ ...inputStyle, marginBottom: 8 }}
-                  autoFocus />
-                <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="Notes (optional)"
-                  style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 10 }} />
-                <button onClick={() => logAction("other")} disabled={saving || !otherLabel.trim()}
-                  style={{ width: "100%", background: otherLabel.trim() ? C.forest : C.border, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: otherLabel.trim() ? "pointer" : "default", fontFamily: "serif" }}>
-                  {saving ? "Saving…" : "Save"}
-                </button>
+            {/* Other — thin row */}
+            <button onClick={() => handleActionPick("other")} disabled={saving}
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>📝</span> Other — record something else
+            </button>
+          </>
+        )}
+
+        {/* ── LOCATION PICKER ── */}
+        {step === "location" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <button onClick={() => setStep("action")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+                {actionDef.emoji} {actionDef.label} — where?
+              </div>
+            </div>
+
+            {loadingData ? <div style={{ textAlign: "center", padding: 24, color: C.stone }}>Loading…</div> : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {locations.length > 1 && (
+                  <button onClick={() => handleLocationPick("all")} style={cardBase}>
+                    <span style={{ fontSize: 20 }}>🌍</span>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>All locations</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>Log across your entire garden</div>
+                    </div>
+                  </button>
+                )}
+                {locations.map(loc => (
+                  <button key={loc.id} onClick={() => handleLocationPick(loc)} style={cardBase}>
+                    <span style={{ fontSize: 20 }}>📍</span>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{loc.name}</div>
+                      <div style={{ fontSize: 11, color: C.stone }}>{(loc.areas || []).length} area{loc.areas?.length !== 1 ? "s" : ""}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </>
         )}
+
+        {/* ── AREA PICKER ── */}
+        {step === "areas" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <button onClick={() => setStep("location")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+                Which beds?
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 14 }}>Select all that apply</div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              {/* Select all toggle */}
+              <button onClick={() => setSelectedAreas(selectedAreas.length === areas.length ? [] : areas)}
+                style={{ ...cardBase, background: "none", border: `1px dashed ${C.border}` }}>
+                <span style={{ fontSize: 16 }}>{selectedAreas.length === areas.length ? "☑️" : "⬜"}</span>
+                <span style={{ fontSize: 13, color: C.stone }}>
+                  {selectedAreas.length === areas.length ? "Deselect all" : "Select all beds"}
+                </span>
+              </button>
+
+              {areas.map(area => {
+                const isSelected = !!selectedAreas.find(a => a.id === area.id);
+                return (
+                  <button key={area.id} onClick={() => toggleArea(area)}
+                    style={isSelected ? cardSelected : cardBase}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>
+                      {isSelected ? "✅" : "⬜"}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>
+                        {area.name?.replace(/^"|"$/g, "") || area.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.stone }}>{area.type?.replace(/_/g, " ")}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button onClick={handleAreaConfirm} disabled={!selectedAreas.length || saving}
+              style={{ ...btnBase, width: "100%", background: selectedAreas.length ? C.forest : C.border, color: "#fff", padding: "13px" }}>
+              {saving ? "Saving…" : `Confirm ${selectedAreas.length} bed${selectedAreas.length !== 1 ? "s" : ""}`}
+            </button>
+          </>
+        )}
+
+        {/* ── CROP PICKER (feed only) ── */}
+        {step === "crops" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <button onClick={() => setStep("areas")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Which crops?</div>
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 14 }}>Select all that were fed</div>
+
+            {loadingData ? <div style={{ textAlign: "center", padding: 24, color: C.stone }}>Loading…</div> : (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                  {/* Select all toggle */}
+                  <button onClick={() => setSelectedCrops(selectedCrops.length === cropsForAreas.length ? [] : cropsForAreas)}
+                    style={{ ...cardBase, background: "none", border: `1px dashed ${C.border}` }}>
+                    <span style={{ fontSize: 16 }}>{selectedCrops.length === cropsForAreas.length ? "☑️" : "⬜"}</span>
+                    <span style={{ fontSize: 13, color: C.stone }}>
+                      {selectedCrops.length === cropsForAreas.length ? "Deselect all" : "Select all crops"}
+                    </span>
+                  </button>
+
+                  {cropsForAreas.map(cr => {
+                    const isSelected = !!selectedCrops.find(c => c.id === cr.id);
+                    return (
+                      <button key={cr.id} onClick={() => toggleCrop(cr)}
+                        style={isSelected ? cardSelected : cardBase}>
+                        <span style={{ fontSize: 18, flexShrink: 0 }}>
+                          {isSelected ? "✅" : "⬜"}
+                        </span>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{cr.name}</div>
+                          {cr.variety && <div style={{ fontSize: 11, color: C.stone }}>{typeof cr.variety === "object" ? cr.variety.name : cr.variety}</div>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button onClick={() => submitLog("fed", "crop", selectedCrops.map(c => c.id))}
+                  disabled={!selectedCrops.length || saving}
+                  style={{ ...btnBase, width: "100%", background: selectedCrops.length ? C.forest : C.border, color: "#fff", padding: "13px" }}>
+                  {saving ? "Saving…" : `Log feeding for ${selectedCrops.length} crop${selectedCrops.length !== 1 ? "s" : ""}`}
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── OTHER ── */}
+        {step === "other" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <button onClick={() => setStep("action")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
+            <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
+              placeholder="e.g. Applied copper fungicide, staked tomatoes…"
+              style={{ ...inputStyle, marginBottom: 8 }}
+              autoFocus />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="Notes (optional)"
+              style={{ ...inputStyle, height: 64, resize: "none", marginBottom: 14 }} />
+            <button onClick={() => submitLog("other", resolvedScope?.type || "area", resolvedScope ? [resolvedScope.id] : ["global"], otherLabel.trim())}
+              disabled={saving || !otherLabel.trim()}
+              style={{ ...btnBase, width: "100%", background: otherLabel.trim() ? C.forest : C.border, color: "#fff", padding: "13px" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </>
+        )}
+
       </div>
     </div>
   );
