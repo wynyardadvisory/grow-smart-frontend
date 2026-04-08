@@ -5878,13 +5878,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         const nextIdx    = sowings.length + 1;
         const canAddMore = sowings.length < group.target_sowings;
 
-        // Next harvest from earliest active sowing
+        // Next harvest from earliest active sowing — apply timeline_offset_days
         const harvests = sowings
           .filter(s => s.sown_date && (s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max))
           .map(s => {
             const dtm = s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max;
+            const offset = s.timeline_offset_days || 0;
             const d = new Date(s.sown_date);
-            d.setDate(d.getDate() + dtm);
+            d.setDate(d.getDate() + dtm + offset);
             return d;
           })
           .sort((a, b) => a - b);
@@ -5956,12 +5957,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     pct = Math.min(100, Math.max(0, Math.round((daysSown / dtm) * 100)));
                   }
 
-                  // Estimated harvest date for this sowing
+                  // Estimated harvest date for this sowing — apply timeline_offset_days
                   let harvestStr = null;
                   if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max)) {
                     const dtm = sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max;
+                    const offset = sowing.timeline_offset_days || 0;
                     const h = new Date(sowing.sown_date);
-                    h.setDate(h.getDate() + dtm);
+                    h.setDate(h.getDate() + dtm + offset);
                     harvestStr = h.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
                   }
 
