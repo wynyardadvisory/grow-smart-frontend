@@ -4309,6 +4309,7 @@ function GardenView({ onNavigateAdd }) {
   const [suggestArea,    setSuggestArea]    = useState(null);
   const [timelineCrop,   setTimelineCrop]   = useState(null);
   const [collapsedLocs,  setCollapsedLocs]  = useState({});
+  const [soilSheetArea,  setSoilSheetArea]  = useState(null);
 
   const saveEditArea = async (areaId) => {
     setSaving(true);
@@ -4465,6 +4466,22 @@ function GardenView({ onNavigateAdd }) {
           scope={logScope}
           onClose={() => setLogScope(null)}
           onLogged={() => { setLogScope(null); load(); }}
+        />
+      )}
+
+      {soilSheetArea && (
+        <SoilReadingSheet
+          area={soilSheetArea}
+          onClose={() => setSoilSheetArea(null)}
+          onUpdated={(updatedArea) => {
+            setLocations(ls => ls.map(l => ({
+              ...l,
+              growing_areas: (l.growing_areas || []).map(a =>
+                a.id === updatedArea.id ? { ...a, ...updatedArea } : a
+              ),
+            })));
+            setSoilSheetArea(prev => prev ? { ...prev, ...updatedArea } : null);
+          }}
         />
       )}
 
@@ -4701,66 +4718,47 @@ function GardenView({ onNavigateAdd }) {
                             {[
                               area.type.replace(/_/g, " "),
                               area.width_m && area.length_m ? `${area.width_m}m × ${area.length_m}m` : area.width_m ? `${area.width_m}m wide` : area.length_m ? `${area.length_m}m long` : null,
-                              area.soil_ph != null ? `pH ${area.soil_ph}` : null,
-                              area.soil_temperature_c != null ? `${area.soil_temperature_c}°C` : null,
                             ].filter(Boolean).join(" · ")}
                           </div>
-                          {/* Soil moisture toggle */}
+                          {/* Soil status — read-only, tap to open SoilReadingSheet */}
                           {(() => {
-                            const MOISTURE_OPTIONS = [
-                              { val: "dry",  label: "Dry",  color: C.amber,  bg: "#fdf6e3" },
-                              { val: "ok",   label: "OK",   color: C.forest, bg: "#f0f7f4" },
-                              { val: "wet",  label: "Wet",  color: "#5B8FA8", bg: "#eef4f8" },
-                            ];
-                            const loggedAt = area.soil_moisture_logged_at;
-                            const daysAgo = loggedAt
-                              ? Math.floor((Date.now() - new Date(loggedAt).getTime()) / 86400000)
-                              : null;
-                            const isExpired = daysAgo !== null && daysAgo > 7;
-                            const handleMoisture = async (val) => {
-                              const newVal = area.soil_moisture === val ? null : val;
-                              try {
-                                await apiFetch(`/areas/${area.id}`, {
-                                  method: "PUT",
-                                  body: JSON.stringify({ soil_moisture: newVal || "" }),
-                                });
-                                setLocations(ls => ls.map(l => ({
-                                  ...l,
-                                  growing_areas: (l.growing_areas || []).map(a =>
-                                    a.id === area.id
-                                      ? { ...a, soil_moisture: newVal, soil_moisture_logged_at: newVal ? new Date().toISOString() : null }
-                                      : a
-                                  ),
-                                })));
-                              } catch(e) { console.error("[Moisture]", e.message); }
-                            };
+                            const moistureLabel = { dry: "Dry", ok: "Ideal", wet: "Wet" };
+                            const moistureColor = { dry: C.amber, ok: C.forest, wet: "#5B8FA8" };
+                            const freshnessHours = (ts) => ts ? (Date.now() - new Date(ts).getTime()) / 3600000 : null;
+                            const mHours = freshnessHours(area.soil_moisture_logged_at);
+                            const tHours = freshnessHours(area.soil_temperature_logged_at);
+                            const pHours = freshnessHours(area.soil_ph_logged_at);
+                            const isStale = (h) => h !== null && h > 168;
+                            const parts = [];
+                            if (area.soil_moisture) {
+                              const label = moistureLabel[area.soil_moisture] || area.soil_moisture;
+                              const color = isStale(mHours) ? C.stone : (moistureColor[area.soil_moisture] || C.stone);
+                              parts.push({ key: "m", text: `Soil: ${label}`, color });
+                            }
+                            if (area.soil_temperature_c != null) {
+                              parts.push({ key: "t", text: `${area.soil_temperature_c}°C`, color: isStale(tHours) ? C.stone : "#1a1a1a" });
+                            }
+                            if (area.soil_ph != null) {
+                              parts.push({ key: "p", text: `pH ${area.soil_ph}`, color: isStale(pHours) ? C.stone : "#1a1a1a" });
+                            }
+                            if (!parts.length) return (
+                              <button onClick={() => setSoilSheetArea(area)}
+                                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", marginTop: 4 }}>
+                                <span style={{ fontSize: 10, color: C.stone, textDecoration: "underline" }}>Add soil readings</span>
+                              </button>
+                            );
                             return (
-                              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                                <span style={{ fontSize: 10, color: C.stone, marginRight: 2 }}>Soil:</span>
-                                {MOISTURE_OPTIONS.map(opt => {
-                                  const isActive = area.soil_moisture === opt.val && !isExpired;
-                                  return (
-                                    <button key={opt.val} onClick={() => handleMoisture(opt.val)}
-                                      style={{
-                                        padding: "2px 8px",
-                                        fontSize: 10,
-                                        fontWeight: isActive ? 700 : 500,
-                                        borderRadius: 20,
-                                        border: `1px solid ${isActive ? opt.color : C.border}`,
-                                        background: isActive ? opt.bg : "transparent",
-                                        color: isActive ? opt.color : C.stone,
-                                        cursor: "pointer",
-                                      }}>
-                                      {opt.label}
-                                    </button>
-                                  );
-                                })}
-                                {area.soil_moisture && (
-                                  <span style={{ fontSize: 9, color: isExpired ? C.red : C.stone, fontStyle: "italic" }}>
-                                    {isExpired ? "Expired — update to reactivate" : daysAgo === 0 ? "Today" : `${daysAgo}d ago`}
-                                  </span>
-                                )}
-                              </div>
+                              <button onClick={() => setSoilSheetArea(area)}
+                                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", marginTop: 4 }}>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                                  {parts.map((p, i) => (
+                                    <span key={p.key} style={{ fontSize: 10, color: p.color, fontWeight: 600 }}>
+                                      {p.text}{i < parts.length - 1 ? <span style={{ color: C.border, marginLeft: 6 }}>·</span> : null}
+                                    </span>
+                                  ))}
+                                  <span style={{ fontSize: 9, color: C.stone }}>›</span>
+                                </div>
+                              </button>
                             );
                           })()}
                         </div>
@@ -12282,6 +12280,198 @@ function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, o
         meta={hasNext ? "Locked in" : null}
         onTap={!hasNext && onPlanNextSeason ? onPlanNextSeason : undefined}
       />
+    </div>
+  );
+}
+
+// ── SoilReadingSheet — tap-to-update soil conditions per area ────────────────
+// Shows current interpreted status for moisture, temperature and pH.
+// Each reading displays value + source + freshness. Tap a row to log a new reading.
+function SoilReadingSheet({ area, onClose, onUpdated }) {
+  const swipe = useSwipeToDismiss(onClose);
+  const [saving,      setSaving]      = useState(null); // "moisture"|"temperature"|"ph"|null
+  const [activeInput, setActiveInput] = useState(null); // which row is expanded
+  const [inputVal,    setInputVal]    = useState("");
+  const [error,       setError]       = useState(null);
+
+  const resolveFreshness = (loggedAt) => {
+    if (!loggedAt) return "none";
+    const hours = (Date.now() - new Date(loggedAt).getTime()) / 3600000;
+    if (hours < 48)  return "fresh";
+    if (hours < 168) return "aging";
+    return "stale";
+  };
+
+  const freshnessLabel = (loggedAt, source) => {
+    if (!loggedAt) return source === "weather_estimate" ? "Estimated from weather" : null;
+    const days  = Math.floor((Date.now() - new Date(loggedAt).getTime()) / 86400000);
+    const hours = Math.floor((Date.now() - new Date(loggedAt).getTime()) / 3600000);
+    const base  = days === 0 ? (hours < 1 ? "Just now" : `${hours}h ago`) : days === 1 ? "Yesterday" : `${days} days ago`;
+    if (source === "weather_estimate") return `Estimated from weather · ${base}`;
+    if (source === "sensor")           return `Sensor · ${base}`;
+    return base;
+  };
+
+  const freshnessColor = (loggedAt) => {
+    const f = resolveFreshness(loggedAt);
+    if (f === "fresh")  return C.forest;
+    if (f === "aging")  return C.amber;
+    if (f === "stale")  return C.red;
+    return C.stone;
+  };
+
+  const moistureLabel = { dry: "Dry", ok: "Ideal", wet: "Wet" };
+  const moistureColor = { dry: C.amber, ok: C.forest, wet: "#5B8FA8" };
+
+  const logReading = async (type, value, source) => {
+    setSaving(type);
+    setError(null);
+    try {
+      const updated = await apiFetch(`/areas/${area.id}/soil-reading`, {
+        method: "POST",
+        body: JSON.stringify({ type, value, source }),
+      });
+      onUpdated(updated);
+      setActiveInput(null);
+      setInputVal("");
+    } catch(e) {
+      setError(e.message);
+    }
+    setSaving(null);
+  };
+
+  const Row = ({ type, label, value, displayValue, displayColor, loggedAt, source }) => {
+    const isOpen    = activeInput === type;
+    const freshness = resolveFreshness(loggedAt);
+    const fLabel    = freshnessLabel(loggedAt, source);
+    const fColor    = freshnessColor(loggedAt);
+
+    return (
+      <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{label}</div>
+            {value != null
+              ? <div style={{ fontSize: 18, fontWeight: 700, color: displayColor || "#1a1a1a" }}>{displayValue}</div>
+              : <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic" }}>Not recorded</div>
+            }
+            {fLabel && (
+              <div style={{ fontSize: 10, color: freshness === "stale" ? C.red : C.stone, marginTop: 2 }}>{fLabel}</div>
+            )}
+            {freshness === "stale" && value != null && (
+              <div style={{ fontSize: 10, color: C.red, marginTop: 1 }}>Reading is old — update for better accuracy</div>
+            )}
+          </div>
+          <button onClick={() => { setActiveInput(isOpen ? null : type); setInputVal(""); setError(null); }}
+            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", flexShrink: 0, marginLeft: 12 }}>
+            {isOpen ? "Cancel" : "Update"}
+          </button>
+        </div>
+
+        {isOpen && type === "moisture" && (
+          <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            {[
+              { val: "dry", label: "Dry",  color: C.amber },
+              { val: "ok",  label: "Ideal", color: C.forest },
+              { val: "wet", label: "Wet",  color: "#5B8FA8" },
+            ].map(opt => (
+              <button key={opt.val}
+                onClick={() => logReading("moisture", opt.val, "manual")}
+                disabled={saving === "moisture"}
+                style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1px solid ${opt.color}`, background: "transparent", color: opt.color, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {saving === "moisture" ? "…" : opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isOpen && type === "temperature" && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 11, color: C.stone, marginBottom: 6 }}>Enter soil temperature (°C)</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="number" inputMode="decimal" value={inputVal}
+                onChange={e => setInputVal(e.target.value)}
+                placeholder="e.g. 12"
+                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 14 }}
+              />
+              <button onClick={() => logReading("temperature", inputVal, "manual")}
+                disabled={!inputVal || saving === "temperature"}
+                style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {saving === "temperature" ? "…" : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isOpen && type === "ph" && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 11, color: C.stone, marginBottom: 6 }}>Enter soil pH (0–14)</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="number" inputMode="decimal" step="0.1" value={inputVal}
+                onChange={e => setInputVal(e.target.value)}
+                placeholder="e.g. 6.5"
+                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 14 }}
+              />
+              <button onClick={() => logReading("ph", inputVal, "manual")}
+                disabled={!inputVal || saving === "ph"}
+                style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {saving === "ph" ? "…" : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
+        {error && activeInput === type && (
+          <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>{error}</div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 950, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 20px 44px", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto" }}
+        onClick={e => e.stopPropagation()} {...swipe}>
+        <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
+        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+          Soil conditions
+        </div>
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>
+          {area.name.replace(/^"|"$/g, "")}
+        </div>
+
+        <Row
+          type="moisture"
+          label="Moisture"
+          value={area.soil_moisture}
+          displayValue={moistureLabel[area.soil_moisture] || area.soil_moisture}
+          displayColor={moistureColor[area.soil_moisture]}
+          loggedAt={area.soil_moisture_logged_at}
+          source={area.soil_moisture_source}
+        />
+        <Row
+          type="temperature"
+          label="Soil temperature"
+          value={area.soil_temperature_c}
+          displayValue={`${area.soil_temperature_c}°C`}
+          loggedAt={area.soil_temperature_logged_at}
+          source={area.soil_temperature_source}
+        />
+        <Row
+          type="ph"
+          label="Soil pH"
+          value={area.soil_ph}
+          displayValue={`pH ${area.soil_ph}`}
+          loggedAt={area.soil_ph_logged_at}
+          source={area.soil_ph_source}
+        />
+
+        <div style={{ fontSize: 10, color: C.stone, marginTop: 8, lineHeight: 1.5 }}>
+          Readings improve the accuracy of your watering and sowing tasks. pH rarely changes — test once per season.
+        </div>
+      </div>
     </div>
   );
 }
