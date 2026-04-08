@@ -5895,6 +5895,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
   const [filterType,    setFilterType]    = useState("");    // "" | "veg" | "fruit" | "herb"
+  const [filterLocation, setFilterLocation] = useState("");    // "" | location_id
   const [sortBy,        setSortBy]        = useState("recent"); // "recent" | "alpha" | "pct"
   const [showFilters,   setShowFilters]   = useState(false);
   const [cropPlantCheck, setCropPlantCheck] = useState(null); // crop object when Plant Check opened from crop card
@@ -6046,6 +6047,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   let visibleCrops = crops.filter(crop => {
     if (crop.succession_group_id) return false; // shown in grouped card instead
     if (filterStatus && crop.status !== filterStatus) return false;
+    if (filterLocation && crop.area?.location_id !== filterLocation) return false;
     if (filterArea   && crop.area_id !== filterArea)  return false;
     if (filterType   && inferCropType(crop.name) !== filterType) return false;
     return true;
@@ -6069,7 +6071,17 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     return 0; // recent — preserve server order
   });
 
-  const activeFilterCount = [filterStatus, filterArea, filterType].filter(Boolean).length;
+  const activeFilterCount = [filterStatus, filterArea, filterType, filterLocation].filter(Boolean).length;
+
+  // Unique locations derived from areas
+  const uniqueLocations = Object.values(
+    areas.reduce((acc, a) => {
+      if (a.location_id && a.location?.name && !acc[a.location_id]) {
+        acc[a.location_id] = { id: a.location_id, name: a.location.name };
+      }
+      return acc;
+    }, {})
+  );
 
   if (loading) return <Spinner />;
   if (error)   return <ErrorMsg msg={error} />;
@@ -6149,6 +6161,24 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 ))}
               </div>
             </div>
+            {/* Location filter — only shown when user has 2+ locations */}
+            {uniqueLocations.length > 1 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Location</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button onClick={() => { setFilterLocation(""); setFilterArea(""); }}
+                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterLocation === "" ? C.forest : C.border}`, background: filterLocation === "" ? C.forest : "transparent", color: filterLocation === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    All
+                  </button>
+                  {uniqueLocations.map(loc => (
+                    <button key={loc.id} onClick={() => { setFilterLocation(loc.id); setFilterArea(""); }}
+                      style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterLocation === loc.id ? C.forest : C.border}`, background: filterLocation === loc.id ? C.forest : "transparent", color: filterLocation === loc.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      {loc.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Area filter */}
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Area</div>
@@ -6157,7 +6187,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === "" ? C.forest : C.border}`, background: filterArea === "" ? C.forest : "transparent", color: filterArea === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   All
                 </button>
-                {areas.map(a => (
+                {areas.filter(a => !filterLocation || a.location_id === filterLocation).map(a => (
                   <button key={a.id} onClick={() => setFilterArea(a.id)}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === a.id ? C.forest : C.border}`, background: filterArea === a.id ? C.forest : "transparent", color: filterArea === a.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {a.name}
@@ -6179,7 +6209,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </div>
             {/* Clear */}
             {activeFilterCount > 0 && (
-              <button onClick={() => { setFilterStatus(""); setFilterArea(""); setFilterType(""); }}
+              <button onClick={() => { setFilterStatus(""); setFilterArea(""); setFilterType(""); setFilterLocation(""); }}
                 style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
                 Clear filters
               </button>
