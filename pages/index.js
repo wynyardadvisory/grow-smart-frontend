@@ -5878,14 +5878,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         const nextIdx    = sowings.length + 1;
         const canAddMore = sowings.length < group.target_sowings;
 
-        // Next harvest from earliest active sowing — apply timeline_offset_days
+        // Next harvest from earliest active sowing
         const harvests = sowings
           .filter(s => s.sown_date && (s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max))
           .map(s => {
             const dtm = s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max;
-            const offset = s.timeline_offset_days || 0;
             const d = new Date(s.sown_date);
-            d.setDate(d.getDate() + dtm + offset);
+            d.setDate(d.getDate() + dtm);
             return d;
           })
           .sort((a, b) => a - b);
@@ -5947,23 +5946,17 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   const stageKey   = sowing.stage || "seed";
                   const stageColor = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone }[stageKey] || C.stone;
 
-                  let pct = 0;
-                  if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min)) {
-                    const offsetDays = sowing.timeline_offset_days || 0;
-                    const effectiveSow = new Date(sowing.sown_date);
-                    effectiveSow.setDate(effectiveSow.getDate() + offsetDays);
-                    const dtm = sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min;
-                    const daysSown = Math.max(0, Math.floor((Date.now() - effectiveSow.getTime()) / 86400000));
-                    pct = Math.min(100, Math.max(0, Math.round((daysSown / dtm) * 100)));
-                  }
+                  // Use stage position — consistent with main crop card and timeline sheet
+                  const STAGE_PCT_SUC = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
+                  const sucStageKey = sowing.stage || "seed";
+                  let pct = Math.round((STAGE_PCT_SUC[sucStageKey] ?? 0) * 100);
 
-                  // Estimated harvest date for this sowing — apply timeline_offset_days
+                  // Estimated harvest date for this sowing
                   let harvestStr = null;
                   if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max)) {
                     const dtm = sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max;
-                    const offset = sowing.timeline_offset_days || 0;
                     const h = new Date(sowing.sown_date);
-                    h.setDate(h.getDate() + dtm + offset);
+                    h.setDate(h.getDate() + dtm);
                     harvestStr = h.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
                   }
 
@@ -6333,18 +6326,15 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   }
                 } else if (!crop.sown_date) {
                   pct = 0;
-                } else if (crop.sown_date && crop.crop_def?.days_to_maturity_max) {
-                  const offsetDays = crop.timeline_offset_days || 0;
-                  const effectiveSowDate = new Date(crop.sown_date);
-                  effectiveSowDate.setDate(effectiveSowDate.getDate() + offsetDays);
-                  const totalDays = crop.crop_def.days_to_maturity_max;
-                  const daysSinceSown = Math.max(0, Math.floor((Date.now() - effectiveSowDate.getTime()) / 86400000));
-                  pct = Math.min(100, Math.max(0, Math.round((daysSinceSown / totalDays) * 100)));
+                } else if (crop.sown_date) {
+                  // Use confirmed growth stage position — consistent with timeline sheet.
+                  // This means "59% grown at seedling" can't happen: seedling always ~8%.
+                  const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
+                  const normKey = (stageKey === "tuber" || stageKey === "sets") ? "seed" : stageKey;
+                  const stageFraction = STAGE_PCT[normKey] ?? 0;
+                  pct = Math.round(stageFraction * 100);
                 } else {
-                  // No maturity data — fall back to stage index but skip if no sow date
-                  const STAGES = ["seed","seedling","vegetative","flowering","fruiting","harvesting"];
-                  const idx = STAGES.indexOf(stageKey === "tuber" || stageKey === "sets" ? "seed" : stageKey);
-                  pct = idx <= 0 ? 0 : Math.round((idx / STAGES.length) * 100);
+                  pct = 0;
                 }
                 return (
                   <div style={{ marginTop: 10 }}>
