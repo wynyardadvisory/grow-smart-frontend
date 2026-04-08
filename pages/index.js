@@ -5880,9 +5880,9 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
 
         // Next harvest from earliest active sowing — apply timeline_offset_days
         const harvests = sowings
-          .filter(s => s.sown_date && (s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max))
+          .filter(s => s.sown_date && (s.crop_def?.days_to_maturity_max || s.crop_def?.days_to_maturity_min))
           .map(s => {
-            const dtm = s.crop_def?.days_to_maturity_min || s.crop_def?.days_to_maturity_max;
+            const dtm = s.crop_def?.days_to_maturity_max || s.crop_def?.days_to_maturity_min;
             const offset = s.timeline_offset_days || 0;
             const d = new Date(s.sown_date);
             d.setDate(d.getDate() + dtm + offset);
@@ -5954,8 +5954,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
 
                   // Estimated harvest date for this sowing — apply timeline_offset_days
                   let harvestStr = null;
-                  if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max)) {
-                    const dtm = sowing.crop_def?.days_to_maturity_min || sowing.crop_def?.days_to_maturity_max;
+                  if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min)) {
+                    const dtm = sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min;
                     const offset = sowing.timeline_offset_days || 0;
                     const h = new Date(sowing.sown_date);
                     h.setDate(h.getDate() + dtm + offset);
