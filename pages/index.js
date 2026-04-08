@@ -4264,6 +4264,7 @@ function GardenView({ onNavigateAdd }) {
   const [deletingLocation,     setDeletingLocation]     = useState(false);
   const [logScope,             setLogScope]             = useState(null);
   const [editingLocation,      setEditingLocation]      = useState(null);
+  const [locMenuOpen,          setLocMenuOpen]          = useState(null); // loc.id of open overflow menu
   const [editLocationForm,     setEditLocationForm]     = useState({ name: "", postcode: "", width_m: "", length_m: "" });
 
   const load = useCallback(async () => {
@@ -4310,7 +4311,6 @@ function GardenView({ onNavigateAdd }) {
   const [timelineCrop,   setTimelineCrop]   = useState(null);
   const [collapsedLocs,  setCollapsedLocs]  = useState({});
   const [soilSheetArea,  setSoilSheetArea]  = useState(null);
-  const [areaMenuOpen,   setAreaMenuOpen]   = useState(null); // area.id of open overflow menu
 
   const saveEditArea = async (areaId) => {
     setSaving(true);
@@ -4540,27 +4540,45 @@ function GardenView({ onNavigateAdd }) {
               </div>
               <span style={{ fontSize: 11, color: C.stone, marginLeft: 4 }}>{collapsedLocs[loc.id] ? "▶" : "▼"}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
               {!collapsedLocs[loc.id] && (
                 <>
                   <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-                    style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.forest, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                    style={{ height: 30, background: "none", border: `1px solid ${C.forest}`, color: C.forest, borderRadius: 8, padding: "0 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                     + Add area
                   </button>
                   <button onClick={e => { e.stopPropagation(); setLogScope({ type: "location", id: loc.id, name: loc.name }); }}
-                    style={{ background: C.offwhite, border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                    📋 Log
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); setEditingLocation(loc.id); setEditLocationForm({ name: loc.name || "", postcode: loc.postcode || "", width_m: loc.width_m ?? "", length_m: loc.length_m ?? "" }); }}
-                    style={{ background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer" }}>
-                    Edit
+                    style={{ height: 30, background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Log
                   </button>
                 </>
               )}
-              <button onClick={e => { e.stopPropagation(); setDeleteLocationTarget(loc); }}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.red, fontSize: 13, flexShrink: 0 }}>
-                ✕
-              </button>
+              {/* Location overflow menu */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={e => { e.stopPropagation(); setLocMenuOpen(locMenuOpen === loc.id ? null : loc.id); }}
+                  style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+                  ⋯
+                </button>
+                {locMenuOpen === loc.id && (
+                  <>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={e => { e.stopPropagation(); setLocMenuOpen(null); }} />
+                    <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 91, minWidth: 140, overflow: "hidden" }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); setLocMenuOpen(null); setEditingLocation(loc.id); setEditLocationForm({ name: loc.name || "", postcode: loc.postcode || "", width_m: loc.width_m ?? "", length_m: loc.length_m ?? "" }); }}
+                        style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
+                        Edit location
+                      </button>
+                      <div style={{ height: 1, background: C.border }} />
+                      <button
+                        onClick={e => { e.stopPropagation(); setLocMenuOpen(null); setDeleteLocationTarget(loc); }}
+                        style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.red, cursor: "pointer", textAlign: "left" }}>
+                        Delete location
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -4764,61 +4782,40 @@ function GardenView({ onNavigateAdd }) {
                           })()}
                         </div>
                       </div>
-                      {/* Right: crop count + Add + Log + overflow */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                        <span style={{ background: C.offwhite, borderRadius: 20, padding: "2px 8px", fontSize: 10, color: C.stone, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ background: C.offwhite, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600 }}>
                           {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
                         </span>
                         <button onClick={() => onNavigateAdd({ area_id: area.id })}
-                          style={{ height: 30, background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          style={{ background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                           + Add
                         </button>
                         <button onClick={() => setLogScope({ type: "area", id: area.id, name: area.name })}
-                          style={{ height: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
-                          Log
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          📋 Log
                         </button>
-                        {/* Overflow menu */}
-                        <div style={{ position: "relative" }}>
-                          <button
-                            onClick={() => setAreaMenuOpen(areaMenuOpen === area.id ? null : area.id)}
-                            style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-                            ⋯
-                          </button>
-                          {areaMenuOpen === area.id && (
-                            <>
-                              {/* Backdrop to close on outside tap */}
-                              <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setAreaMenuOpen(null)} />
-                              <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 91, minWidth: 120, overflow: "hidden" }}>
-                                <button
-                                  onClick={() => { setAreaMenuOpen(null); setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type, width_m: area.width_m ?? "", length_m: area.length_m ?? "", soil_ph: area.soil_ph ?? "", soil_temperature_c: area.soil_temperature_c ?? "" }); }}
-                                  style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
-                                  Edit area
-                                </button>
-                                <div style={{ height: 1, background: C.border }} />
-                                <button
-                                  onClick={() => { setAreaMenuOpen(null); setConfirmArea(area.id); }}
-                                  style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.red, cursor: "pointer", textAlign: "left" }}>
-                                  Delete area
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        <button onClick={() => { setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type, width_m: area.width_m ?? "", length_m: area.length_m ?? "", soil_ph: area.soil_ph ?? "", soil_temperature_c: area.soil_temperature_c ?? "" }); }}
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          Edit
+                        </button>
+                        <button onClick={() => setConfirmArea(area.id)}
+                          style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.red, cursor: "pointer" }}>
+                          ✕
+                        </button>
                       </div>
                     </div>
-                    {/* Crop chips */}
                     {areaCrops.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {areaCrops.map(c => {
                           const isPlanned  = c.status === "planned";
                           const isIndoors  = c.status === "sown_indoors";
-                          const chipBg     = isPlanned ? "#fffbf4" : isIndoors ? "#f4f6ff" : C.offwhite;
-                          const chipBorder = isPlanned ? `${C.amber}66` : isIndoors ? "#7b9ef766" : `${C.border}`;
-                          const chipColor  = isPlanned ? C.amber  : isIndoors ? "#2d4fc0" : "#444";
+                          const chipBg     = isPlanned ? "#fff8ed" : isIndoors ? "#f0f4ff" : C.offwhite;
+                          const chipBorder = isPlanned ? C.amber : isIndoors ? "#7b9ef7" : C.border;
+                          const chipColor  = isPlanned ? C.amber  : isIndoors ? "#2d4fc0" : "#1a1a1a";
                           const statusIcon = isPlanned ? "🗓 " : isIndoors ? "🪟 " : "";
                           return (
                             <span key={c.id} onClick={() => setTimelineCrop(c)}
-                              style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: 20, padding: "3px 9px", fontSize: 11, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
+                              style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
                               {statusIcon}{c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
                             </span>
                           );
@@ -4826,18 +4823,19 @@ function GardenView({ onNavigateAdd }) {
                       </div>
                     )}
                     {areaCrops.length === 0 && (
-                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 6 }}>No crops yet</div>
+                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 4 }}>Empty</div>
                     )}
-                    {/* Boost — reduced visual weight */}
                     <button onClick={() => {
+                        // Pro and Mark always bypass — don't consume their count
                         if (isPro || isMark) { setSuggestArea(area); return; }
+                        // Test users see the sheet (and hit paywalls inside it)
                         if (isGardenTestUser && !isPro && !isMark) { incrementBoostCount(); setSuggestArea(area); return; }
                         const count = getBoostCount();
                         if (count >= 3) { setBoostPaywallArea(area); return; }
                         incrementBoostCount();
                         setSuggestArea(area);
                       }}
-                      style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
+                      style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "1px solid " + C.forest, background: "transparent", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                       🌱 Boost this area
                     </button>
                   </>
