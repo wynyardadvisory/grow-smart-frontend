@@ -8839,6 +8839,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
 
 // ── Photo source picker ───────────────────────────────────────────────────────
 function PlantCheckPhotoPicker({ onPhoto, onClose }) {
+  const swipe = useSwipeToDismiss(onClose);
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
 
