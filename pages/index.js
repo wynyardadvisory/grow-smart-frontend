@@ -9,10 +9,13 @@
  * All API calls send the Supabase JWT as Bearer token.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 import { useRouter } from "next/router";
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ── Supabase client (frontend) ────────────────────────────────────────────────
 const supabase = createClient(
@@ -4233,6 +4236,25 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
 }
 
 
+// ── Sortable area card components ────────────────────────────────────────────
+function SortableAreaCard({ id, multiArea, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    filter: isDragging ? "drop-shadow(0 8px 16px rgba(0,0,0,0.18))" : undefined,
+    position: "relative",
+    zIndex: isDragging ? 10 : undefined,
+  };
+  const handleProps = multiArea ? { ...attributes, ...listeners } : {};
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children(handleProps)}
+    </div>
+  );
+}
+
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
   const GARDEN_CACHE = "vercro_garden_v1";
@@ -4278,6 +4300,27 @@ function GardenView({ onNavigateAdd }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  const handleAreaDragEnd = async (locId, event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const loc = locations.find(l => l.id === locId);
+    const currentAreas = areaOrderOverrides[locId] ||
+      [...(loc.growing_areas || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    const oldIndex = currentAreas.findIndex(a => a.id === active.id);
+    const newIndex = currentAreas.findIndex(a => a.id === over.id);
+    const reordered = arrayMove(currentAreas, oldIndex, newIndex);
+    setAreaOrderOverrides(prev => ({ ...prev, [locId]: reordered }));
+    try {
+      await apiFetch(`/locations/${locId}/area-order`, {
+        method: "PUT",
+        body: JSON.stringify({ area_ids: reordered.map(a => a.id) }),
+      });
+    } catch {
+      setAreaOrderOverrides(prev => ({ ...prev, [locId]: currentAreas }));
+      setDragSaveError(true);
+      setTimeout(() => setDragSaveError(false), 3000);
+    }
+  };
 
   const saveArea = async () => {
     if (!newArea.name || !newArea.location_id) return;
@@ -4312,6 +4355,12 @@ function GardenView({ onNavigateAdd }) {
   const [collapsedLocs,  setCollapsedLocs]  = useState({});
   const [soilSheetArea,  setSoilSheetArea]  = useState(null);
   const [areaMenuOpen,   setAreaMenuOpen]   = useState(null); // area.id of open overflow menu
+  const [areaOrderOverrides, setAreaOrderOverrides] = useState({}); // locId -> area[]
+  const areaDragSensors = useSensors(
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const [dragSaveError,      setDragSaveError]      = useState(false);
 
   const saveEditArea = async (areaId) => {
     setSaving(true);
@@ -4523,6 +4572,12 @@ function GardenView({ onNavigateAdd }) {
         />
       )}
 
+      {dragSaveError && (
+        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#1a1a1a", color: "#fff", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, zIndex: 999, whiteSpace: "nowrap" }}>
+          Couldn't save order — please try again
+        </div>
+      )}
+
       {locations.map(loc => (
         <div key={loc.id} style={{ marginBottom: 28 }}>
           {/* Location header — tap name to collapse */}
@@ -4661,10 +4716,22 @@ function GardenView({ onNavigateAdd }) {
           )}
 
           {/* Areas */}
-          {(loc.growing_areas || []).map(area => {
-            const areaCrops = cropsByArea[area.id] || [];
+          {(() => {
+            const sortedAreas = [...(loc.growing_areas || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            const displayAreas = areaOrderOverrides[loc.id] || sortedAreas;
+            const multiArea = displayAreas.length > 1;
             return (
-              <div key={area.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+              <DndContext
+                sensors={areaDragSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={e => handleAreaDragEnd(loc.id, e)}
+              >
+                <SortableContext items={displayAreas.map(a => a.id)} strategy={verticalListSortingStrategy}>
+                  {displayAreas.map(area => {
+                    const areaCrops = cropsByArea[area.id] || [];
+                    return (
+                      <SortableAreaCard key={area.id} id={area.id} multiArea={multiArea}>{handleProps => (
+                      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
 
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
@@ -4730,6 +4797,16 @@ function GardenView({ onNavigateAdd }) {
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: areaCrops.length > 0 ? 10 : 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {multiArea && (
+                          <div {...handleProps} style={{ display: "flex", flexDirection: "column", gap: 3, padding: "4px 6px", cursor: "grab", flexShrink: 0, touchAction: "none", alignSelf: "center" }}>
+                            {[0,1,2].map(i => (
+                              <div key={i} style={{ display: "flex", gap: 3 }}>
+                                <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#ccc" }} />
+                                <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#ccc" }} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id}
                           onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
                         <div>
@@ -4858,8 +4935,13 @@ function GardenView({ onNavigateAdd }) {
                   </>
                 )}
               </div>
+                      )}</SortableAreaCard>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
             );
-          })}
+          })()}
           </div>)}
         </div>
       ))}
