@@ -5947,10 +5947,15 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   const stageKey   = sowing.stage || "seed";
                   const stageColor = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone }[stageKey] || C.stone;
 
-                  // Use stage position — consistent with main crop card and timeline sheet
-                  const STAGE_PCT_SUC = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-                  const sucStageKey = sowing.stage || "seed";
-                  let pct = Math.round((STAGE_PCT_SUC[sucStageKey] ?? 0) * 100);
+                  // Time-based progress using effective days (offset-adjusted)
+                  let pct = 0;
+                  if (sowing.sown_date && (sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min)) {
+                    const dtmSuc = sowing.crop_def?.days_to_maturity_max || sowing.crop_def?.days_to_maturity_min;
+                    const offsetSuc = sowing.timeline_offset_days || 0;
+                    const daysSownSuc = Math.max(0, Math.floor((Date.now() - new Date(sowing.sown_date).getTime()) / 86400000));
+                    const effectiveSuc = daysSownSuc - offsetSuc;
+                    pct = Math.min(100, Math.max(0, Math.round((effectiveSuc / dtmSuc) * 100)));
+                  }
 
                   // Estimated harvest date for this sowing — apply timeline_offset_days
                   let harvestStr = null;
@@ -6329,12 +6334,18 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 } else if (!crop.sown_date) {
                   pct = 0;
                 } else if (crop.sown_date) {
-                  // Use confirmed growth stage position — consistent with timeline sheet.
-                  // This means "59% grown at seedling" can't happen: seedling always ~8%.
-                  const STAGE_PCT = { seed: 0, seedling: 0.08, vegetative: 0.25, flowering: 0.55, fruiting: 0.70, harvesting: 0.90 };
-                  const normKey = (stageKey === "tuber" || stageKey === "sets") ? "seed" : stageKey;
-                  const stageFraction = STAGE_PCT[normKey] ?? 0;
-                  pct = Math.round(stageFraction * 100);
+                  // Time-based progress using effective days (offset-adjusted).
+                  // offset encodes stage confirmation — so effectiveDays always lands at the
+                  // right stage boundary, then advances daily toward the next one.
+                  const dtm = crop.crop_def?.days_to_maturity_max || crop.crop_def?.days_to_maturity_min;
+                  if (dtm) {
+                    const offset = crop.timeline_offset_days || 0;
+                    const daysSinceSown = Math.max(0, Math.floor((Date.now() - new Date(crop.sown_date).getTime()) / 86400000));
+                    const effectiveDays = daysSinceSown - offset;
+                    pct = Math.min(100, Math.max(0, Math.round((effectiveDays / dtm) * 100)));
+                  } else {
+                    pct = 0;
+                  }
                 } else {
                   pct = 0;
                 }
