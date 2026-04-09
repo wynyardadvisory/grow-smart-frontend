@@ -45,6 +45,25 @@ const PRO_ENABLED = process.env.NEXT_PUBLIC_PRO_ENABLED === "true";
 // No other account is affected. Everyone else sees exactly what they always saw.
 const MARK_EMAIL = "mark@wynyardadvisory.co.uk";
 
+// ── Measurement unit helpers ──────────────────────────────────────────────────
+// Backend always stores dimensions in metres. These helpers convert for display.
+// useMeasurementUnit() reads the preference from localStorage (set on profile load).
+function useMeasurementUnit() {
+  try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
+}
+function formatDimension(metres, unit) {
+  if (metres == null || isNaN(metres)) return null;
+  if (unit === "imperial") {
+    const totalInches = metres * 39.3701;
+    const ft = Math.floor(totalInches / 12);
+    const inches = Math.round(totalInches % 12);
+    if (inches === 12) return `${ft + 1}ft`;
+    if (ft === 0) return `${inches}in`;
+    return inches === 0 ? `${ft}ft` : `${ft}ft ${inches}in`;
+  }
+  return `${metres}m`;
+}
+
 // ── Test user IDs ─────────────────────────────────────────────────────────────
 // These users see the full new UI and hit paywalls, but the upgrade CTA shows
 // "coming soon" instead of hitting Stripe. Global PRO_ENABLED stays false so
@@ -4264,6 +4283,7 @@ function SortableAreaCard({ id, multiArea, children }) {
 
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
+  const measurementUnit = useMeasurementUnit();
   const GARDEN_CACHE = "vercro_garden_v1";
   const BOOST_COUNT_KEY = "vercro_boost_count";
   const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
@@ -4597,7 +4617,7 @@ function GardenView({ onNavigateAdd }) {
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
                 {(loc.width_m || loc.length_m) && (
                   <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>
-                    {loc.width_m && loc.length_m ? `${loc.width_m}m × ${loc.length_m}m` : loc.width_m ? `Width ${loc.width_m}m` : `Length ${loc.length_m}m`}
+                    {loc.width_m && loc.length_m ? `${formatDimension(loc.width_m, measurementUnit)} × ${formatDimension(loc.length_m, measurementUnit)}` : loc.width_m ? `Width ${formatDimension(loc.width_m, measurementUnit)}` : `Length ${formatDimension(loc.length_m, measurementUnit)}`}
                   </div>
                 )}
               </div>
@@ -4821,7 +4841,7 @@ function GardenView({ onNavigateAdd }) {
                           <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
                             {[
                               area.type.replace(/_/g, " "),
-                              area.width_m && area.length_m ? `${area.width_m}m × ${area.length_m}m` : area.width_m ? `${area.width_m}m wide` : area.length_m ? `${area.length_m}m long` : null,
+                              area.width_m && area.length_m ? `${formatDimension(area.width_m, measurementUnit)} × ${formatDimension(area.length_m, measurementUnit)}` : area.width_m ? `${formatDimension(area.width_m, measurementUnit)} wide` : area.length_m ? `${formatDimension(area.length_m, measurementUnit)} long` : null,
                             ].filter(Boolean).join(" · ")}
                           </div>
                           {/* Soil status — read-only, tap to open SoilReadingSheet */}
@@ -4894,6 +4914,19 @@ function GardenView({ onNavigateAdd }) {
                                   onClick={() => { setAreaMenuOpen(null); setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type, width_m: area.width_m ?? "", length_m: area.length_m ?? "", soil_ph: area.soil_ph ?? "", soil_temperature_c: area.soil_temperature_c ?? "" }); }}
                                   style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
                                   Edit area
+                                </button>
+                                <div style={{ height: 1, background: C.border }} />
+                                <button
+                                  onClick={async () => {
+                                    setAreaMenuOpen(null);
+                                    try {
+                                      await apiFetch(`/areas/${area.id}/duplicate`, { method: "POST" });
+                                      const [locs, cropsData] = await Promise.all([apiFetch("/locations"), apiFetch("/crops")]);
+                                      setLocations(locs); setCrops(cropsData);
+                                    } catch(e) { console.error("Duplicate area failed:", e.message); }
+                                  }}
+                                  style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
+                                  Duplicate area
                                 </button>
                                 <div style={{ height: 1, background: C.border }} />
                                 <button
@@ -6822,6 +6855,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 11, color: C.stone }}>
                   {[
+                    crop.area?.location?.name || null,
                     crop.area?.name?.replace(/^"|"$/g, ""),
                     crop.sown_date ? `Sown ${new Date(crop.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : null,
                   ].filter(Boolean).join(" · ")}
@@ -8328,6 +8362,11 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   const [emailPrefLoading,    setEmailPrefLoading]    = useState(false);
   const [emailPrefSaved,      setEmailPrefSaved]      = useState(false);
 
+  // Measurement unit preference
+  const [measurementUnit, setMeasurementUnit] = useState(() => {
+    try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
+  });
+
   // Delete account state
   const [showDeleteModal,     setShowDeleteModal]     = useState(false);
   const [deleteConfirmStep,   setDeleteConfirmStep]   = useState(1); // 1 = first modal, 2 = final confirm
@@ -8357,6 +8396,10 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         setForm(f);
         // email_unsubscribed is the inverse of marketing_emails_enabled
         setMarketingEmails(!p.email_unsubscribed);
+        if (p.measurement_unit) {
+          setMeasurementUnit(p.measurement_unit);
+          try { localStorage.setItem("vercro_measurement_unit", p.measurement_unit); } catch(e) {}
+        }
         try { localStorage.setItem(PROFILE_CACHE, JSON.stringify({ form: f, ts: Date.now() })); } catch(e) {}
         setLoading(false);
       })
@@ -8393,6 +8436,18 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       setTimeout(() => setPwSaved(false), 3000);
     } catch (e) { setPwError(e.message); }
     setPwSaving(false);
+  };
+
+  const saveMeasurementUnit = async (unit) => {
+    setMeasurementUnit(unit);
+    try { localStorage.setItem("vercro_measurement_unit", unit); } catch(e) {}
+    try {
+      const profile = await apiFetch("/auth/profile");
+      await apiFetch("/auth/profile", {
+        method: "POST",
+        body: JSON.stringify({ name: profile.name, postcode: profile.postcode, measurement_unit: unit }),
+      });
+    } catch(e) { console.error("Failed to save measurement unit:", e.message); }
   };
 
   const saveEmailPreference = async (enabled) => {
@@ -8609,6 +8664,25 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* Pro subscription section — only visible when PRO_ENABLED=true */}
       {PRO_ENABLED && <ProSubscriptionSection />}
+
+      {/* Measurement unit preference */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+        <div style={{ padding: "14px 16px" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Measurements</div>
+          <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>How dimensions are shown for beds and areas</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { value: "metric",   label: "Metres" },
+              { value: "imperial", label: "Feet & inches" },
+            ].map(opt => (
+              <button key={opt.value} onClick={() => saveMeasurementUnit(opt.value)}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Email preferences */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
