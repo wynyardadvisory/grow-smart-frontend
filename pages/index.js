@@ -1127,15 +1127,14 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
   const now    = Date.now();
   const start  = new Date(item.window_start).getTime();
   const end    = new Date(item.window_end).getTime();
-  const weeksLeft = Math.max(0, Math.round((start - now) / (7*24*60*60*1000)));
+  // Committed optimal harvest date — 35% into the window
+  const optimalDate = new Date(start + (end - start) * 0.35);
+  const weeksLeft = Math.max(0, Math.round((optimalDate.getTime() - now) / (7*24*60*60*1000)));
   const isReady = weeksLeft === 0;
 
   const borderColor = C.forest;
   const bgColor     = C.cardBg;
   const barColor    = C.amber;
-
-  // Committed optimal harvest date — 35% into the window
-  const optimalDate = new Date(start + (end - start) * 0.35);
   const optimalStr  = optimalDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
   // Progress bar — journey toward harvest window
