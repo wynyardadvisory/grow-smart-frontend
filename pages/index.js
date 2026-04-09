@@ -6403,6 +6403,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   <span style={{ fontSize: 11, color: C.stone }}>{isExpanded ? "▼" : "▶"}</span>
                 </div>
                 <div style={{ fontSize: 11, color: C.stone }}>
+                  {[
+                    group.area?.location?.name,
+                    group.area?.name?.replace(/^"|"$/g, ""),
+                  ].filter(Boolean).join(" · ")}
+                </div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
                   {sowings.length} of {group.target_sowings} sowing{group.target_sowings !== 1 ? "s" : ""}
                   {group.interval_days ? ` · every ${group.interval_days} days` : ""}
                   {nextHarvest ? ` · first harvest ~${nextHarvest.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
