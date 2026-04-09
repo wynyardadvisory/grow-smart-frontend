@@ -17,6 +17,14 @@ import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSe
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+// ── Capacitor Push Notifications ─────────────────────────────────────────────
+// Only initialised when running inside a native Capacitor shell (iOS/Android).
+// Has no effect in the browser PWA.
+let PushNotifications = null;
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+  import("@capacitor/push-notifications").then(m => { PushNotifications = m.PushNotifications; });
+}
+
 // ── Supabase client (frontend) ────────────────────────────────────────────────
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -15139,6 +15147,24 @@ export default function GrowSmart() {
       navigator.serviceWorker.register("/sw.js")
         .then(reg => console.log("[SW] Registered:", reg.scope))
         .catch(err => console.warn("[SW] Registration failed:", err));
+    }
+
+    // Register push notifications for native app (Capacitor iOS/Android)
+    if (typeof window !== "undefined" && window.Capacitor?.isNative && PushNotifications) {
+      PushNotifications.requestPermissions().then(result => {
+        if (result.receive === "granted") {
+          PushNotifications.register();
+        }
+      });
+      PushNotifications.addListener("registration", async token => {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s?.access_token) return;
+        fetch(`${API}/push/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
+          body: JSON.stringify({ token: token.value, platform: window.Capacitor.getPlatform() })
+        }).catch(console.warn);
+      });
     }
 
     return () => subscription.unsubscribe();
