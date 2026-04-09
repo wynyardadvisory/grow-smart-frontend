@@ -4845,7 +4845,7 @@ function GardenView({ onNavigateAdd }) {
                         <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id}
                           onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{area.name}</div>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
                           <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
                             {[
                               area.type.replace(/_/g, " "),
@@ -4895,23 +4895,26 @@ function GardenView({ onNavigateAdd }) {
                           })()}
                         </div>
                       </div>
-                      {/* Right: crop count + Add + Log + overflow */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                        <span style={{ background: C.offwhite, borderRadius: 20, padding: "2px 8px", fontSize: 10, color: C.stone, fontWeight: 600, whiteSpace: "nowrap" }}>
-                          {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
-                        </span>
-                        <button onClick={() => onNavigateAdd({ area_id: area.id })}
-                          style={{ height: 30, background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                          + Add
-                        </button>
-                        <button onClick={() => setLogScope({ type: "area", id: area.id, name: area.name })}
-                          style={{ height: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
-                          Log
-                        </button>
+                      {/* Right: crop count + Add (row 1), Log + overflow (row 2) */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ background: C.offwhite, borderRadius: 20, padding: "2px 8px", fontSize: 10, color: C.stone, fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
+                          </span>
+                          <button onClick={() => onNavigateAdd({ area_id: area.id })}
+                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            + Add
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <button onClick={() => setLogScope({ type: "area", id: area.id, name: area.name })}
+                            style={{ height: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            Log
+                          </button>
                         <div style={{ position: "relative" }}>
                           <button
                             onClick={() => setAreaMenuOpen(areaMenuOpen === area.id ? null : area.id)}
-                            style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                             ⋯
                           </button>
                           {areaMenuOpen === area.id && (
@@ -4945,6 +4948,7 @@ function GardenView({ onNavigateAdd }) {
                               </div>
                             </>
                           )}
+                        </div>
                         </div>
                       </div>
                     </div>
