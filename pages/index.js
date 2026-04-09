@@ -10965,6 +10965,9 @@ function AdminScreen({ isDemo = false }) {
         const actRate  = metrics.activationRate || 0;
         const w1Ret    = metrics.d7Retention  ?? metrics.week1Retention ?? 0;
         const w4Ret    = metrics.d28Retention ?? metrics.week4Retention ?? 0;
+        // Ensure d14/d21 raw objects exist even if API hasn't returned them yet
+        if (!metrics.d14RetentionRaw) metrics.d14RetentionRaw = { retained: 0, cohort: 0 };
+        if (!metrics.d21RetentionRaw) metrics.d21RetentionRaw = { retained: 0, cohort: 0 };
         const dauWau   = parseFloat(metrics.dauWauRatio) || 0;
         const taskRate = metrics.taskCompletionRate || 0;
         const mau      = metrics.mau ?? metrics.wau;
@@ -10998,11 +11001,12 @@ function AdminScreen({ isDemo = false }) {
             {/* Metric tabs */}
             <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
               {[
-                { id: "overview", label: "Overview" },
-                { id: "funnel",   label: "Funnel" },
-                { id: "growth",   label: "Growth" },
-                { id: "usage",    label: "Usage" },
-                { id: "comms",    label: "Comms" },
+                { id: "overview",   label: "Overview" },
+                { id: "funnel",     label: "Funnel" },
+                { id: "retention",  label: "Retention" },
+                { id: "growth",     label: "Growth" },
+                { id: "usage",      label: "Usage" },
+                { id: "comms",      label: "Comms" },
               ].map(t => (
                 <button key={t.id} onClick={() => setMetricTab(t.id)}
                   style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${metricTab === t.id ? C.forest : C.border}`, background: metricTab === t.id ? C.forest : "transparent", color: metricTab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -11138,8 +11142,100 @@ function AdminScreen({ isDemo = false }) {
               </div>
             )}
 
-            {/* ── COMMS ── */}
+            {/* ── RETENTION ── */}
             {metricTab === "funnel" && funnel && <FunnelTab data={funnel} />}
+
+            {metricTab === "retention" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Cohort retention curve</div>
+                <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, lineHeight: 1.5 }}>
+                  Did users do anything intentional in each window after signup? Binary — yes or no per user. Excludes day 1 onboarding.
+                </div>
+
+                {/* Retention table */}
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  {/* Header */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 60px", gap: 0, padding: "10px 14px", borderBottom: `1px solid ${C.border}`, background: C.pageBg }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8 }}>Window</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, textAlign: "right" }}>Cohort</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, textAlign: "right" }}>Retained</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, textAlign: "right" }}>Rate</div>
+                  </div>
+                  {[
+                    { label: "D7",  sub: "days 2–7",   rate: metrics.d7Retention,  raw: metrics.d7RetentionRaw },
+                    { label: "D14", sub: "days 8–14",  rate: metrics.d14Retention, raw: metrics.d14RetentionRaw },
+                    { label: "D21", sub: "days 15–21", rate: metrics.d21Retention, raw: metrics.d21RetentionRaw },
+                    { label: "D28", sub: "days 21–28", rate: metrics.d28Retention, raw: metrics.d28RetentionRaw },
+                  ].map((row, i, arr) => {
+                    const rateVal = row.rate != null ? Number(row.rate) : null;
+                    const colour  = rateVal == null ? C.stone
+                                  : rateVal >= 25 ? C.forest
+                                  : rateVal >= 12 ? "#e67e22"
+                                  : C.red;
+                    const thinCohort = row.raw && row.raw.cohort < 30;
+                    return (
+                      <div key={row.label} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 60px", gap: 0, padding: "12px 14px", borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : "none", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>{row.label}</div>
+                          <div style={{ fontSize: 11, color: C.stone }}>{row.sub}</div>
+                        </div>
+                        <div style={{ textAlign: "right", fontSize: 13, color: C.stone }}>
+                          {row.raw ? row.raw.cohort.toLocaleString() : "—"}
+                          {thinCohort && <div style={{ fontSize: 10, color: C.stone, opacity: 0.6 }}>small</div>}
+                        </div>
+                        <div style={{ textAlign: "right", fontSize: 13, color: C.stone }}>
+                          {row.raw ? row.raw.retained.toLocaleString() : "—"}
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: thinCohort ? C.stone : colour }}>
+                            {rateVal != null ? `${rateVal}%` : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bar chart visualisation */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Visual</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 14px", marginBottom: 16 }}>
+                  {[
+                    { label: "D7",  rate: metrics.d7Retention,  raw: metrics.d7RetentionRaw },
+                    { label: "D14", rate: metrics.d14Retention, raw: metrics.d14RetentionRaw },
+                    { label: "D21", rate: metrics.d21Retention, raw: metrics.d21RetentionRaw },
+                    { label: "D28", rate: metrics.d28Retention, raw: metrics.d28RetentionRaw },
+                  ].map(row => {
+                    const rateVal    = row.rate != null ? Number(row.rate) : null;
+                    const thinCohort = row.raw && row.raw.cohort < 30;
+                    const colour     = thinCohort ? C.border
+                                     : rateVal == null ? C.border
+                                     : rateVal >= 25 ? C.forest
+                                     : rateVal >= 12 ? "#e67e22"
+                                     : C.red;
+                    return (
+                      <div key={row.label} style={{ marginBottom: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{row.label}</span>
+                          <span style={{ fontSize: 12, color: thinCohort ? C.stone : colour, fontWeight: 700 }}>
+                            {rateVal != null ? `${rateVal}%` : "—"}{thinCohort ? " (small sample)" : ""}
+                          </span>
+                        </div>
+                        <div style={{ height: 8, background: C.border, borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${Math.min(rateVal || 0, 100)}%`, background: colour, borderRadius: 4, transition: "width 0.4s ease" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.6 }}>
+                  <strong>Green</strong> ≥ 25% · <strong style={{ color: "#e67e22" }}>Amber</strong> ≥ 12% · <strong style={{ color: C.red }}>Red</strong> below 12%<br/>
+                  D21 and D28 will stabilise as more users reach those windows.
+                </div>
+              </div>
+            )}
+
+            {/* ── COMMS ── */}
 
             {metricTab === "comms" && (
               <div>
