@@ -4830,8 +4830,8 @@ function GardenView({ onNavigateAdd }) {
                   </div>
                 ) : (
                   <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: areaCrops.length > 0 ? 10 : 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: areaCrops.length > 0 ? 10 : 0, gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
                         {multiArea && (
                           <div {...handleProps} style={{ display: "flex", flexDirection: "column", gap: 3, padding: "4px 6px", cursor: "grab", flexShrink: 0, touchAction: "none", alignSelf: "center" }}>
                             {[0,1,2].map(i => (
@@ -4844,8 +4844,8 @@ function GardenView({ onNavigateAdd }) {
                         )}
                         <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id}
                           onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{area.name}</div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{area.name}</div>
                           <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
                             {[
                               area.type.replace(/_/g, " "),
