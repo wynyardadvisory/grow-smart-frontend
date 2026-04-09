@@ -10965,9 +10965,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
       {loading && <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>}
 
       {/* ── Tools ── */}
-      {!loading && tab === "tools" && (
-        {!metricsOnly && <AdminTools />}
-      )}
+      {!loading && tab === "tools" && !metricsOnly && <AdminTools />}
 
       {/* ── Metrics dashboard ── */}
       {!loading && tab === "metrics" && metrics && (() => {
