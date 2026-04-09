@@ -10963,10 +10963,11 @@ function AdminScreen({ isDemo = false }) {
       {/* ── Metrics dashboard ── */}
       {!loading && tab === "metrics" && metrics && (() => {
         const actRate  = metrics.activationRate || 0;
-        const w1Ret    = metrics.week1Retention || 0;
-        const w4Ret    = metrics.week4Retention || 0;
+        const w1Ret    = metrics.d7Retention  ?? metrics.week1Retention ?? 0;
+        const w4Ret    = metrics.d28Retention ?? metrics.week4Retention ?? 0;
         const dauWau   = parseFloat(metrics.dauWauRatio) || 0;
         const taskRate = metrics.taskCompletionRate || 0;
+        const mau      = metrics.mau ?? metrics.wau;
 
         const status = (val, green, amber) =>
           val >= green ? "green" : val >= amber ? "amber" : "red";
@@ -11018,10 +11019,10 @@ function AdminScreen({ isDemo = false }) {
                   <MetricCard label="Activation rate" value={`${actRate}%`} sub="signup → first crop"
                     status={status(actRate, 60, 40)}
                     suggestion={actRate < 60 ? SUGGESTIONS.activation : null} />
-                  <MetricCard label="Week 1 retention" value={w1Ret ? `${w1Ret}%` : "—"} sub="back on day 7"
+                  <MetricCard label="D7 retention" value={w1Ret ? `${w1Ret}%` : "—"} sub="active days 2–7 after signup"
                     status={w1Ret ? status(w1Ret, 30, 20) : null}
                     suggestion={w1Ret && w1Ret < 30 ? SUGGESTIONS.week1retention : null} />
-                  <MetricCard label="Week 4 retention" value={w4Ret ? `${w4Ret}%` : "—"} sub="still active day 28"
+                  <MetricCard label="D28 retention" value={w4Ret ? `${w4Ret}%` : "—"} sub="active days 21–28 after signup"
                     status={w4Ret ? status(w4Ret, 15, 10) : null}
                     suggestion={w4Ret && w4Ret < 15 ? SUGGESTIONS.week4retention : null} />
                   <MetricCard label="DAU / WAU" value={metrics.dauWauRatio || "—"} sub="stickiness ratio"
@@ -11050,9 +11051,9 @@ function AdminScreen({ isDemo = false }) {
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Investor snapshot</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
-                  <MetricRow label="MAU" val={metrics.wau} sub="monthly active users" />
+                  <MetricRow label="MAU" val={mau} sub="monthly active users (30 days)" />
                   <MetricRow label="MAU growth" val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} sub="week on week" highlight={metrics.wowGrowth > 0} />
-                  <MetricRow label="DAU / MAU ratio" val={metrics.dauWauRatio || "—"} sub="stickiness · target 0.15+" highlight={dauWau >= 0.15} />
+                  <MetricRow label="DAU / MAU ratio" val={metrics.wauMauRatio || "—"} sub="stickiness · target 0.15+" highlight={parseFloat(metrics.wauMauRatio) >= 0.15} />
                   <MetricRow label="Avg crops per user" val={metrics.avgCropsPerUser} sub="engagement depth · target 3+" highlight={parseFloat(metrics.avgCropsPerUser) >= 3} />
                   <MetricRow label="NPS proxy" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} sub="avg feedback rating" />
                 </div>
