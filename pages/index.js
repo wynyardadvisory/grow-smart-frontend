@@ -338,6 +338,17 @@ function AuthScreen({ onAuth }) {
     } catch (e) { setError(e.message); setLoading(false); }
   };
 
+  const handleApple = async () => {
+    setLoading(true); setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "apple",
+        options: { redirectTo: "https://app.vercro.com" },
+      });
+      if (error) throw error;
+    } catch (e) { setError(e.message); setLoading(false); }
+  };
+
   if (sent) return (
     <div style={{ padding: 32, textAlign: "center" }}>
       <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
@@ -373,6 +384,14 @@ function AuthScreen({ onAuth }) {
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
           </svg>
           {loading ? "…" : "Continue with Google"}
+        </button>
+        {/* Apple */}
+        <button onClick={handleApple} disabled={loading}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#000", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600, cursor: "pointer", color: "#fff" }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" style={{ flexShrink: 0 }} fill="white">
+            <path d="M12.025 0c.07.93-.27 1.86-.8 2.56-.54.7-1.4 1.26-2.28 1.19-.1-.9.28-1.84.8-2.48C10.28.57 11.2.06 12.025 0zm2.96 6.39c-.16.1-2.3 1.32-2.28 3.93.03 3.12 2.73 4.17 2.76 4.18-.02.09-.43 1.47-1.42 2.88-.86 1.23-1.76 2.45-3.14 2.47-1.35.03-1.79-.8-3.33-.8-1.55 0-2.04.78-3.32.83-1.34.04-2.36-1.3-3.23-2.52C-.9 14.78-.06 10.15 2.87 7.7c1.45-1.2 3.01-1.26 3.01-1.26s.28.01.28.01c1.26.05 2.37.76 3.04.76.66 0 1.9-.79 3.32-.67.57.02 2.16.23 3.18 1.73l.31.12z"/>
+          </svg>
+          {loading ? "…" : "Continue with Apple"}
         </button>
         {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
