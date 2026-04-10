@@ -8383,62 +8383,385 @@ function HarvestSummaryCard({ crop }) {
   );
 }
 
+
+// ── Profile Screen ────────────────────────────────────────────────────────────
+// Redesigned: identity header, harvest summary prominent, notifications as
+// chevron row, account section at bottom, Pro card gated behind PRO_ENABLED.
+
+// ── Simple Toast ─────────────────────────────────────────────────────────────
+function useProfileToast() {
+  const [toast, setToast] = useState(null);
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+  return { toast, showToast };
+}
+
+function ProfileToast({ toast }) {
+  if (!toast) return null;
+  return (
+    <div style={{
+      position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)",
+      zIndex: 2000, background: toast.type === "error" ? "#dc2626" : C.forest,
+      color: "#fff", borderRadius: 12, padding: "10px 20px",
+      fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+      whiteSpace: "nowrap", pointerEvents: "none",
+    }}>
+      {toast.type === "success" ? "✓ " : "⚠ "}{toast.msg}
+    </div>
+  );
+}
+
+// ── Edit Profile Modal ────────────────────────────────────────────────────────
+function EditProfileModal({ current, onSave, onClose }) {
+  const [name,     setName]     = useState(current.name || "");
+  const [postcode, setPostcode] = useState(current.postcode || "");
+  const [errors,   setErrors]   = useState({});
+  const [saving,   setSaving]   = useState(false);
+  const nameRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => nameRef.current?.focus(), 100); }, []);
+
+  const ukPostcodePattern = /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i;
+
+  const validate = () => {
+    const e = {};
+    if (!name.trim())             e.name     = "Name is required";
+    if (name.trim().length > 50)  e.name     = "Name must be 50 characters or less";
+    const pc = postcode.trim().toUpperCase().replace(/\s/g, "");
+    if (!pc)                      e.postcode = "Postcode is required";
+    else if (!ukPostcodePattern.test(pc)) e.postcode = "Enter the first part only — e.g. TS22";
+    return e;
+  };
+
+  const handleSave = () => {
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); return; }
+    setSaving(true);
+    onSave({
+      name:     name.trim(),
+      postcode: postcode.trim().toUpperCase().replace(/\s/g, ""),
+    });
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{
+        background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px",
+        width: "100%", maxWidth: 480, boxSizing: "border-box",
+      }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 20 }}>
+          Edit Profile
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Your name</label>
+            <input
+              ref={nameRef}
+              value={name}
+              onChange={e => { setName(e.target.value); setErrors(r => ({ ...r, name: null })); }}
+              style={{ ...inputStyle, borderColor: errors.name ? "#dc2626" : undefined }}
+              placeholder="e.g. Mark"
+              maxLength={50}
+            />
+            {errors.name && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
+          </div>
+          <div>
+            <label style={labelStyle}>Postcode (first part only)</label>
+            <input
+              value={postcode}
+              onChange={e => { setPostcode(e.target.value.toUpperCase()); setErrors(r => ({ ...r, postcode: null })); }}
+              style={{ ...inputStyle, borderColor: errors.postcode ? "#dc2626" : undefined }}
+              placeholder="e.g. TS22"
+            />
+            {errors.postcode
+              ? <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.postcode}</div>
+              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>e.g. <strong>TS22</strong>, not TS22 5BQ</div>
+            }
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              background: C.forest, color: "#fff", border: "none", borderRadius: 12,
+              padding: "14px", fontWeight: 700, fontSize: 15,
+              cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1, marginTop: 4,
+            }}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={onClose}
+            style={{
+              background: "none", border: `1px solid ${C.border}`, borderRadius: 12,
+              padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone,
+            }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Change Password Modal ─────────────────────────────────────────────────────
+function ChangePasswordModal({ onClose, onSaved }) {
+  const [next,    setNext]    = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error,   setError]   = useState(null);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const firstRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => firstRef.current?.focus(), 100); }, []);
+
+  const handleSave = async () => {
+    setError(null);
+    if (!next.trim())     { setError("Password is required"); return; }
+    if (next.length < 8)  { setError("Password must be at least 8 characters"); return; }
+    if (next !== confirm)  { setError("Passwords don't match"); return; }
+    setSaving(true);
+    try {
+      const { error: e } = await supabase.auth.updateUser({ password: next });
+      if (e) throw new Error(e.message);
+      setSaved(true);
+      setNext(""); setConfirm("");
+      setTimeout(() => { onSaved(); }, 1200);
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+    }} onClick={e => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+      <div style={{
+        background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px",
+        width: "100%", maxWidth: 480, boxSizing: "border-box",
+      }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 20 }}>
+          Change Password
+        </div>
+
+        {saved ? (
+          <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "16px", textAlign: "center" }}>
+            <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
+            <div style={{ fontWeight: 700, color: "#2d7a28", fontSize: 14 }}>Password updated</div>
+          </div>
+        ) : (
+          <>
+            {error && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#dc2626", fontSize: 13 }}>
+                {error}
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle}>New password</label>
+                <input ref={firstRef} type="password" value={next}
+                  onChange={e => setNext(e.target.value)}
+                  style={inputStyle} placeholder="At least 8 characters" />
+              </div>
+              <div>
+                <label style={labelStyle}>Confirm new password</label>
+                <input type="password" value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  style={inputStyle} placeholder="Repeat new password" />
+              </div>
+              <button onClick={handleSave} disabled={saving}
+                style={{
+                  background: C.forest, color: "#fff", border: "none", borderRadius: 12,
+                  padding: "14px", fontWeight: 700, fontSize: 15,
+                  cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1,
+                }}>
+                {saving ? "Updating…" : "Update Password"}
+              </button>
+              <button onClick={onClose} disabled={saving}
+                style={{
+                  background: "none", border: `1px solid ${C.border}`, borderRadius: 12,
+                  padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone,
+                }}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Notifications Screen ──────────────────────────────────────────────────────
+function NotificationsScreen({ onBack }) {
+  const [prefs,      setPrefs]      = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [showPrompt, setShowPrompt] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/notifications/preferences")
+      .then(p => { setPrefs(p); setLoading(false); })
+      .catch(() => setLoading(false));
+    if ("Notification" in window && Notification.permission === "default") {
+      setShowPrompt(true);
+    }
+  }, []);
+
+  const save = async (updates) => {
+    const newPrefs = { ...prefs, ...updates };
+    setPrefs(newPrefs);
+    try {
+      await apiFetch("/notifications/preferences", { method: "PUT", body: JSON.stringify(updates) });
+    } catch(e) { console.error(e); }
+  };
+
+  const toggle = (key) => save({ [key]: !prefs[key] });
+
+  const ToggleRow = ({ label, desc, value, onToggle, last = false }) => (
+    <div style={{
+      padding: "14px 16px",
+      borderBottom: last ? "none" : `1px solid ${C.border}`,
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+    }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{label}</div>
+        {desc && <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{desc}</div>}
+      </div>
+      <div onClick={onToggle}
+        style={{
+          width: 44, height: 26, borderRadius: 13, flexShrink: 0, cursor: "pointer",
+          background: value ? C.forest : "#ccc", position: "relative", transition: "background 0.2s",
+        }}>
+        <div style={{
+          position: "absolute", top: 3, left: value ? 21 : 3,
+          width: 20, height: 20, borderRadius: "50%", background: "#fff",
+          transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+        }} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f8f8f5" }}>
+      <div style={{
+        background: "#fff", borderBottom: `1px solid ${C.border}`,
+        padding: "16px 20px", display: "flex", alignItems: "center", gap: 14,
+        position: "sticky", top: 0, zIndex: 10,
+      }}>
+        <button onClick={onBack}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: C.forest, padding: 0, lineHeight: 1 }}>
+          ←
+        </button>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Notifications</div>
+      </div>
+
+      <div style={{ padding: "20px 16px 48px" }}>
+        {loading ? <Spinner /> : !prefs ? (
+          <div style={{ fontSize: 14, color: C.stone, textAlign: "center", padding: 32 }}>Couldn't load preferences</div>
+        ) : (
+          <>
+            {showPrompt && !prefs.push_enabled && (
+              <NotificationPermissionCard
+                onEnabled={() => { setShowPrompt(false); save({ push_enabled: true }); }}
+                onDismiss={() => setShowPrompt(false)}
+              />
+            )}
+
+            <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+              <ToggleRow
+                label="Push notifications"
+                desc={prefs.push_enabled ? "Enabled — manage below" : "Enable to get garden reminders"}
+                value={prefs.push_enabled}
+                onToggle={() => {
+                  if (!prefs.push_enabled && "Notification" in window) { setShowPrompt(true); }
+                  else { toggle("push_enabled"); }
+                }}
+                last
+              />
+            </div>
+
+            {prefs.push_enabled && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Tasks</div>
+                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <ToggleRow label="Garden tasks due today" desc="Feeding, sowing, harvesting and care tasks" value={prefs.due_today_enabled} onToggle={() => toggle("due_today_enabled")} />
+                  <ToggleRow label="Coming up soon" desc="Reminders a few days before key tasks" value={prefs.coming_up_enabled} onToggle={() => toggle("coming_up_enabled")} last />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Alerts</div>
+                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <ToggleRow label="Frost and weather alerts" desc="Time-sensitive alerts for frost and heat" value={prefs.weather_alerts_enabled} onToggle={() => toggle("weather_alerts_enabled")} />
+                  <ToggleRow label="Pest and disease watch" desc="When conditions increase pest risk" value={prefs.pest_alerts_enabled} onToggle={() => toggle("pest_alerts_enabled")} last />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Insights</div>
+                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <ToggleRow label="Quick crop checks" desc="Flowering, fruit set and condition prompts" value={prefs.crop_checks_enabled} onToggle={() => toggle("crop_checks_enabled")} />
+                  <ToggleRow label="Weekly garden summary" desc="Sunday evening roundup of the week ahead" value={prefs.weekly_summary_enabled} onToggle={() => toggle("weekly_summary_enabled")} last />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Achievements</div>
+                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <ToggleRow label="Milestones and badges" desc="Harvest milestones and badge unlocks" value={prefs.milestones_enabled} onToggle={() => toggle("milestones_enabled")} last />
+                </div>
+
+                <div style={{ fontSize: 12, color: C.stone, textAlign: "center" }}>
+                  Reminders sent at <strong>7am</strong> and <strong>6pm</strong>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main ProfileScreen ────────────────────────────────────────────────────────
 function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayOpened }) {
   const PROFILE_CACHE = "vercro_profile_v1";
-  const _cachedProfile = (() => { try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {} return null; })();
-  const [form,       setForm]      = useState(_cachedProfile || { name: "", postcode: "" });
-  const [pwForm,     setPwForm]    = useState({ current: "", next: "", confirm: "" });
-  const [loading,    setLoading]   = useState(!_cachedProfile);
-  const [saving,     setSaving]    = useState(false);
-  const [pwSaving,   setPwSaving]  = useState(false);
-  const [saved,      setSaved]     = useState(false);
-  const [pwSaved,    setPwSaved]   = useState(false);
-  const [error,      setError]     = useState(null);
-  const [pwError,    setPwError]   = useState(null);
-  const [harvests,   setHarvests]  = useState([]);
-  const [logYear,    setLogYear]   = useState(new Date().getFullYear());
-  const [logOpen,    setLogOpen]   = useState(false);
-  const [logLoading, setLogLoading] = useState(false);
-  const [allHarvests, setAllHarvests] = useState([]);
+  const _cachedProfile = (() => {
+    try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {}
+    return null;
+  })();
 
-  // Email preferences state
-  const [marketingEmails,     setMarketingEmails]     = useState(true);
-  const [emailPrefLoading,    setEmailPrefLoading]    = useState(false);
-  const [emailPrefSaved,      setEmailPrefSaved]      = useState(false);
+  const [profile,         setProfile]         = useState(_cachedProfile || { name: "", postcode: "", photo_url: null });
+  const [loading,         setLoading]         = useState(!_cachedProfile);
+  const [showEditModal,   setShowEditModal]   = useState(false);
+  const [showPwModal,     setShowPwModal]     = useState(false);
+  const [showNotifScreen, setShowNotifScreen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep,      setDeleteStep]      = useState(1);
+  const [deleting,        setDeleting]        = useState(false);
+  const [deleteError,     setDeleteError]     = useState(null);
 
-  // Measurement unit preference
-  const [measurementUnit, setMeasurementUnit] = useState(() => {
+  const [allHarvests,  setAllHarvests]  = useState([]);
+  const [logOpen,      setLogOpen]      = useState(false);
+  const [logYear,      setLogYear]      = useState(new Date().getFullYear());
+  const [logHarvests,  setLogHarvests]  = useState([]);
+  const [logLoading,   setLogLoading]   = useState(false);
+
+  const [marketingEmails,  setMarketingEmails]  = useState(true);
+  const [emailPrefLoading, setEmailPrefLoading] = useState(false);
+  const [measurementUnit,  setMeasurementUnit]  = useState(() => {
     try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
   });
 
-  // Delete account state
-  const [showDeleteModal,     setShowDeleteModal]     = useState(false);
-  const [deleteConfirmStep,   setDeleteConfirmStep]   = useState(1); // 1 = first modal, 2 = final confirm
-  const [deleting,            setDeleting]            = useState(false);
-  const [deleteError,         setDeleteError]         = useState(null);
-
-  const loadHarvests = async (year) => {
-    setLogLoading(true);
-    try {
-      const data = await apiFetch("/harvest-log/summary?year=" + year);
-      setHarvests(data);
-    } catch (e) { console.error(e); }
-    setLogLoading(false);
-  };
-
-  const loadAllHarvests = async () => {
-    try {
-      const data = await apiFetch("/harvest-log/summary?year=" + new Date().getFullYear());
-      setAllHarvests(data);
-    } catch (e) { console.error(e); }
-  };
+  const { toast, showToast } = useProfileToast();
 
   useEffect(() => {
     apiFetch("/auth/profile")
       .then(p => {
         const f = { name: p.name || "", postcode: p.postcode || "", photo_url: p.photo_url || null };
-        setForm(f);
-        // email_unsubscribed is the inverse of marketing_emails_enabled
+        setProfile(f);
         setMarketingEmails(!p.email_unsubscribed);
         if (p.measurement_unit) {
           setMeasurementUnit(p.measurement_unit);
@@ -8448,75 +8771,61 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         setLoading(false);
       })
       .catch(() => setLoading(false));
-    loadAllHarvests();
+
+    apiFetch("/harvest-log/summary?year=" + new Date().getFullYear())
+      .then(data => setAllHarvests(data || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (logOpen) loadHarvests(logYear);
+    if (!logOpen) return;
+    setLogLoading(true);
+    apiFetch("/harvest-log/summary?year=" + logYear)
+      .then(data => setLogHarvests(data || []))
+      .catch(() => {})
+      .finally(() => setLogLoading(false));
   }, [logOpen, logYear]);
 
-  const saveProfile = async () => {
-    if (!form.name.trim() || !form.postcode.trim()) return;
-    setSaving(true); setError(null);
+  // Optimistic profile save with rollback
+  const handleProfileSave = async (newValues) => {
+    const previous = { ...profile };
+    setProfile(p => ({ ...p, ...newValues }));
+    setShowEditModal(false);
     try {
-      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify(form) });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) { setError(e.message); }
-    setSaving(false);
-  };
-
-  const changePassword = async () => {
-    setPwError(null);
-    if (!pwForm.next.trim()) return;
-    if (pwForm.next !== pwForm.confirm) { setPwError("Passwords don't match"); return; }
-    if (pwForm.next.length < 8) { setPwError("Password must be at least 8 characters"); return; }
-    setPwSaving(true);
+      localStorage.setItem(PROFILE_CACHE, JSON.stringify({ form: { ...profile, ...newValues }, ts: Date.now() }));
+    } catch(e) {}
     try {
-      const { error } = await supabase.auth.updateUser({ password: pwForm.next });
-      if (error) throw new Error(error.message);
-      setPwSaved(true);
-      setPwForm({ current: "", next: "", confirm: "" });
-      setTimeout(() => setPwSaved(false), 3000);
-    } catch (e) { setPwError(e.message); }
-    setPwSaving(false);
+      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ ...profile, ...newValues }) });
+      showToast("Profile updated");
+    } catch (e) {
+      setProfile(previous);
+      showToast("Couldn't update profile — try again", "error");
+    }
   };
 
   const saveMeasurementUnit = async (unit) => {
     setMeasurementUnit(unit);
     try { localStorage.setItem("vercro_measurement_unit", unit); } catch(e) {}
     try {
-      const profile = await apiFetch("/auth/profile");
-      await apiFetch("/auth/profile", {
-        method: "POST",
-        body: JSON.stringify({ name: profile.name, postcode: profile.postcode, measurement_unit: unit }),
-      });
+      const p = await apiFetch("/auth/profile");
+      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: unit }) });
     } catch(e) { console.error("Failed to save measurement unit:", e.message); }
   };
 
   const saveEmailPreference = async (enabled) => {
     setEmailPrefLoading(true);
+    const prev = marketingEmails;
     setMarketingEmails(enabled);
     try {
-      await apiFetch("/auth/email-preferences", {
-        method: "POST",
-        body: JSON.stringify({ marketing_emails_enabled: enabled }),
-      });
-      setEmailPrefSaved(true);
-      setTimeout(() => setEmailPrefSaved(false), 2500);
-    } catch (e) {
-      // Revert optimistic update on failure
-      setMarketingEmails(!enabled);
-    }
+      await apiFetch("/auth/email-preferences", { method: "POST", body: JSON.stringify({ marketing_emails_enabled: enabled }) });
+    } catch(e) { setMarketingEmails(prev); }
     setEmailPrefLoading(false);
   };
 
   const handleDeleteAccount = async () => {
-    setDeleting(true);
-    setDeleteError(null);
+    setDeleting(true); setDeleteError(null);
     try {
       await apiFetch("/auth/account", { method: "DELETE" });
-      // Sign out locally — auth record is gone server-side
       await supabase.auth.signOut();
     } catch (e) {
       setDeleteError(e.message || "Something went wrong. Please try again.");
@@ -8524,148 +8833,157 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
     }
   };
 
+  // Harvest summary stats
+  const harvestStats = (() => {
+    if (!allHarvests.length) return null;
+    const total   = allHarvests.reduce((s, c) => s + c.harvest_count, 0);
+    const entries = allHarvests.flatMap(c => c.entries || []);
+    const yields  = entries.map(e => e.yield_score).filter(Boolean);
+    const quals   = entries.map(e => e.quality).filter(Boolean);
+    const avgYield = yields.length ? Math.round(yields.reduce((a,b) => a+b,0) / yields.length * 10) / 10 : null;
+    const avgQual  = quals.length  ? Math.round(quals.reduce((a,b) => a+b,0)  / quals.length * 10)  / 10 : null;
+    const best     = [...allHarvests].sort((a,b) => (b.avg_yield_score || 0) - (a.avg_yield_score || 0))[0];
+    return { total, avgYield, avgQual, best };
+  })();
+
+  const scoreColor = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;
+
   if (loading) return <Spinner />;
+  if (showNotifScreen) return <NotificationsScreen onBack={() => setShowNotifScreen(false)} />;
+
+  // Shared styles
+  const sectionLabel = {
+    fontSize: 11, fontWeight: 700, color: C.stone,
+    letterSpacing: 1, textTransform: "uppercase",
+    marginBottom: 10, marginTop: 24, paddingLeft: 2,
+  };
+  const chevronRow = (icon, label, sub, onClick) => (
+    <button onClick={onClick}
+      style={{
+        width: "100%", background: "#fff", border: "none", borderRadius: 14,
+        padding: "14px 16px", display: "flex", justifyContent: "space-between",
+        alignItems: "center", cursor: "pointer", marginBottom: 2,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+      }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{icon}</span>
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{label}</div>
+          {sub && <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{sub}</div>}
+        </div>
+      </div>
+      <span style={{ color: C.stone, fontSize: 16, marginLeft: 8 }}>›</span>
+    </button>
+  );
 
   return (
-    <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 24, color: "#1a1a1a" }}>Profile</div>
+    <div style={{ paddingBottom: 32 }}>
 
-      {/* Profile photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-        <PhotoCircle photoUrl={form.photo_url} size={80} endpoint="/photos/profile"
-          onUploaded={url => setForm(f => ({ ...f, photo_url: url }))} placeholder="👤" />
-      </div>
-
-      {/* Account info */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>Signed in as</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{session?.user?.email}</div>
-      </div>
-
-      {/* Edit name + postcode */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16, marginTop: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 16 }}>Your Details</div>
-        {saved  && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Saved</div>}
-        {error  && <ErrorMsg msg={error} />}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Your name</label>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} placeholder="e.g. Mark" />
+      {/* ── 1. IDENTITY HEADER ── */}
+      <div
+        onClick={() => setShowEditModal(true)}
+        style={{
+          background: "#fff", borderRadius: 16, padding: "20px 16px",
+          marginBottom: 20, cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 16,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+        }}>
+        <div onClick={e => e.stopPropagation()}>
+          <PhotoCircle
+            photoUrl={profile.photo_url} size={72} endpoint="/photos/profile"
+            onUploaded={url => setProfile(p => ({ ...p, photo_url: url }))}
+            placeholder="👤"
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 19, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", lineHeight: 1.2 }}>
+            {profile.name || "Your name"}
           </div>
-          <div>
-            <label style={labelStyle}>Postcode</label>
-            <input value={form.postcode} onChange={e => setForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Enter the first part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
-          </div>
-          <button onClick={saveProfile} disabled={saving} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
+          {profile.postcode && (
+            <div style={{ fontSize: 13, color: C.stone, marginTop: 3 }}>{profile.postcode}</div>
+          )}
+        </div>
+        <div style={{
+          fontSize: 13, color: C.forest, fontWeight: 600,
+          background: "#f0f7f4", borderRadius: 8, padding: "6px 12px", flexShrink: 0,
+        }}>
+          Edit
         </div>
       </div>
 
-      {/* Change password */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 16 }}>Change Password</div>
-        {pwSaved  && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Password updated</div>}
-        {pwError  && <ErrorMsg msg={pwError} />}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={labelStyle}>New password</label>
-            <input type="password" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} style={inputStyle} placeholder="At least 8 characters" />
+      {/* ── 2. PRO CARD — gated, invisible to all except mark/test user ── */}
+      {PRO_ENABLED && <ProSubscriptionSection />}
+
+      {/* ── 3. HARVEST SUMMARY — hero card ── */}
+      {harvestStats && (
+        <div style={{
+          background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`,
+          borderRadius: 16, padding: "20px", marginBottom: 20,
+          color: "#fff", position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: "50%", background: C.accent, opacity: 0.1 }} />
+          <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+            {new Date().getFullYear()} Season
           </div>
-          <div>
-            <label style={labelStyle}>Confirm new password</label>
-            <input type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} style={inputStyle} placeholder="Repeat new password" />
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", marginBottom: 16 }}>Your Harvest Summary</div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {[
+              { val: harvestStats.total, label: "Harvests", color: "#fff" },
+              { val: harvestStats.avgYield || "—", label: "Avg Yield", color: harvestStats.avgYield ? scoreColor(harvestStats.avgYield) : "#fff" },
+              { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreColor(harvestStats.avgQual)  : "#fff" },
+            ].map(({ val, label, color }) => (
+              <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color }}>{val}</div>
+                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{label}</div>
+              </div>
+            ))}
           </div>
-          <button onClick={changePassword} disabled={pwSaving} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: pwSaving ? 0.6 : 1 }}>
-            {pwSaving ? "Updating…" : "Update Password"}
-          </button>
-        </div>
-      </div>
 
-      {/* Yield Summary */}
-      {allHarvests.length > 0 && (() => {
-        const year = new Date().getFullYear();
-        // allHarvests is now the grouped summary format
-        const totalHarvests = allHarvests.reduce((sum, crop) => sum + crop.harvest_count, 0);
-        const best = [...allHarvests].sort((a, b) => (b.avg_yield_score || 0) - (a.avg_yield_score || 0))[0];
-
-        // Overall averages across all entries
-        const allEntries = allHarvests.flatMap(c => c.entries);
-        const allYields    = allEntries.map(e => e.yield_score).filter(Boolean);
-        const allQualities = allEntries.map(e => e.quality).filter(Boolean);
-        const avgYield   = allYields.length    ? Math.round(allYields.reduce((a,b) => a+b,0)    / allYields.length * 10) / 10    : null;
-        const avgQuality = allQualities.length ? Math.round(allQualities.reduce((a,b) => a+b,0) / allQualities.length * 10) / 10 : null;
-
-        const scoreColor = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;
-
-        return (
-          <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, borderRadius: 14, padding: "20px", marginBottom: 16, color: "#fff", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: "50%", background: C.accent, opacity: 0.1 }} />
-            <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{year} Season</div>
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", marginBottom: 16 }}>Your Harvest Summary</div>
-
-            {/* Stats row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
-              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{totalHarvests}</div>
-                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Harvests</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color: avgYield ? scoreColor(avgYield) : "#fff" }}>{avgYield || "—"}</div>
-                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Avg Yield</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color: avgQuality ? scoreColor(avgQuality) : "#fff" }}>{avgQuality || "—"}</div>
-                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>Avg Quality</div>
-              </div>
-            </div>
-
-            {/* Best crop */}
-            {best && (
-              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontSize: 28 }}>{getCropEmoji(best.crop_name)}</div>
-                <div>
-                  <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{best.crop_name}</div>
-                  <div style={{ fontSize: 11, opacity: 0.75 }}>
-                    Yield {best.avg_yield_score || "—"} · Quality {best.avg_quality_score || "—"} out of 10
-                  </div>
+          {harvestStats.best && (
+            <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 28 }}>{getCropEmoji(harvestStats.best.crop_name)}</div>
+              <div>
+                <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
+                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{harvestStats.best.crop_name}</div>
+                <div style={{ fontSize: 11, opacity: 0.75 }}>
+                  Yield {harvestStats.best.avg_yield_score || "—"} · Quality {harvestStats.best.avg_quality_score || "—"} out of 10
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Quality vs Yield bars */}
-            {(avgYield || avgQuality) && (
-              <div style={{ marginTop: 14 }}>
-                {[{ label: "Yield", val: avgYield }, { label: "Quality", val: avgQuality }].filter(r => r.val).map(r => (
-                  <div key={r.label} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: 11, opacity: 0.75 }}>{r.label}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700 }}>{r.val}/10</span>
-                    </div>
-                    <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: 99 }}>
-                      <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: 99, transition: "width 0.6s ease" }} />
-                    </div>
+          {(harvestStats.avgYield || harvestStats.avgQual) && (
+            <div>
+              {[{ label: "Yield", val: harvestStats.avgYield }, { label: "Quality", val: harvestStats.avgQual }].filter(r => r.val).map(r => (
+                <div key={r.label} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, opacity: 0.75 }}>{r.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700 }}>{r.val}/10</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
+                  <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: 99 }}>
+                    <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: 99, transition: "width 0.6s ease" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Harvest Log */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
+      {/* ── 4. HARVEST LOG ── */}
+      <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         <button onClick={() => setLogOpen(o => !o)}
           style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>🌾 My Harvest Log</div>
-          <span style={{ color: C.stone, fontSize: 18 }}>{logOpen ? "▲" : "▼"}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>🌾</span>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>My Harvest Log</div>
+          </div>
+          <span style={{ color: C.stone, fontSize: 16 }}>{logOpen ? "▲" : "▼"}</span>
         </button>
         {logOpen && (
-          <div style={{ padding: "0 16px 16px" }}>
-            {/* Year selector */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, paddingTop: 14 }}>
               {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => (
                 <button key={y} onClick={() => setLogYear(y)}
                   style={{ padding: "6px 16px", borderRadius: 20, border: `1px solid ${logYear === y ? C.forest : C.border}`, background: logYear === y ? C.forest : "none", color: logYear === y ? "#fff" : C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
@@ -8673,10 +8991,10 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                 </button>
               ))}
             </div>
-            {logLoading ? <Spinner /> : harvests.length === 0 ? (
+            {logLoading ? <Spinner /> : logHarvests.length === 0 ? (
               <div style={{ fontSize: 13, color: C.stone, textAlign: "center", padding: "16px 0" }}>No harvests logged for {logYear}</div>
             ) : (
-              harvests.map((crop, ci) => (
+              logHarvests.map((crop, ci) => (
                 <HarvestSummaryCard key={crop.crop_instance_id || crop.crop_name + ci} crop={crop} />
               ))
             )}
@@ -8684,41 +9002,31 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         )}
       </div>
 
-      {/* Challenges & Badges link */}
-      <button onClick={() => onTabChange("badges")}
-        style={{ width:"100%", background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer", marginBottom:12 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ fontSize:20 }}>🏆</span>
-          <div style={{ textAlign:"left" }}>
-            <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a" }}>Challenges & Badges</div>
-            <div style={{ fontSize:12, color:C.stone, marginTop:1 }}>Track progress and unlock garden rewards</div>
-          </div>
-        </div>
-        <span style={{ color:C.stone, fontSize:16 }}>›</span>
-      </button>
+      {/* ── 5. GARDEN SECTION ── */}
+      <div style={sectionLabel}>Garden</div>
+      <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        {chevronRow("🏆", "Challenges & Badges", "Track progress and unlock garden rewards", () => onTabChange("badges"))}
+      </div>
 
-      {/* Notification Settings */}
-      <NotificationSettingsSection />
+      {/* ── 6. NOTIFICATIONS ROW ── */}
+      <div style={sectionLabel}>Notifications</div>
+      <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        {chevronRow("🔔", "Notifications", "Daily tasks, weather alerts and reminders", () => setShowNotifScreen(true))}
+      </div>
 
-      {/* Time Away */}
+      {/* ── 7. TIME AWAY ── */}
       <TimeAwaySection openOnMount={openTimeAway} onOpened={onTimeAwayOpened} />
 
-      {/* FAQ Section */}
-      <FAQSection />
+      {/* ── 8. PREFERENCES ── */}
+      <div style={sectionLabel}>Measurements & Communications</div>
+      <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
 
-      {/* Pro subscription section — only visible when PRO_ENABLED=true */}
-      {PRO_ENABLED && <ProSubscriptionSection />}
-
-      {/* Measurement unit preference */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
-        <div style={{ padding: "14px 16px" }}>
+        {/* Measurements */}
+        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Measurements</div>
           <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>How dimensions are shown for beds and areas</div>
           <div style={{ display: "flex", gap: 8 }}>
-            {[
-              { value: "metric",   label: "Metres" },
-              { value: "imperial", label: "Feet & inches" },
-            ].map(opt => (
+            {[{ value: "metric", label: "Metres" }, { value: "imperial", label: "Feet & inches" }].map(opt => (
               <button key={opt.value} onClick={() => saveMeasurementUnit(opt.value)}
                 style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {opt.label}
@@ -8726,105 +9034,122 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Email preferences */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+        {/* Email preferences */}
         <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Email preferences</div>
-            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Manage product updates and marketing emails</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Marketing emails</div>
+            <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Product updates and growing tips</div>
           </div>
-          {/* Toggle */}
           <button
             onClick={() => !emailPrefLoading && saveEmailPreference(!marketingEmails)}
-            style={{
-              width: 44, height: 26, borderRadius: 13, border: "none", cursor: emailPrefLoading ? "default" : "pointer",
-              background: marketingEmails ? C.forest : "#ccc",
-              position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1,
-            }}>
-            <span style={{
-              position: "absolute", top: 3, left: marketingEmails ? 21 : 3,
-              width: 20, height: 20, borderRadius: "50%", background: "#fff",
-              transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-            }} />
+            style={{ width: 44, height: 26, borderRadius: 13, border: "none", cursor: emailPrefLoading ? "default" : "pointer", background: marketingEmails ? C.forest : "#ccc", position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1 }}>
+            <span style={{ position: "absolute", top: 3, left: marketingEmails ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
           </button>
         </div>
-        {emailPrefSaved && (
-          <div style={{ padding: "8px 16px", background: "#edf7ec", borderTop: `1px solid ${C.leaf}`, fontSize: 12, color: "#2d7a28", fontWeight: 600 }}>
-            ✓ {marketingEmails ? "You're subscribed to product updates" : "You've been unsubscribed from marketing emails"}
-          </div>
-        )}
       </div>
 
-      {/* Sign out */}
-      <button
-        onClick={() => supabase.auth.signOut()}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8 }}>
+      {/* ── 9. ACCOUNT ── */}
+      <div style={sectionLabel}>Account</div>
+      <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>Signed in as</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{session?.user?.email}</div>
+        </div>
+        <button onClick={() => setShowPwModal(true)}
+          style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Change Password</div>
+          <span style={{ color: C.stone, fontSize: 16 }}>›</span>
+        </button>
+      </div>
+
+      {/* ── 10. HELP & FAQ ── */}
+      <FAQSection />
+
+      {/* ── 11. SIGN OUT ── */}
+      <button onClick={() => supabase.auth.signOut()}
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8, marginTop: 8 }}>
         Sign Out
       </button>
 
-      {/* Delete account */}
-      <button
-        onClick={() => { setShowDeleteModal(true); setDeleteConfirmStep(1); setDeleteError(null); }}
-        style={{ width: "100%", background: "none", border: `1px solid #fca5a5`, borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#dc2626", marginBottom: 24 }}>
-        Delete account
-      </button>
+      {/* ── 12. DANGER ZONE — delete ── */}
+      <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid #fca5a5` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10, paddingLeft: 2 }}>
+          Danger Zone
+        </div>
+        <button
+          onClick={() => { setShowDeleteModal(true); setDeleteStep(1); setDeleteError(null); }}
+          style={{ width: "100%", background: "none", border: "1px solid #fca5a5", borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#dc2626" }}>
+          Delete account
+        </button>
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+          Permanently removes your account and all personal data.
+        </div>
+      </div>
 
-      <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 32 }}>Vercro — version 1.0</div>
+      {/* ── VERSION ── */}
+      <div style={{ fontSize: 10, color: "#ccc", textAlign: "center", marginTop: 24 }}>v1.0</div>
 
-      {/* ── Delete account modal ─────────────────────────────────────────── */}
+      {/* ── MODALS ── */}
+
+      {showEditModal && (
+        <EditProfileModal
+          current={profile}
+          onSave={handleProfileSave}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {showPwModal && (
+        <ChangePasswordModal
+          onClose={() => setShowPwModal(false)}
+          onSaved={() => { setShowPwModal(false); showToast("Password updated"); }}
+        />
+      )}
+
       {showDeleteModal && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
-          display: "flex", alignItems: "flex-end", justifyContent: "center",
-        }}
-          onClick={e => { if (e.target === e.currentTarget && !deleting) { setShowDeleteModal(false); setDeleteConfirmStep(1); } }}>
-          <div style={{
-            background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 40px",
-            width: "100%", maxWidth: 480, boxSizing: "border-box",
-          }}>
-            {deleteConfirmStep === 1 ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget && !deleting) { setShowDeleteModal(false); setDeleteStep(1); } }}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            {deleteStep === 1 ? (
               <>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 12 }}>
-                  Delete account?
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 12 }}>Delete your account?</div>
+                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 6 }}>
+                  This will permanently remove:
                 </div>
-                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 24 }}>
-                  This will permanently delete your Vercro account and personal profile data. We may retain anonymised gardening activity data to help improve Vercro.
+                <div style={{ fontSize: 13, color: "#444", lineHeight: 1.8, marginBottom: 20, paddingLeft: 4 }}>
+                  · Your profile and personal details{"\n"}
+                  · All your crops and garden data{"\n"}
+                  · Your harvest history and task records
                 </div>
-                <button
-                  onClick={() => setDeleteConfirmStep(2)}
+                <div style={{ fontSize: 13, color: C.stone, marginBottom: 24, lineHeight: 1.5 }}>
+                  We may retain anonymised activity data to help improve Vercro. This action cannot be undone.
+                </div>
+                <button onClick={() => setDeleteStep(2)}
                   style={{ width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
                   Continue
                 </button>
-                <button
-                  onClick={() => setShowDeleteModal(false)}
+                <button onClick={() => setShowDeleteModal(false)}
                   style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
                   Cancel
                 </button>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#dc2626", marginBottom: 12 }}>
-                  Are you sure?
-                </div>
-                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 8 }}>
-                  This cannot be undone. Your account, profile, and all personal data will be permanently removed.
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#dc2626", marginBottom: 12 }}>Are you absolutely sure?</div>
+                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 20 }}>
+                  Your account will be permanently deleted and you will be signed out immediately. There is no way to recover your data after this point.
                 </div>
                 {deleteError && (
                   <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#dc2626", fontSize: 13 }}>
                     {deleteError}
                   </div>
                 )}
-                <button
-                  onClick={handleDeleteAccount}
-                  disabled={deleting}
+                <button onClick={handleDeleteAccount} disabled={deleting}
                   style={{ width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: deleting ? "default" : "pointer", opacity: deleting ? 0.6 : 1, marginBottom: 10 }}>
-                  {deleting ? "Deleting…" : "Yes, delete my account"}
+                  {deleting ? "Deleting…" : "Yes, permanently delete my account"}
                 </button>
-                <button
-                  onClick={() => { setDeleteConfirmStep(1); setDeleteError(null); }}
-                  disabled={deleting}
+                <button onClick={() => { setDeleteStep(1); setDeleteError(null); }} disabled={deleting}
                   style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
                   Go back
                 </button>
@@ -8833,6 +9158,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           </div>
         </div>
       )}
+
+      <ProfileToast toast={toast} />
     </div>
   );
 }
@@ -8841,6 +9168,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 // ── Pro Subscription Section ─────────────────────────────────────────────────
 // Shows in Profile when PRO_ENABLED=true.
 // Free users see upgrade prompt. Pro users see their plan status + manage link.
+// Invisible to all users until PRO_ENABLED=true (only mark + test user see it).
 
 function ProSubscriptionSection() {
   const { isPro, plan, loading, isTestUser } = useProStatus();
@@ -8857,9 +9185,7 @@ function ProSubscriptionSection() {
         body: JSON.stringify({ price_type: priceType }),
       });
       if (data?.url) window.location.href = data.url;
-    } catch (e) {
-      console.error("Checkout error:", e);
-    }
+    } catch (e) { console.error("Checkout error:", e); }
     setCheckoutLoading(false);
   };
 
@@ -8868,73 +9194,69 @@ function ProSubscriptionSection() {
     try {
       const data = await apiFetch("/subscription/manage");
       if (data?.url) window.location.href = data.url;
-    } catch (e) {
-      console.error("Manage error:", e);
-    }
+    } catch (e) { console.error("Manage error:", e); }
     setManageLoading(false);
   };
 
   if (loading) return null;
 
   const BENEFITS = [
-    { icon: "🌱", title: "Diagnose problems early",         body: "and check harvest readiness with a photo" },
-    { icon: "🧭", title: "Plan your garden properly",       body: "See what to grow next and rotate your beds with confidence" },
-    { icon: "📈", title: "Grow more from your space",       body: "Compare plans and understand your yield and value" },
-    { icon: "🏗",  title: "Make smarter long-term choices", body: "Model the impact of a greenhouse or irrigation before you invest" },
+    { icon: "🌿", text: "Unlimited plant checks" },
+    { icon: "🧭", text: "Smarter garden planning" },
+    { icon: "📈", text: "Yield and performance insights" },
   ];
 
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>
-        Subscription
-      </div>
-
+    <div style={{ marginBottom: 20 }}>
       {isPro ? (
-        /* ── Pro state ── */
-        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+        /* ── Pro active state ── */
+        <div style={{
+          background: `linear-gradient(135deg, #1a3a2e 0%, ${C.forest} 100%)`,
+          borderRadius: 16, padding: "18px 20px", color: "#fff",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <div style={{ fontSize: 22 }}>🌱</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Vercro Pro</div>
-              <div style={{ fontSize: 12, color: C.forest, fontWeight: 600 }}>Pro member · Early supporter price locked</div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif" }}>Vercro Pro</div>
+              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 1 }}>Early supporter · Price locked</div>
             </div>
           </div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
-            You have unlimited access to Plant Check, plan intelligence, yield metrics, and infrastructure modelling.
+          <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.5, marginBottom: 14 }}>
+            Access to premium planning, plant checks and insights.
           </div>
           <button
             onClick={handleManage}
             disabled={manageLoading}
-            style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 600, color: C.stone, cursor: "pointer" }}>
+            style={{
+              background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)",
+              borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600,
+              color: "#fff", cursor: "pointer", width: "100%",
+            }}>
             {manageLoading ? "Loading…" : "Manage subscription"}
           </button>
         </div>
       ) : (
-        /* ── Free state — dedicated upgrade screen ── */
-        <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 18px" }}>
-
-          {/* Headline */}
-          <div style={{ fontFamily: "serif", fontSize: 19, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
-            Grow more from your garden — with less guesswork
+        /* ── Free user upgrade prompt ── */
+        <div style={{
+          background: "#fff", borderRadius: 16, padding: "20px 18px",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        }}>
+          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
+            Unlock Vercro Pro
           </div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 18 }}>
-            Plan ahead, catch problems early, and make better use of every bed with Vercro Pro.
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
+            Plan ahead, catch problems early and get more from every bed.
           </div>
 
-          {/* Benefit blocks */}
           <div style={{ marginBottom: 18 }}>
             {BENEFITS.map((b, i) => (
-              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
-                <div style={{ fontSize: 18, lineHeight: 1, marginTop: 1, flexShrink: 0 }}>{b.icon}</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{b.title}</div>
-                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{b.body}</div>
-                </div>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <span style={{ fontSize: 16 }}>{b.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.text}</span>
               </div>
             ))}
           </div>
 
-          {/* Pricing block */}
           <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <div style={{ fontSize: 13, color: C.stone }}>Monthly</div>
@@ -8949,29 +9271,22 @@ function ProSubscriptionSection() {
             </div>
           </div>
 
-          {/* Social proof */}
           <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
-            Limited-time offer for early users · Used by growers to plan, track and improve their gardens year-round
+            Limited-time offer · Cancel anytime
           </div>
 
-          {/* CTA — or coming soon for test users */}
           {comingSoon ? (
             <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.forest, marginBottom: 4 }}>Coming soon</div>
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>Payments are launching shortly. We'll let you know as soon as Pro is available.</div>
             </div>
           ) : (
-            <>
-              <button
-                onClick={() => handleUpgrade("early")}
-                disabled={checkoutLoading}
-                style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: checkoutLoading ? 0.7 : 1 }}>
-                {checkoutLoading ? "Loading…" : "Upgrade to Pro"}
-              </button>
-              <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
-                Cancel anytime. No commitment.
-              </div>
-            </>
+            <button
+              onClick={() => handleUpgrade("early")}
+              disabled={checkoutLoading}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", opacity: checkoutLoading ? 0.7 : 1 }}>
+              {checkoutLoading ? "Loading…" : "Upgrade to Pro"}
+            </button>
           )}
         </div>
       )}
@@ -8979,318 +9294,6 @@ function ProSubscriptionSection() {
   );
 }
 
-
-// =============================================================================
-// PLANT CHECK (DIAGNOSIS) — Full Flow
-// Entry points: Today screen (floating button + feed card) + Crop detail page
-// Flow: crop picker → camera/library → processing → result → confirm update
-// Free: 3 lifetime diagnoses. Mark's account: always Pro (unlimited).
-// =============================================================================
-
-// ── Crop picker for Plant Check ───────────────────────────────────────────────
-function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
-  const swipe = useSwipeToDismiss(onClose);
-  const [crops,   setCrops]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState("");
-
-  useEffect(() => {
-    apiFetch("/crops")
-      .then(data => {
-        setCrops(data || []);
-        // If a crop is prefilled, auto-select it immediately
-        if (prefillCropId && data?.length) {
-          const found = data.find(c => c.id === prefillCropId);
-          if (found) { onSelect(found); return; }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filtered = crops.filter(c => {
-    if (!search.trim()) return true;
-    return (c.name || "").toLowerCase().includes(search.toLowerCase());
-  });
-
-  // Sort: today's crops first (those with tasks due today), then alphabetical
-  const today = new Date().toISOString().split("T")[0];
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-      onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
-        onClick={e => e.stopPropagation()} {...swipe}>
-
-        {/* Handle */}
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
-        </div>
-
-        <div style={{ padding: "8px 20px 12px" }}>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
-          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search crops…"
-            autoFocus
-            style={{ ...inputStyle, marginBottom: 0 }}
-          />
-        </div>
-
-        <div style={{ overflowY: "auto", flex: 1, padding: "0 20px 32px" }}>
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>Loading your crops…</div>
-          ) : filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>No crops found</div>
-          ) : (
-            filtered.map(crop => (
-              <button key={crop.id} onClick={() => onSelect(crop)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
-                <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
-                  <div style={{ fontSize: 12, color: C.stone }}>
-                    {crop.area?.name || ""}
-                    {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
-                    {crop.stage ? ` · ${crop.stage}` : ""}
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Photo source picker ───────────────────────────────────────────────────────
-function PlantCheckPhotoPicker({ onPhoto, onClose }) {
-  const swipe = useSwipeToDismiss(onClose);
-  const fileRef = useRef(null);
-  const cameraRef = useRef(null);
-
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const bitmap = await createImageBitmap(file);
-      const maxSize = 1024;
-      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(bitmap.width  * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
-      onPhoto(base64);
-    } catch (err) {
-      console.error("PlantCheck photo compress failed:", err);
-    }
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 710, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-      onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
-        onClick={e => e.stopPropagation()} {...swipe}>
-
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
-        </div>
-
-        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
-        <div style={{ fontSize: 13, color: C.stone, textAlign: "center", marginBottom: 24 }}>Get a clear shot of the affected leaves, stems or fruit</div>
-
-        {/* Camera */}
-        <button onClick={() => cameraRef.current?.click()}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          📷 Take a photo
-        </button>
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
-
-        {/* Library */}
-        <button onClick={() => fileRef.current?.click()}
-          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          🖼️ Choose from library
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-
-        <button onClick={onClose}
-          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 14, cursor: "pointer", padding: 8 }}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Diagnosis result screen ───────────────────────────────────────────────────
-function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
-  const [updating,     setUpdating]     = useState(false);
-  const [updated,      setUpdated]      = useState(false);
-  const [updateError,  setUpdateError]  = useState(null);
-
-  const severityColor = {
-    low:    "#7FB069",
-    medium: "#D9A441",
-    high:   "#C65A5A",
-  }[result.severity] || C.stone;
-
-  const severityBg = {
-    low:    "#f0f9eb",
-    medium: "#fdf6e3",
-    high:   "#fdf0f0",
-  }[result.severity] || "#f5f5f5";
-
-  const readinessEmoji = {
-    ready:     "✅",
-    soon:      "🟡",
-    not_ready: "⏳",
-  }[result.harvest_readiness] || "";
-
-  const handleConfirmUpdate = async () => {
-    setUpdating(true);
-    setUpdateError(null);
-    try {
-      await onConfirmUpdate(result);
-      setUpdated(true);
-    } catch(e) {
-      console.error("[PlantCheck] Confirm update failed:", e.message);
-      setUpdateError("Couldn't update crop record — please try again");
-    }
-    setUpdating(false);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", overflowY: "auto" }}>
-      {/* Header */}
-      <div style={{ background: C.forest, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
-          <div>
-            <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700 }}>Plant Check</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: "20px 20px 100px" }}>
-
-        {/* Overall summary */}
-        <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: 16, padding: "18px", marginBottom: 16 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>
-            {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
-          </div>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
-            {result.looks_healthy
-              ? "Looking healthy!"
-              : result.problem_name || "Issue detected"}
-          </div>
-          <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
-            {result.reasoning_summary}
-          </div>
-          {result.severity && !result.looks_healthy && (
-            <div style={{ display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              {result.severity} severity
-            </div>
-          )}
-        </div>
-
-        {/* Harvest readiness */}
-        {result.harvest_readiness && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Harvest readiness</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", textTransform: "capitalize" }}>
-                  {result.harvest_readiness === "not_ready" ? "Not ready yet" : result.harvest_readiness === "soon" ? "Ready soon" : "Ready to harvest"}
-                </div>
-                {result.harvest_readiness_detail && (
-                  <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{result.harvest_readiness_detail}</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Stage detection */}
-        {result.stage_detected && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Growth stage detected</div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <span style={{ fontWeight: 700, fontSize: 15, color: C.forest, textTransform: "capitalize" }}>{result.stage_detected}</span>
-                {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
-              </div>
-              {!result.stage_matches_record && result.stage_detected && (
-                <span style={{ fontSize: 11, background: "#fff3cd", color: "#856404", borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Yield impact — Pro only */}
-        {result.yield_impact_pct !== null && result.yield_impact_pct !== undefined && (
-          <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Estimated yield impact</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: "serif", fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
-                {result.yield_impact_pct}%
-              </span>
-              {result.quality_impact && result.quality_impact !== "none" && (
-                <span style={{ fontSize: 12, color: C.stone }}>· Quality impact: {result.quality_impact}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Problem description */}
-        {result.problem_description && !result.looks_healthy && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>What we can see</div>
-            <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.6 }}>{result.problem_description}</div>
-          </div>
-        )}
-
-        {/* Treatment steps */}
-        {result.treatment_steps?.length > 0 && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>What to do now</div>
-            {result.treatment_steps.map((step, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < result.treatment_steps.length - 1 ? 10 : 0 }}>
-                <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5, flex: 1 }}>{step}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Prevention tips */}
-        {result.prevention_tips?.length > 0 && (
-          <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Prevention</div>
-            {result.prevention_tips.map((tip, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
-                <span style={{ color: C.leaf, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span>
-                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Confirm update prompt */}
-        {result.requires_confirmation && !updated && (
-          <div style={{ background: "#f0f7ff", border: "1px solid #b3d4f5", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a3a5c", marginBottom: 12, lineHeight: 1.5 }}>
-              {result.confirmation_prompt || `Update ${crop.name} record with detected stage?`}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleConfirmUpdate} disabled={updating}
-                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
                 {updating ? "Updating…" : "Yes, update record"}
               </button>
               <button onClick={() => setUpdated(true)}
