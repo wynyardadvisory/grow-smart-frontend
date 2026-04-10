@@ -25,6 +25,14 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   import("@capacitor/push-notifications").then(m => { PushNotifications = m.PushNotifications; });
 }
 
+// ── RevenueCat (native only) ──────────────────────────────────────────────────
+// Only initialised when running inside a native Capacitor shell.
+// On web, Stripe handles payments as before.
+let Purchases = null;
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+  import("@revenuecat/purchases-capacitor").then(m => { Purchases = m.Purchases; });
+}
+
 // ── Supabase client (frontend) ────────────────────────────────────────────────
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -9626,16 +9634,28 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
 
   // ── Upgrade handler ─────────────────────────────────────────────────────────
   // Test users see "coming soon" instead of hitting Stripe.
+  // On native (Capacitor), use RevenueCat. On web, use Stripe.
   const handleUpgrade = async () => {
     if (isTestUser) { setComingSoon(true); return; }
     setLoading(true);
     try {
-      const data = await apiFetch("/subscription/create-checkout", {
-        method: "POST",
-        body: JSON.stringify({ price_type: "early" }),
-      });
-      if (data?.url) window.location.href = data.url;
-    } catch (e) { console.error(e); }
+      if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
+        const offerings = await Purchases.getOfferings();
+        const pkg = offerings?.current?.monthly || offerings?.current?.availablePackages?.[0];
+        if (!pkg) throw new Error("No package available");
+        await Purchases.purchasePackage({ aPackage: pkg });
+        await apiFetch("/subscription/status");
+        window.location.reload();
+      } else {
+        const data = await apiFetch("/subscription/create-checkout", {
+          method: "POST",
+          body: JSON.stringify({ price_type: "early" }),
+        });
+        if (data?.url) window.location.href = data.url;
+      }
+    } catch (e) {
+      if (e?.code !== "PURCHASE_CANCELLED") console.error(e);
+    }
     setLoading(false);
   };
 
@@ -15186,6 +15206,17 @@ export default function GrowSmart() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
           body: JSON.stringify({ token: token.value, platform: window.Capacitor.getPlatform() })
         }).catch(console.warn);
+      });
+    }
+
+    // Initialise RevenueCat for native app
+    if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        if (!s?.user?.id) return;
+        Purchases.configure({
+          apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
+          appUserID: s.user.id,
+        });
       });
     }
 
