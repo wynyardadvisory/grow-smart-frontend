@@ -13510,7 +13510,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           method: "POST",
           body: JSON.stringify({
             area_id:            a.area_id,
-            crop_definition_id: a.crop_definition_id || null,
+            crop_definition_id: a.crop_definition_id || a.crop_def_id || null,
             crop_name:          a.crop_name,
           }),
         });
@@ -13605,7 +13605,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
         Yes, improve it →
       </button>
-      <button onClick={() => setShowLockConfirm(true)}
+      <button onClick={() => { setPlan({ ...baseline, label: "Your rotated garden" }); setShowLockConfirm(true); }}
         style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
         Use this plan as-is
       </button>
