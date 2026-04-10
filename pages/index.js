@@ -15182,7 +15182,8 @@ export default function GrowSmart() {
   const router = useRouter();
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
-  const [tab,         setTab]         = useState("dashboard");
+  const [tab,         setTabRaw]      = useState("dashboard");
+  const setTab = (newTab) => { window.scrollTo(0, 0); setTabRaw(newTab); };
   const [addPrefill,  setAddPrefill]  = useState(null);
   const [prevTab,     setPrevTab]     = useState("dashboard");
   const [editCropFocus, setEditCropFocus] = useState(null);
