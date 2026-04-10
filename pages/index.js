@@ -13828,8 +13828,9 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
 // ── Garden Status Card ────────────────────────────────────────────────────────
 // Shows below canvas. Live mode = health score. Plan mode = plan quality label.
 
-function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading, isPro, isMark, onUpgrade }) {
+function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading, planQuality, planQualityLoading, isPro, isMark, onUpgrade }) {
   const canSeeBreakdown = isPro || isMark;
+  const [expanded, setExpanded] = useState(false);
 
   const confidenceColor = level =>
     level === "High" ? C.leaf : level === "Medium" ? C.amber : C.stone;
@@ -13837,90 +13838,97 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   const scoreColor = s =>
     s >= 75 ? C.leaf : s >= 50 ? C.amber : C.red;
 
-  // ── Plan quality label from assignment count + status ──────────────────────
-  const planQuality = (() => {
-    if (!selectedPlan) return null;
-    // Simple v1: use committed status + name as proxy until proper scoring exists
-    if (selectedPlan.status === "committed") return { label: "Committed", sub: "This plan is locked in for next season." };
-    return { label: "Draft", sub: "Assign crops to areas to build out this plan." };
-  })();
+  const BarRow = ({ label, val, suffix = "%" }) => (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+        <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor(val) }}>{val}{suffix}</span>
+      </div>
+      <div style={{ height: 5, background: C.border, borderRadius: 99 }}>
+        <div style={{ height: "100%", width: `${val}%`, background: scoreColor(val), borderRadius: 99, transition: "width 0.5s ease" }} />
+      </div>
+    </div>
+  );
 
-  // ── Live mode card ─────────────────────────────────────────────────────────
+  const LockRow = ({ label }) => (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      <span style={{ fontSize: 13, color: C.stone }}>{label}</span>
+      <span style={{ fontSize: 11, color: C.stone, opacity: 0.7 }}>🔒 Pro</span>
+    </div>
+  );
+
+  // ── Live mode ──────────────────────────────────────────────────────────────
   if (!isPlanMode) {
     if (healthLoading) return (
-      <div style={{ background: "#fff", borderRadius: 14, padding: "16px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         <div style={{ fontSize: 12, color: C.stone }}>Calculating garden health…</div>
       </div>
     );
-
     if (!gardenHealth) return null;
 
-    const { score, confidence_level, summary, components } = gardenHealth;
+    const { score, confidence_level, confidence_note, summary, components, risk_flags } = gardenHealth;
 
     return (
       <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-        {/* Header row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+        {/* Score + confidence */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
-              Garden health
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <div style={{ fontSize: 36, fontWeight: 700, fontFamily: "serif", color: scoreColor(score), lineHeight: 1 }}>
-                {score}%
-              </div>
-            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Garden health</div>
+            <div style={{ fontSize: 38, fontWeight: 700, fontFamily: "serif", color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
           </div>
-          <div style={{ textAlign: "right" }}>
+          <div style={{ textAlign: "right", paddingTop: 4 }}>
             <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700, marginBottom: 2 }}>
               {confidence_level} confidence
             </div>
-            <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 120 }}>
-              {confidence_level === "Low" ? "Add more activity to improve accuracy" :
-               confidence_level === "Medium" ? "Based on recent tasks and weather" :
-               "Based on tasks, timing and weather"}
+            <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 130 }}>
+              {confidence_note || "Based on recent activity"}
             </div>
           </div>
         </div>
 
         {/* Summary */}
-        <div style={{ fontSize: 13, color: "#444", lineHeight: 1.5, marginBottom: canSeeBreakdown ? 14 : 0 }}>
-          {summary}
-        </div>
+        <div style={{ fontSize: 13, color: "#444", lineHeight: 1.5, marginBottom: 12 }}>{summary}</div>
 
-        {/* Pro breakdown */}
-        {canSeeBreakdown && components && (
-          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-            {[
-              { label: "Task completion", val: components.task_adherence },
-              { label: "Timing quality",  val: components.timing_adherence },
-              { label: "Weather fit",     val: components.weather_suitability },
-            ].map(({ label, val }) => (
-              <div key={label} style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                  <span style={{ fontSize: 11, color: C.stone }}>{label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(val) }}>{val}%</span>
-                </div>
-                <div style={{ height: 5, background: C.border, borderRadius: 99 }}>
-                  <div style={{ height: "100%", width: `${val}%`, background: scoreColor(val), borderRadius: 99, transition: "width 0.5s ease" }} />
-                </div>
+        {/* Risk flags */}
+        {risk_flags?.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {risk_flags.map(f => (
+              <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#b45309", marginBottom: 4 }}>
+                <span>⚠</span><span>{f}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Teaser for free users */}
+        {/* Pro breakdown */}
+        {canSeeBreakdown && components && (
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+            <button onClick={() => setExpanded(e => !e)}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.forest, fontWeight: 700, marginBottom: expanded ? 12 : 0, padding: 0 }}>
+              {expanded ? "▲ Hide breakdown" : "▼ Show breakdown"}
+            </button>
+            {expanded && (
+              <>
+                <BarRow label="Task completion"      val={components.task_adherence} />
+                <BarRow label="Timing quality"       val={components.timing_adherence} />
+                <BarRow label="Crop observations"    val={components.observation_freshness} />
+                <BarRow label="Crop condition"       val={components.crop_condition} />
+                <BarRow label="Weather fit"          val={components.weather_suitability} />
+                <BarRow label="Soil data quality"    val={components.soil_data_quality} />
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Free teaser */}
         {!canSeeBreakdown && (
-          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>Garden insights</div>
-            {["Task completion breakdown", "Timing quality", "Weather fit"].map(label => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
-                <span style={{ fontSize: 10, color: C.stone }}>🔒 Pro</span>
-              </div>
-            ))}
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>Garden insights</div>
+            <LockRow label="Task completion breakdown" />
+            <LockRow label="Crop observation freshness" />
+            <LockRow label="Soil data quality" />
             <button onClick={onUpgrade}
-              style={{ width: "100%", marginTop: 8, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              style={{ width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
               Unlock full insights
             </button>
           </div>
@@ -13929,37 +13937,91 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
     );
   }
 
-  // ── Plan mode card ─────────────────────────────────────────────────────────
-  if (!selectedPlan || !planQuality) return null;
+  // ── Plan mode ──────────────────────────────────────────────────────────────
+  if (!selectedPlan) return null;
 
-  const isDraft     = selectedPlan.status === "draft";
   const isCommitted = selectedPlan.status === "committed";
 
+  if (planQualityLoading) return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ fontSize: 12, color: C.stone }}>Calculating plan quality…</div>
+    </div>
+  );
+
+  // No plan quality data yet — show simple placeholder
+  if (!planQuality) return (
+    <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: 14, padding: "16px 18px", marginTop: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Plan quality</div>
+      <div style={{ fontSize: 13, color: C.stone }}>
+        {isCommitted ? "This plan is locked in for next season." : "Assign crops to areas to build out this plan."}
+      </div>
+    </div>
+  );
+
+  const { score, label, confidence_level, rotation_quality, space_efficiency, effort_level, yield_potential, risk_flags } = planQuality;
+  const labelColor = label === "Strong" ? C.leaf : label === "Good" ? C.forest : label === "Balanced" ? C.amber : C.red;
+
   return (
-    <div style={{
-      background: isCommitted ? "#f0f7f4" : "#fff",
-      border: `1px solid ${isCommitted ? C.sage : C.border}`,
-      borderRadius: 14, padding: "16px 18px", marginTop: 14,
-    }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
-        Plan quality
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: isCommitted ? C.forest : "#1a1a1a", marginBottom: 4 }}>
-        {planQuality.label}
-      </div>
-      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
-        {planQuality.sub}
+    <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: 14, padding: "16px 18px", marginTop: 14 }}>
+      {/* Score + label */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Plan quality</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "serif", color: labelColor, lineHeight: 1 }}>{label}</div>
+          {canSeeBreakdown && <div style={{ fontSize: 12, color: C.stone, marginTop: 3 }}>{score}/100</div>}
+        </div>
+        <div style={{ textAlign: "right", paddingTop: 4 }}>
+          <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700 }}>
+            {confidence_level} confidence
+          </div>
+        </div>
       </div>
 
-      {/* Pro teaser for plan quality breakdown */}
-      {!canSeeBreakdown && (
-        <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-          {["Yield potential", "Rotation quality", "Space efficiency"].map(label => (
-            <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
-              <span style={{ fontSize: 10, color: C.stone }}>🔒 Pro</span>
+      {/* Risk flags */}
+      {risk_flags?.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          {risk_flags.map(f => (
+            <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#b45309", marginBottom: 4 }}>
+              <span>⚠</span><span>{f}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pro breakdown */}
+      {canSeeBreakdown && (
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+          <button onClick={() => setExpanded(e => !e)}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.forest, fontWeight: 700, marginBottom: expanded ? 12 : 0, padding: 0 }}>
+            {expanded ? "▲ Hide breakdown" : "▼ Show breakdown"}
+          </button>
+          {expanded && (
+            <>
+              <BarRow label="Rotation quality"  val={rotation_quality} />
+              <BarRow label="Space efficiency"  val={space_efficiency} />
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: C.stone }}>Yield potential</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.forest }}>{yield_potential}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: C.stone }}>Effort level</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.stone }}>{effort_level}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Free teaser */}
+      {!canSeeBreakdown && (
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+          <LockRow label="Rotation quality" />
+          <LockRow label="Space efficiency" />
+          <LockRow label="Yield potential" />
+          <button onClick={onUpgrade}
+            style={{ width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            Unlock plan insights
+          </button>
         </div>
       )}
     </div>
@@ -14454,8 +14516,12 @@ function PlanScreen() {
   const [showPlanPaywall, setShowPlanPaywall] = useState(false);
 
   // Garden health score state
-  const [gardenHealth,  setGardenHealth]  = useState(null);
-  const [healthLoading, setHealthLoading] = useState(false);
+  const [gardenHealth,      setGardenHealth]      = useState(null);
+  const [healthLoading,     setHealthLoading]     = useState(false);
+
+  // Plan quality state
+  const [planQuality,       setPlanQuality]       = useState(null);
+  const [planQualityLoading,setPlanQualityLoading] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -14524,6 +14590,19 @@ function PlanScreen() {
       .catch(() => setGardenHealth(null))
       .finally(() => setHealthLoading(false));
   }, [selectedLoc]);
+
+  // Fetch plan quality when a plan is selected
+  useEffect(() => {
+    if (!selectedPlanId || selectedPlanId === "live") {
+      setPlanQuality(null);
+      return;
+    }
+    setPlanQualityLoading(true);
+    apiFetch(`/garden/plan-quality?plan_id=${selectedPlanId}`)
+      .then(d => setPlanQuality(d))
+      .catch(() => setPlanQuality(null))
+      .finally(() => setPlanQualityLoading(false));
+  }, [selectedPlanId]);
 
   useEffect(() => {
     if (!loc) return;
@@ -14857,6 +14936,8 @@ function PlanScreen() {
         selectedPlan={selectedPlan}
         gardenHealth={gardenHealth}
         healthLoading={healthLoading}
+        planQuality={planQuality}
+        planQualityLoading={planQualityLoading}
         isPro={isPro}
         isMark={isMark}
         onUpgrade={() => setShowPlanPaywall(true)}
