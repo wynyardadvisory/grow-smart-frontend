@@ -14139,6 +14139,252 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
 }
 
 
+
+// ── Recommendations Section ───────────────────────────────────────────────────
+// Personalised max-3 recommendations derived from health + plan quality data.
+// No extra API calls — uses data already fetched in PlanScreen.
+
+function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, locPlans, areas, assignments, onCreatePlan, onViewPlan, onCommit, selectedPlan }) {
+  const recommendations = [];
+
+  if (!isPlanMode) {
+    // ── Live mode recommendations ──────────────────────────────────────────
+    const h = gardenHealth;
+
+    if (h) {
+      // Task overdue
+      if (h.components?.task_adherence < 50) {
+        recommendations.push({
+          icon: "⏰",
+          title: "Tasks need attention",
+          body: "Several tasks are overdue. Completing them now will improve your garden health score and reduce risk to your crops.",
+          cta: null,
+        });
+      }
+
+      // No observations logged
+      if (h.components?.observation_freshness < 40) {
+        recommendations.push({
+          icon: "👁",
+          title: "Check on your crops",
+          body: "You haven't logged a crop observation recently. A quick check helps Vercro give you more accurate guidance.",
+          cta: null,
+        });
+      }
+
+      // Soil data missing
+      if (h.components?.soil_data_quality < 20) {
+        recommendations.push({
+          icon: "🌍",
+          title: "Add soil data",
+          body: "Adding soil moisture, pH or temperature to your areas significantly improves your health score accuracy.",
+          cta: null,
+        });
+      }
+    }
+
+    // No committed plan — push toward planning
+    const committedPlan = locPlans.find(p => p.status === "committed");
+    const hasDraft      = locPlans.some(p => p.status === "draft");
+    if (!committedPlan && !hasDraft && recommendations.length < 3) {
+      recommendations.push({
+        icon: "📋",
+        title: "Plan your next season",
+        body: "Create a rotation plan now to improve soil health, reduce disease risk and get ahead of next year's sowing.",
+        cta: { label: "Create a plan", action: onCreatePlan },
+      });
+    }
+
+    if (!committedPlan && hasDraft && recommendations.length < 3) {
+      const firstDraft = locPlans.find(p => p.status === "draft");
+      recommendations.push({
+        icon: "🔒",
+        title: "Lock in your plan",
+        body: "You have a draft plan — commit it so Vercro can start generating prep and sowing tasks for next season.",
+        cta: { label: "Review plan", action: () => onViewPlan(firstDraft.id) },
+      });
+    }
+
+  } else {
+    // ── Plan mode recommendations ──────────────────────────────────────────
+    const pq = planQuality;
+
+    if (pq) {
+      // Poor rotation
+      if (pq.rotation_quality < 60) {
+        recommendations.push({
+          icon: "🔄",
+          title: "Improve crop rotation",
+          body: "Some areas have the same crop family as last season. Moving them reduces disease risk and improves soil recovery.",
+          cta: null,
+        });
+      }
+
+      // Low space efficiency
+      if (pq.space_efficiency < 40 && areas.length > 1) {
+        const unplanned = areas.length - assignments.length;
+        recommendations.push({
+          icon: "📐",
+          title: `${unplanned} area${unplanned > 1 ? "s" : ""} without a crop`,
+          body: "Assigning crops to all your areas makes better use of your space and improves the plan quality score.",
+          cta: null,
+        });
+      }
+
+      // Draft — push to commit
+      if (selectedPlan?.status === "draft" && pq.score >= 60) {
+        recommendations.push({
+          icon: "✅",
+          title: "This plan is ready to commit",
+          body: `Plan quality is ${pq.label.toLowerCase()}. Commit it now so Vercro can start building your next season's task list.`,
+          cta: { label: "Commit plan", action: onCommit },
+        });
+      }
+    }
+  }
+
+  if (!recommendations.length) return null;
+
+  // Cap at 3
+  const shown = recommendations.slice(0, 3);
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+        Recommended for your garden
+      </div>
+      {shown.map((r, i) => (
+        <div key={i} style={{
+          background: "#fff", borderRadius: 14, padding: "14px 16px",
+          marginBottom: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{r.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 3 }}>{r.title}</div>
+              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>{r.body}</div>
+              {r.cta && (
+                <button onClick={r.cta.action}
+                  style={{ marginTop: 10, padding: "7px 14px", borderRadius: 8, border: "none", background: C.forest, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  {r.cta.label}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Compare with Live Card ────────────────────────────────────────────────────
+// Shown in plan mode only. Compares planned crops vs live crops per area.
+// Derives deltas from in-memory state — no extra API calls.
+
+function CompareWithLiveCard({ areas, liveCrops, assignments, planQuality, onViewLive }) {
+  if (!areas.length || !assignments.length) return null;
+
+  const assignmentMap = Object.fromEntries(assignments.map(a => [a.area_id, a]));
+
+  // Build per-area comparison
+  const rows = areas.map(area => {
+    const live    = liveCrops.filter(c => c.area_id === area.id);
+    const planned = assignmentMap[area.id];
+    const liveNames    = live.map(c => c.name).join(", ") || "Empty";
+    const plannedName  = planned?.crop_name || planned?.crop_definition?.name || "No crop planned";
+    const changed      = liveNames !== plannedName;
+    return { area, liveNames, plannedName, changed };
+  }).filter(r => r.changed); // only show areas where something changes
+
+  if (!rows.length) return (
+    <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "14px 16px", marginTop: 12 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.forest, marginBottom: 2 }}>No changes from live garden</div>
+      <div style={{ fontSize: 12, color: C.stone }}>This plan has the same crop layout as your current garden.</div>
+    </div>
+  );
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Changes from live garden</div>
+        <button onClick={onViewLive}
+          style={{ fontSize: 11, color: C.forest, fontWeight: 700, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          View live ›
+        </button>
+      </div>
+
+      {/* Delta rows */}
+      {rows.map(({ area, liveNames, plannedName }) => (
+        <div key={area.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+            {area.name}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, fontSize: 12, color: "#888", textDecoration: "line-through" }}>{liveNames}</div>
+            <div style={{ fontSize: 14, color: C.stone }}>→</div>
+            <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: C.forest }}>{plannedName}</div>
+          </div>
+        </div>
+      ))}
+
+      {/* Plan quality delta summary */}
+      {planQuality && (
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: 10, padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>{planQuality.rotation_quality}%</div>
+            <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>Rotation quality</div>
+          </div>
+          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: 10, padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>{planQuality.space_efficiency}%</div>
+            <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>Space used</div>
+          </div>
+          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: 10, padding: "10px", textAlign: "center" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.forest }}>{planQuality.yield_potential}</div>
+            <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>Yield potential</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Season Transition Banner ──────────────────────────────────────────────────
+// Shows in live mode when a committed plan exists and we're in Oct–Feb
+// (end of UK growing season / planning window). Gentle nudge, not alarming.
+
+function SeasonTransitionBanner({ locPlans, onViewPlan }) {
+  const month           = new Date().getMonth() + 1; // 1-12
+  const isTransitionWindow = month >= 10 || month <= 2;
+  const committedPlan   = locPlans.find(p => p.status === "committed");
+
+  if (!isTransitionWindow || !committedPlan) return null;
+
+  const seasonLabel = month >= 10 ? "next season" : "this season";
+
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, #1a3a2e 0%, ${C.forest} 100%)`,
+      borderRadius: 14, padding: "14px 16px", marginTop: 12,
+      display: "flex", alignItems: "center", gap: 12,
+    }}>
+      <span style={{ fontSize: 22, flexShrink: 0 }}>🌱</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
+          {committedPlan.name} is ready for {seasonLabel}
+        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.4 }}>
+          Your locked plan will guide prep and sowing tasks as the season begins.
+        </div>
+      </div>
+      <button onClick={() => onViewPlan(committedPlan.id)}
+        style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+        View
+      </button>
+    </div>
+  );
+}
+
+
 // Commit plan confirmation modal
 function CommitPlanModal({ plan, onConfirm, onClose }) {
   const [committing, setCommitting] = useState(false);
@@ -14954,6 +15200,42 @@ function PlanScreen() {
           setShowCreatePlan(true);
         }}
         onViewLive={() => setSelectedPlanId("live")}
+        onCommit={() => setShowCommit(true)}
+      />
+
+      {/* ── Season transition banner — live mode, Oct–Feb, committed plan exists ── */}
+      {!isPlanMode && (
+        <SeasonTransitionBanner
+          locPlans={locPlans}
+          onViewPlan={planId => setSelectedPlanId(planId)}
+        />
+      )}
+
+      {/* ── Compare with live — plan mode only ── */}
+      {isPlanMode && (
+        <CompareWithLiveCard
+          areas={areas}
+          liveCrops={crops}
+          assignments={assignments}
+          planQuality={planQuality}
+          onViewLive={() => setSelectedPlanId("live")}
+        />
+      )}
+
+      {/* ── Recommendations ── */}
+      <PlanRecommendationsSection
+        isPlanMode={isPlanMode}
+        gardenHealth={gardenHealth}
+        planQuality={planQuality}
+        locPlans={locPlans}
+        areas={areas}
+        assignments={assignments}
+        selectedPlan={selectedPlan}
+        onCreatePlan={() => {
+          if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+          setShowCreatePlan(true);
+        }}
+        onViewPlan={planId => setSelectedPlanId(planId)}
         onCommit={() => setShowCommit(true)}
       />
 
