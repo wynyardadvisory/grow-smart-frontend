@@ -13824,6 +13824,259 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
   );
 }
 
+
+// ── Garden Status Card ────────────────────────────────────────────────────────
+// Shows below canvas. Live mode = health score. Plan mode = plan quality label.
+
+function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading, isPro, isMark, onUpgrade }) {
+  const canSeeBreakdown = isPro || isMark;
+
+  const confidenceColor = level =>
+    level === "High" ? C.leaf : level === "Medium" ? C.amber : C.stone;
+
+  const scoreColor = s =>
+    s >= 75 ? C.leaf : s >= 50 ? C.amber : C.red;
+
+  // ── Plan quality label from assignment count + status ──────────────────────
+  const planQuality = (() => {
+    if (!selectedPlan) return null;
+    // Simple v1: use committed status + name as proxy until proper scoring exists
+    if (selectedPlan.status === "committed") return { label: "Committed", sub: "This plan is locked in for next season." };
+    return { label: "Draft", sub: "Assign crops to areas to build out this plan." };
+  })();
+
+  // ── Live mode card ─────────────────────────────────────────────────────────
+  if (!isPlanMode) {
+    if (healthLoading) return (
+      <div style={{ background: "#fff", borderRadius: 14, padding: "16px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ fontSize: 12, color: C.stone }}>Calculating garden health…</div>
+      </div>
+    );
+
+    if (!gardenHealth) return null;
+
+    const { score, confidence_level, summary, components } = gardenHealth;
+
+    return (
+      <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        {/* Header row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+              Garden health
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, fontFamily: "serif", color: scoreColor(score), lineHeight: 1 }}>
+                {score}%
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700, marginBottom: 2 }}>
+              {confidence_level} confidence
+            </div>
+            <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 120 }}>
+              {confidence_level === "Low" ? "Add more activity to improve accuracy" :
+               confidence_level === "Medium" ? "Based on recent tasks and weather" :
+               "Based on tasks, timing and weather"}
+            </div>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div style={{ fontSize: 13, color: "#444", lineHeight: 1.5, marginBottom: canSeeBreakdown ? 14 : 0 }}>
+          {summary}
+        </div>
+
+        {/* Pro breakdown */}
+        {canSeeBreakdown && components && (
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+            {[
+              { label: "Task completion", val: components.task_adherence },
+              { label: "Timing quality",  val: components.timing_adherence },
+              { label: "Weather fit",     val: components.weather_suitability },
+            ].map(({ label, val }) => (
+              <div key={label} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, color: C.stone }}>{label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(val) }}>{val}%</span>
+                </div>
+                <div style={{ height: 5, background: C.border, borderRadius: 99 }}>
+                  <div style={{ height: "100%", width: `${val}%`, background: scoreColor(val), borderRadius: 99, transition: "width 0.5s ease" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Teaser for free users */}
+        {!canSeeBreakdown && (
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: C.stone, marginBottom: 8 }}>Garden insights</div>
+            {["Task completion breakdown", "Timing quality", "Weather fit"].map(label => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
+                <span style={{ fontSize: 10, color: C.stone }}>🔒 Pro</span>
+              </div>
+            ))}
+            <button onClick={onUpgrade}
+              style={{ width: "100%", marginTop: 8, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              Unlock full insights
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Plan mode card ─────────────────────────────────────────────────────────
+  if (!selectedPlan || !planQuality) return null;
+
+  const isDraft     = selectedPlan.status === "draft";
+  const isCommitted = selectedPlan.status === "committed";
+
+  return (
+    <div style={{
+      background: isCommitted ? "#f0f7f4" : "#fff",
+      border: `1px solid ${isCommitted ? C.sage : C.border}`,
+      borderRadius: 14, padding: "16px 18px", marginTop: 14,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+        Plan quality
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: isCommitted ? C.forest : "#1a1a1a", marginBottom: 4 }}>
+        {planQuality.label}
+      </div>
+      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+        {planQuality.sub}
+      </div>
+
+      {/* Pro teaser for plan quality breakdown */}
+      {!canSeeBreakdown && (
+        <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+          {["Yield potential", "Rotation quality", "Space efficiency"].map(label => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
+              <span style={{ fontSize: 10, color: C.stone }}>🔒 Pro</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Coming Next Card ──────────────────────────────────────────────────────────
+// Three modes: live (bridge), draft plan (persuasion), committed plan (confirmation)
+
+function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCreatePlan, onViewLive, onCommit }) {
+  // ── Live mode ──────────────────────────────────────────────────────────────
+  if (!isPlanMode) {
+    const committedPlan = locPlans.find(p => p.status === "committed");
+    const hasDrafts     = locPlans.some(p => p.status === "draft");
+
+    if (committedPlan) {
+      return (
+        <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+            Coming next
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+            Your plan for next season is ready.
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
+            {committedPlan.name} is locked in. Prep and sowing tasks will be generated from it when your current season ends.
+          </div>
+          <button onClick={() => onViewPlan(committedPlan.id)}
+            style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            View next plan
+          </button>
+        </div>
+      );
+    }
+
+    if (hasDrafts) {
+      const firstDraft = locPlans.find(p => p.status === "draft");
+      return (
+        <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+            Coming next
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+            You've started planning next season.
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
+            You have draft plans but none are locked in yet. Review and commit a plan to start generating next season's tasks.
+          </div>
+          <button onClick={() => onViewPlan(firstDraft.id)}
+            style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            Review plans
+          </button>
+        </div>
+      );
+    }
+
+    // No plans at all
+    return (
+      <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+          Coming next
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+          Plan your next season
+        </div>
+        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
+          Create a rotation plan now to improve your garden year on year and get ahead of next season's sowing.
+        </div>
+        <button onClick={onCreatePlan}
+          style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          Create a plan
+        </button>
+      </div>
+    );
+  }
+
+  // ── Plan mode ──────────────────────────────────────────────────────────────
+  if (!selectedPlan) return null;
+
+  if (selectedPlan.status === "committed") {
+    return (
+      <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+          This is your locked next plan
+        </div>
+        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
+          This plan will become active when your current season ends. Prep and sowing tasks will be generated from it automatically.
+        </div>
+        <button onClick={onViewLive}
+          style={{ width: "100%", padding: "11px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "#fff", color: C.forest, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          View live garden
+        </button>
+      </div>
+    );
+  }
+
+  // Draft plan
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+        How this changes next season
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+        {selectedPlan.name}
+      </div>
+      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
+        Lock in this plan and Vercro will use it to guide prep, sowing and planting tasks as your current season ends.
+      </div>
+      <button onClick={onCommit}
+        style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+        Use this plan
+      </button>
+    </div>
+  );
+}
+
+
 // Commit plan confirmation modal
 function CommitPlanModal({ plan, onConfirm, onClose }) {
   const [committing, setCommitting] = useState(false);
@@ -14200,6 +14453,10 @@ function PlanScreen() {
   const { isPro, isMark, isTestUser: isPlanTestUser } = useProStatus();
   const [showPlanPaywall, setShowPlanPaywall] = useState(false);
 
+  // Garden health score state
+  const [gardenHealth,  setGardenHealth]  = useState(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -14256,6 +14513,16 @@ function PlanScreen() {
     setSelectedPlanId("live");
     setAssignments([]);
     setActiveBlock(null);
+  }, [selectedLoc]);
+
+  // Fetch garden health score when location changes
+  useEffect(() => {
+    if (!selectedLoc) return;
+    setHealthLoading(true);
+    apiFetch(`/garden/health?location_id=${selectedLoc}`)
+      .then(d => setGardenHealth(d))
+      .catch(() => setGardenHealth(null))
+      .finally(() => setHealthLoading(false));
   }, [selectedLoc]);
 
   useEffect(() => {
@@ -14412,15 +14679,33 @@ function PlanScreen() {
         </div>
       </div>
 
-      {/* Location tabs */}
+      {/* Location tabs — first location free, additional locked for non-Pro */}
       {locations.length > 1 && (
         <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-          {locations.map(l => (
-            <button key={l.id} onClick={()=>{ setSelectedLoc(l.id); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc:l.id}));}catch(e){} }}
-              style={{flexShrink:0,padding:"6px 14px",borderRadius:20,border:`1px solid ${selectedLoc===l.id?C.forest:C.border}`,background:selectedLoc===l.id?C.forest:"#fff",color:selectedLoc===l.id?"#fff":"#1a1a1a",fontSize:13,fontWeight:600,cursor:"pointer"}}>
-              {l.name}
-            </button>
-          ))}
+          {locations.map((l, idx) => {
+            const isActive = selectedLoc === l.id;
+            const isLocked = idx > 0 && !isPro && !isMark;
+            return (
+              <button key={l.id}
+                onClick={() => {
+                  if (isLocked) { setShowPlanPaywall(true); return; }
+                  setSelectedLoc(l.id);
+                  try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({zoom, selectedLoc: l.id})); } catch(e) {}
+                }}
+                style={{
+                  flexShrink: 0, padding: "6px 14px", borderRadius: 20,
+                  border: `1px solid ${isActive ? C.forest : C.border}`,
+                  background: isActive ? C.forest : "#fff",
+                  color: isActive ? "#fff" : isLocked ? C.stone : "#1a1a1a",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  opacity: isLocked ? 0.55 : 1,
+                  display: "flex", alignItems: "center", gap: 5,
+                }}>
+                {l.name}
+                {isLocked && <span style={{fontSize:10}}>🔒</span>}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -14566,16 +14851,30 @@ function PlanScreen() {
         <div style={{fontSize:9,color:"rgba(0,0,0,0.35)",fontWeight:700}}>1m</div>
       </div>
 
-      {/* Locked metrics */}
-      <div style={{display:"flex",gap:8,marginTop:14}}>
-        {[["📊","Yield estimate"],["🔄","Rotation score"],["📐","Space efficiency"]].map(([icon,label])=>(
-          <div key={label} style={{flex:1,background:"#F7F8F5",border:"1px solid #E3E7E1",borderRadius:14,padding:"10px 8px",textAlign:"center"}}>
-            <div style={{fontSize:15,marginBottom:3,opacity:0.5}}>{icon}</div>
-            <div style={{fontSize:9,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>{label}</div>
-            <div style={{fontSize:9,color:C.stone,opacity:0.7}}>🔒 Pro</div>
-          </div>
-        ))}
-      </div>
+      {/* ── Garden Health / Plan Quality status card ── */}
+      <PlanHealthCard
+        isPlanMode={isPlanMode}
+        selectedPlan={selectedPlan}
+        gardenHealth={gardenHealth}
+        healthLoading={healthLoading}
+        isPro={isPro}
+        isMark={isMark}
+        onUpgrade={() => setShowPlanPaywall(true)}
+      />
+
+      {/* ── Coming Next card ── */}
+      <ComingNextCard
+        isPlanMode={isPlanMode}
+        selectedPlan={selectedPlan}
+        locPlans={locPlans}
+        onViewPlan={planId => setSelectedPlanId(planId)}
+        onCreatePlan={() => {
+          if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+          setShowCreatePlan(true);
+        }}
+        onViewLive={() => setSelectedPlanId("live")}
+        onCommit={() => setShowCommit(true)}
+      />
 
       {/* Area assignment list — plan mode only */}
       {isPlanMode && areas.length > 0 && (
