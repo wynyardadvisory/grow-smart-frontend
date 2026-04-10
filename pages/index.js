@@ -9167,7 +9167,7 @@ function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", overflowY: "auto" }}>
       {/* Header */}
-      <div style={{ background: C.forest, color: "#fff", padding: "20px 20px 16px", position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ background: C.forest, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
           <div>
