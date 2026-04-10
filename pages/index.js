@@ -9072,15 +9072,23 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target.result.split(",")[1];
+    try {
+      const bitmap = await createImageBitmap(file);
+      const maxSize = 1024;
+      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(bitmap.width  * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
       onPhoto(base64);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("PlantCheck photo compress failed:", err);
+    }
   };
 
   return (
