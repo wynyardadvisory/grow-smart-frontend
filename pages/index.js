@@ -12509,46 +12509,52 @@ function GardenKonvaCanvas({ areas, crops, lockedAssignments = [], pxPerM, canva
                 />
               )}
 
-              {/* Rotate handle — in non-listening wrapper so it doesn't expand hit area */}
+              {/* Rotate handle — tap for 90deg or drag to angle */}
               {isSelected && onRotate && (
-                <Group listening={false}>
-                  <Group
-                    x={handleX} y={handleY}
-                    draggable
-                    listening={true}
-                    dragBoundFunc={() => ({ x: ax + handleX, y: ay + handleY })}
-                    onDragMove={e => {
-                      const stage = e.target.getStage();
-                      const pos = stage.getPointerPosition();
-                      const centrX = ax + w/2, centrY = ay + h/2;
-                      const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
-                      const normalised = ((Math.round(angle/45)*45 % 360) + 360) % 360;
-                      onRotate(area.id, normalised, false);
+                <Group
+                  x={handleX} y={handleY}
+                  draggable
+                  dragBoundFunc={() => ({ x: ax + handleX, y: ay + handleY })}
+                  onClick={() => onRotate(area.id, undefined, true)}
+                  onTap={() => onRotate(area.id, undefined, true)}
+                  onDragMove={e => {
+                    const stage = e.target.getStage();
+                    const pos = stage.getPointerPosition();
+                    const centrX = ax + w/2, centrY = ay + h/2;
+                    const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
+                    const normalised = ((Math.round(angle/45)*45 % 360) + 360) % 360;
+                    onRotate(area.id, normalised, false);
+                  }}
+                  onDragEnd={e => {
+                    const stage = e.target.getStage();
+                    const pos = stage.getPointerPosition();
+                    const centrX = ax + w/2, centrY = ay + h/2;
+                    const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
+                    const normalised = ((Math.round(angle/45)*45 % 360) + 360) % 360;
+                    onRotate(area.id, normalised, true);
+                    e.target.x(handleX); e.target.y(handleY);
+                  }}
+                >
+                  <Shape
+                    sceneFunc={(ctx, shape) => {
+                      ctx.beginPath(); ctx.arc(0, 0, handleR, 0, Math.PI*2);
+                      ctx.fillStyle = "#2F5D50"; ctx.fill();
+                      ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
+                      ctx.font = `bold ${handleR}px sans-serif`;
+                      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                      ctx.fillText("↻", 0, 1);
+                      ctx.fillStrokeShape(shape);
                     }}
-                    onDragEnd={e => {
-                      const stage = e.target.getStage();
-                      const pos = stage.getPointerPosition();
-                      const centrX = ax + w/2, centrY = ay + h/2;
-                      const angle = Math.atan2(pos.y - centrY, pos.x - centrX) * 180 / Math.PI;
-                      const normalised = ((Math.round(angle/45)*45 % 360) + 360) % 360;
-                      onRotate(area.id, normalised, true);
-                      e.target.x(handleX); e.target.y(handleY);
-                    }}
-                  >
-                    <Shape
-                      sceneFunc={(ctx, shape) => {
-                        ctx.beginPath(); ctx.arc(0, 0, handleR, 0, Math.PI*2);
-                        ctx.fillStyle = "#2F5D50"; ctx.fill();
-                        ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
-                        ctx.font = `bold ${handleR}px sans-serif`;
-                        ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                        ctx.fillText("↻", 0, 1);
-                        ctx.fillStrokeShape(shape);
-                      }}
-                      width={handleR*2} height={handleR*2}
-                      x={-handleR} y={-handleR}
-                    />
-                  </Group>
+                    width={handleR*2} height={handleR*2}
+                    x={-handleR} y={-handleR}
+                  />
+                  <Text
+                    x={-28} y={handleR+4}
+                    width={56} align="center"
+                    text="tap / drag"
+                    fontSize={7} fill="rgba(255,255,255,0.6)"
+                    listening={false}
+                  />
                 </Group>
               )}
 
