@@ -640,7 +640,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
   );
 }
 
-function PlantingSuggestionsSheet({ area, hasCrops = false, boostCount = 0, onClose, onAddCrop }) {
+function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, onClose, onAddCrop }) {
   const [state,       setState]       = useState("loading"); // loading | generating | ready | error
   const [suggestions, setSuggestions] = useState([]);
   const [summary,     setSummary]     = useState(null);
@@ -787,8 +787,8 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostCount = 0, onCl
               </div>
             )}
 
-            {/* Boost nudge — shown after 1st use (count=1) and 2nd use (count=2) */}
-            {(boostCount === 1 || boostCount === 2) && (
+            {/* Boost nudge — shown after 1st and 2nd use, based on server-side count */}
+            {boostStatus && !boostStatus.is_pro && (boostStatus.uses === 1 || boostStatus.uses === 2) && (
               <div style={{
                 background: "#f5f9f7",
                 border: `1px solid ${C.border}`,
@@ -802,7 +802,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostCount = 0, onCl
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>
-                    {boostCount === 1 ? "Want to keep improving this bed?" : "Try different ideas and improve every bed"}
+                    {boostStatus.uses === 1 ? "Want to keep improving your beds?" : `1 free boost remaining`}
                   </div>
                   <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>
                     Unlimited suggestions are included with Vercro Pro.
@@ -4333,23 +4333,23 @@ function SortableAreaCard({ id, multiArea, children }) {
 function GardenView({ onNavigateAdd }) {
   const measurementUnit = useMeasurementUnit();
   const GARDEN_CACHE = "vercro_garden_v1";
-  const BOOST_COUNT_KEY = "vercro_boost_count";
   const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
   const [locations, setLocations] = useState(_cachedGarden?.locs || []);
   const [crops,     setCrops]     = useState(_cachedGarden?.cropsData || []);
   const [loading,   setLoading]   = useState(!_cachedGarden);
   const [error,     setError]     = useState(null);
-  const [boostPaywallArea, setBoostPaywallArea] = useState(null); // set to area to show boost paywall
+  const [boostPaywallArea, setBoostPaywallArea] = useState(null);
   const [showLocationPaywall, setShowLocationPaywall] = useState(false);
   const { isPro, isMark, isTestUser: isGardenTestUser } = useProStatus();
 
-  // Read lifetime boost count from localStorage
-  const getBoostCount = () => {
-    try { return parseInt(localStorage.getItem(BOOST_COUNT_KEY) || "0", 10); } catch(e) { return 0; }
+  // Server-side boost tracking
+  const [boostStatus, setBoostStatus] = useState(null); // { uses, limit, is_pro, can_use }
+  const loadBoostStatus = () => {
+    apiFetch("/features/boost-status")
+      .then(d => setBoostStatus(d))
+      .catch(() => {});
   };
-  const incrementBoostCount = () => {
-    try { localStorage.setItem(BOOST_COUNT_KEY, String(getBoostCount() + 1)); } catch(e) {}
-  };
+  useEffect(() => { loadBoostStatus(); }, []);
 
   // Add area form state
   const [showAddArea,     setShowAddArea]     = useState(false);
@@ -4615,11 +4615,11 @@ function GardenView({ onNavigateAdd }) {
         <PlantingSuggestionsSheet
           area={suggestArea}
           hasCrops={(cropsByArea[suggestArea?.id] || []).filter(c => c.status !== 'planned').length > 0}
-          boostCount={getBoostCount()}
+          boostStatus={boostStatus}
           onClose={(result) => {
             setSuggestArea(null);
+            loadBoostStatus(); // refresh server-side count
             if (result?.prefill && onNavigateAdd) {
-              // User tapped a crop card — navigate to Add Crop pre-filled
               onNavigateAdd({ ...result.prefill, area_id: suggestArea.id });
             } else {
               load();
@@ -5013,13 +5013,25 @@ function GardenView({ onNavigateAdd }) {
                     {areaCrops.length === 0 && (
                       <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 6 }}>No crops yet</div>
                     )}
-                    <button onClick={() => {
+                    <button onClick={async () => {
+                        // Pro and Mark — always open
                         if (isPro || isMark) { setSuggestArea(area); return; }
-                        if (isGardenTestUser && !isPro && !isMark) { incrementBoostCount(); setSuggestArea(area); return; }
-                        const count = getBoostCount();
-                        if (count >= 3) { setBoostPaywallArea(area); return; }
-                        incrementBoostCount();
-                        setSuggestArea(area);
+                        // PRO_ENABLED off and not a preview/test user — open freely (pre-launch)
+                        const proActive = PRO_ENABLED || isGardenTestUser;
+                        if (!proActive) { setSuggestArea(area); return; }
+                        // Check server-side limit
+                        try {
+                          const status = await apiFetch("/features/boost-status");
+                          setBoostStatus(status);
+                          if (!status.can_use) { setBoostPaywallArea(area); return; }
+                          // Consume one use then open
+                          const updated = await apiFetch("/features/boost-use", { method: "POST" });
+                          setBoostStatus(updated);
+                          setSuggestArea(area);
+                        } catch(e) {
+                          // On error, open anyway — don't block the user
+                          setSuggestArea(area);
+                        }
                       }}
                       style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
                       🌱 Boost this area
