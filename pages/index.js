@@ -306,6 +306,30 @@ function Spinner() {
   return <div style={{ textAlign: "center", padding: 40, color: C.stone, fontSize: 14 }}>Loading…</div>;
 }
 
+// ── Branded loading screen ────────────────────────────────────────────────────
+function VercroLoadingScreen({ message = "Loading your garden" }) {
+  const [dot, setDot] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setDot(d => (d + 1) % 4), 450);
+    return () => clearInterval(t);
+  }, []);
+  const dots = ".".repeat(dot);
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", minHeight: "60vh", padding: "40px 24px",
+    }}>
+      <div style={{ fontSize: 48, marginBottom: 20, lineHeight: 1 }}>🌱</div>
+      <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 6 }}>
+        Vercro
+      </div>
+      <div style={{ fontSize: 14, color: C.stone, minWidth: 180, textAlign: "center" }}>
+        {message}{dots}
+      </div>
+    </div>
+  );
+}
+
 function ErrorMsg({ msg }) {
   return <div style={{ background: "#fdf0f0", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 16px", color: C.red, fontSize: 13, marginBottom: 16 }}>{msg}</div>;
 }
@@ -4478,7 +4502,7 @@ function GardenView({ onNavigateAdd }) {
     return acc;
   }, {});
 
-  if (loading) return <Spinner />;
+  if (loading) return <VercroLoadingScreen message="Loading your garden" />;
   if (error)   return <ErrorMsg msg={error} />;
 
   return (
@@ -6269,7 +6293,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     }, {})
   );
 
-  if (loading) return <Spinner />;
+  if (loading) return <VercroLoadingScreen message="Loading your crops" />;
   if (error)   return <ErrorMsg msg={error} />;
 
   return (
@@ -14787,6 +14811,7 @@ function PlanScreen() {
   const { isPro, isMark, isTestUser: isPlanTestUser } = useProStatus();
   const [showPlanPaywall,    setShowPlanPaywall]    = useState(false);
   const [showDimensionsTip,  setShowDimensionsTip]  = useState(false);
+  const [loadingPhase,       setLoadingPhase]       = useState(1); // 1=garden, 2=crops
 
   // Garden health score state
   const [gardenHealth,      setGardenHealth]      = useState(null);
@@ -14806,10 +14831,9 @@ function PlanScreen() {
   }, []);
 
   useEffect(() => {
-    Promise.all([apiFetch("/locations"), apiFetch("/areas"), apiFetch("/crops"), apiFetch("/plans")])
-      .then(([locs, areasData, cropsData, plansData]) => {
-        setCrops(cropsData||[]);
-        setPlans(plansData||[]);
+    // Phase 1: load garden structure (locations + areas)
+    Promise.all([apiFetch("/locations"), apiFetch("/areas")])
+      .then(([locs, areasData]) => {
         const locsWithAreas = (locs||[]).map(loc => ({
           ...loc,
           growing_areas: (areasData||[]).filter(a => a.location_id === loc.id),
@@ -14824,6 +14848,13 @@ function PlanScreen() {
           setAreas(firstAreas);
           initialAreasRef.current = firstAreas;
         }
+        // Phase 2: load crops + plans
+        setLoadingPhase(2);
+        return Promise.all([apiFetch("/crops"), apiFetch("/plans")]);
+      })
+      .then(([cropsData, plansData]) => {
+        setCrops(cropsData||[]);
+        setPlans(plansData||[]);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -14992,10 +15023,9 @@ function PlanScreen() {
   };
 
   if (loading) return (
-    <div style={{textAlign:"center",padding:"60px 0"}}>
-      <div style={{fontSize:40,marginBottom:12}}>🗺️</div>
-      <div style={{fontFamily:"serif",fontSize:16,fontWeight:700,color:C.forest}}>Loading your garden…</div>
-    </div>
+    <VercroLoadingScreen
+      message={loadingPhase === 1 ? "Loading your garden" : "Loading your crops"}
+    />
   );
   if (error) return <ErrorMsg msg={error} />;
 
