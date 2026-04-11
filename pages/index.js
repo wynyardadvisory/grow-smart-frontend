@@ -2820,7 +2820,9 @@ function GardenLog({ onLogActivity }) {
         <button onClick={() => setShowFilters(true)}
           style={{ background: filter !== "all" ? C.forest : "none", border: `1px solid ${filter !== "all" ? C.forest : C.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: filter !== "all" ? "#fff" : C.stone }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <line x1="1" y1="3" x2="13" y2="3"/><line x1="3" y1="7" x2="11" y2="7"/><line x1="5" y1="11" x2="9" y2="11"/>
+            <line x1="1" y1="3" x2="13" y2="3" />
+            <line x1="3" y1="7" x2="11" y2="7" />
+            <line x1="5" y1="11" x2="9" y2="11" />
           </svg>
           <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "sans-serif" }}>
             {filter !== "all" ? activeFilterLabel : "Filter"}
