@@ -2722,6 +2722,154 @@ function collapseObservations(items) {
   return out;
 }
 
+// ── Activity Detail Sheet ─────────────────────────────────────────────────────
+function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
+  const [editing,  setEditing]  = useState(false);
+  const [note,     setNote]     = useState(item.note || "");
+  const [saving,   setSaving]   = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const cfg = ACTIVITY_CONFIG[item.event_type] || { icon: "📋", label: "Activity" };
+
+  const formatFull = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+      + " at " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updated = await apiFetch(`/activity/${item.id}`, { method: "PATCH", body: JSON.stringify({ note }) });
+      onUpdated(updated);
+      setEditing(false);
+    } catch(e) {
+      // silent fail — note still shows locally
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await apiFetch(`/activity/${item.id}`, { method: "DELETE" });
+      onDeleted(item.id);
+      onClose();
+    } catch(e) {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.4)" }} onClick={onClose}>
+      <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 40px", boxShadow: "0 -4px 24px rgba(0,0,0,0.15)", maxHeight: "80vh", overflowY: "auto" }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+            {cfg.icon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: "sans-serif" }}>{item.title}</div>
+            {item.subtitle && <div style={{ fontSize: 12, color: C.stone, marginTop: 2, fontFamily: "sans-serif" }}>{item.subtitle}</div>}
+          </div>
+        </div>
+
+        {/* Timestamp */}
+        <div style={{ fontSize: 12, color: C.stone, fontFamily: "sans-serif", marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+          {formatFull(item.occurred_at)}
+        </div>
+
+        {/* Quantity */}
+        {item.quantity_g > 0 && (
+          <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", marginBottom: 12 }}>
+            <span style={{ fontWeight: 600 }}>Quantity: </span>
+            {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
+          </div>
+        )}
+
+        {/* Photo */}
+        {item.photo_url && (
+          <img src={item.photo_url} alt="" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 240, objectFit: "cover" }} />
+        )}
+
+        {/* Note */}
+        {item.is_manual ? (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "sans-serif", marginBottom: 8 }}>Note</div>
+            {editing ? (
+              <div>
+                <textarea
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="Add a note…"
+                  rows={3}
+                  style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "sans-serif", resize: "none", outline: "none", boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button onClick={handleSave} disabled={saving}
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                  <button onClick={() => { setEditing(false); setNote(item.note || ""); }}
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: "sans-serif", color: C.stone }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div onClick={() => setEditing(true)}
+                style={{ fontSize: 13, color: note ? "#1a1a1a" : C.stone, fontFamily: "sans-serif", lineHeight: 1.5, padding: "10px 12px", background: C.offwhite, borderRadius: 10, cursor: "pointer", fontStyle: note ? "normal" : "italic" }}>
+                {note || "Tap to add a note…"}
+              </div>
+            )}
+          </div>
+        ) : item.note ? (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "sans-serif", marginBottom: 8 }}>Note</div>
+            <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", lineHeight: 1.5 }}>{item.note}</div>
+          </div>
+        ) : null}
+
+        {/* Delete — manual only */}
+        {item.is_manual && (
+          <div style={{ marginTop: 8 }}>
+            {!confirmDelete ? (
+              <button onClick={() => setConfirmDelete(true)}
+                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, color: "#c0392b", cursor: "pointer", fontFamily: "sans-serif" }}>
+                Delete activity
+              </button>
+            ) : (
+              <div style={{ background: "#fff5f5", border: "1px solid #fcc", borderRadius: 10, padding: 14 }}>
+                <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", marginBottom: 12, textAlign: "center" }}>
+                  Delete this activity? This cannot be undone.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={handleDelete} disabled={deleting}
+                    style={{ flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+                    {deleting ? "Deleting…" : "Yes, delete"}
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: "sans-serif", color: C.stone }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function GardenLog({ onLogActivity }) {
   const { isPro, isMark } = useProStatus();
   const showInsights = isPro || isMark;
@@ -2736,6 +2884,7 @@ function GardenLog({ onLogActivity }) {
   const [expandedClusters, setExpandedClusters] = useState({});
   const [insights,    setInsights]    = useState([]);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const FILTERS = [
     { id: "all",             label: "All activity" },
@@ -2944,8 +3093,10 @@ function GardenLog({ onLogActivity }) {
               return (
                 <div key={item.id}>
                   <div
-                    onClick={isCluster ? () => setExpandedClusters(p => ({ ...p, [item.id]: !p[item.id] })) : undefined}
-                    style={{ background: "#fff", borderRadius: 10, padding: "9px 12px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, cursor: isCluster ? "pointer" : "default" }}>
+                    onClick={isCluster
+                      ? () => setExpandedClusters(p => ({ ...p, [item.id]: !p[item.id] }))
+                      : () => setSelectedItem(item)}
+                    style={{ background: "#fff", borderRadius: 10, padding: "9px 12px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                     {/* Icon */}
                     <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
                       {cfg.icon}
@@ -3014,6 +3165,28 @@ function GardenLog({ onLogActivity }) {
           style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: "sans-serif", marginTop: 4 }}>
           {loadingMore ? "Loading…" : "Load more"}
         </button>
+      )}
+
+      {/* Floating + button */}
+      <button onClick={onLogActivity}
+        style={{ position: "fixed", bottom: 90, right: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+        +
+      </button>
+
+      {/* Activity detail sheet */}
+      {selectedItem && (
+        <ActivityDetailSheet
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onDeleted={(id) => {
+            setItems(prev => prev.filter(i => i.id !== id));
+            setSelectedItem(null);
+          }}
+          onUpdated={(updated) => {
+            setItems(prev => prev.map(i => i.id === updated.id ? { ...i, note: updated.note } : i));
+            setSelectedItem(prev => prev ? { ...prev, note: updated.note } : null);
+          }}
+        />
       )}
     </div>
   );
