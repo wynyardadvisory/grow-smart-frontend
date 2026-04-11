@@ -2723,6 +2723,8 @@ function collapseObservations(items) {
 }
 
 function GardenLog({ onLogActivity }) {
+  const { isPro, isMark } = useProStatus();
+  const showInsights = isPro || isMark;
   const [items,       setItems]       = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -2732,6 +2734,8 @@ function GardenLog({ onLogActivity }) {
   const [filter,      setFilter]      = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [expandedClusters, setExpandedClusters] = useState({});
+  const [insights,    setInsights]    = useState([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const FILTERS = [
     { id: "all",             label: "All activity" },
@@ -2765,7 +2769,16 @@ function GardenLog({ onLogActivity }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    if (showInsights) {
+      setInsightsLoading(true);
+      apiFetch("/activity/insights?scope_type=user")
+        .then(d => setInsights(d.insights || []))
+        .catch(() => {})
+        .finally(() => setInsightsLoading(false));
+    }
+  }, [showInsights]);
 
   const handleFilterChange = (f) => {
     setFilter(f);
@@ -2812,6 +2825,31 @@ function GardenLog({ onLogActivity }) {
 
   return (
     <div>
+      {/* Insights strip — Pro only */}
+      {showInsights && insights.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+          {insights.map(insight => (
+            <div key={insight.type} style={{ background: "#f0f7f4", border: `1px solid ${C.forest}22`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 16 }}>
+                {insight.type === "last_watered"      ? "💧"
+                 : insight.type === "last_fed"        ? "🌿"
+                 : insight.type === "watering_interval" ? "🔄"
+                 : insight.type === "feeding_interval"  ? "🔄"
+                 : insight.type === "inactivity"      ? "⚠️"
+                 : insight.type === "streak"          ? "🔥"
+                 : "📊"}
+              </span>
+              <span style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", fontWeight: 500 }}>
+                {insight.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {showInsights && insightsLoading && (
+        <div style={{ height: 44, marginBottom: 16 }} />
+      )}
+
       {/* Header strip + filter icon */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: C.stone, fontFamily: "sans-serif" }}>
