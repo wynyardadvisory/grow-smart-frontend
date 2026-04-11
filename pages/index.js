@@ -9224,15 +9224,21 @@ function ProSubscriptionSection() {
   const { isPro, plan, loading, isTestUser } = useProStatus();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [manageLoading,   setManageLoading]   = useState(false);
-  const [comingSoon,      setComingSoon]       = useState(false);
+  const [pricing,         setPricing]         = useState(null);
+  const [interval,        setInterval_]       = useState("annual");
 
-  const handleUpgrade = async (priceType = "early") => {
-    if (isTestUser) { setComingSoon(true); return; }
+  useEffect(() => {
+    apiFetch("/subscription/pricing")
+      .then(d => setPricing(d))
+      .catch(() => setPricing({ tier: "early_supporter", display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" } }));
+  }, []);
+
+  const handleUpgrade = async (interval = "annual") => {
     setCheckoutLoading(true);
     try {
       const data = await apiFetch("/subscription/create-checkout", {
         method: "POST",
-        body: JSON.stringify({ price_type: priceType }),
+        body: JSON.stringify({ interval }),
       });
       if (data?.url) window.location.href = data.url;
     } catch (e) { console.error("Checkout error:", e); }
@@ -9307,37 +9313,37 @@ function ProSubscriptionSection() {
             ))}
           </div>
 
+          {/* Pricing — dynamic per user tier */}
           <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            {/* Monthly */}
+            <button onClick={() => setInterval_("monthly")}
+              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent", border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent", borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}>
               <div style={{ fontSize: 13, color: C.stone }}>Monthly</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>£5.99 / month</div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", borderRadius: 8, padding: "10px 12px", border: `1.5px solid ${C.forest}` }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{pricing?.display?.monthly || "…"} / month</div>
+            </button>
+            {/* Annual */}
+            <button onClick={() => setInterval_("annual")}
+              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: interval === "annual" ? "#fff" : "transparent", border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent", borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>£49 / year</div>
-                <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>Early supporter offer</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing?.display?.annual || "…"} / year</div>
+                {pricing?.display?.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px" }}>Best value</div>
-            </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
+                {pricing?.display?.badge || "Best value"}
+              </div>
+            </button>
           </div>
 
           <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
-            Limited-time offer · Cancel anytime
+            {pricing?.tier === "loyalty" ? "Your loyalty price — locked in for life if you subscribe today" : "Limited-time offer · Cancel anytime"}
           </div>
 
-          {comingSoon ? (
-            <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.forest, marginBottom: 4 }}>Coming soon</div>
-              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>Payments are launching shortly. We'll let you know as soon as Pro is available.</div>
-            </div>
-          ) : (
-            <button
-              onClick={() => handleUpgrade("early")}
-              disabled={checkoutLoading}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", opacity: checkoutLoading ? 0.7 : 1 }}>
-              {checkoutLoading ? "Loading…" : "Upgrade to Pro"}
-            </button>
-          )}
+          <button
+            onClick={() => handleUpgrade(interval)}
+            disabled={checkoutLoading || !pricing}
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
+            {checkoutLoading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
+          </button>
         </div>
       )}
     </div>
@@ -9533,21 +9539,25 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 //   onClose  — called on dismiss / "Not now"
 //   onSeeMore — (nudge mode only) called on "See what's included →" tap
 //
-// Trigger rules:
-//   All triggers respect PRO_ENABLED — nothing renders until the flag is flipped.
-//   This ensures no user sees a paywall until you deliberately go live with Pro.
-//
-// Pricing (locked):
-//   £5.99/month  |  £49/year — Early supporter offer (active now)
-//
 function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const [loading,      setLoading]      = useState(false);
-  const [comingSoon,   setComingSoon]   = useState(false);
+  const [pricing,      setPricing]      = useState(null);  // { tier, display, monthly_price_id, annual_price_id }
+  const [interval,     setInterval_]    = useState("annual"); // "monthly" | "annual"
   const { isTestUser } = useProStatus();
   const swipe = useSwipeToDismiss(onClose);
 
+  // Fetch user-specific pricing on mount
+  useEffect(() => {
+    apiFetch("/subscription/pricing")
+      .then(d => setPricing(d))
+      .catch(() => setPricing({
+        tier: "early_supporter",
+        display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" },
+      }));
+  }, []);
+
   // All paywalls respect PRO_ENABLED — nothing shows until the flag is flipped.
-  // Exception: test users always see paywalls regardless of the flag.
+  // Exception: preview/test users always see paywalls regardless of the flag.
   if (!PRO_ENABLED && !isTestUser) return null;
   if (!trigger) return null;
 
@@ -9604,23 +9614,26 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   ];
 
   // ── Upgrade handler ─────────────────────────────────────────────────────────
-  // Test users see "coming soon" instead of hitting Stripe.
-  // On native (Capacitor), use RevenueCat. On web, use Stripe.
+  // On native (Capacitor), use RevenueCat. On web, use Stripe with server-resolved pricing.
   const handleUpgrade = async () => {
-    if (isTestUser) { setComingSoon(true); return; }
     setLoading(true);
     try {
       if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
+        // iOS / Android — RevenueCat handles pricing tier via offerings
         const offerings = await Purchases.getOfferings();
-        const pkg = offerings?.current?.monthly || offerings?.current?.availablePackages?.[0];
+        // Pick package based on selected interval
+        const pkg = interval === "monthly"
+          ? offerings?.current?.monthly
+          : offerings?.current?.annual || offerings?.current?.availablePackages?.[0];
         if (!pkg) throw new Error("No package available");
         await Purchases.purchasePackage({ aPackage: pkg });
         await apiFetch("/subscription/status");
         window.location.reload();
       } else {
+        // Web — Stripe with server-resolved price for this user's tier
         const data = await apiFetch("/subscription/create-checkout", {
           method: "POST",
-          body: JSON.stringify({ price_type: "early" }),
+          body: JSON.stringify({ interval }),
         });
         if (data?.url) window.location.href = data.url;
       }
@@ -9723,42 +9736,59 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           </div>
         )}
 
-        {/* Pricing block */}
-        <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
-          {/* Monthly */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontSize: 13, color: C.stone }}>Monthly</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>£5.99 / month</div>
-          </div>
-          {/* Annual — highlighted */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", borderRadius: 8, padding: "10px 12px", border: `1.5px solid ${C.forest}` }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>£49 / year</div>
-              <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>Early supporter offer</div>
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px" }}>Best value</div>
-          </div>
-        </div>
-
-        {/* Social proof line */}
-        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
-          Limited-time offer for early users · Used by growers to plan, track and improve their gardens year-round
-        </div>
-
-        {/* Primary CTA — or coming soon message for test users */}
-        {comingSoon ? (
-          <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", textAlign: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.forest, marginBottom: 4 }}>Coming soon</div>
-            <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>Payments are launching shortly. We'll let you know as soon as Pro is available.</div>
+        {/* Pricing block — dynamic per user tier */}
+        {pricing ? (
+          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+            {/* Monthly option */}
+            <button
+              onClick={() => setInterval_("monthly")}
+              style={{
+                width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent",
+                border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+              }}>
+              <div style={{ fontSize: 13, color: C.stone, textAlign: "left" }}>Monthly</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{pricing.display.monthly} / month</div>
+            </button>
+            {/* Annual option — highlighted */}
+            <button
+              onClick={() => setInterval_("annual")}
+              style={{
+                width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                background: interval === "annual" ? "#fff" : "transparent",
+                border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+              }}>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing.display.annual} / year</div>
+                {pricing.display.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
+                {pricing.display.badge}
+              </div>
+            </button>
           </div>
         ) : (
-          <button
-            onClick={handleUpgrade}
-            disabled={loading}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: loading ? 0.7 : 1 }}>
-            {loading ? "Loading…" : "Upgrade to Pro"}
-          </button>
+          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px", marginBottom: 6, textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: C.stone }}>Loading pricing…</div>
+          </div>
         )}
+
+        {/* Social proof */}
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
+          {pricing?.tier === "loyalty" ? "Your loyalty price — locked in for life if you subscribe today" :
+           pricing?.tier === "early_supporter" ? "Limited-time offer · Cancel anytime" :
+           "Cancel anytime. No commitment."}
+        </div>
+
+        {/* Primary CTA */}
+        <button
+          onClick={handleUpgrade}
+          disabled={loading || !pricing}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
+          {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
+        </button>
 
         {/* Secondary */}
         <button
@@ -9767,12 +9797,9 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           Not now
         </button>
 
-        {/* Reassurance */}
-        {!comingSoon && (
-          <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
-            Cancel anytime. No commitment.
-          </div>
-        )}
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+          Cancel anytime. No commitment.
+        </div>
       </div>
     </div>
   );
