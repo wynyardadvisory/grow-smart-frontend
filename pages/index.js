@@ -2667,6 +2667,201 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
   );
 }
 
+// ── Activity type config ──────────────────────────────────────────────────────
+const ACTIVITY_CONFIG = {
+  task_completed:      { icon: "✅", label: "Completed task" },
+  manual_watering:     { icon: "💧", label: "Watered" },
+  manual_feeding:      { icon: "🌿", label: "Fed" },
+  manual_weeding:      { icon: "🪴", label: "Weeded" },
+  manual_pruned_mulched: { icon: "✂️", label: "Pruned / mulched" },
+  manual_other:        { icon: "📋", label: "Activity" },
+  harvest_logged:      { icon: "🧺", label: "Harvested" },
+  photo_added:         { icon: "📷", label: "Photo added" },
+  observation_added:   { icon: "👁", label: "Observation" },
+};
+
+function GardenLog({ onLogActivity }) {
+  const [items,      setItems]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore,    setHasMore]    = useState(false);
+  const [error,      setError]      = useState(null);
+  const [filter,     setFilter]     = useState("all");
+
+  const FILTERS = [
+    { id: "all",       label: "All" },
+    { id: "task_completed", label: "Tasks" },
+    { id: "manual_watering", label: "Watering" },
+    { id: "manual_feeding",  label: "Feeding" },
+    { id: "harvest_logged",  label: "Harvests" },
+    { id: "photo_added",     label: "Photos" },
+  ];
+
+  const load = async (cursor = null, currentFilter = filter) => {
+    try {
+      cursor ? setLoadingMore(true) : setLoading(true);
+      const params = new URLSearchParams({ limit: "25" });
+      if (cursor)                          params.set("cursor", cursor);
+      if (currentFilter !== "all")         params.set("event_type", currentFilter);
+      const d = await apiFetch(`/activity/feed?${params}`);
+      if (cursor) {
+        setItems(prev => [...prev, ...d.items]);
+      } else {
+        setItems(d.items || []);
+      }
+      setNextCursor(d.next_cursor || null);
+      setHasMore(d.has_more || false);
+    } catch(e) {
+      setError("Couldn't load your garden log.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleFilterChange = (f) => {
+    setFilter(f);
+    setItems([]);
+    setNextCursor(null);
+    load(null, f);
+  };
+
+  // Group items by day label
+  const grouped = (() => {
+    const groups = [];
+    const seen = {};
+    const today = new Date(); today.setHours(0,0,0,0);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    for (const item of items) {
+      const d = new Date(item.occurred_at);
+      d.setHours(0,0,0,0);
+      let label;
+      if (d.getTime() === today.getTime())     label = "Today";
+      else if (d.getTime() === yesterday.getTime()) label = "Yesterday";
+      else label = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      if (!seen[label]) { seen[label] = true; groups.push({ label, items: [] }); }
+      groups[groups.length - 1].items.push(item);
+    }
+    return groups;
+  })();
+
+  const formatTime = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  if (loading) return (
+    <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+      <div style={{ fontSize: 13 }}>Loading your garden log…</div>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+      <div style={{ fontSize: 13 }}>{error}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Filter row */}
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 16, scrollbarWidth: "none" }}>
+        {FILTERS.map(f => (
+          <button key={f.id} onClick={() => handleFilterChange(f.id)}
+            style={{ flexShrink: 0, background: filter === f.id ? C.forest : "#fff", color: filter === f.id ? "#fff" : C.stone, border: `1px solid ${filter === f.id ? C.forest : C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Empty state */}
+      {items.length === 0 && (
+        <div style={{ textAlign: "center", padding: "48px 24px" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+            {filter === "all" ? "Nothing in your garden log yet" : "No matching activity"}
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 20 }}>
+            {filter === "all"
+              ? "As you complete tasks and record things like watering, feeding, harvests and notes, they'll appear here."
+              : "Try a different filter or log a new activity."}
+          </div>
+          {filter === "all" && (
+            <button onClick={onLogActivity}
+              style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+              Log activity
+            </button>
+          )}
+          {filter !== "all" && (
+            <button onClick={() => handleFilterChange("all")}
+              style={{ background: "none", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              Clear filter
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Timeline */}
+      {grouped.map(group => (
+        <div key={group.label} style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, fontFamily: "sans-serif" }}>
+            {group.label}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {group.items.map(item => {
+              const cfg = ACTIVITY_CONFIG[item.event_type] || { icon: "📋", label: item.event_type };
+              return (
+                <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 14px", border: `1px solid ${C.border}`, display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  {/* Icon */}
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                    {cfg.icon}
+                  </div>
+                  {/* Content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", fontFamily: "sans-serif" }}>
+                      {item.title}
+                    </div>
+                    {item.subtitle && (
+                      <div style={{ fontSize: 12, color: C.stone, marginTop: 2, fontFamily: "sans-serif" }}>
+                        {item.subtitle}
+                      </div>
+                    )}
+                    {item.note && (
+                      <div style={{ fontSize: 12, color: "#555", marginTop: 4, fontStyle: "italic", lineHeight: 1.4, fontFamily: "sans-serif", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                        {item.note}
+                      </div>
+                    )}
+                    {item.quantity_g && (
+                      <div style={{ fontSize: 11, color: C.stone, marginTop: 3, fontFamily: "sans-serif" }}>
+                        {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
+                      </div>
+                    )}
+                    {item.photo_url && (
+                      <img src={item.photo_url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover", marginTop: 8 }} />
+                    )}
+                  </div>
+                  {/* Time */}
+                  <div style={{ fontSize: 11, color: C.stone, flexShrink: 0, fontFamily: "sans-serif", marginTop: 2 }}>
+                    {formatTime(item.occurred_at)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Load more */}
+      {hasMore && (
+        <button onClick={() => load(nextCursor)} disabled={loadingMore}
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: "sans-serif", marginTop: 4 }}>
+          {loadingMore ? "Loading…" : "Load more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Dashboard({ onTabChange, isDemo = false }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
@@ -2706,6 +2901,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
   const [showAllToday,       setShowAllToday]       = useState(false);
   const [showLogForCrop,     setShowLogForCrop]     = useState(null);
   const [showLogActivity,    setShowLogActivity]    = useState(false);
+  const [dashboardView,      setDashboardView]      = useState("today"); // "today" | "log"
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -3048,6 +3244,24 @@ function Dashboard({ onTabChange, isDemo = false }) {
           <ProfilePhotoGreeting photoUrl={data.profile_photo} userId={data.user_id} onUploaded={url => setData(d => ({ ...d, profile_photo: url }))} />
         </div>
       </div>
+
+      {/* ── SEGMENTED CONTROL — Today / Log ───────────────────────────────── */}
+      <div style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
+        {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
+          <button key={id} onClick={() => setDashboardView(id)}
+            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: "sans-serif", boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── LOG VIEW ──────────────────────────────────────────────────────── */}
+      {dashboardView === "log" && (
+        <GardenLog onLogActivity={() => setShowLogActivity(true)} />
+      )}
+
+      {/* ── TODAY VIEW ────────────────────────────────────────────────────── */}
+      {dashboardView === "today" && <>
 
       {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
       {showFirstRun && (
@@ -3725,6 +3939,29 @@ function Dashboard({ onTabChange, isDemo = false }) {
         />
       )}
 
+      {/* Standalone log activity button — always visible at bottom of Today */}
+      <div style={{ padding: "12px 0 4px" }}>
+        <button onClick={() => setShowLogActivity(true)}
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <span style={{ fontSize: 16 }}>📋</span> Log activity
+        </button>
+      </div>
+
+      {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
+        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+            You're all caught up
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+            Your garden is in good shape — check back tomorrow.
+          </div>
+        </div>
+      )}
+
+      </> /* end Today view */}
+
+      {/* ── MODALS — rendered outside Today/Log views so they work from both ── */}
       {showLogForCrop && (
         <LogActionSheet
           scope={{ type: "crop", id: showLogForCrop.id, name: showLogForCrop.name }}
@@ -3750,26 +3987,6 @@ function Dashboard({ onTabChange, isDemo = false }) {
           onClose={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); }}
           onDone={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); load(true); }}
         />
-      )}
-
-      {/* Standalone log activity button — always visible at bottom of Today */}
-      <div style={{ padding: "12px 0 4px" }}>
-        <button onClick={() => setShowLogActivity(true)}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <span style={{ fontSize: 16 }}>📋</span> Log activity
-        </button>
-      </div>
-
-      {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
-            You're all caught up
-          </div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
-            Your garden is in good shape — check back tomorrow.
-          </div>
-        </div>
       )}
     </div>
   );
