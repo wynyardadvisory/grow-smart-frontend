@@ -9309,401 +9309,6 @@ function ProSubscriptionSection() {
 }
 
 
-function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
-  const swipe = useSwipeToDismiss(onClose);
-  const [crops,   setCrops]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState("");
-
-  useEffect(() => {
-    apiFetch("/crops")
-      .then(data => {
-        setCrops(data || []);
-        // If a crop is prefilled, auto-select it immediately
-        if (prefillCropId && data?.length) {
-          const found = data.find(c => c.id === prefillCropId);
-          if (found) { onSelect(found); return; }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filtered = crops.filter(c => {
-    if (!search.trim()) return true;
-    return (c.name || "").toLowerCase().includes(search.toLowerCase());
-  });
-
-  // Sort: today's crops first (those with tasks due today), then alphabetical
-  const today = new Date().toISOString().split("T")[0];
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-      onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
-        onClick={e => e.stopPropagation()} {...swipe}>
-
-        {/* Handle */}
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
-        </div>
-
-        <div style={{ padding: "8px 20px 12px" }}>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
-          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search crops…"
-            autoFocus
-            style={{ ...inputStyle, marginBottom: 0 }}
-          />
-        </div>
-
-        <div style={{ overflowY: "auto", flex: 1, padding: "0 20px 32px" }}>
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>Loading your crops…</div>
-          ) : filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>No crops found</div>
-          ) : (
-            filtered.map(crop => (
-              <button key={crop.id} onClick={() => onSelect(crop)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
-                <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
-                  <div style={{ fontSize: 12, color: C.stone }}>
-                    {crop.area?.name || ""}
-                    {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
-                    {crop.stage ? ` · ${crop.stage}` : ""}
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Photo source picker ───────────────────────────────────────────────────────
-function PlantCheckPhotoPicker({ onPhoto, onClose }) {
-  const swipe = useSwipeToDismiss(onClose);
-  const fileRef = useRef(null);
-  const cameraRef = useRef(null);
-
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const bitmap = await createImageBitmap(file);
-      const maxSize = 1024;
-      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(bitmap.width  * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
-      onPhoto(base64);
-    } catch (err) {
-      console.error("PlantCheck photo compress failed:", err);
-    }
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 710, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-      onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
-        onClick={e => e.stopPropagation()} {...swipe}>
-
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
-        </div>
-
-        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
-        <div style={{ fontSize: 13, color: C.stone, textAlign: "center", marginBottom: 24 }}>Get a clear shot of the affected leaves, stems or fruit</div>
-
-        {/* Camera */}
-        <button onClick={() => cameraRef.current?.click()}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          📷 Take a photo
-        </button>
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
-
-        {/* Library */}
-        <button onClick={() => fileRef.current?.click()}
-          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          🖼️ Choose from library
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-
-        <button onClick={onClose}
-          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 14, cursor: "pointer", padding: 8 }}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Diagnosis result screen ───────────────────────────────────────────────────
-function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
-  const [updating,     setUpdating]     = useState(false);
-  const [updated,      setUpdated]      = useState(false);
-  const [updateError,  setUpdateError]  = useState(null);
-
-  const severityColor = {
-    low:    "#7FB069",
-    medium: "#D9A441",
-    high:   "#C65A5A",
-  }[result.severity] || C.stone;
-
-  const severityBg = {
-    low:    "#f0f9eb",
-    medium: "#fdf6e3",
-    high:   "#fdf0f0",
-  }[result.severity] || "#f5f5f5";
-
-  const readinessEmoji = {
-    ready:     "✅",
-    soon:      "🟡",
-    not_ready: "⏳",
-  }[result.harvest_readiness] || "";
-
-  const handleConfirmUpdate = async () => {
-    setUpdating(true);
-    setUpdateError(null);
-    try {
-      await onConfirmUpdate(result);
-      setUpdated(true);
-    } catch(e) {
-      console.error("[PlantCheck] Confirm update failed:", e.message);
-      setUpdateError("Couldn't update crop record — please try again");
-    }
-    setUpdating(false);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", overflowY: "auto" }}>
-      {/* Header */}
-      <div style={{ background: C.forest, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
-          <div>
-            <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700 }}>Plant Check</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: "20px 20px 100px" }}>
-
-        {/* Overall summary */}
-        <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: 16, padding: "18px", marginBottom: 16 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>
-            {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
-          </div>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
-            {result.looks_healthy
-              ? "Looking healthy!"
-              : result.problem_name || "Issue detected"}
-          </div>
-          <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
-            {result.reasoning_summary}
-          </div>
-          {result.severity && !result.looks_healthy && (
-            <div style={{ display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              {result.severity} severity
-            </div>
-          )}
-        </div>
-
-        {/* Harvest readiness */}
-        {result.harvest_readiness && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Harvest readiness</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", textTransform: "capitalize" }}>
-                  {result.harvest_readiness === "not_ready" ? "Not ready yet" : result.harvest_readiness === "soon" ? "Ready soon" : "Ready to harvest"}
-                </div>
-                {result.harvest_readiness_detail && (
-                  <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{result.harvest_readiness_detail}</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Stage detection */}
-        {result.stage_detected && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Growth stage detected</div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <span style={{ fontWeight: 700, fontSize: 15, color: C.forest, textTransform: "capitalize" }}>{result.stage_detected}</span>
-                {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
-              </div>
-              {!result.stage_matches_record && result.stage_detected && (
-                <span style={{ fontSize: 11, background: "#fff3cd", color: "#856404", borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Yield impact — Pro only */}
-        {result.yield_impact_pct !== null && result.yield_impact_pct !== undefined && (
-          <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Estimated yield impact</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: "serif", fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
-                {result.yield_impact_pct}%
-              </span>
-              {result.quality_impact && result.quality_impact !== "none" && (
-                <span style={{ fontSize: 12, color: C.stone }}>· Quality impact: {result.quality_impact}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Problem description */}
-        {result.problem_description && !result.looks_healthy && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>What we can see</div>
-            <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.6 }}>{result.problem_description}</div>
-          </div>
-        )}
-
-        {/* Treatment steps */}
-        {result.treatment_steps?.length > 0 && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>What to do now</div>
-            {result.treatment_steps.map((step, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < result.treatment_steps.length - 1 ? 10 : 0 }}>
-                <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5, flex: 1 }}>{step}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Prevention tips */}
-        {result.prevention_tips?.length > 0 && (
-          <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Prevention</div>
-            {result.prevention_tips.map((tip, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
-                <span style={{ color: C.leaf, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span>
-                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Confirm update prompt */}
-        {result.requires_confirmation && !updated && (
-          <div style={{ background: "#f0f7ff", border: "1px solid #b3d4f5", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a3a5c", marginBottom: 12, lineHeight: 1.5 }}>
-              {result.confirmation_prompt || `Update ${crop.name} record with detected stage?`}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleConfirmUpdate} disabled={updating}
-                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
-                {updating ? "Updating…" : "Yes, update record"}
-              </button>
-              <button onClick={() => setUpdated(true)}
-                style={{ flex: 1, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
-                No thanks
-              </button>
-            </div>
-            {updateError && (
-              <div style={{ marginTop: 10, fontSize: 13, color: C.red }}>{updateError}</div>
-            )}
-          </div>
-        )}
-
-        {updated && (
-          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: C.forest, fontWeight: 600 }}>
-            ✓ Crop record updated
-          </div>
-        )}
-
-        {/* Diagnoses remaining — nudge on 1st/2nd use, plain count on 0 */}
-        {result.diagnoses_remaining !== null && result.diagnoses_remaining !== undefined && (() => {
-          const rem = result.diagnoses_remaining;
-          // After 1st use (2 remaining) or 2nd use (1 remaining) — show soft nudge
-          if (rem === 2 || rem === 1) {
-            const nudgeText = rem === 2
-              ? "Want to keep checking plants like this?"
-              : "You're using Plant Check like a pro";
-            const nudgeSub = rem === 2
-              ? "Unlimited Plant Check is included with Vercro Pro."
-              : "Unlock unlimited checks with Vercro Pro.";
-            return (
-              <div style={{
-                background: "#f5f9f7",
-                border: `1px solid ${C.border}`,
-                borderRadius: 12,
-                padding: "12px 16px",
-                marginBottom: 16,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{nudgeText}</div>
-                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{nudgeSub}</div>
-                </div>
-                <button
-                  onClick={() => {
-                    // Trigger the full upgrade sheet — rendered at PlantCheck level
-                    // by surfacing via a callback. For now, navigate to upgrade screen.
-                    if (typeof window !== "undefined") {
-                      window.__vercroShowPaywall?.("diagnosis");
-                    }
-                  }}
-                  style={{
-                    background: "none",
-                    border: `1px solid ${C.forest}`,
-                    borderRadius: 8,
-                    padding: "7px 12px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: C.forest,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}>
-                  See what's included →
-                </button>
-              </div>
-            );
-          }
-          // After 3rd use (0 remaining) — plain count (hard block fires on next attempt)
-          if (rem === 0) {
-            return (
-              <div style={{ textAlign: "center", fontSize: 12, color: C.stone, marginBottom: 16 }}>
-                You've used all 3 free plant checks
-              </div>
-            );
-          }
-          return null;
-        })()}
-
-        <button onClick={onDone}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
-          Done
-        </button>
-      </div>
-    </div>
-  );
-}
-
-
 // ── Main Plant Check orchestrator ─────────────────────────────────────────────
 // Manages the full flow: crop picker → photo picker → processing → result
 // entry: "today" | "crop" | "task"
@@ -15168,7 +14773,8 @@ function PlanScreen() {
   const konvaReady      = useKonva();
 
   const { isPro, isMark, isTestUser: isPlanTestUser } = useProStatus();
-  const [showPlanPaywall, setShowPlanPaywall] = useState(false);
+  const [showPlanPaywall,    setShowPlanPaywall]    = useState(false);
+  const [showDimensionsTip,  setShowDimensionsTip]  = useState(false);
 
   // Garden health score state
   const [gardenHealth,      setGardenHealth]      = useState(null);
@@ -15387,59 +14993,49 @@ function PlanScreen() {
       {/* Header */}
       <div style={{background:`linear-gradient(135deg,${C.forest} 0%,#1e3d33 100%)`,borderRadius:16,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
-        <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>
-              {isPlanMode ? "Garden Plan" : "Garden Visualiser"}
-            </div>
-            <div style={{fontFamily:"serif",fontSize:19,fontWeight:700,color:"#fff"}}>
-              {isPlanMode ? selectedPlan?.name : (loc?.name||"My garden")}{!isPlanMode&&loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
-            </div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
-              {isPlanMode
-                ? <><PlanBadge status={selectedPlan?.status}/><span>{assignments.length} area{assignments.length!==1?"s":""} planned</span></>
-                : <>{areas.length} area{areas.length!==1?"s":""} · {totalCrops} crop{totalCrops!==1?"s":""}</>
-              }
-            </div>
+        <div style={{position:"relative"}}>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>
+            {isPlanMode ? "Garden Plan" : "Garden Visualiser"}
           </div>
-          <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.1)",backdropFilter:"blur(8px)",borderRadius:12,padding:"4px 6px"}}>
-            {[["+",z=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",z=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
-              <button key={label} onClick={()=>setZoom(z=>{ const nz=fn(z); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom:nz,selectedLoc}));}catch(e){} return nz; })}
-                style={{minWidth:30,height:30,borderRadius:8,border:"none",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:label==="Fit"?11:18,fontWeight:700,cursor:"pointer",padding:label==="Fit"?"0 10px":0}}>
-                {label}
-              </button>
-            ))}
+          <div style={{fontFamily:"serif",fontSize:19,fontWeight:700,color:"#fff",marginBottom:2}}>
+            {isPlanMode ? selectedPlan?.name : (loc?.name||"My garden")}{!isPlanMode&&loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
+          </div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",display:"flex",alignItems:"center",gap:6}}>
+            {isPlanMode
+              ? <><PlanBadge status={selectedPlan?.status}/><span>{assignments.length} area{assignments.length!==1?"s":""} planned</span></>
+              : <>{areas.length} area{areas.length!==1?"s":""} · {totalCrops} crop{totalCrops!==1?"s":""}</>
+            }
           </div>
         </div>
       </div>
 
-      {/* Location tabs — first location free, additional locked for non-Pro */}
-      {locations.length > 1 && (
-        <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-          {locations.map((l, idx) => {
-            const isActive = selectedLoc === l.id;
-            const isLocked = idx > 0 && !isPro && !isMark;
-            return (
-              <button key={l.id}
-                onClick={() => {
-                  if (isLocked) { setShowPlanPaywall(true); return; }
-                  setSelectedLoc(l.id);
-                  try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({zoom, selectedLoc: l.id})); } catch(e) {}
-                }}
-                style={{
-                  flexShrink: 0, padding: "6px 14px", borderRadius: 20,
-                  border: `1px solid ${isActive ? C.forest : C.border}`,
-                  background: isActive ? C.forest : "#fff",
-                  color: isActive ? "#fff" : isLocked ? C.stone : "#1a1a1a",
-                  fontSize: 13, fontWeight: 600, cursor: "pointer",
-                  opacity: isLocked ? 0.55 : 1,
-                  display: "flex", alignItems: "center", gap: 5,
-                }}>
-                {l.name}
-                {isLocked && <span style={{fontSize:10}}>🔒</span>}
-              </button>
-            );
-          })}
+      {/* ── Location selector — always visible, Pro gated for additional locations ── */}
+      {locations.length > 0 && (
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Location</div>
+          <div style={{position:"relative"}}>
+            <select
+              value={selectedLoc || ""}
+              onChange={e => {
+                const chosenId = e.target.value;
+                const idx = locations.findIndex(l => l.id === chosenId);
+                const isLocked = idx > 0 && !isPro && !isMark;
+                if (isLocked) { setShowPlanPaywall(true); return; }
+                setSelectedLoc(chosenId);
+                try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({zoom, selectedLoc: chosenId})); } catch(e) {}
+              }}
+              style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:"#1a1a1a",appearance:"none",cursor:"pointer",outline:"none"}}>
+              {locations.map((l, idx) => {
+                const isLocked = idx > 0 && !isPro && !isMark;
+                return (
+                  <option key={l.id} value={l.id}>
+                    {isLocked ? `🔒 ${l.name} — Pro` : l.name}
+                  </option>
+                );
+              })}
+            </select>
+            <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:C.stone,fontSize:12}}>▾</div>
+          </div>
         </div>
       )}
 
@@ -15550,34 +15146,79 @@ function PlanScreen() {
       )}
 
       {/* Canvas */}
-      <div ref={containerRef} style={{width:"100%",display:"flex",justifyContent:"center"}}>
-      <div style={{width:stageW,borderRadius:18,overflow:"hidden",border:`1px solid ${isPlanMode?"rgba(47,93,80,0.3)":"rgba(0,0,0,0.1)"}`,boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
-        {(savedToast||planToast) && (
-          <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
-            {planToast||"✓ Layout saved"}
+      {(() => {
+        // Empty state: no areas or no area has dimensions
+        const hasMeaningfulAreas = areas.some(a => a.width_m && a.length_m);
+        const hasAnyAreas        = areas.length > 0;
+        const missingDimensions  = !hasMeaningfulAreas;
+
+        if (missingDimensions) {
+          return (
+            <div style={{borderRadius:18,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",boxShadow:"0 4px 24px rgba(0,0,0,0.08)",position:"relative",marginBottom:4}}>
+              {/* Background — renders the ground texture so it looks intentional */}
+              <div style={{height:260,background:`linear-gradient(180deg, #3a5c26 0%, #2d4a1e 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px",textAlign:"center"}}>
+                <div style={{fontSize:36,marginBottom:12}}>📐</div>
+                <div style={{fontFamily:"serif",fontSize:17,fontWeight:700,color:"#fff",marginBottom:8}}>
+                  {hasAnyAreas ? "Area dimensions needed" : "No growing areas yet"}
+                </div>
+                <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.5,marginBottom:18,maxWidth:260}}>
+                  {hasAnyAreas
+                    ? "Add width and length to your growing areas in the Garden tab to see your visual layout here."
+                    : "Add a growing area with dimensions in the Garden tab to see your visual plan here."}
+                </div>
+                <button
+                  onClick={() => {
+                    // Show a tip sheet explaining how to add dimensions
+                    setShowDimensionsTip(true);
+                  }}
+                  style={{padding:"9px 20px",borderRadius:10,border:"1px solid rgba(255,255,255,0.4)",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                  Need help? →
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div ref={containerRef} style={{width:"100%",display:"flex",justifyContent:"center"}}>
+          <div style={{width:stageW,borderRadius:18,overflow:"hidden",border:`1px solid ${isPlanMode?"rgba(47,93,80,0.3)":"rgba(0,0,0,0.1)"}`,boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
+            {(savedToast||planToast) && (
+              <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
+                {planToast||"✓ Layout saved"}
+              </div>
+            )}
+            {/* Floating zoom controls — top right of canvas */}
+            <div style={{position:"absolute",top:10,right:10,zIndex:50,display:"flex",gap:3,background:"rgba(0,0,0,0.35)",backdropFilter:"blur(8px)",borderRadius:10,padding:"3px 4px"}}>
+              {[["+",z=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",z=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
+                <button key={label} onClick={()=>setZoom(z=>{ const nz=fn(z); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom:nz,selectedLoc}));}catch(e){} return nz; })}
+                  style={{minWidth:label==="Fit"?28:24,height:24,borderRadius:7,border:"none",background:"rgba(255,255,255,0.18)",color:"#fff",fontSize:label==="Fit"?9:15,fontWeight:700,cursor:"pointer",padding:label==="Fit"?"0 6px":0,lineHeight:1}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {konvaReady ? (
+              <GardenKonvaCanvas
+                areas={areas}
+                crops={planCrops}
+                lockedAssignments={lockedAssignments}
+                pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
+                stageW={stageW} stageH={stageH} stageScale={zoom}
+                activeBlock={isPlanMode ? null : activeBlock}
+                onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
+                onDragEnd={handleDragEnd}
+                onRotate={handleRotate}
+                onZoomChange={handleZoomChange}
+                zoom={zoom}
+              />
+            ) : (
+              <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:"#faf8f4",color:"#999",fontSize:14}}>
+                Loading…
+              </div>
+            )}
           </div>
-        )}
-        {konvaReady ? (
-          <GardenKonvaCanvas
-            areas={areas}
-            crops={planCrops}
-            lockedAssignments={lockedAssignments}
-            pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
-            stageW={stageW} stageH={stageH} stageScale={zoom}
-            activeBlock={isPlanMode ? null : activeBlock}
-            onTap={isPlanMode ? handleAreaTapInPlanMode : id=>setActiveBlock(id===activeBlock?null:id)}
-            onDragEnd={handleDragEnd}
-            onRotate={handleRotate}
-            onZoomChange={handleZoomChange}
-            zoom={zoom}
-          />
-        ) : (
-          <div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",background:"#faf8f4",color:"#999",fontSize:14}}>
-            Loading…
           </div>
-        )}
-      </div>
-      </div>
+        );
+      })()}
 
       {/* Scale bar */}
       <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:5,marginTop:5}}>
@@ -15683,6 +15324,39 @@ function PlanScreen() {
           isPro={isPro}
           onApply={(meta) => {/* standalone — no plan context needed */}}
         />
+      )}
+
+      {/* Dimensions tip modal */}
+      {showDimensionsTip && (
+        <div style={{position:"fixed",inset:0,zIndex:9200,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+          onClick={e=>{ if(e.target===e.currentTarget) setShowDimensionsTip(false); }}>
+          <div style={{width:"100%",maxWidth:480,background:"#fff",borderRadius:"20px 20px 0 0",padding:"28px 24px 48px",boxSizing:"border-box"}}>
+            <div style={{width:36,height:4,background:"#ddd",borderRadius:99,margin:"0 auto 20px"}}/>
+            <div style={{fontSize:20,fontWeight:700,fontFamily:"serif",color:"#1a1a1a",marginBottom:8}}>
+              How to set up your layout
+            </div>
+            <div style={{fontSize:14,color:C.stone,lineHeight:1.6,marginBottom:20}}>
+              To see your visual garden plan, Vercro needs the dimensions of your growing areas.
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:24}}>
+              {[
+                {step:"1",text:"Tap the Garden tab at the bottom of the screen"},
+                {step:"2",text:"Tap your location, then tap an area to open it"},
+                {step:"3",text:"Add width and length — even an estimate is fine"},
+                {step:"4",text:"Come back to Plan and your layout will appear"},
+              ].map(({step,text})=>(
+                <div key={step} style={{display:"flex",alignItems:"flex-start",gap:14}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:C.forest,color:"#fff",fontSize:13,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{step}</div>
+                  <div style={{fontSize:14,color:"#1a1a1a",lineHeight:1.5,paddingTop:4}}>{text}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setShowDimensionsTip(false)}
+              style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:C.forest,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+              Got it
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Sheets & modals */}
