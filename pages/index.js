@@ -3169,7 +3169,7 @@ function GardenLog({ onLogActivity }) {
 
       {/* Floating + button */}
       <button onClick={onLogActivity}
-        style={{ position: "fixed", bottom: 90, right: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+        style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
         +
       </button>
 
@@ -17146,7 +17146,7 @@ export default function GrowSmart() {
       {/* Floating feedback button */}
       {!showFeedback && tab !== "admin" && !showIOSBanner && (
         <button onClick={() => setShowFeedback(true)}
-          style={{ position: "fixed", bottom: 90, right: 20, width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
+          style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
           💬
