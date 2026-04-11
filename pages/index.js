@@ -6067,6 +6067,101 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
   );
 }
 
+// ── Duplicate Crop Sheet ─────────────────────────────────────────────────────
+// Bottom sheet that lets the user copy a crop to a different area.
+// Always starts as "planned" with today as the sow date — clean slate.
+function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
+  const swipe = useSwipeToDismiss(onClose);
+  const today = new Date().toISOString().split("T")[0];
+  const [areaId,   setAreaId]   = useState("");
+  const [sowDate,  setSowDate]  = useState(today);
+  const [notes,    setNotes]    = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState(null);
+
+  const cropName = crop.name || "this crop";
+
+  const handleSave = async () => {
+    if (!areaId) { setError("Please choose a growing area"); return; }
+    setSaving(true); setError(null);
+    try {
+      await apiFetch("/crops", {
+        method: "POST",
+        body: JSON.stringify({
+          crop_def_id:    crop.crop_def_id || null,
+          crop_other:     crop.crop_def_id ? null : cropName,
+          variety_id:     crop.variety_id  || null,
+          variety:        crop.variety_id  ? null : (typeof crop.variety === "object" ? crop.variety?.name : crop.variety) || null,
+          area_id:        areaId,
+          status:         "planned",
+          sown_date:      sowDate || null,
+          notes:          notes   || null,
+          lifecycle_mode: crop.lifecycle_mode || "seasonal",
+        }),
+      });
+      onSaved();
+    } catch (e) { setError(e.message); setSaving(false); }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}
+        {...swipe}>
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
+
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+          Duplicate crop
+        </div>
+        <div style={{ fontSize: 13, color: C.stone, marginBottom: 20, lineHeight: 1.5 }}>
+          Adding <strong>{cropName}</strong> to a new area — starts as planned with today's date.
+        </div>
+
+        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#dc2626", fontSize: 13 }}>{error}</div>}
+
+        {/* Area selector */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Growing area</label>
+          <div style={{ position: "relative" }}>
+            <select value={areaId} onChange={e => setAreaId(e.target.value)}
+              style={{ width: "100%", padding: "11px 36px 11px 14px", borderRadius: 10, border: `1px solid ${areaId ? C.forest : C.border}`, background: "#fff", fontSize: 14, color: areaId ? "#1a1a1a" : C.stone, appearance: "none", cursor: "pointer", outline: "none" }}>
+              <option value="">Choose an area…</option>
+              {areas.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: C.stone, fontSize: 12 }}>▾</div>
+          </div>
+        </div>
+
+        {/* Sow date */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Sow date (optional)</label>
+          <input type="date" value={sowDate} onChange={e => setSowDate(e.target.value)}
+            style={inputStyle} />
+        </div>
+
+        {/* Notes */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={labelStyle}>Notes (optional)</label>
+          <input value={notes} onChange={e => setNotes(e.target.value)}
+            style={inputStyle} placeholder="e.g. Second sowing for succession" />
+        </div>
+
+        <button onClick={handleSave} disabled={saving || !areaId}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: (saving || !areaId) ? "default" : "pointer", opacity: (saving || !areaId) ? 0.6 : 1, marginBottom: 10 }}>
+          {saving ? "Adding…" : `Add ${cropName} to this area`}
+        </button>
+        <button onClick={onClose}
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
@@ -6101,6 +6196,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [diary,         setDiary]         = useState(null);  // crop to show diary for
   const [timelineCrop,  setTimelineCrop]  = useState(null);  // crop to show timeline for
   const [cropMenuOpen,  setCropMenuOpen]  = useState(null);  // crop.id of open overflow menu
+  const [duplicateCrop, setDuplicateCrop] = useState(null); // crop to duplicate
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
@@ -6300,6 +6396,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
+      {duplicateCrop && (
+        <DuplicateCropSheet
+          crop={duplicateCrop}
+          areas={areas}
+          onClose={() => setDuplicateCrop(null)}
+          onSaved={() => { setDuplicateCrop(null); load(); }}
+        />
+      )}
       {plantCheckEnabled && cropPlantCheck && (
         <PlantCheck
           entry="crop"
@@ -6865,6 +6969,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                 onClick={() => { setCropMenuOpen(null); startEdit(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
                                 Edit crop
+                              </button>
+                              <div style={{ height: 1, background: C.border }} />
+                              <button
+                                onClick={() => { setCropMenuOpen(null); setDuplicateCrop(crop); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
+                                Duplicate crop
                               </button>
                               <div style={{ height: 1, background: C.border }} />
                               <button
@@ -9248,6 +9358,13 @@ function ProSubscriptionSection() {
   const handleManage = async () => {
     setManageLoading(true);
     try {
+      // On iOS, Apple manages the subscription — open Apple's subscription settings
+      if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+        window.open("https://apps.apple.com/account/subscriptions", "_system");
+        setManageLoading(false);
+        return;
+      }
+      // On web, use Stripe billing portal
       const data = await apiFetch("/subscription/manage");
       if (data?.url) window.location.href = data.url;
     } catch (e) { console.error("Manage error:", e); }
@@ -9355,6 +9472,401 @@ function ProSubscriptionSection() {
 // Manages the full flow: crop picker → photo picker → processing → result
 // entry: "today" | "crop" | "task"
 // prefillCrop: crop object to skip picker (crop page / task entry)
+function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
+  const swipe = useSwipeToDismiss(onClose);
+  const [crops,   setCrops]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState("");
+
+  useEffect(() => {
+    apiFetch("/crops")
+      .then(data => {
+        setCrops(data || []);
+        // If a crop is prefilled, auto-select it immediately
+        if (prefillCropId && data?.length) {
+          const found = data.find(c => c.id === prefillCropId);
+          if (found) { onSelect(found); return; }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = crops.filter(c => {
+    if (!search.trim()) return true;
+    return (c.name || "").toLowerCase().includes(search.toLowerCase());
+  });
+
+  // Sort: today's crops first (those with tasks due today), then alphabetical
+  const today = new Date().toISOString().split("T")[0];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
+        onClick={e => e.stopPropagation()} {...swipe}>
+
+        {/* Handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+
+        <div style={{ padding: "8px 20px 12px" }}>
+          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
+          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search crops…"
+            autoFocus
+            style={{ ...inputStyle, marginBottom: 0 }}
+          />
+        </div>
+
+        <div style={{ overflowY: "auto", flex: 1, padding: "0 20px 32px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>Loading your crops…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 32, color: C.stone, fontSize: 14 }}>No crops found</div>
+          ) : (
+            filtered.map(crop => (
+              <button key={crop.id} onClick={() => onSelect(crop)}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
+                  <div style={{ fontSize: 12, color: C.stone }}>
+                    {crop.area?.name || ""}
+                    {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
+                    {crop.stage ? ` · ${crop.stage}` : ""}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Photo source picker ───────────────────────────────────────────────────────
+function PlantCheckPhotoPicker({ onPhoto, onClose }) {
+  const swipe = useSwipeToDismiss(onClose);
+  const fileRef = useRef(null);
+  const cameraRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const maxSize = 1024;
+      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(bitmap.width  * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
+      onPhoto(base64);
+    } catch (err) {
+      console.error("PlantCheck photo compress failed:", err);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 710, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
+        onClick={e => e.stopPropagation()} {...swipe}>
+
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+
+        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
+        <div style={{ fontSize: 13, color: C.stone, textAlign: "center", marginBottom: 24 }}>Get a clear shot of the affected leaves, stems or fruit</div>
+
+        {/* Camera */}
+        <button onClick={() => cameraRef.current?.click()}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          📷 Take a photo
+        </button>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
+
+        {/* Library */}
+        <button onClick={() => fileRef.current?.click()}
+          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          🖼️ Choose from library
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+
+        <button onClick={onClose}
+          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 14, cursor: "pointer", padding: 8 }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Diagnosis result screen ───────────────────────────────────────────────────
+function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
+  const [updating,     setUpdating]     = useState(false);
+  const [updated,      setUpdated]      = useState(false);
+  const [updateError,  setUpdateError]  = useState(null);
+
+  const severityColor = {
+    low:    "#7FB069",
+    medium: "#D9A441",
+    high:   "#C65A5A",
+  }[result.severity] || C.stone;
+
+  const severityBg = {
+    low:    "#f0f9eb",
+    medium: "#fdf6e3",
+    high:   "#fdf0f0",
+  }[result.severity] || "#f5f5f5";
+
+  const readinessEmoji = {
+    ready:     "✅",
+    soon:      "🟡",
+    not_ready: "⏳",
+  }[result.harvest_readiness] || "";
+
+  const handleConfirmUpdate = async () => {
+    setUpdating(true);
+    setUpdateError(null);
+    try {
+      await onConfirmUpdate(result);
+      setUpdated(true);
+    } catch(e) {
+      console.error("[PlantCheck] Confirm update failed:", e.message);
+      setUpdateError("Couldn't update crop record — please try again");
+    }
+    setUpdating(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", overflowY: "auto" }}>
+      {/* Header */}
+      <div style={{ background: C.forest, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
+          <div>
+            <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700 }}>Plant Check</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "20px 20px 100px" }}>
+
+        {/* Overall summary */}
+        <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: 16, padding: "18px", marginBottom: 16 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>
+            {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
+          </div>
+          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+            {result.looks_healthy
+              ? "Looking healthy!"
+              : result.problem_name || "Issue detected"}
+          </div>
+          <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
+            {result.reasoning_summary}
+          </div>
+          {result.severity && !result.looks_healthy && (
+            <div style={{ display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {result.severity} severity
+            </div>
+          )}
+        </div>
+
+        {/* Harvest readiness */}
+        {result.harvest_readiness && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Harvest readiness</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", textTransform: "capitalize" }}>
+                  {result.harvest_readiness === "not_ready" ? "Not ready yet" : result.harvest_readiness === "soon" ? "Ready soon" : "Ready to harvest"}
+                </div>
+                {result.harvest_readiness_detail && (
+                  <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{result.harvest_readiness_detail}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stage detection */}
+        {result.stage_detected && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Growth stage detected</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: 15, color: C.forest, textTransform: "capitalize" }}>{result.stage_detected}</span>
+                {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
+              </div>
+              {!result.stage_matches_record && result.stage_detected && (
+                <span style={{ fontSize: 11, background: "#fff3cd", color: "#856404", borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Yield impact — Pro only */}
+        {result.yield_impact_pct !== null && result.yield_impact_pct !== undefined && (
+          <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Estimated yield impact</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontFamily: "serif", fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
+                {result.yield_impact_pct}%
+              </span>
+              {result.quality_impact && result.quality_impact !== "none" && (
+                <span style={{ fontSize: 12, color: C.stone }}>· Quality impact: {result.quality_impact}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Problem description */}
+        {result.problem_description && !result.looks_healthy && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>What we can see</div>
+            <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.6 }}>{result.problem_description}</div>
+          </div>
+        )}
+
+        {/* Treatment steps */}
+        {result.treatment_steps?.length > 0 && (
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>What to do now</div>
+            {result.treatment_steps.map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < result.treatment_steps.length - 1 ? 10 : 0 }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5, flex: 1 }}>{step}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Prevention tips */}
+        {result.prevention_tips?.length > 0 && (
+          <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Prevention</div>
+            {result.prevention_tips.map((tip, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
+                <span style={{ color: C.leaf, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Confirm update prompt */}
+        {result.requires_confirmation && !updated && (
+          <div style={{ background: "#f0f7ff", border: "1px solid #b3d4f5", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a3a5c", marginBottom: 12, lineHeight: 1.5 }}>
+              {result.confirmation_prompt || `Update ${crop.name} record with detected stage?`}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={handleConfirmUpdate} disabled={updating}
+                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+                {updating ? "Updating…" : "Yes, update record"}
+              </button>
+              <button onClick={() => setUpdated(true)}
+                style={{ flex: 1, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                No thanks
+              </button>
+            </div>
+            {updateError && (
+              <div style={{ marginTop: 10, fontSize: 13, color: C.red }}>{updateError}</div>
+            )}
+          </div>
+        )}
+
+        {updated && (
+          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: C.forest, fontWeight: 600 }}>
+            ✓ Crop record updated
+          </div>
+        )}
+
+        {/* Diagnoses remaining — nudge on 1st/2nd use, plain count on 0 */}
+        {result.diagnoses_remaining !== null && result.diagnoses_remaining !== undefined && (() => {
+          const rem = result.diagnoses_remaining;
+          // After 1st use (2 remaining) or 2nd use (1 remaining) — show soft nudge
+          if (rem === 2 || rem === 1) {
+            const nudgeText = rem === 2
+              ? "Want to keep checking plants like this?"
+              : "You're using Plant Check like a pro";
+            const nudgeSub = rem === 2
+              ? "Unlimited Plant Check is included with Vercro Pro."
+              : "Unlock unlimited checks with Vercro Pro.";
+            return (
+              <div style={{
+                background: "#f5f9f7",
+                border: `1px solid ${C.border}`,
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{nudgeText}</div>
+                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{nudgeSub}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    // Trigger the full upgrade sheet — rendered at PlantCheck level
+                    // by surfacing via a callback. For now, navigate to upgrade screen.
+                    if (typeof window !== "undefined") {
+                      window.__vercroShowPaywall?.("diagnosis");
+                    }
+                  }}
+                  style={{
+                    background: "none",
+                    border: `1px solid ${C.forest}`,
+                    borderRadius: 8,
+                    padding: "7px 12px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: C.forest,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}>
+                  See what's included →
+                </button>
+              </div>
+            );
+          }
+          // After 3rd use (0 remaining) — plain count (hard block fires on next attempt)
+          if (rem === 0) {
+            return (
+              <div style={{ textAlign: "center", fontSize: 12, color: C.stone, marginBottom: 16 }}>
+                You've used all 3 free plant checks
+              </div>
+            );
+          }
+          return null;
+        })()}
+
+        <button onClick={onDone}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   const [step,       setStep]       = useState(prefillCrop ? "photo" : "crop");
   const [crop,       setCrop]       = useState(prefillCrop);
