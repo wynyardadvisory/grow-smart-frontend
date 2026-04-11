@@ -2827,23 +2827,39 @@ function GardenLog({ onLogActivity }) {
     <div>
       {/* Insights strip — Pro only */}
       {showInsights && insights.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
-          {insights.map(insight => (
-            <div key={insight.type} style={{ background: "#f0f7f4", border: `1px solid ${C.forest}22`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 16 }}>
-                {insight.type === "last_watered"      ? "💧"
-                 : insight.type === "last_fed"        ? "🌿"
-                 : insight.type === "watering_interval" ? "🔄"
-                 : insight.type === "feeding_interval"  ? "🔄"
-                 : insight.type === "inactivity"      ? "⚠️"
-                 : insight.type === "streak"          ? "🔥"
-                 : "📊"}
-              </span>
-              <span style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", fontWeight: 500 }}>
-                {insight.label}
-              </span>
-            </div>
-          ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 16, marginTop: 4 }}>
+          {insights.map((insight, idx) => {
+            const isPrimary  = idx === 0;
+            const icon = insight.type === "last_watered"  ? "💧"
+                       : insight.type === "last_fed"      ? "🌿"
+                       : insight.type === "inactivity"    ? "⚠️"
+                       : insight.type === "streak"        ? "🔥"
+                       : "📊";
+            const isWarning  = insight.type === "inactivity";
+            const isTappable = !!insight.filter;
+            return (
+              <div key={insight.type}
+                onClick={isTappable ? () => handleFilterChange(insight.filter) : undefined}
+                style={{
+                  background:  isWarning ? "#fffbf0" : isPrimary ? "#f0f7f4" : "#fafaf8",
+                  border:      `1px solid ${isWarning ? "#f0c040" : isPrimary ? `${C.forest}30` : C.border}`,
+                  borderRadius: 10,
+                  padding:     isPrimary ? "10px 14px" : "8px 14px",
+                  display:     "flex",
+                  alignItems:  "center",
+                  gap:         10,
+                  cursor:      isTappable ? "pointer" : "default",
+                }}>
+                <span style={{ fontSize: isPrimary ? 16 : 14 }}>{icon}</span>
+                <span style={{ fontSize: isPrimary ? 13 : 12, color: isWarning ? "#8a6600" : "#1a1a1a", fontFamily: "sans-serif", fontWeight: isPrimary ? 600 : 500, flex: 1 }}>
+                  {insight.label}
+                </span>
+                {isTappable && (
+                  <span style={{ fontSize: 11, color: C.forest, fontFamily: "sans-serif", fontWeight: 600 }}>View →</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
       {showInsights && insightsLoading && (
