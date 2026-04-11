@@ -88,6 +88,15 @@ const TEST_USER_IDS = [
   "448095f2-d379-4232-90f2-6ac7cebe1c70",
 ];
 
+// ── Pro preview user IDs ─────────────────────────────────────────────────────
+// These users experience the full PRO_ENABLED=true flow — real paywalls, real
+// Stripe/RevenueCat checkout — even while the global flag is still false.
+// Use for testing the paywall journey before going fully live.
+// Remove IDs here once PRO_ENABLED is flipped globally.
+const PRO_PREVIEW_USER_IDS = [
+  "b1584cf2-8bc1-4599-87bc-c01a5d67b9c4",
+];
+
 // ── Partner admin IDs ─────────────────────────────────────────────────────────
 // These users get full Pro access + metrics-only admin dashboard.
 // They cannot see users, feedback or crop queue.
@@ -167,22 +176,27 @@ function useProStatus() {
     ]).then(([statusData, sessionData]) => {
       const email  = sessionData?.data?.session?.user?.email || "";
       const userId = sessionData?.data?.session?.user?.id    || "";
-      const markBypass = email === MARK_EMAIL || PARTNER_ADMIN_IDS.includes(userId);
-      const testBypass = TEST_USER_IDS.includes(userId);
+      const markBypass    = email === MARK_EMAIL || PARTNER_ADMIN_IDS.includes(userId);
+      const testBypass    = TEST_USER_IDS.includes(userId);
+      const previewBypass = PRO_PREVIEW_USER_IDS.includes(userId);
       setIsMark(markBypass);
-      setIsTestUser(testBypass);
+      setIsTestUser(testBypass || previewBypass);
       const pro = markBypass || statusData?.is_pro === true;
       setIsPro(pro);
       setPlan(markBypass ? "pro" : (statusData?.plan || "free"));
+      // Store preview flag so effectiveIsPro can use it
+      try { localStorage.setItem("vercro_pro_preview", previewBypass ? "true" : "false"); } catch(e) {}
       try { localStorage.setItem("vercro_is_pro", pro ? "true" : "false"); } catch(e) {}
     }).catch(() => {})
     .finally(() => setLoading(false));
   }, []);
 
   // isPro for general Pro UI: Mark OR (PRO_ENABLED=true AND plan is pro) OR test user
-  // Test users see all new UI and paywalls but are NOT isPro — so paywalls fire correctly.
+  // Test/preview users see all Pro UI and real paywalls but are NOT isPro themselves.
   // isPro for diagnosis: Mark OR actual plan is pro (ignores PRO_ENABLED flag)
-  const effectiveIsPro = isMark || (PRO_ENABLED && isPro);
+  const isPreviewUser = (() => { try { return localStorage.getItem("vercro_pro_preview") === "true"; } catch(e) { return false; } })();
+  const proFlagActive = PRO_ENABLED || isPreviewUser;
+  const effectiveIsPro = isMark || (proFlagActive && isPro);
   const isProForDiagnosis = isMark || isPro;
   return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark, isTestUser };
 }
@@ -198,7 +212,7 @@ function usePlantCheckEnabled() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const email  = session?.user?.email || "";
       const userId = session?.user?.id    || "";
-      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId)) setEnabled(true);
+      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) setEnabled(true);
     }).catch(() => {});
   }, []);
 
@@ -250,7 +264,7 @@ function useNavEnabled() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const email  = session?.user?.email || "";
       const userId = session?.user?.id    || "";
-      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId)) setEnabled(true);
+      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) setEnabled(true);
     }).catch(() => {});
   }, []);
   return enabled;
