@@ -2669,39 +2669,299 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
 
 // ── Activity type config ──────────────────────────────────────────────────────
 const ACTIVITY_CONFIG = {
-  task_completed:      { icon: "✅", label: "Completed task" },
-  manual_watering:     { icon: "💧", label: "Watered" },
-  manual_feeding:      { icon: "🌿", label: "Fed" },
-  manual_weeding:      { icon: "🪴", label: "Weeded" },
+  task_completed:        { icon: "✅", label: "Completed" },
+  manual_watering:       { icon: "💧", label: "Watered" },
+  manual_feeding:        { icon: "🌿", label: "Fed" },
+  manual_weeding:        { icon: "🪴", label: "Weeded" },
   manual_pruned_mulched: { icon: "✂️", label: "Pruned / mulched" },
-  manual_other:        { icon: "📋", label: "Activity" },
-  harvest_logged:      { icon: "🧺", label: "Harvested" },
-  photo_added:         { icon: "📷", label: "Photo added" },
-  observation_added:   { icon: "👁", label: "Observation" },
+  manual_other:          { icon: "📋", label: "Activity" },
+  harvest_logged:        { icon: "🧺", label: "Harvested" },
+  photo_added:           { icon: "📷", label: "Photo added" },
+  observation_added:     { icon: "👁", label: "Observation" },
 };
 
+// Shorten long task_completed titles — keep just the action verb phrase
+function shortenTaskTitle(title) {
+  if (!title || !title.startsWith("Completed — ")) return title;
+  const action = title.slice("Completed — ".length);
+  // Truncate at common noise patterns: " — ", " (", " pay particular"
+  const cutAt = [" — ", " (", " pay particular", " — pay"].map(p => action.indexOf(p)).filter(i => i > 0);
+  const cut = cutAt.length ? Math.min(...cutAt) : -1;
+  const short = cut > 0 ? action.slice(0, cut) : action;
+  // Hard cap at 60 chars
+  return "Completed — " + (short.length > 60 ? short.slice(0, 57) + "…" : short);
+}
+
+// Collapse consecutive observation_added items within the same day group into one card
+function collapseObservations(items) {
+  const out = [];
+  let i = 0;
+  while (i < items.length) {
+    const item = items[i];
+    if (item.event_type !== "observation_added") { out.push(item); i++; continue; }
+    // Collect consecutive observations
+    const cluster = [item];
+    while (i + cluster.length < items.length && items[i + cluster.length].event_type === "observation_added") {
+      cluster.push(items[i + cluster.length]);
+    }
+    if (cluster.length === 1) { out.push(item); i++; continue; }
+    // Build collapsed card
+    const cropNames = [...new Set(cluster.map(c => c.crop_name).filter(Boolean))];
+    const displayCrops = cropNames.slice(0, 3).join(", ") + (cropNames.length > 3 ? ` +${cropNames.length - 3}` : "");
+    const locationName = cluster[0].location_name || null;
+    out.push({
+      id:          `obs-cluster-${item.id}`,
+      event_type:  "observation_added",
+      title:       `Observations — ${cluster.length} plants checked`,
+      subtitle:    [locationName, displayCrops].filter(Boolean).join(" · "),
+      occurred_at: item.occurred_at,
+      _cluster:    cluster,
+    });
+    i += cluster.length;
+  }
+  return out;
+}
+
 function GardenLog({ onLogActivity }) {
-  const [items,      setItems]      = useState([]);
-  const [loading,    setLoading]    = useState(true);
+  const [items,       setItems]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState(null);
-  const [hasMore,    setHasMore]    = useState(false);
-  const [error,      setError]      = useState(null);
-  const [filter,     setFilter]     = useState("all");
+  const [nextCursor,  setNextCursor]  = useState(null);
+  const [hasMore,     setHasMore]     = useState(false);
+  const [error,       setError]       = useState(null);
+  const [filter,      setFilter]      = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [expandedClusters, setExpandedClusters] = useState({});
 
   const FILTERS = [
-    { id: "all",       label: "All" },
-    { id: "task_completed", label: "Tasks" },
+    { id: "all",             label: "All activity" },
+    { id: "task_completed",  label: "Completed tasks" },
     { id: "manual_watering", label: "Watering" },
     { id: "manual_feeding",  label: "Feeding" },
     { id: "harvest_logged",  label: "Harvests" },
     { id: "photo_added",     label: "Photos" },
+    { id: "observation_added", label: "Observations" },
   ];
 
   const load = async (cursor = null, currentFilter = filter) => {
     try {
       cursor ? setLoadingMore(true) : setLoading(true);
       const params = new URLSearchParams({ limit: "25" });
+      if (cursor)                  params.set("cursor", cursor);
+      if (currentFilter !== "all") params.set("event_type", currentFilter);
+      const d = await apiFetch(`/activity/feed?${params}`);
+      if (cursor) {
+        setItems(prev => [...prev, ...d.items]);
+      } else {
+        setItems(d.items || []);
+      }
+      setNextCursor(d.next_cursor || null);
+      setHasMore(d.has_more || false);
+    } catch(e) {
+      setError("Couldn't load your garden log.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleFilterChange = (f) => {
+    setFilter(f);
+    setItems([]);
+    setNextCursor(null);
+    setShowFilters(false);
+    load(null, f);
+  };
+
+  // Group items by day, then collapse observations within each day
+  const grouped = (() => {
+    const groups = [];
+    const seen = {};
+    const today = new Date(); today.setHours(0,0,0,0);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    for (const item of items) {
+      const d = new Date(item.occurred_at); d.setHours(0,0,0,0);
+      let label;
+      if (d.getTime() === today.getTime())          label = "Today";
+      else if (d.getTime() === yesterday.getTime()) label = "Yesterday";
+      else label = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      if (!seen[label]) { seen[label] = true; groups.push({ label, items: [] }); }
+      groups[groups.length - 1].items.push(item);
+    }
+    // Collapse observations within each day group
+    return groups.map(g => ({ ...g, items: collapseObservations(g.items) }));
+  })();
+
+  const formatTime = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  const activeFilterLabel = FILTERS.find(f => f.id === filter)?.label || "All activity";
+
+  if (loading) return (
+    <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+      <div style={{ fontSize: 13, fontFamily: "sans-serif" }}>Loading your garden log…</div>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+      <div style={{ fontSize: 13, fontFamily: "sans-serif" }}>{error}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Header strip + filter icon */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: C.stone, fontFamily: "sans-serif" }}>
+          {filter === "all" ? "Your garden activity" : activeFilterLabel}
+        </div>
+        <button onClick={() => setShowFilters(true)}
+          style={{ background: filter !== "all" ? C.forest : "none", border: `1px solid ${filter !== "all" ? C.forest : C.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: filter !== "all" ? "#fff" : C.stone }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <line x1="1" y1="3" x2="13" y2="3"/><line x1="3" y1="7" x2="11" y2="7"/><line x1="5" y1="11" x2="9" y2="11"/>
+          </svg>
+          <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "sans-serif" }}>
+            {filter !== "all" ? activeFilterLabel : "Filter"}
+          </span>
+        </button>
+      </div>
+
+      {/* Filter bottom sheet */}
+      {showFilters && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200 }} onClick={() => setShowFilters(false)}>
+          <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 40px", boxShadow: "0 -4px 24px rgba(0,0,0,0.12)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "serif", marginBottom: 16, color: "#1a1a1a" }}>Filter activity</div>
+            {FILTERS.map(f => (
+              <button key={f.id} onClick={() => handleFilterChange(f.id)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, padding: "13px 0", cursor: "pointer", fontSize: 14, color: filter === f.id ? C.forest : "#1a1a1a", fontWeight: filter === f.id ? 700 : 400, fontFamily: "sans-serif" }}>
+                {f.label}
+                {filter === f.id && <span style={{ color: C.forest, fontSize: 16 }}>✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {items.length === 0 && (
+        <div style={{ textAlign: "center", padding: "48px 24px" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+            {filter === "all" ? "Nothing in your garden log yet" : "No matching activity"}
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 20 }}>
+            {filter === "all"
+              ? "As you complete tasks and record things like watering, feeding, harvests and notes, they'll appear here."
+              : "Try a different filter or log a new activity."}
+          </div>
+          {filter === "all" ? (
+            <button onClick={onLogActivity}
+              style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+              Log activity
+            </button>
+          ) : (
+            <button onClick={() => handleFilterChange("all")}
+              style={{ background: "none", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+              Clear filter
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Timeline */}
+      {grouped.map(group => (
+        <div key={group.label} style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: "sans-serif", paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
+            {group.label}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {group.items.map(item => {
+              const cfg = ACTIVITY_CONFIG[item.event_type] || { icon: "📋", label: item.event_type };
+              const isCluster = !!item._cluster;
+              const isExpanded = expandedClusters[item.id];
+              const title = item.event_type === "task_completed" ? shortenTaskTitle(item.title) : item.title;
+
+              return (
+                <div key={item.id}>
+                  <div
+                    onClick={isCluster ? () => setExpandedClusters(p => ({ ...p, [item.id]: !p[item.id] })) : undefined}
+                    style={{ background: "#fff", borderRadius: 10, padding: "9px 12px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, cursor: isCluster ? "pointer" : "default" }}>
+                    {/* Icon */}
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
+                      {cfg.icon}
+                    </div>
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", fontFamily: "sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {title}
+                      </div>
+                      {item.subtitle && (
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 1, fontFamily: "sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {item.subtitle}
+                        </div>
+                      )}
+                      {item.note && (
+                        <div style={{ fontSize: 11, color: "#666", marginTop: 3, fontStyle: "italic", lineHeight: 1.4, fontFamily: "sans-serif", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>
+                          {item.note}
+                        </div>
+                      )}
+                      {item.quantity_g > 0 && (
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontFamily: "sans-serif" }}>
+                          {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
+                        </div>
+                      )}
+                    </div>
+                    {/* Right side */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                      <div style={{ fontSize: 10, color: C.stone, fontFamily: "sans-serif" }}>
+                        {formatTime(item.occurred_at)}
+                      </div>
+                      {item.photo_url && (
+                        <img src={item.photo_url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} />
+                      )}
+                      {isCluster && (
+                        <span style={{ fontSize: 10, color: C.stone }}>
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Expanded cluster items */}
+                  {isCluster && isExpanded && (
+                    <div style={{ marginTop: 3, marginLeft: 16, display: "flex", flexDirection: "column", gap: 3 }}>
+                      {item._cluster.map(child => (
+                        <div key={child.id} style={{ background: C.offwhite, borderRadius: 8, padding: "7px 10px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ fontSize: 12, fontFamily: "sans-serif", color: "#1a1a1a", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {child.crop_name || child.title}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.stone, fontFamily: "sans-serif", flexShrink: 0 }}>
+                            {formatTime(child.occurred_at)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Load more */}
+      {hasMore && (
+        <button onClick={() => load(nextCursor)} disabled={loadingMore}
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: "sans-serif", marginTop: 4 }}>
+          {loadingMore ? "Loading…" : "Load more"}
+        </button>
+      )}
+    </div>
+  );
+}
       if (cursor)                          params.set("cursor", cursor);
       if (currentFilter !== "all")         params.set("event_type", currentFilter);
       const d = await apiFetch(`/activity/feed?${params}`);
