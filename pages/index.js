@@ -3167,12 +3167,6 @@ function GardenLog({ onLogActivity }) {
         </button>
       )}
 
-      {/* Floating + button */}
-      <button onClick={onLogActivity}
-        style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-        +
-      </button>
-
       {/* Activity detail sheet */}
       {selectedItem && (
         <ActivityDetailSheet
@@ -3192,7 +3186,7 @@ function GardenLog({ onLogActivity }) {
   );
 }
 
-function Dashboard({ onTabChange, isDemo = false }) {
+function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
   const [error,        setError]       = useState(null);
@@ -3231,7 +3225,13 @@ function Dashboard({ onTabChange, isDemo = false }) {
   const [showAllToday,       setShowAllToday]       = useState(false);
   const [showLogForCrop,     setShowLogForCrop]     = useState(null);
   const [showLogActivity,    setShowLogActivity]    = useState(false);
-  const [dashboardView,      setDashboardView]      = useState("today"); // "today" | "log"
+
+  useEffect(() => {
+    if (externalShowLogActivity) {
+      setShowLogActivity(true);
+      if (onExternalLogActivityConsumed) onExternalLogActivityConsumed();
+    }
+  }, [externalShowLogActivity]);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -3578,7 +3578,7 @@ function Dashboard({ onTabChange, isDemo = false }) {
       {/* ── SEGMENTED CONTROL — Today / Log ───────────────────────────────── */}
       <div style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
         {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
-          <button key={id} onClick={() => setDashboardView(id)}
+          <button key={id} onClick={() => onDashboardViewChange(id)}
             style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: "sans-serif", boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
             {label}
           </button>
@@ -16992,6 +16992,8 @@ export default function GrowSmart() {
   const [prevTab,     setPrevTab]     = useState("dashboard");
   const [editCropFocus, setEditCropFocus] = useState(null);
   const [openTimeAway,  setOpenTimeAway]  = useState(false);
+  const [dashboardView, setDashboardView] = useState("today");
+  const [showLogActivityGlobal, setShowLogActivityGlobal] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -17118,7 +17120,7 @@ export default function GrowSmart() {
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} />}
+        {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} dashboardView={dashboardView} onDashboardViewChange={setDashboardView} externalShowLogActivity={showLogActivityGlobal} onExternalLogActivityConsumed={() => setShowLogActivityGlobal(false)} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
         {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
@@ -17143,8 +17145,16 @@ export default function GrowSmart() {
         />
       )}
 
-      {/* Floating feedback button */}
-      {!showFeedback && tab !== "admin" && !showIOSBanner && (
+      {/* Floating + button — Log view only */}
+      {tab === "dashboard" && dashboardView === "log" && !showIOSBanner && (
+        <button onClick={() => setShowLogActivityGlobal(true)}
+          style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          +
+        </button>
+      )}
+
+      {/* Floating feedback button — hidden on Log view */}
+      {!showFeedback && tab !== "admin" && !showIOSBanner && !(tab === "dashboard" && dashboardView === "log") && (
         <button onClick={() => setShowFeedback(true)}
           style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
