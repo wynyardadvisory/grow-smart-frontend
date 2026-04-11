@@ -9614,18 +9614,30 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   ];
 
   // ── Upgrade handler ─────────────────────────────────────────────────────────
-  // On native (Capacitor), use RevenueCat. On web, use Stripe with server-resolved pricing.
+  // On native (Capacitor), use RevenueCat with tier-specific offering.
+  // On web, use Stripe with server-resolved pricing.
   const handleUpgrade = async () => {
     setLoading(true);
     try {
       if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
-        // iOS / Android — RevenueCat handles pricing tier via offerings
-        const offerings = await Purchases.getOfferings();
-        // Pick package based on selected interval
+        // iOS / Android — pick the correct RevenueCat offering for this user's tier
+        // tier: "loyalty" | "early_supporter" | "standard"
+        // RevenueCat offering identifiers match exactly: loyalty, early_supporter, default
+        const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
+                         : pricing?.tier === "early_supporter" ? "early_supporter"
+                         : "default";
+
+        const allOfferings = await Purchases.getOfferings();
+        // Try the tier-specific offering, fall back to default if not found
+        const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
+        if (!offering) throw new Error("No offering available");
+
+        // Pick monthly or annual package within the offering
         const pkg = interval === "monthly"
-          ? offerings?.current?.monthly
-          : offerings?.current?.annual || offerings?.current?.availablePackages?.[0];
-        if (!pkg) throw new Error("No package available");
+          ? (offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY"))
+          : (offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0]);
+
+        if (!pkg) throw new Error("No package available for " + offeringId + " / " + interval);
         await Purchases.purchasePackage({ aPackage: pkg });
         await apiFetch("/subscription/status");
         window.location.reload();
