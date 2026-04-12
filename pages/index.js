@@ -3562,8 +3562,16 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     } catch { return false; }
   });
 
-  // Watch outs — risk alerts
-  const watchOuts = alerts.slice(0, 3);
+  // Watch outs — group alerts by rule_id so same pest/issue across multiple crops shows as one card
+  const watchOuts = (() => {
+    const groups = new Map();
+    for (const t of alerts) {
+      const key = t.rule_id || t.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(t);
+    }
+    return [...groups.values()].slice(0, 3);
+  })();
 
   // Coming up next — group by crop name
   const comingUpByCrop = (() => {
@@ -3971,18 +3979,24 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Watch outs</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {watchOuts.map(t => {
+            {watchOuts.map(group => {
+              const t = group[0]; // representative task for shared fields
               const urgColour = t.urgency === "high" ? "#e74c3c" : t.urgency === "medium" ? "#e67e22" : "#7f8c8d";
               const urgBg     = t.urgency === "high" ? "#fff5f5" : t.urgency === "medium" ? "#fff8f0" : "#f8f8f8";
+              const isPest    = t.task_type?.includes("pest") || t.task_type?.includes("inspect") || t.task_type === "protect";
+              const cropNames = [...new Set(group.map(x => x.crop?.name).filter(Boolean))];
+              const groupKey  = t.rule_id || t.id;
               return (
-                <div key={t.id} style={{ background: urgBg, border: `1px solid ${urgColour}33`, borderLeft: `3px solid ${urgColour}`, borderRadius: 12, padding: "12px 14px" }}>
+                <div key={groupKey} style={{ background: urgBg, border: `1px solid ${urgColour}33`, borderLeft: `3px solid ${urgColour}`, borderRadius: 12, padding: "12px 14px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     <span style={{ fontSize: 20, flexShrink: 0 }}>
                       {t.task_type === "protect" ? "🛡️" : t.task_type?.includes("pest") ? "🐛" : t.task_type?.includes("disease") ? "🔬" : "⚠️"}
                     </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{t.crop?.name || "Watch out"}</div>
+                        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>
+                          {cropNames.length > 0 ? cropNames.join(", ") : "Watch out"}
+                        </div>
                         <span style={{ fontSize: 10, fontWeight: 700, color: urgColour, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", flexShrink: 0, marginLeft: 8 }}>
                           {t.urgency === "high" ? "Act now" : t.urgency === "medium" ? "Inspect" : "Watch"}
                         </span>
@@ -3991,28 +4005,28 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    {t.crop?.name && (t.task_type?.includes("pest") || t.task_type?.includes("inspect") || t.task_type === "protect") ? (
+                    {isPest ? (
                       <>
                         <button onClick={async () => {
-                          if (t.crop_instance_id) await logObservation(t.crop_instance_id, "pest", "pest_found", "mild");
-                          completeTask(t);
+                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild") : Promise.resolve()));
+                          group.forEach(x => completeTask(x));
                         }} style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                           🐛 Found it
                         </button>
                         <button onClick={async () => {
-                          if (t.crop_instance_id) await logObservation(t.crop_instance_id, "pest", "looks_healthy");
-                          completeTask(t);
+                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy") : Promise.resolve()));
+                          group.forEach(x => completeTask(x));
                         }} style={{ flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "8px", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                           ✓ All clear
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => completeTask(t)}
+                        <button onClick={() => group.forEach(x => completeTask(x))}
                           style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                           ✓ Done
                         </button>
-                        <button onClick={() => { setCompleted(prev => new Set([...prev, t.id])); apiFetch(`/tasks/${t.id}/complete`, { method: "POST" }); }}
+                        <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); }}
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
                           Dismiss
                         </button>
