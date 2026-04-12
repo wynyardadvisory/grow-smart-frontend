@@ -12470,7 +12470,21 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     status={metrics.pushOptIn ? status(metrics.pushOptIn, 60, 40) : null}
                     suggestion={SUGGESTIONS.pushenabled} />
                   <MetricRow label="Push tokens active" val={metrics.pushTokens || "—"} />
-                  <MetricRow label="CTR" val="—" sub="tracking coming soon" />
+                  <MetricRow label="Sent (last 7 days)" val={metrics.pushSent7d ?? "—"} />
+                  <MetricRow label="Opened (last 7 days)" val={metrics.pushOpened7d ?? "—"} />
+                  <MetricRow label="CTR (last 7 days)" val={metrics.pushCTR7d != null ? `${metrics.pushCTR7d}%` : "—"} sub="opened / sent"
+                    status={metrics.pushCTR7d != null ? status(metrics.pushCTR7d, 10, 5) : null} />
+                  {metrics.pushByType7d && Object.keys(metrics.pushByType7d).length > 0 && (
+                    <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>By type (7d)</div>
+                      {Object.entries(metrics.pushByType7d).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                        <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>{type.replace(/_/g, " ")}</span>
+                          <span style={{ fontWeight: 600 }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email sequences</div>
