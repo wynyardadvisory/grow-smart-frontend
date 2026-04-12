@@ -5398,6 +5398,7 @@ function GardenView({ onNavigateAdd }) {
                     <option value="greenhouse">Greenhouse</option>
                     <option value="polytunnel">Polytunnel</option>
                     <option value="container">Container / pots</option>
+                    <option value="indoors">Indoors (permanent)</option>
                   </select></div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, supports future planning</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -5478,6 +5479,7 @@ function GardenView({ onNavigateAdd }) {
                         <option value="greenhouse">Greenhouse</option>
                         <option value="polytunnel">Polytunnel</option>
                         <option value="container">Container / pots</option>
+                        <option value="indoors">Indoors (permanent)</option>
                       </select>
                     </div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
@@ -16944,7 +16946,7 @@ function OnboardingScreen({ onComplete }) {
     { id: "other",          label: "Somewhere else" },
   ];
 
-  const stepLabels = ["About you", "Your crops", "Growth stage", "Where you're growing", "One last thing"];
+  const stepLabels = ["About you", "Your crops", "Growth stage", "Where will you harvest?", "One last thing"];
   const progress = ((step + 1) / 5) * 100;
 
   return (
@@ -17068,7 +17070,10 @@ function OnboardingScreen({ onComplete }) {
         {step === 3 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
-              This helps us tailor watering, frost alerts and planting timings.
+              Pick where these crops will end up — this is their final growing spot. We'll tailor watering, frost alerts and task timings to match.
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, lineHeight: 1.5, background: C.offwhite, borderRadius: 8, padding: "10px 12px" }}>
+              💡 Starting seeds indoors first? Choose the final destination here — you can update individual crops to "Sowing indoors" in the crop editor once you're set up.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {AREA_TYPES.map(a => (
