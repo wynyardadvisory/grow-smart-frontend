@@ -16153,6 +16153,7 @@ function PlanScreen() {
   useEffect(() => {
     if (!loc) return;
     autoLayoutDone.current = false;
+    initialAreasRef.current = null; // reset so canvas geometry recalculates from fresh positions
     setActiveBlock(null);
     setAreas(loc.growing_areas||[]);
     apiFetch(`/area-plan-assignments?location_id=${loc.id}`)
@@ -16195,6 +16196,7 @@ function PlanScreen() {
       return placed;
     });
     setAreas(updated);
+    initialAreasRef.current = updated; // update ref so canvas geometry uses placed positions
     if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
   },[areas.length,selectedLoc]);
 
