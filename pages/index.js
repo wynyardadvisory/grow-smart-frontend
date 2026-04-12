@@ -150,6 +150,7 @@ function formatDimension(metres, unit) {
 const TEST_USER_IDS = [
   "448095f2-d379-4232-90f2-6ac7cebe1c70",
   "bc820dcb-fe7f-4311-a9cc-2439b215adc1", // demo account — Plant Check visible for App Review
+  "a6b10628-a36d-41b2-ad83-58fa6ecad254", // appdemo account — App Review account
 ];
 
 // ── Pro preview user IDs ─────────────────────────────────────────────────────
@@ -2658,10 +2659,9 @@ function NotificationDashboardPrompt({ onTabChange }) {
   );
 }
 
-// ── PlantCheckHeroCard — position 2 on Today (Mark only until PRO_ENABLED) ────
+// ── PlantCheckHeroCard — position 2 on Today ─────────────────────────────────
 function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen }) {
-  // Only show to Mark until PRO_ENABLED is true — keeps new UI isMark-only
-  if (!isMark) return null;
+  if (!plantCheckEnabled) return null;
 
   const isExpired  = remainingChecks !== null && remainingChecks <= 0;
   const isUnlimited = remainingChecks === null;
