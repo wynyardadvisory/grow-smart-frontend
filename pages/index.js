@@ -149,6 +149,7 @@ function formatDimension(metres, unit) {
 // no other users are affected. Remove IDs here when going fully live.
 const TEST_USER_IDS = [
   "448095f2-d379-4232-90f2-6ac7cebe1c70",
+  "bc820dcb-fe7f-4311-a9cc-2439b215adc1", // demo account — Plant Check visible for App Review
 ];
 
 // ── Pro preview user IDs ─────────────────────────────────────────────────────
