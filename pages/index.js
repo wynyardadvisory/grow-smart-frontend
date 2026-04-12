@@ -11437,7 +11437,7 @@ const FEEDBACK_CATEGORIES = [
   { id: "praise",  label: "🌟 Positive feedback", hint: "Something you love" },
 ];
 
-function FeedbackSheet({ onClose }) {
+function FeedbackSheet({ onClose, isNative = false }) {
   const [category, setCategory] = useState("");
   const [message,  setMessage]  = useState("");
   const [rating,   setRating]   = useState(0);
@@ -11445,14 +11445,19 @@ function FeedbackSheet({ onClose }) {
   const [done,     setDone]     = useState(false);
   const [error,    setError]    = useState(null);
 
-  const canSubmit = rating > 0 || (category && message.trim().length > 3);
+  // On native: only bug/feature categories — no praise or general
+  const categories = isNative
+    ? FEEDBACK_CATEGORIES.filter(c => c.id === "feature" || c.id === "bug")
+    : FEEDBACK_CATEGORIES;
+
+  const canSubmit = (!isNative && rating > 0) || (category && message.trim().length > 3);
 
   const submit = async () => {
     setSaving(true); setError(null);
     try {
       await apiFetch("/feedback", {
         method: "POST",
-        body: JSON.stringify({ category, message, rating: rating || null }),
+        body: JSON.stringify({ category, message, rating: isNative ? null : (rating || null) }),
       });
       // Guard: don't prompt for review in the same session the user filed feedback
       try { sessionStorage.setItem("vercro_negative_feedback", "1"); } catch(e) {}
@@ -11477,34 +11482,42 @@ function FeedbackSheet({ onClose }) {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Share your thoughts 💬</div>
-                <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Helps us build the right things</div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+                  {isNative ? "Report a bug or idea 💡" : "Share your thoughts 💬"}
+                </div>
+                <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
+                  {isNative ? "Help us fix issues and build the right things" : "Helps us build the right things"}
+                </div>
               </div>
               <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0 }}>×</button>
             </div>
 
             {error && <ErrorMsg msg={error} />}
 
-            {/* Star rating — can submit with just this */}
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
-                How are you finding Vercro? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(tap to submit with just a rating)</span>
+            {/* Star rating — web only */}
+            {!isNative && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                  How are you finding Vercro? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(tap to submit with just a rating)</span>
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {[1,2,3,4,5].map(n => (
+                    <button key={n} onClick={() => setRating(rating === n ? 0 : n)}
+                      style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${rating >= n ? C.amber : C.border}`, background: rating >= n ? "#fff8ed" : "transparent", fontSize: 20, cursor: "pointer", transition: "all 0.15s" }}>
+                      {rating >= n ? "⭐" : "☆"}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                {[1,2,3,4,5].map(n => (
-                  <button key={n} onClick={() => setRating(rating === n ? 0 : n)}
-                    style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${rating >= n ? C.amber : C.border}`, background: rating >= n ? "#fff8ed" : "transparent", fontSize: 20, cursor: "pointer", transition: "all 0.15s" }}>
-                    {rating >= n ? "⭐" : "☆"}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Category */}
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What kind of feedback? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                {isNative ? "What is it?" : "What kind of feedback?"} <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {FEEDBACK_CATEGORIES.map(c => (
+                {categories.map(c => (
                   <div key={c.id} onClick={() => setCategory(category === c.id ? "" : c.id)}
                     style={{ border: `2px solid ${category === c.id ? C.forest : C.border}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", background: category === c.id ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: category === c.id ? C.forest : "#1a1a1a" }}>{c.label}</div>
@@ -11516,11 +11529,13 @@ function FeedbackSheet({ onClose }) {
 
             {/* Message */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Want to say more? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                {isNative ? "Describe it" : "Want to say more?"} <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+              </div>
               <textarea
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="Tell us what you think, what's missing, or what could be better…"
+                placeholder={isNative ? "Describe the bug or feature request…" : "Tell us what you think, what's missing, or what could be better…"}
                 style={{ ...inputStyle, height: 100, resize: "vertical", fontSize: 13 }}
               />
             </div>
@@ -17247,10 +17262,10 @@ export default function GrowSmart() {
           style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-          💬
+          {window?.Capacitor?.isNative ? "💡" : "💬"}
         </button>
       )}
-      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} />}
+      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} isNative={!!(window?.Capacitor?.isNative)} />}
 
       {/* Subscribed success toast — shown after Stripe redirect */}
       {subscribedToast && (
