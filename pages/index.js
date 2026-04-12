@@ -12495,7 +12495,33 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <MetricRow label="Re-engagement day 14" val={metrics.emailReengageDay14 || "—"} />
                   <MetricRow label="Re-engagement day 30" val={metrics.emailReengageDay30 || "—"} />
                   <MetricRow label="Daily fallback emails" val={metrics.emailDailyFallback || "—"} />
-                  <MetricRow label="Open rates" val="—" sub="Resend webhook pending" />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email performance (30 days)</div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <MetricRow label="Delivered" val={metrics.emailDelivered30d ?? "—"} />
+                  <MetricRow label="Opened" val={metrics.emailOpened30d ?? "—"} />
+                  <MetricRow label="Open rate" val={metrics.emailOpenRate30d != null ? `${metrics.emailOpenRate30d}%` : "—"} sub="opened / delivered"
+                    status={metrics.emailOpenRate30d != null ? status(metrics.emailOpenRate30d, 30, 15) : null} />
+                  <MetricRow label="Click rate" val={metrics.emailClickRate30d != null ? `${metrics.emailClickRate30d}%` : "—"} sub="clicked / delivered" />
+                  <MetricRow label="Bounce rate" val={metrics.emailBounceRate30d != null ? `${metrics.emailBounceRate30d}%` : "—"} sub="target < 2%"
+                    status={metrics.emailBounceRate30d != null ? (metrics.emailBounceRate30d < 2 ? "green" : metrics.emailBounceRate30d < 5 ? "amber" : "red") : null} />
+                  {metrics.emailOpensByType30d && Object.keys(metrics.emailOpensByType30d).length > 0 && (
+                    <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Opens by type (30d)</div>
+                      {Object.entries(metrics.emailOpensByType30d).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                        <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>{type.replace(/_/g, " ")}</span>
+                          <span style={{ fontWeight: 600 }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {metrics.emailDelivered30d === 0 && (
+                    <div style={{ padding: "10px 16px", fontSize: 12, color: C.stone, borderTop: `1px solid ${C.border}` }}>
+                      Waiting for webhook data — will populate as emails are sent
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Feedback</div>
