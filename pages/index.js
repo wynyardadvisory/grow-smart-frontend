@@ -5773,11 +5773,18 @@ function CropGrowthDiary({ crop, onClose }) {
         <div style={{ marginBottom: 20 }}>
           <input value={caption} onChange={e => setCaption(e.target.value)}
             placeholder="Add a caption (optional)" style={{ ...inputStyle, marginBottom: 8 }} />
-          <label htmlFor="crop-diary-photo"
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: "serif" }}>
-            {uploading ? "Uploading…" : "📷 Add photo"}
-          </label>
-          <input id="crop-diary-photo" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <label htmlFor="crop-diary-photo-camera"
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: "serif" }}>
+              {uploading ? "Uploading…" : "📷 Camera"}
+            </label>
+            <input id="crop-diary-photo-camera" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
+            <label htmlFor="crop-diary-photo-library"
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: "serif" }}>
+              🖼️ Library
+            </label>
+            <input id="crop-diary-photo-library" type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
+          </div>
         </div>
 
         {/* Photos grid */}
