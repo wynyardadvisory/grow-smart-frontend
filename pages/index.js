@@ -36,9 +36,11 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
 // ── In-App Review (native only) ───────────────────────────────────────────────
 // Prompts users for an App Store / Google Play review at high-value moments.
 // Never shown on web. iOS system enforces a 3-per-year cap regardless.
+// Uses a runtime require() so Turbopack/webpack never tries to resolve it at
+// build time — the package only exists in the native Capacitor environment.
 let InAppReview = null;
 if (typeof window !== "undefined" && window.Capacitor?.isNative) {
-  import("@capacitor-community/in-app-review").then(m => { InAppReview = m.InAppReview; });
+  try { InAppReview = require("@capacitor-community/in-app-review").InAppReview; } catch(e) {}
 }
 
 // ── Review prompt helper ──────────────────────────────────────────────────────
