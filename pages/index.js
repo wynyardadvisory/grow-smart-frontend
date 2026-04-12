@@ -65,6 +65,37 @@ function maybePromptForReview() {
   }
 }
 
+// ── UTM attribution capture ───────────────────────────────────────────────────
+// Called once on app load. Reads UTM params from the URL and stores in
+// localStorage. Only captures on first visit — never overwrites existing values.
+// At signup, these are read and sent to the API to persist on the user profile.
+function captureUTMs() {
+  try {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("vercro_utm_source")) return; // already captured
+    const params = new URLSearchParams(window.location.search);
+    const source   = params.get("utm_source");
+    const medium   = params.get("utm_medium");
+    const campaign = params.get("utm_campaign");
+    if (source)   localStorage.setItem("vercro_utm_source",   source);
+    if (medium)   localStorage.setItem("vercro_utm_medium",   medium);
+    if (campaign) localStorage.setItem("vercro_utm_campaign", campaign);
+    if (source) console.log(`[UTM] Captured: source=${source} medium=${medium} campaign=${campaign}`);
+  } catch(e) {}
+}
+
+function getStoredUTMs() {
+  try {
+    return {
+      signup_source:   localStorage.getItem("vercro_utm_source")   || "direct",
+      signup_medium:   localStorage.getItem("vercro_utm_medium")   || null,
+      signup_campaign: localStorage.getItem("vercro_utm_campaign") || null,
+    };
+  } catch(e) {
+    return { signup_source: "direct", signup_medium: null, signup_campaign: null };
+  }
+}
+
 // ── Supabase client (frontend) ────────────────────────────────────────────────
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -16800,12 +16831,13 @@ const AREA_TYPES = [
 
 function OnboardingScreen({ onComplete }) {
   const [step,          setStep]         = useState(0);
-  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = loading
+  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading
   const [name,          setName]         = useState("");
   const [postcode,      setPostcode]     = useState("");
   const [selectedCrops, setSelectedCrops]= useState([]); // [{name, emoji}]
   const [stage,         setStage]        = useState(null);
   const [areaType,      setAreaType]     = useState(null);
+  const [selfSource,    setSelfSource]   = useState(null);
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
 
@@ -16822,18 +16854,19 @@ function OnboardingScreen({ onComplete }) {
     if (step === 1) return selectedCrops.length > 0;
     if (step === 2) return stage !== null;
     if (step === 3) return areaType !== null;
+    if (step === 4) return true; // source question is optional — always skippable
     return false;
   };
 
   const next = () => {
     setError(null);
-    if (step < 3) { setStep(s => s + 1); return; }
-    // Step 3 → submit
+    if (step < 4) { setStep(s => s + 1); return; }
+    // Step 4 → submit
     submit();
   };
 
   const submit = async () => {
-    setStep(4); // loading screen
+    setStep(5); // loading screen
     const msgs = [
       "Setting up your first crops...",
       "Checking local weather...",
@@ -16861,6 +16894,8 @@ function OnboardingScreen({ onComplete }) {
           postcode: postcode.trim().toUpperCase(),
           crops: cropsPayload,
           area_type: areaType,
+          ...getStoredUTMs(),
+          signup_source_self_reported: selfSource || null,
         }),
       });
 
@@ -16876,7 +16911,7 @@ function OnboardingScreen({ onComplete }) {
   };
 
   // ── Loading screen ──────────────────────────────────────────────────────────
-  if (step === 4) {
+  if (step === 5) {
     return (
       <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif" }}>
         <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
@@ -16886,8 +16921,18 @@ function OnboardingScreen({ onComplete }) {
     );
   }
 
-  const stepLabels = ["About you", "Your crops", "Growth stage", "Where you're growing"];
-  const progress = ((step + 1) / 4) * 100;
+  const SOURCE_OPTIONS = [
+    { id: "facebook_group", label: "Facebook group" },
+    { id: "meta_ads",       label: "Ad on Facebook / Instagram" },
+    { id: "instagram",      label: "Instagram" },
+    { id: "reddit",         label: "Reddit" },
+    { id: "google",         label: "Google search" },
+    { id: "friend",         label: "Friend or family" },
+    { id: "other",          label: "Somewhere else" },
+  ];
+
+  const stepLabels = ["About you", "Your crops", "Growth stage", "Where you're growing", "One last thing"];
+  const progress = ((step + 1) / 5) * 100;
 
   return (
     <div style={{ background: C.offwhite, minHeight: "100vh", maxWidth: 440, margin: "0 auto", fontFamily: "Georgia, serif", paddingBottom: 40 }}>
@@ -17037,6 +17082,23 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
 
+        {/* ── Step 4: How did you hear about us ───────────────────────────── */}
+        {step === 4 && (
+          <div>
+            <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
+              Helps us focus on what's working. Skip if you'd rather not say.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {SOURCE_OPTIONS.map(s => (
+                <button key={s.id} onClick={() => setSelfSource(selfSource === s.id ? null : s.id)}
+                  style={{ background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, fontWeight: 600, color: selfSource === s.id ? "#fff" : "#1a1a1a", fontFamily: "serif", transition: "all 0.15s" }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Continue / Submit button ─────────────────────────────────────── */}
         <button
           onClick={next}
@@ -17055,7 +17117,7 @@ function OnboardingScreen({ onComplete }) {
             fontFamily: "serif",
             transition: "background 0.2s",
           }}>
-          {step === 3 ? "Build my plan 🌱" : "Continue →"}
+          {step === 4 ? "Build my plan 🌱" : "Continue →"}
         </button>
 
         {step > 0 && (
@@ -17101,6 +17163,9 @@ export default function GrowSmart() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+
+    // Capture UTM params on first visit — stored for attribution at signup
+    captureUTMs();
 
     // Register service worker for push notifications
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
