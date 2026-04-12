@@ -33,6 +33,36 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   import("@revenuecat/purchases-capacitor").then(m => { Purchases = m.Purchases; });
 }
 
+// ── In-App Review (native only) ───────────────────────────────────────────────
+// Prompts users for an App Store / Google Play review at high-value moments.
+// Never shown on web. iOS system enforces a 3-per-year cap regardless.
+let InAppReview = null;
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+  import("@capacitor-community/in-app-review").then(m => { InAppReview = m.InAppReview; });
+}
+
+// ── Review prompt helper ──────────────────────────────────────────────────────
+// Call after any qualifying positive action. Only ever prompts once per install.
+// Triggers (whichever fires first):
+//   • 2nd task completed
+//   • 1st harvest logged
+//   • 5th crop added
+//   • 2nd photo diagnosis completed
+function maybePromptForReview() {
+  try {
+    if (!InAppReview) return;                                        // web — skip
+    if (localStorage.getItem("vercro_review_prompted")) return;     // already shown
+    if (sessionStorage.getItem("vercro_negative_feedback")) return; // negative session
+    localStorage.setItem("vercro_review_prompted", "true");
+    localStorage.setItem("vercro_review_prompted_at", new Date().toISOString());
+    setTimeout(() => {
+      InAppReview.requestReview().catch(() => {});
+    }, 1200); // slight delay so UI has settled
+  } catch (e) {
+    // Never block user flow — swallow silently
+  }
+}
+
 // ── Supabase client (frontend) ────────────────────────────────────────────────
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -1308,6 +1338,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       setSavedEntry({ ...entry, photo_url: photoPreview || null });
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id, isFinal);
+      maybePromptForReview(); // Trigger: 1st harvest logged
     } catch (e) {
       console.error(e);
       setSaveError(e.message || "Something went wrong. Please try again.");
@@ -3312,6 +3343,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         setTimeout(() => setShowShareNudge(true), 800);
         localStorage.setItem("vercro_share_nudge_shown", "1");
       }
+      if (total === 2) maybePromptForReview(); // Trigger: 2nd task completed
 
       // Session complete hook — show "what's next tomorrow" modal
       // Triggers when: user completes 2+ tasks in session OR no today tasks remain
@@ -7919,6 +7951,12 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
       if (result.enriching) setEnriching(true);
       try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
+      // Trigger: 5th crop added
+      try {
+        const cropCount = parseInt(localStorage.getItem("vercro_total_crops_added") || "0") + 1;
+        localStorage.setItem("vercro_total_crops_added", String(cropCount));
+        if (cropCount === 5) maybePromptForReview();
+      } catch(e) {}
       setStep("done");
       setTimeout(() => {
         setStep("form");
@@ -10472,6 +10510,12 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 
       setResult(data);
       setStep("result");
+      // Trigger: 2nd photo diagnosis completed
+      try {
+        const diagCount = parseInt(localStorage.getItem("vercro_total_diagnoses") || "0") + 1;
+        localStorage.setItem("vercro_total_diagnoses", String(diagCount));
+        if (diagCount === 2) maybePromptForReview();
+      } catch(e) {}
     } catch (e) {
       if ((PRO_ENABLED || isDiagTestUser) && (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks"))) {
         setStep("paywall");
@@ -11408,6 +11452,8 @@ function FeedbackSheet({ onClose }) {
         method: "POST",
         body: JSON.stringify({ category, message, rating: rating || null }),
       });
+      // Guard: don't prompt for review in the same session the user filed feedback
+      try { sessionStorage.setItem("vercro_negative_feedback", "1"); } catch(e) {}
       setDone(true);
       setTimeout(onClose, 2500);
     } catch (e) { setError(e.message); }
