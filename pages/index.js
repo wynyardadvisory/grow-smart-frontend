@@ -16197,10 +16197,10 @@ function PlanScreen() {
   },[areas.length,selectedLoc]);
 
 
-  // Canvas geometry
-  const _staticAreas = initialAreasRef.current || areas;
-  const gardenW = loc?.width_m  || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
-  const gardenH = loc?.length_m || (areas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
+  // Canvas geometry — exclude indoors areas from bounds calculation
+  const _staticAreas = (initialAreasRef.current || areas).filter(a => a.type !== "indoors");
+  const gardenW = loc?.width_m  || (_staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_x||0)+(a.width_m||2)))+1  : 6);
+  const gardenH = loc?.length_m || (_staticAreas.length ? Math.max(..._staticAreas.map(a=>(a.layout_y||0)+(a.length_m||2)))+1 : 6);
   const CANVAS_PAD = 24;
   const pxPerM  = Math.max(20,(containerW-CANVAS_PAD*2)/gardenW);
   const canvasW = gardenW*pxPerM+CANVAS_PAD*2;
@@ -16210,7 +16210,11 @@ function PlanScreen() {
   const stageH  = Math.max(300, canvasH*zoom);
 
   // Derived display values
-  const totalCrops        = crops.filter(c => areas.some(a => a.id === c.area_id)).length;
+  // Indoors areas are excluded from the plan canvas
+  const planAreas = areas.filter(a => a.type !== "indoors");
+
+  // Derived display values
+  const totalCrops        = crops.filter(c => planAreas.some(a => a.id === c.area_id)).length;
   const activeAreaName    = activeBlock ? areas.find(a => a.id === activeBlock)?.name?.replace(/^"|"$/g,"") : null;
   const selectedAreaObj   = detailArea ? areas.find(a => a.id === detailArea) : null;
   const selectedAreaCrops = detailArea ? crops.filter(c => c.area_id === detailArea) : [];
@@ -16480,7 +16484,7 @@ function PlanScreen() {
             </div>
             {konvaReady ? (
               <GardenKonvaCanvas
-                areas={areas}
+                areas={planAreas}
                 crops={planCrops}
                 lockedAssignments={lockedAssignments}
                 pxPerM={pxPerM} canvasW={canvasW} canvasH={canvasH}
@@ -16572,10 +16576,10 @@ function PlanScreen() {
       />
 
       {/* Area assignment list — plan mode only */}
-      {isPlanMode && areas.length > 0 && (
+      {isPlanMode && planAreas.length > 0 && (
         <div style={{marginTop:16}}>
           <div style={{fontSize:11,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Area assignments</div>
-          {areas.map(area => {
+          {planAreas.map(area => {
             const assignment = assignmentMap[area.id];
             return (
               <div key={area.id}
@@ -16831,10 +16835,11 @@ const STAGES = [
 ];
 
 const AREA_TYPES = [
-  { id: "raised_bed",   label: "Raised bed",        emoji: "🪴" },
-  { id: "container",    label: "Pots / containers",  emoji: "🪣" },
-  { id: "greenhouse",   label: "Greenhouse",         emoji: "🏠" },
-  { id: "open_ground",  label: "In-ground bed",      emoji: "🌱" },
+  { id: "raised_bed",   label: "Raised bed",          emoji: "🪴" },
+  { id: "container",    label: "Pots / containers",    emoji: "🪣" },
+  { id: "greenhouse",   label: "Greenhouse",           emoji: "🏠" },
+  { id: "open_ground",  label: "In-ground bed",        emoji: "🌱" },
+  { id: "indoors",      label: "Indoors (permanent)",  emoji: "🪟" },
 ];
 
 function OnboardingScreen({ onComplete }) {
