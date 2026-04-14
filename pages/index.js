@@ -43,6 +43,14 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   try { InAppReview = require("@capacitor-community/in-app-review").InAppReview; } catch(e) {}
 }
 
+// ── Sign in with Apple (native only) ─────────────────────────────────────────
+// On native iOS, triggers the system-level Sign in with Apple sheet directly
+// without opening Safari. On web, falls back to Supabase OAuth redirect.
+let SignInWithApple = null;
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+  try { SignInWithApple = require("@capacitor-community/apple-sign-in").SignInWithApple; } catch(e) {}
+}
+
 // ── Review prompt helper ──────────────────────────────────────────────────────
 // Call after any qualifying positive action. Only ever prompts once per install.
 // Triggers (whichever fires first):
@@ -452,11 +460,28 @@ function AuthScreen({ onAuth }) {
   const handleApple = async () => {
     setLoading(true); setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "apple",
-        options: { redirectTo: "https://app.vercro.com" },
-      });
-      if (error) throw error;
+      if (SignInWithApple && window.Capacitor?.isNative) {
+        // Native iOS: trigger system Sign in with Apple sheet directly
+        const result = await SignInWithApple.authorize({
+          clientId: "com.vercro.app",
+          redirectURI: "https://app.vercro.com",
+          scopes: "email name",
+        });
+        const { identityToken } = result.response;
+        if (!identityToken) throw new Error("No identity token returned from Apple");
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: "apple",
+          token: identityToken,
+        });
+        if (error) throw error;
+      } else {
+        // Web fallback: OAuth redirect
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "apple",
+          options: { redirectTo: "https://app.vercro.com" },
+        });
+        if (error) throw error;
+      }
     } catch (e) { setError(e.message); setLoading(false); }
   };
 
