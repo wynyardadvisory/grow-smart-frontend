@@ -14858,7 +14858,12 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
       ].map(opt => (
         <button key={String(opt.value)} onClick={() => {
           setYearRound(opt.value);
-          setStep("ask_improve");
+          if (opt.value) {
+            // Gap fill only — skip crop swap questions, generate directly
+            fetchEnhanced(true, 0, "balanced");
+          } else {
+            setStep("ask_improve");
+          }
         }}
           style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <div>
