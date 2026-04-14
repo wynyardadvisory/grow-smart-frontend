@@ -14682,6 +14682,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const [plan,            setPlan]           = useState(null);
   const [tip,             setTip]            = useState(null);
   const swipe = useSwipeToDismiss(onClose);
+  const planToSaveRef = useRef(null);
   const [showLockConfirm, setShowLockConfirm]= useState(false);
   const [yearRound,    setYearRound]   = useState(false);
   const [improveCount, setImproveCount]= useState(0);
@@ -14723,14 +14724,14 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   };
 
   const handleSave = async () => {
-    if (!plan) return;
+    const planToSave = planToSaveRef.current || plan; if (!planToSave) return;
     setSaving(true); setErr(null);
     try {
       const created = await apiFetch("/plans", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, name: plan.label }),
+        body: JSON.stringify({ location_id: locationId, name: planToSave.label }),
       });
-      for (const a of plan.assignments) {
+      for (const a of planToSave.assignments) {
         await apiFetch(`/plans/${created.id}/assignments`, {
           method: "POST",
           body: JSON.stringify({
@@ -14830,7 +14831,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
         Yes, improve it →
       </button>
-      <button onClick={() => { setPlan({ ...baseline, label: "Your rotated garden" }); setShowLockConfirm(true); }}
+      <button onClick={() => { const p = { ...baseline, label: "Your rotated garden" }; planToSaveRef.current = p; setPlan(p); setShowLockConfirm(true); }}
         style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
         Use this plan as-is
       </button>
@@ -16141,15 +16142,15 @@ function PlanScreen() {
     setActiveBlock(null);
   }, [selectedLoc]);
 
-  // Fetch garden health score when location changes — wait for locations to load first
+  // Fetch garden health score when location changes
   useEffect(() => {
-    if (!selectedLoc || loading) return;
+    if (!selectedLoc) return;
     setHealthLoading(true);
     apiFetch(`/garden/health?location_id=${selectedLoc}`)
       .then(d => setGardenHealth(d))
       .catch(() => setGardenHealth(null))
       .finally(() => setHealthLoading(false));
-  }, [selectedLoc, loading]);
+  }, [selectedLoc]);
 
   // Fetch plan quality when a plan is selected
   useEffect(() => {
