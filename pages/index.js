@@ -51,6 +51,25 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   try { SignInWithApple = require("@capacitor-community/apple-sign-in").SignInWithApple; } catch(e) {}
 }
 
+// ── Safe image resize helper ──────────────────────────────────────────────────
+// createImageBitmap() is not supported in Capacitor's WKWebView on iOS and
+// crashes the app. This helper replicates the same resize/compress logic using
+// HTMLImageElement + FileReader, which works reliably across all environments.
+// Returns { width, height, canvas } — drop-in replacement for createImageBitmap.
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => resolve(img);
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Review prompt helper ──────────────────────────────────────────────────────
 // Call after any qualifying positive action. Only ever prompts once per install.
 // Triggers (whichever fires first):
@@ -564,12 +583,12 @@ function ProfilePhotoGreeting({ photoUrl, onUploaded }) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const bitmap = await createImageBitmap(file);
-      const dim    = Math.min(bitmap.width, bitmap.height);
+      const img    = await loadImageFromFile(file);
+      const dim    = Math.min(img.width, img.height);
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = Math.min(dim, 400); // max 400px, stay under Vercel limit
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, (bitmap.width - dim) / 2, (bitmap.height - dim) / 2, dim, dim, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, (img.width - dim) / 2, (img.height - dim) / 2, dim, dim, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1]; // 70% quality
       const result = await apiFetch("/photos/profile", { method: "POST", body: JSON.stringify({ base64, mime_type: "image/jpeg" }) });
       setUrl(result.photo_url);
@@ -601,13 +620,13 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
     setUploading(true);
     try {
       // Crop to square + compress aggressively to stay under Vercel 4.5mb body limit
-      const bitmap = await createImageBitmap(file);
-      const dim    = Math.min(bitmap.width, bitmap.height);
+      const img    = await loadImageFromFile(file);
+      const dim    = Math.min(img.width, img.height);
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = Math.min(dim, 400); // max 400px
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap,
-        (bitmap.width  - dim) / 2, (bitmap.height - dim) / 2, dim, dim,
+      ctx.drawImage(img,
+        (img.width  - dim) / 2, (img.height - dim) / 2, dim, dim,
         0, 0, canvas.width, canvas.height
       );
       const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1]; // 70% quality
@@ -2139,24 +2158,24 @@ What's on your list this month?
     if (!file) return;
     // Keep full resolution — the canvas draws at 1080px so we need quality source pixels
     // Only downscale if truly massive (>4000px wide) to avoid memory issues
-    const bitmap = await createImageBitmap(file);
+    const img    = await loadImageFromFile(file);
     const maxDim = 4000;
-    if (bitmap.width <= maxDim && bitmap.height <= maxDim) {
+    if (img.width <= maxDim && img.height <= maxDim) {
       // Use full resolution
       const canvas = document.createElement("canvas");
-      canvas.width  = bitmap.width;
-      canvas.height = bitmap.height;
-      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      canvas.getContext("2d").drawImage(img, 0, 0);
       const b64 = canvas.toDataURL("image/jpeg", 0.95);
       setPhoto(b64);
       setPhotoB64(b64.split(",")[1]);
     } else {
       // Only scale down if truly massive
-      const scale = maxDim / Math.max(bitmap.width, bitmap.height);
+      const scale = maxDim / Math.max(img.width, img.height);
       const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(bitmap.width  * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
       const b64 = canvas.toDataURL("image/jpeg", 0.95);
       setPhoto(b64);
       setPhotoB64(b64.split(",")[1]);
@@ -5757,13 +5776,13 @@ function CropGrowthDiary({ crop, onClose }) {
     if (!file) return;
     setUploading(true);
     try {
-      const bitmap = await createImageBitmap(file);
+      const img    = await loadImageFromFile(file);
       const maxDim = 1200;
-      const scale  = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const scale  = Math.min(1, maxDim / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(bitmap.width  * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
       await apiFetch(`/crops/${crop.id}/photos`, {
         method: "POST",
@@ -10227,14 +10246,14 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const bitmap = await createImageBitmap(file);
+      const img    = await loadImageFromFile(file);
       const maxSize = 1024;
-      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(bitmap.width  * scale);
-      canvas.height = Math.round(bitmap.height * scale);
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
       onPhoto(base64);
     } catch (err) {
@@ -11319,13 +11338,13 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
 
     try {
       // Compress image inline — max 800px, 70% quality, stay under 4.5mb body limit
-      const bitmap = await createImageBitmap(file);
+      const img    = await loadImageFromFile(file);
       const maxDim = 800;
-      const scale  = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const scale  = Math.min(1, maxDim / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(bitmap.width  * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
 
       const data = await apiFetch("/barcode/scan-image", {
