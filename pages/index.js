@@ -14684,6 +14684,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const swipe = useSwipeToDismiss(onClose);
   const planToSaveRef = useRef(null);
   const [showLockConfirm, setShowLockConfirm]= useState(false);
+  const [planName, setPlanName] = useState("");
   const [yearRound,    setYearRound]   = useState(false);
   const [improveCount, setImproveCount]= useState(0);
   const [preference,   setPreference]  = useState("balanced");
@@ -14729,7 +14730,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     try {
       const created = await apiFetch("/plans", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, name: planToSave.label }),
+        body: JSON.stringify({ location_id: locationId, name: planName.trim() || planToSave.label || "My plan" }),
       });
       for (const a of planToSave.assignments) {
         await apiFetch(`/plans/${created.id}/assignments`, {
@@ -14810,35 +14811,27 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     </div>
   );
 
-  // ── Lock confirmation modal ─────────────────────────────────────────────────
-  if (showLockConfirm) {
-    const nextYear = new Date().getFullYear() + 1;
-    const lockableCount = (plan?.assignments || []).filter(a =>
-      !a.is_fixed && a.crop_name && a.crop_name !== "To be decided"
-    ).length;
-    return (
-      <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 20px" }}>
-        <div style={{ background:"#fff", borderRadius:20, padding:"28px 24px", maxWidth:360, width:"100%" }}>
-          <div style={{ fontSize:28, textAlign:"center", marginBottom:12 }}>🔒</div>
-          <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, textAlign:"center", marginBottom:10 }}>
-            Lock this plan for {nextYear}?
-          </div>
-          <div style={{ fontSize:13, color:C.stone, lineHeight:1.6, textAlign:"center", marginBottom:24 }}>
-            This will save the next crop for {lockableCount} bed{lockableCount !== 1 ? "s" : ""} in your rotation. You'll see those planned crops in your garden, and Vercro will use them when your current crops finish.
-          </div>
-          {err && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
-          <button onClick={handleSave} disabled={saving}
-            style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
-            {saving ? "Locking plan…" : "Lock plan"}
-          </button>
-          <button onClick={() => setShowLockConfirm(false)} disabled={saving}
-            style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
-            Cancel
-          </button>
-        </div>
+  // ── SCREEN: name ────────────────────────────────────────────────────────────
+  if (step === "name") return (
+    <Sheet onBack={() => setStep(planToSaveRef.current === plan ? "baseline" : "result")}>
+      <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:6 }}>Name this plan</div>
+      <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
+        Give your plan a name so you can find it easily. You can create as many plans as you like and decide later which one to use.
       </div>
-    );
-  }
+      <input
+        value={planName}
+        onChange={e => setPlanName(e.target.value)}
+        placeholder="e.g. My rotated garden"
+        style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, fontFamily:"serif", outline:"none" }}
+        autoFocus
+      />
+      {err && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
+      <button onClick={handleSave} disabled={saving || !planName.trim()}
+        style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:saving || !planName.trim() ? "not-allowed" : "pointer", opacity: saving || !planName.trim() ? 0.6 : 1 }}>
+        {saving ? "Saving plan…" : "Save plan"}
+      </button>
+    </Sheet>
+  );
 
   // ── SCREEN: baseline ────────────────────────────────────────────────────────
   if (step === "baseline") return (
@@ -14861,7 +14854,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
         Yes, improve it →
       </button>
-      <button onClick={() => { const p = { ...baseline, label: "Your rotated garden" }; planToSaveRef.current = p; setPlan(p); setShowLockConfirm(true); }}
+      <button onClick={() => { const p = { ...baseline, label: "Your rotated garden" }; planToSaveRef.current = p; setPlan(p); setPlanName("My rotated garden"); setStep("name"); }}
         style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:14, fontWeight:600, cursor:"pointer" }}>
         Use this plan as-is
       </button>
@@ -15020,7 +15013,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:"#1a1a1a", fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
           ← Adjust options
         </button>
-        <button onClick={() => setShowLockConfirm(true)}
+        <button onClick={() => { setPlanName(plan?.label || "My improved garden"); setStep("name"); }}
           style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
           Use this plan →
         </button>
