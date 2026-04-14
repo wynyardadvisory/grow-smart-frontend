@@ -14973,6 +14973,13 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           </div>
         )}
 
+        {/* No gap fills found message */}
+        {yearRound && !hasChanges && (
+          <div style={{ marginBottom:14, padding:"10px 14px", background:"#f8f8f8", borderRadius:10, fontSize:12, color:C.stone, lineHeight:1.5 }}>
+            We looked for crops to fill the gaps between your harvests and next year&apos;s sowing dates, but couldn&apos;t find anything that fits cleanly. Your beds are well used — there&apos;s not much empty time to fill.
+          </div>
+        )}
+
         {/* Baseline comparison toggle */}
         <details style={{ marginBottom:14 }}>
           <summary style={{ fontSize:12, color:C.stone, cursor:"pointer", listStyle:"none", display:"flex", gap:4, alignItems:"center" }}>
