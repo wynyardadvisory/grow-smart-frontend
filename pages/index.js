@@ -3674,7 +3674,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             Here's your garden plan for today 👇
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, marginBottom: 14 }}>
-            We've set this up from the crops you added. You can add more anytime.
+            We've set this up from the crops you added. It'll get smarter as you log progress and add more.
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} }}
