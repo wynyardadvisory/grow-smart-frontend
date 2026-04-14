@@ -16890,10 +16890,11 @@ const AREA_TYPES = [
   { id: "indoors",      label: "Indoors (permanent)",  emoji: "🪟" },
 ];
 
-function OnboardingScreen({ onComplete }) {
+function OnboardingScreen({ session, onComplete }) {
   const [step,          setStep]         = useState(0);
   // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading
-  const [name,          setName]         = useState("");
+  // Pre-populate name from Apple/Google identity if available
+  const [name,          setName]         = useState(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
   const [postcode,      setPostcode]     = useState("");
   const [selectedCrops, setSelectedCrops]= useState([]); // [{name, emoji}]
   const [stage,         setStage]        = useState(null);
@@ -17339,7 +17340,7 @@ export default function GrowSmart() {
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: C.stone, fontSize: 14 }}>Loading…</div>;
   }
   if (!session)   return <AuthScreen onAuth={setSession} />;
-  if (onboarding) return <OnboardingScreen onComplete={() => setOnboarding(false)} />;
+  if (onboarding) return <OnboardingScreen session={session} onComplete={() => setOnboarding(false)} />;
 
   return (
     <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto", paddingBottom: "env(safe-area-inset-bottom)" }}>
