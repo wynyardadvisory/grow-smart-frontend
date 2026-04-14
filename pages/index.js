@@ -43,12 +43,13 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   try { InAppReview = require("@capacitor-community/in-app-review").InAppReview; } catch(e) {}
 }
 
-// ── Sign in with Apple (native only) ─────────────────────────────────────────
-// On native iOS, triggers the system-level Sign in with Apple sheet directly
-// without opening Safari. On web, falls back to Supabase OAuth redirect.
-let SignInWithApple = null;
+// ── Capacitor Browser (native only) ──────────────────────────────────────────
+// Used for OAuth flows (Sign in with Apple, Google) on native iOS/Android.
+// Opens an in-app SFSafariViewController instead of full Safari, satisfying
+// Apple's requirement that users don't leave the app during sign-in.
+let CapacitorBrowser = null;
 if (typeof window !== "undefined" && window.Capacitor?.isNative) {
-  try { SignInWithApple = require("@capacitor-community/apple-sign-in").SignInWithApple; } catch(e) {}
+  try { CapacitorBrowser = require("@capacitor/browser").Browser; } catch(e) {}
 }
 
 // ── Safe image resize helper ──────────────────────────────────────────────────
@@ -468,38 +469,33 @@ function AuthScreen({ onAuth }) {
   const handleGoogle = async () => {
     setLoading(true); setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: "https://app.vercro.com" },
+        options: {
+          redirectTo: "https://app.vercro.com",
+          skipBrowserRedirect: !!(window.Capacitor?.isNative && CapacitorBrowser),
+        },
       });
       if (error) throw error;
+      if (window.Capacitor?.isNative && CapacitorBrowser && data?.url) {
+        await CapacitorBrowser.open({ url: data.url, windowName: "_self" });
+      }
     } catch (e) { setError(e.message); setLoading(false); }
   };
 
   const handleApple = async () => {
     setLoading(true); setError(null);
     try {
-      if (SignInWithApple && window.Capacitor?.isNative) {
-        // Native iOS: trigger system Sign in with Apple sheet directly
-        const result = await SignInWithApple.authorize({
-          clientId: "com.vercro.app",
-          redirectURI: "https://app.vercro.com",
-          scopes: "email name",
-        });
-        const { identityToken } = result.response;
-        if (!identityToken) throw new Error("No identity token returned from Apple");
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: "apple",
-          token: identityToken,
-        });
-        if (error) throw error;
-      } else {
-        // Web fallback: OAuth redirect
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "apple",
-          options: { redirectTo: "https://app.vercro.com" },
-        });
-        if (error) throw error;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "apple",
+        options: {
+          redirectTo: "https://app.vercro.com",
+          skipBrowserRedirect: !!(window.Capacitor?.isNative && CapacitorBrowser),
+        },
+      });
+      if (error) throw error;
+      if (window.Capacitor?.isNative && CapacitorBrowser && data?.url) {
+        await CapacitorBrowser.open({ url: data.url, windowName: "_self" });
       }
     } catch (e) { setError(e.message); setLoading(false); }
   };
