@@ -16141,15 +16141,15 @@ function PlanScreen() {
     setActiveBlock(null);
   }, [selectedLoc]);
 
-  // Fetch garden health score when location changes
+  // Fetch garden health score when location changes — wait for locations to load first
   useEffect(() => {
-    if (!selectedLoc) return;
+    if (!selectedLoc || loading) return;
     setHealthLoading(true);
     apiFetch(`/garden/health?location_id=${selectedLoc}`)
       .then(d => setGardenHealth(d))
       .catch(() => setGardenHealth(null))
       .finally(() => setHealthLoading(false));
-  }, [selectedLoc]);
+  }, [selectedLoc, loading]);
 
   // Fetch plan quality when a plan is selected
   useEffect(() => {
