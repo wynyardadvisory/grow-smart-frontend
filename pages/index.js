@@ -13710,23 +13710,6 @@ function GardenKonvaCanvas({ areas, crops, lockedAssignments = [], pxPerM, canva
               {/* Label removed */}
 
               {/* Locked next crop badge */}
-              {lockedLabel && !isTree && !isBush && (
-                <Text
-                  text={lockedLabel}
-                  x={4} y={4}
-                  width={w - 8}
-                  fontSize={Math.max(7, Math.min(9, w * 0.07))}
-                  fontStyle="bold"
-                  fill="rgba(255,255,255,0.85)"
-                  align="center"
-                  listening={false}
-                  shadowColor="rgba(0,0,0,0.4)"
-                  shadowBlur={2}
-                  shadowOffsetY={1}
-                  wrap="none"
-                  ellipsis={true}
-                />
-              )}
 
               {/* Rotate handle — tap for 90deg or drag to angle */}
               {isSelected && onRotate && (
