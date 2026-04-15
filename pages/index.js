@@ -10294,10 +10294,29 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
 }
 
 // ── Diagnosis result screen ───────────────────────────────────────────────────
-function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
-  const [updating,     setUpdating]     = useState(false);
-  const [updated,      setUpdated]      = useState(false);
-  const [updateError,  setUpdateError]  = useState(null);
+function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDone }) {
+  const [updating,      setUpdating]      = useState(false);
+  const [updated,       setUpdated]       = useState(false);
+  const [updateError,   setUpdateError]   = useState(null);
+  const [savingDiary,   setSavingDiary]   = useState(false);
+  const [savedToDiary,  setSavedToDiary]  = useState(false);
+  const [diaryError,    setDiaryError]    = useState(null);
+
+  const handleSaveToDiary = async () => {
+    if (!photo || !crop?.id) return;
+    setSavingDiary(true);
+    setDiaryError(null);
+    try {
+      await apiFetch(`/crops/${crop.id}/photos`, {
+        method: "POST",
+        body: JSON.stringify({ base64: photo, caption: null }),
+      });
+      setSavedToDiary(true);
+    } catch(e) {
+      setDiaryError("Couldn't save photo — please try again");
+    }
+    setSavingDiary(false);
+  };
 
   const severityColor = {
     low:    "#7FB069",
@@ -10539,6 +10558,27 @@ function PlantCheckResult({ result, crop, onClose, onConfirmUpdate, onDone }) {
           return null;
         })()}
 
+        {/* Save photo to growth diary */}
+        {photo && (
+          <div style={{ marginBottom: 14 }}>
+            {savedToDiary ? (
+              <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, color: C.forest, fontWeight: 600 }}>
+                ✓ Photo saved to growth diary
+              </div>
+            ) : (
+              <>
+                <button onClick={handleSaveToDiary} disabled={savingDiary}
+                  style={{ width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 14, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "serif" }}>
+                  {savingDiary ? "Saving…" : "📷 Save photo to growth diary"}
+                </button>
+                {diaryError && (
+                  <div style={{ marginTop: 8, fontSize: 13, color: C.red }}>{diaryError}</div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <button onClick={onDone}
           style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
           Done
@@ -10554,6 +10594,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   const [crop,       setCrop]       = useState(prefillCrop);
   const [processing, setProcessing] = useState(false);
   const [result,     setResult]     = useState(null);
+  const [photo,      setPhoto]      = useState(null); // base64 — kept for optional diary save
   const [error,      setError]      = useState(null);
   const [showNudgePaywall, setShowNudgePaywall] = useState(false);
   const { isPro, isProForDiagnosis, isTestUser: isDiagTestUser } = useProStatus();
@@ -10590,6 +10631,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 
     setStep("processing");
     setError(null);
+    setPhoto(base64);
 
     try {
       const data = await apiFetch("/diagnoses/analyze", {
@@ -10701,6 +10743,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         <PlantCheckResult
           result={result}
           crop={crop}
+          photo={photo}
           onClose={() => setStep("photo")}
           onConfirmUpdate={handleConfirmUpdate}
           onDone={onDone || onClose}
