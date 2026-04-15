@@ -11690,8 +11690,9 @@ function FeedbackSheet({ onClose, isNative = false }) {
 }
 
 function AdminFeedbackList() {
-  const [items,   setItems]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items,    setItems]    = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [statuses, setStatuses] = useState({}); // { [item.id]: "none" | "priority" | "done" }
 
   useEffect(() => {
     apiFetch("/admin/feedback")
@@ -11700,6 +11701,28 @@ function AdminFeedbackList() {
   }, []);
 
   const CATEGORY_LABEL = { bug: "🐛 Bug", feature: "💡 Feature", general: "💬 General", praise: "🌟 Praise" };
+
+  const cycleStatus = (id) => {
+    setStatuses(prev => {
+      const current = prev[id] || "none";
+      const next = current === "none" ? "priority" : current === "priority" ? "done" : "none";
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const statusStyle = (status) => {
+    if (status === "priority") return { label: "⚡ Priority", bg: "#FFF3CD", color: "#856404", border: "#FFC107" };
+    if (status === "done")     return { label: "✓ Done",     bg: "#D1FAE5", color: "#065F46", border: "#6EE7B7" };
+    return { label: "· Triage", bg: "#F5F5F5", color: C.stone, border: C.border };
+  };
+
+  const openGmailReply = (item) => {
+    const to      = item.user_email || "";
+    const subject = encodeURIComponent("Re: Your Vercro feedback");
+    const name    = item.profiles?.name ? item.profiles.name.split(" ")[0] : "there";
+    const body    = encodeURIComponent(`Hi ${name},\n\nThanks for getting in touch about Vercro.\n\n\n\nBest,\nMark\nVercro`);
+    window.open(`https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}&body=${body}`, "_blank");
+  };
 
   if (loading) return <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>;
 
@@ -11711,25 +11734,53 @@ function AdminFeedbackList() {
     </div>
   );
 
+  const priorityItems = items.filter(i => (statuses[i.id] || "none") === "priority");
+  const todoItems     = items.filter(i => (statuses[i.id] || "none") === "none");
+  const doneItems     = items.filter(i => (statuses[i.id] || "none") === "done");
+  const ordered       = [...priorityItems, ...todoItems, ...doneItems];
+
+  const renderItem = (item) => {
+    const status = statuses[item.id] || "none";
+    const st     = statusStyle(status);
+    const isDone = status === "done";
+    return (
+      <div key={item.id} style={{ background: isDone ? "#FAFAFA" : C.cardBg, border: `1px solid ${isDone ? C.border : status === "priority" ? "#FFC107" : C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, opacity: isDone ? 0.6 : 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.forest }}>{CATEGORY_LABEL[item.category] || item.category}</span>
+          <span style={{ fontSize: 11, color: C.stone }}>{new Date(item.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+        </div>
+        <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 10 }}>{item.message}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div>
+            <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || "Unknown"}</span>
+            {item.user_email && <span style={{ fontSize: 11, color: C.stone, marginLeft: 6 }}>· {item.user_email}</span>}
+          </div>
+          {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => cycleStatus(item.id)}
+            style={{ fontSize: 11, fontWeight: 600, background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+            {st.label}
+          </button>
+          {item.user_email && (
+            <button onClick={() => openGmailReply(item)}
+              style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+              ✉️ Reply in Gmail
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
-      <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{items.length} submission{items.length !== 1 ? "s" : ""}</div>
-      {items.map(item => (
-        <div key={item.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.forest }}>{CATEGORY_LABEL[item.category] || item.category}</span>
-            <span style={{ fontSize: 11, color: C.stone }}>{new Date(item.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-          </div>
-          <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 8 }}>{item.message}</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || "Unknown"}</span>
-              {item.user_email && <span style={{ fontSize: 11, color: C.stone, marginLeft: 6 }}>· {item.user_email}</span>}
-            </div>
-            {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
-          </div>
-        </div>
-      ))}
+      <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
+        {items.length} submission{items.length !== 1 ? "s" : ""}
+        {priorityItems.length > 0 && <span style={{ marginLeft: 8, color: "#856404", fontWeight: 600 }}>· {priorityItems.length} priority</span>}
+        {doneItems.length > 0 && <span style={{ marginLeft: 8, color: "#065F46" }}>· {doneItems.length} done</span>}
+      </div>
+      {ordered.map(renderItem)}
     </>
   );
 }
