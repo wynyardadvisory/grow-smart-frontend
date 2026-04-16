@@ -4136,18 +4136,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
       {(data.missing_data || []).length > 0 && (
         <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Help me improve your plan</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Make your plan more accurate</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(data.missing_data || []).slice(0, 3).map(item => (
               <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 16 }}>{getCropEmoji(item.name)}</span>
                 <div style={{ flex: 1 }}>
                   <span style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{item.name}</span>
-                  <span style={{ fontSize: 12, color: C.stone }}> — {item.missing.join(", ")}</span>
+                  <div style={{ fontSize: 12, color: C.stone }}>Add {item.missing.join(" and ")} for more accurate tasks</div>
                 </div>
                 <button onClick={() => { if (onTabChange) onTabChange("crops", { editCropId: item.id, editCropField: item.missing[0]?.includes("variety") ? "variety" : "sow_date" }); }}
                   style={{ fontSize: 12, fontWeight: 700, color: C.amber, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
-                  Update →
+                  Add details →
                 </button>
               </div>
             ))}
@@ -15296,35 +15296,190 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
     );
     if (!gardenHealth) return null;
 
-    const { score, confidence_level, confidence_note, summary, components, risk_flags } = gardenHealth;
+    const { score, confidence_level, summary, components, risk_flags } = gardenHealth;
+    const hasComponents = components && Object.values(components).some(v => typeof v === "number" && v > 0);
+
+    // ── Helper functions ────────────────────────────────────────────────────
+    const getSupportiveConfidenceLabel = (level) => {
+      if (level === "High") return "Well supported";
+      if (level === "Medium") return "Getting clearer";
+      return "Early estimate";
+    };
+
+    // State-aware intro: uses both score and confidence to avoid fake optimism
+    const getHealthEncouragement = (s, level) => {
+      if (s >= 75 && level !== "Low") return "Your garden is in a strong place right now.";
+      if (s >= 50 && level === "High") return "You've built a solid foundation, with a few clear ways to improve.";
+      if (s >= 50) return "You've built a solid foundation — a few more details will sharpen this.";
+      if (s >= 30 && level === "Low") return "You've made a useful start — adding more detail will help Vercro guide you better.";
+      if (level === "Low") return "You've given Vercro enough to get started — add a few more details to unlock more accurate guidance.";
+      return "There are a few areas worth tackling next to strengthen your garden.";
+    };
+
+    // Positive contributors — tiered copy, hides weak signals
+    const getPositiveContributors = (comps = {}) => {
+      const tiers = {
+        task_adherence: {
+          strong: { min: 70, text: "You're keeping on top of key garden tasks" },
+          medium: { min: 50, text: "You're making steady progress on garden jobs" },
+          hide:   40,
+        },
+        timing_adherence: {
+          strong: { min: 70, text: "Your timing is lining up well with the season" },
+          medium: { min: 45, text: "Your plan is broadly in step with the season" },
+          hide:   45,
+        },
+        observation_freshness: {
+          strong: { min: 65, text: "You're keeping crop updates current" },
+          medium: { min: 40, text: "You've added some recent crop updates" },
+          hide:   40,
+        },
+        crop_condition: {
+          strong: { min: 70, text: "Your crops are showing healthy signals" },
+          medium: { min: 45, text: "Some crops are showing encouraging signs" },
+          hide:   45,
+        },
+        weather_suitability: {
+          strong: { min: 70, text: "Your garden is responding well to current conditions" },
+          medium: { min: 50, text: "Your setup is reasonably aligned with current weather" },
+          hide:   50,
+        },
+        soil_data_quality: {
+          strong: { min: 60, text: "You've added useful soil detail" },
+          medium: { min: 35, text: "You've started building useful soil detail" },
+          hide:   35,
+        },
+      };
+      // Priority order: user-action-driven first
+      const priority = ["task_adherence", "timing_adherence", "observation_freshness", "crop_condition", "soil_data_quality", "weather_suitability"];
+      const result = [];
+      for (const key of priority) {
+        if (result.length >= 3) break;
+        const val = comps[key];
+        if (typeof val !== "number") continue;
+        const t = tiers[key];
+        if (!t || val < t.hide) continue;
+        const text = val >= t.strong.min ? t.strong.text : t.medium.text;
+        result.push(text);
+      }
+      return result;
+    };
+
+    // Fallback lines when components are sparse
+    const getFallbackPositives = () => [
+      "You've already started building your garden plan",
+      "You've given Vercro enough to start guiding you",
+    ];
+
+    // Urgent items — near-term risk, overdue tasks, timing-sensitive
+    const getUrgentItems = (comps = {}, flags = []) => {
+      const items = [];
+      if ((comps.task_adherence ?? 100) < 40) {
+        items.push("Complete overdue tasks now to reduce crop risk and improve your score");
+      }
+      if ((comps.crop_condition ?? 100) < 35) {
+        items.push("Some crops may need attention — a quick check could prevent further issues");
+      }
+      // Include genuine risk flags as urgent
+      (flags || []).filter(f => f).forEach(f => items.push(f));
+      return items.slice(0, 2);
+    };
+
+    // Improvement items — completeness, guidance quality, non-urgent
+    const getImprovementItems = (comps = {}) => {
+      const items = [];
+      if ((comps.task_adherence ?? 100) >= 40 && (comps.task_adherence ?? 100) < 60) {
+        items.push("Keep on top of upcoming tasks to strengthen your garden health score");
+      }
+      if ((comps.observation_freshness ?? 100) < 40) {
+        items.push("Add a quick crop check to sharpen your guidance and spot issues sooner");
+      }
+      if ((comps.soil_data_quality ?? 100) < 20) {
+        items.push("Add soil details to improve your score and get more accurate recommendations");
+      }
+      if ((comps.timing_adherence ?? 100) < 50 && (comps.timing_adherence ?? 100) >= 0) {
+        items.push("Keep upcoming jobs on time to improve plan accuracy and reduce seasonal risk");
+      }
+      return items.slice(0, 3);
+    };
+
+    // Fallback improvement items when components are empty
+    const getFallbackImprovements = () => [
+      "Add crop updates to sharpen your guidance and help Vercro track progress",
+      "Add soil details to improve your score and get more accurate recommendations",
+      "Keep today's tasks up to date to improve your score and reduce crop risk",
+    ];
+
+    const encouragement   = getHealthEncouragement(score, confidence_level);
+    const confidenceLabel = getSupportiveConfidenceLabel(confidence_level);
+    const confidenceNote  = confidence_level === "High"
+      ? "Based on a good level of recent garden data"
+      : confidence_level === "Medium"
+      ? "Add a little more detail to make this more accurate"
+      : "Add more garden detail to sharpen this score";
+
+    const positives      = hasComponents ? getPositiveContributors(components) : [];
+    const showPositives  = positives.length > 0 ? positives : (!hasComponents ? getFallbackPositives() : []);
+    const urgentItems    = hasComponents ? getUrgentItems(components, risk_flags) : [];
+    const improvItems    = hasComponents ? getImprovementItems(components) : getFallbackImprovements();
 
     return (
       <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        {/* Header */}
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Garden health</div>
+
+        {/* Encouragement line */}
+        <div style={{ fontSize: 13, color: C.forest, fontWeight: 600, marginBottom: 10, lineHeight: 1.4 }}>{encouragement}</div>
+
         {/* Score + confidence */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Garden health</div>
-            <div style={{ fontSize: 38, fontWeight: 700, fontFamily: "serif", color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <div style={{ fontSize: 38, fontWeight: 700, fontFamily: "serif", color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
           <div style={{ textAlign: "right", paddingTop: 4 }}>
             <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700, marginBottom: 2 }}>
-              {confidence_level} confidence
+              {confidenceLabel}
             </div>
             <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 130 }}>
-              {confidence_note || "Based on recent activity"}
+              {confidenceNote}
             </div>
           </div>
         </div>
 
-        {/* Summary */}
-        <div style={{ fontSize: 13, color: "#444", lineHeight: 1.5, marginBottom: 12 }}>{summary}</div>
+        {/* Score explanation */}
+        <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.5, marginBottom: 14, fontStyle: "italic" }}>
+          This score reflects how well your current garden setup and recent activity support your plan.
+        </div>
 
-        {/* Risk flags */}
-        {risk_flags?.length > 0 && (
+        {/* What's helping */}
+        {showPositives.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            {risk_flags.map(f => (
-              <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#b45309", marginBottom: 4 }}>
-                <span>⚠</span><span>{f}</span>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>What's helping</div>
+            {showPositives.map((p, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.forest, marginBottom: 4 }}>
+                <span style={{ color: C.leaf, fontWeight: 700 }}>✓</span><span>{p}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Needs attention soon — urgent only */}
+        {urgentItems.length > 0 && (
+          <div style={{ marginBottom: 12, background: "#FFF8ED", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#92600A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Needs attention soon</div>
+            {urgentItems.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "#92600A", marginBottom: i < urgentItems.length - 1 ? 6 : 0 }}>
+                <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span><span>{s}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Next steps to improve this — non-urgent */}
+        {improvItems.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Next steps to improve this</div>
+            {improvItems.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: C.stone, marginBottom: 4 }}>
+                <span style={{ flexShrink: 0, marginTop: 1 }}>→</span><span>{s}</span>
               </div>
             ))}
           </div>
@@ -15353,13 +15508,13 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         {/* Free teaser */}
         {!canSeeBreakdown && (
           <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-            <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>Garden insights</div>
+            <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>See what's driving your score</div>
             <LockRow label="Task completion breakdown" />
             <LockRow label="Crop observation freshness" />
             <LockRow label="Soil data quality" />
             <button onClick={onUpgrade}
               style={{ width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              Unlock full insights
+              Unlock deeper garden insights
             </button>
           </div>
         )}
@@ -15402,17 +15557,21 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         </div>
         <div style={{ textAlign: "right", paddingTop: 4 }}>
           <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700 }}>
-            {confidence_level} confidence
+            {confidence_level === "High" ? "Well supported" : confidence_level === "Medium" ? "Getting clearer" : "Early estimate"}
+          </div>
+          <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 130, marginTop: 2 }}>
+            {label === "Strong" ? "This plan is shaping up well." : label === "Good" ? "A solid draft with room to improve." : label === "Balanced" ? "A workable plan — a few tweaks will help." : "This draft can be improved with a few changes."}
           </div>
         </div>
       </div>
 
-      {/* Risk flags */}
+      {/* Ways to strengthen */}
       {risk_flags?.length > 0 && (
         <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Ways to strengthen this plan</div>
           {risk_flags.map(f => (
-            <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#b45309", marginBottom: 4 }}>
-              <span>⚠</span><span>{f}</span>
+            <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#92600A", marginBottom: 4 }}>
+              <span>→</span><span>{f}</span>
             </div>
           ))}
         </div>
@@ -15450,7 +15609,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
           <LockRow label="Yield potential" />
           <button onClick={onUpgrade}
             style={{ width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            Unlock plan insights
+            Unlock deeper plan insights
           </button>
         </div>
       )}
@@ -15586,8 +15745,8 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
       if (h.components?.task_adherence < 50) {
         recommendations.push({
           icon: "⏰",
-          title: "Tasks need attention",
-          body: "Several tasks are overdue. Completing them now will improve your garden health score and reduce risk to your crops.",
+          title: "Stay on top of today's jobs",
+          body: "A few tasks are overdue. Completing them now will improve your garden health score and reduce crop risk.",
           cta: null,
         });
       }
@@ -15597,7 +15756,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
         recommendations.push({
           icon: "👁",
           title: "Check on your crops",
-          body: "You haven't logged a crop observation recently. A quick check helps Vercro give you more accurate guidance.",
+          body: "A quick crop check helps Vercro guide you more accurately — just a minute or two is enough.",
           cta: null,
         });
       }
@@ -15606,8 +15765,8 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
       if (h.components?.soil_data_quality < 20) {
         recommendations.push({
           icon: "🌍",
-          title: "Add soil data",
-          body: "Adding soil moisture, pH or temperature to your areas significantly improves your health score accuracy.",
+          title: "Add soil detail for better guidance",
+          body: "Adding soil moisture, pH or temperature helps Vercro make more accurate recommendations for your garden.",
           cta: null,
         });
       }
@@ -15644,7 +15803,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
       if (pq.rotation_quality < 60) {
         recommendations.push({
           icon: "🔄",
-          title: "Improve crop rotation",
+          title: "Strengthen your rotation",
           body: "Some areas have the same crop family as last season. Moving them reduces disease risk and improves soil recovery.",
           cta: null,
         });
@@ -15655,8 +15814,8 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
         const unplanned = areas.length - assignments.length;
         recommendations.push({
           icon: "📐",
-          title: `${unplanned} area${unplanned > 1 ? "s" : ""} without a crop`,
-          body: "Assigning crops to all your areas makes better use of your space and improves the plan quality score.",
+          title: "You still have space to use",
+          body: "Assigning crops to all your areas will improve space use and strengthen this plan.",
           cta: null,
         });
       }
