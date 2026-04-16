@@ -11689,99 +11689,371 @@ function FeedbackSheet({ onClose, isNative = false }) {
   );
 }
 
-function AdminFeedbackList() {
-  const [items,    setItems]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [statuses, setStatuses] = useState({}); // { [item.id]: "none" | "priority" | "done" }
+// ── Admin Task Board ─────────────────────────────────────────────────────────
+// Unified task list pulling from user feedback + manual tasks.
+// AI-ranked on demand. Persisted in localStorage.
+// Only visible to Mark's account.
 
+function AdminFeedbackList() {
+  const STORAGE_KEY  = "vercro_admin_tasks_v1";
+  const CONTEXT_KEY  = "vercro_admin_context_v1";
+
+  const [feedbackItems, setFeedbackItems] = useState([]);
+  const [tasks,         setTasks]         = useState([]); // unified task list
+  const [context,       setContext]       = useState("");
+  const [editContext,   setEditContext]   = useState(false);
+  const [contextDraft,  setContextDraft]  = useState("");
+  const [loading,       setLoading]       = useState(true);
+  const [ranking,       setRanking]       = useState(false);
+  const [manualInput,   setManualInput]   = useState("");
+  const [manualType,    setManualType]    = useState("feature");
+  const [showDone,      setShowDone]      = useState(false);
+  const [donePrompt,    setDonePrompt]    = useState(null); // { task } when marking feedback done
+  const [rankError,     setRankError]     = useState(null);
+
+  // Load persisted tasks + context from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) setTasks(JSON.parse(saved));
+      const savedCtx = localStorage.getItem(CONTEXT_KEY);
+      if (savedCtx) setContext(savedCtx);
+    } catch(e) {}
+  }, []);
+
+  // Persist tasks to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); } catch(e) {}
+  }, [tasks]);
+
+  // Load feedback from API and merge into task list
   useEffect(() => {
     apiFetch("/admin/feedback")
-      .then(d => { setItems(d); setLoading(false); })
+      .then(items => {
+        setFeedbackItems(items);
+        setTasks(prev => {
+          // Add any new feedback items not already in tasks
+          const existingIds = new Set(prev.map(t => t.id));
+          const newTasks = items
+            .filter(f => !existingIds.has("fb_" + f.id))
+            .map(f => ({
+              id:          "fb_" + f.id,
+              source:      "feedback",
+              type:        f.category === "bug" ? "bug" : f.category === "feature" ? "feature" : f.category === "praise" ? "praise" : "general",
+              title:       f.message?.slice(0, 80) + (f.message?.length > 80 ? "…" : ""),
+              description: f.message,
+              status:      "active",
+              priority:    null,
+              effort:      null,
+              user_email:  f.user_email || null,
+              user_name:   f.profiles?.name || null,
+              rating:      f.rating || null,
+              created_at:  f.created_at,
+            }));
+          return [...prev, ...newTasks];
+        });
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
-  const CATEGORY_LABEL = { bug: "🐛 Bug", feature: "💡 Feature", general: "💬 General", praise: "🌟 Praise" };
+  const saveTasks = (updated) => setTasks(updated);
 
-  const cycleStatus = (id) => {
-    setStatuses(prev => {
-      const current = prev[id] || "none";
-      const next = current === "none" ? "priority" : current === "priority" ? "done" : "none";
-      return { ...prev, [id]: next };
-    });
+  const addManualTask = () => {
+    if (!manualInput.trim()) return;
+    const task = {
+      id:          "manual_" + Date.now(),
+      source:      "manual",
+      type:        manualType,
+      title:       manualInput.trim(),
+      description: manualInput.trim(),
+      status:      "active",
+      priority:    null,
+      effort:      null,
+      user_email:  null,
+      user_name:   null,
+      created_at:  new Date().toISOString(),
+    };
+    saveTasks([...tasks, task]);
+    setManualInput("");
   };
 
-  const statusStyle = (status) => {
-    if (status === "priority") return { label: "⚡ Priority", bg: "#FFF3CD", color: "#856404", border: "#FFC107" };
-    if (status === "done")     return { label: "✓ Done",     bg: "#D1FAE5", color: "#065F46", border: "#6EE7B7" };
-    return { label: "· Triage", bg: "#F5F5F5", color: C.stone, border: C.border };
+  const markDone = (task) => {
+    if (task.source === "feedback" && task.user_email) {
+      setDonePrompt(task);
+    } else {
+      saveTasks(tasks.map(t => t.id === task.id ? { ...t, status: "done" } : t));
+    }
   };
 
-  const openGmailReply = (item) => {
-    const to      = item.user_email || "";
+  const confirmDone = (task) => {
+    saveTasks(tasks.map(t => t.id === task.id ? { ...t, status: "done" } : t));
+    setDonePrompt(null);
+  };
+
+  const deleteTask = (id) => {
+    saveTasks(tasks.filter(t => t.id !== id));
+  };
+
+  const saveContext = () => {
+    setContext(contextDraft);
+    try { localStorage.setItem(CONTEXT_KEY, contextDraft); } catch(e) {}
+    setEditContext(false);
+  };
+
+  const rerank = async () => {
+    const activeTasks = tasks.filter(t => t.status === "active");
+    if (!activeTasks.length) return;
+    setRanking(true);
+    setRankError(null);
+    try {
+      const prompt = `You are helping a solo founder prioritise their product backlog for Vercro, an AI-powered garden planning app (Next.js, Node/Express, Supabase, Vercel, Capacitor iOS/Android).
+
+Current context and priorities:
+${context || "No context provided."}
+
+Here are the active tasks. For each, assign:
+- priority: 1 (highest) to ${activeTasks.length} (lowest) — no ties
+- effort: "low" | "medium" | "high"
+- reason: one sentence explaining the priority ranking
+
+Tasks:
+${activeTasks.map((t, i) => `${i + 1}. [${t.type.toUpperCase()}] ${t.title}`).join("\n")}
+
+Respond ONLY with a JSON array, no markdown, no preamble:
+[{"id":"${activeTasks[0]?.id}","priority":1,"effort":"low","reason":"..."}]
+
+Use the exact task IDs provided.`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      const data = await response.json();
+      const text = data.content?.map(c => c.text || "").join("") || "";
+      const clean = text.replace(/```json|```/g, "").trim();
+      const rankings = JSON.parse(clean);
+      saveTasks(tasks.map(t => {
+        const r = rankings.find(rk => rk.id === t.id);
+        if (!r) return t;
+        return { ...t, priority: r.priority, effort: r.effort, reason: r.reason };
+      }));
+    } catch(e) {
+      setRankError("Ranking failed — please try again");
+    }
+    setRanking(false);
+  };
+
+  const TYPE_LABEL = {
+    bug:     "🐛 Bug",
+    feature: "💡 Feature",
+    general: "💬 General",
+    praise:  "🌟 Praise",
+    manual:  "📝 Task",
+  };
+
+  const EFFORT_STYLE = {
+    low:    { bg: "#E8F5E9", color: "#2E7D32" },
+    medium: { bg: "#FFF8E1", color: "#F57F17" },
+    high:   { bg: "#FCE4EC", color: "#C62828" },
+  };
+
+  const openGmailReply = (task, isDone = false) => {
+    const to      = task.user_email || "";
     const subject = encodeURIComponent("Re: Your Vercro feedback");
-    const name    = item.profiles?.name ? item.profiles.name.split(" ")[0] : "there";
-    const body    = encodeURIComponent(`Hi ${name},\n\nThanks for getting in touch about Vercro.\n\n\n\nBest,\nMark\nVercro`);
+    const name    = task.user_name ? task.user_name.split(" ")[0] : "there";
+    const body    = isDone
+      ? encodeURIComponent(`Hi ${name},\n\nJust wanted to let you know — we've acted on your feedback and this has now been updated in Vercro.\n\nThank you for taking the time to get in touch. Feedback like yours genuinely helps us make the app better.\n\nBest,\nMark\nVercro`)
+      : encodeURIComponent(`Hi ${name},\n\nThanks for getting in touch about Vercro.\n\n\n\nBest,\nMark\nVercro`);
     window.open(`https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}&body=${body}`, "_blank");
   };
 
   if (loading) return <div style={{ textAlign: "center", padding: "40px 0" }}><Spinner /></div>;
 
-  if (items.length === 0) return (
-    <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>No feedback yet</div>
-      <div style={{ fontSize: 13 }}>Submissions will appear here once users send feedback.</div>
-    </div>
-  );
-
-  const priorityItems = items.filter(i => (statuses[i.id] || "none") === "priority");
-  const todoItems     = items.filter(i => (statuses[i.id] || "none") === "none");
-  const doneItems     = items.filter(i => (statuses[i.id] || "none") === "done");
-  const ordered       = [...priorityItems, ...todoItems, ...doneItems];
-
-  const renderItem = (item) => {
-    const status = statuses[item.id] || "none";
-    const st     = statusStyle(status);
-    const isDone = status === "done";
-    return (
-      <div key={item.id} style={{ background: isDone ? "#FAFAFA" : C.cardBg, border: `1px solid ${isDone ? C.border : status === "priority" ? "#FFC107" : C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, opacity: isDone ? 0.6 : 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.forest }}>{CATEGORY_LABEL[item.category] || item.category}</span>
-          <span style={{ fontSize: 11, color: C.stone }}>{new Date(item.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-        </div>
-        <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: 10 }}>{item.message}</div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div>
-            <span style={{ fontSize: 11, color: C.stone }}>{item.profiles?.name || "Unknown"}</span>
-            {item.user_email && <span style={{ fontSize: 11, color: C.stone, marginLeft: 6 }}>· {item.user_email}</span>}
-          </div>
-          {item.rating && <span style={{ fontSize: 12 }}>{"⭐".repeat(item.rating)}</span>}
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => cycleStatus(item.id)}
-            style={{ fontSize: 11, fontWeight: 600, background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
-            {st.label}
-          </button>
-          {item.user_email && (
-            <button onClick={() => openGmailReply(item)}
-              style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
-              ✉️ Reply in Gmail
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const activeTasks = tasks
+    .filter(t => t.status === "active")
+    .sort((a, b) => {
+      if (a.priority !== null && b.priority !== null) return a.priority - b.priority;
+      if (a.priority !== null) return -1;
+      if (b.priority !== null) return 1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+  const doneTasks = tasks.filter(t => t.status === "done");
 
   return (
-    <>
-      <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
-        {items.length} submission{items.length !== 1 ? "s" : ""}
-        {priorityItems.length > 0 && <span style={{ marginLeft: 8, color: "#856404", fontWeight: 600 }}>· {priorityItems.length} priority</span>}
-        {doneItems.length > 0 && <span style={{ marginLeft: 8, color: "#065F46" }}>· {doneItems.length} done</span>}
+    <div>
+      {/* Context block */}
+      <div style={{ background: "#F0F7FF", border: "1px solid #B3D4F5", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editContext ? 8 : 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#1a3a5c", textTransform: "uppercase", letterSpacing: 1 }}>Current priorities / context</div>
+          <button onClick={() => { setEditContext(!editContext); setContextDraft(context); }}
+            style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+            {editContext ? "Cancel" : "Edit"}
+          </button>
+        </div>
+        {editContext ? (
+          <>
+            <textarea value={contextDraft} onChange={e => setContextDraft(e.target.value)}
+              placeholder="e.g. iOS build 16 in review. Web launched 15 Apr. Priority is fixing bugs before marketing push. Android tiered pricing next."
+              style={{ width: "100%", minHeight: 80, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "8px 10px", resize: "vertical", fontFamily: "sans-serif", boxSizing: "border-box" }} />
+            <button onClick={saveContext}
+              style={{ marginTop: 8, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              Save
+            </button>
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: "#1a3a5c", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+            {context || <span style={{ color: C.stone, fontStyle: "italic" }}>No context set — add your current priorities to improve AI ranking.</span>}
+          </div>
+        )}
       </div>
-      {ordered.map(renderItem)}
-    </>
+
+      {/* Add manual task */}
+      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Add task</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <select value={manualType} onChange={e => setManualType(e.target.value)}
+            style={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "6px 8px", background: "#fff" }}>
+            <option value="bug">🐛 Bug</option>
+            <option value="feature">💡 Feature</option>
+            <option value="manual">📝 Task</option>
+          </select>
+          <input value={manualInput} onChange={e => setManualInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addManualTask()}
+            placeholder="Describe the task…"
+            style={{ flex: 1, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "6px 10px" }} />
+          <button onClick={addManualTask}
+            style={{ padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            Add
+          </button>
+        </div>
+      </div>
+
+      {/* Task list header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: C.stone }}>
+          {activeTasks.length} active task{activeTasks.length !== 1 ? "s" : ""}
+          {doneTasks.length > 0 && <span style={{ marginLeft: 8 }}>· {doneTasks.length} done</span>}
+        </div>
+        <button onClick={rerank} disabled={ranking || activeTasks.length === 0}
+          style={{ padding: "7px 14px", background: ranking ? C.border : C.forest, color: ranking ? C.stone : "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: ranking ? "default" : "pointer" }}>
+          {ranking ? "Ranking…" : "⚡ Re-rank with AI"}
+        </button>
+      </div>
+      {rankError && <div style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>{rankError}</div>}
+
+      {/* Active tasks */}
+      {activeTasks.length === 0 && (
+        <div style={{ textAlign: "center", padding: "32px 0", color: C.stone, fontSize: 13 }}>No active tasks — add one above or wait for user feedback.</div>
+      )}
+      {activeTasks.map((task, idx) => (
+        <div key={task.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.forest }}>{TYPE_LABEL[task.type] || task.type}</span>
+              {task.priority !== null && (
+                <span style={{ fontSize: 11, background: "#E8F0FE", color: "#1a3a8f", borderRadius: 6, padding: "2px 7px", fontWeight: 700 }}>
+                  #{task.priority}
+                </span>
+              )}
+              {task.effort && (
+                <span style={{ fontSize: 11, background: EFFORT_STYLE[task.effort]?.bg, color: EFFORT_STYLE[task.effort]?.color, borderRadius: 6, padding: "2px 7px", fontWeight: 600 }}>
+                  {task.effort} effort
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: 11, color: C.stone, flexShrink: 0, marginLeft: 8 }}>
+              {new Date(task.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: task.reason ? 6 : 10 }}>{task.title}</div>
+          {task.reason && (
+            <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic", marginBottom: 10, lineHeight: 1.4 }}>AI: {task.reason}</div>
+          )}
+          {task.user_name && (
+            <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>
+              {task.user_name}{task.user_email && ` · ${task.user_email}`}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => markDone(task)}
+              style={{ fontSize: 11, fontWeight: 600, background: "#D1FAE5", color: "#065F46", border: "1px solid #6EE7B7", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+              ✓ Mark done
+            </button>
+            {task.user_email && (
+              <button onClick={() => openGmailReply(task, false)}
+                style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+                ✉️ Reply in Gmail
+              </button>
+            )}
+            <button onClick={() => deleteTask(task.id)}
+              style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* Done tasks toggle */}
+      {doneTasks.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <button onClick={() => setShowDone(s => !s)}
+            style={{ fontSize: 12, color: C.stone, background: "none", border: "none", cursor: "pointer", marginBottom: 10 }}>
+            {showDone ? "▲ Hide" : "▼ Show"} {doneTasks.length} completed task{doneTasks.length !== 1 ? "s" : ""}
+          </button>
+          {showDone && doneTasks.map(task => (
+            <div key={task.id} style={{ background: "#FAFAFA", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, opacity: 0.6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.stone }}>{TYPE_LABEL[task.type] || task.type}</span>
+                <span style={{ fontSize: 11, color: C.stone }}>{new Date(task.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+              </div>
+              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: 8 }}>{task.title}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => saveTasks(tasks.map(t => t.id === task.id ? { ...t, status: "active" } : t))}
+                  style={{ fontSize: 11, color: C.forest, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  Reopen
+                </button>
+                <button onClick={() => deleteTask(task.id)}
+                  style={{ fontSize: 11, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Done prompt modal — shown when marking feedback task as done */}
+      {donePrompt && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", maxWidth: 380, width: "100%" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Mark as done</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
+              This came from {donePrompt.user_name || "a user"}{donePrompt.user_email ? ` (${donePrompt.user_email})` : ""}. Would you like to send them a thank-you reply letting them know their feedback has been acted on?
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button onClick={() => { openGmailReply(donePrompt, true); confirmDone(donePrompt); }}
+                style={{ padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                ✉️ Send reply + mark done
+              </button>
+              <button onClick={() => confirmDone(donePrompt)}
+                style={{ padding: "12px", background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, fontSize: 13, cursor: "pointer" }}>
+                Mark done without replying
+              </button>
+              <button onClick={() => setDonePrompt(null)}
+                style={{ padding: "10px", background: "none", color: C.stone, border: "none", fontSize: 12, cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
