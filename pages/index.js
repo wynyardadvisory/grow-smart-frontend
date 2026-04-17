@@ -6764,6 +6764,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
       await apiFetch("/crops", {
         method: "POST",
         body: JSON.stringify({
+          name:           cropName,
           crop_def_id:    crop.crop_def_id || null,
           crop_other:     crop.crop_def_id ? null : cropName,
           variety_id:     crop.variety_id  || null,
