@@ -527,8 +527,7 @@ function AuthScreen({ onAuth }) {
       });
       if (error) throw error;
       if (data?.url) {
-        const encoded = encodeURIComponent(data.url);
-        window.location.href = `com.vercro.app://auth/start?url=${encoded}`;
+        window.webkit?.messageHandlers?.startOAuth?.postMessage({ url: data.url });
       }
     } catch (e) { setError(e.message); setLoading(false); }
   };
