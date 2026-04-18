@@ -13,7 +13,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 import { useRouter } from "next/router";
-import { initCapacitorOAuth, triggerNativeOAuth } from "./capacitor-oauth";
+import { initCapacitorOAuth, triggerNativeOAuth } from "../lib/capacitor-oauth";
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
