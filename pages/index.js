@@ -17742,7 +17742,7 @@ function IOSInstallBanner({ onDismiss }) {
       <button onClick={onDismiss} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 20, cursor: "pointer", flexShrink: 0, padding: 0, lineHeight: 1 }}>×</button>
     </div>
   );
-
+}
 
 export default function GrowSmart() {
   const router = useRouter();
