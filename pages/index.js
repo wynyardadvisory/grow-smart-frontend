@@ -17726,8 +17726,7 @@ function OnboardingScreen({ session, onComplete }) {
       </div>
     </div>
   );
-
-
+}
 
 function IOSInstallBanner({ onDismiss }) {
   return (
@@ -17957,3 +17956,4 @@ export default function GrowSmart() {
       <Analytics />
     </div>
   );
+}
