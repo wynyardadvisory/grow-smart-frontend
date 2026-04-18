@@ -480,42 +480,87 @@ function AuthScreen({ onAuth }) {
     setLoading(false);
   };
 
-  const handleGoogle = async () => {
+  // ── Native OAuth via ASWebAuthenticationSession ─────────────────────────────
+  // On native, we pass the OAuth URL to AppDelegate.swift via a custom URL
+  // scheme. Swift opens ASWebAuthenticationSession (Apple's in-app auth browser),
+  // waits for the com.vercro.app:// callback, then posts it back to JS.
+  // JS exchanges the callback URL for a Supabase session.
+  // On web, standard signInWithOAuth redirect is used.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleCallback = async (e) => {
+      const { url } = e.detail;
+      if (!url) return;
+      try {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(url);
+        if (error) throw error;
+        if (data?.session) onAuth(data.session);
+      } catch (err) {
+        setError("Sign-in failed. Please try again.");
+        setLoading(false);
+      }
+    };
+
+    const handleOAuthError = (e) => {
+      setError(e.detail?.message || "Sign-in was cancelled.");
+      setLoading(false);
+    };
+
+    window.addEventListener("vercroOAuthCallback", handleCallback);
+    window.addEventListener("vercroOAuthError", handleOAuthError);
+    return () => {
+      window.removeEventListener("vercroOAuthCallback", handleCallback);
+      window.removeEventListener("vercroOAuthError", handleOAuthError);
+    };
+  }, []);
+
+  const startNativeOAuth = async (provider) => {
     setLoading(true); setError(null);
     try {
-      const isNative = !!(window.Capacitor?.isNative);
-      const CapBrowser = isNative ? window.Capacitor?.Plugins?.Browser : null;
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
+        provider,
         options: {
-          redirectTo: isNative ? "com.vercro.app://" : "https://app.vercro.com",
-          skipBrowserRedirect: !!(isNative && CapBrowser),
+          redirectTo: "com.vercro.app://auth/callback",
+          skipBrowserRedirect: true,
         },
       });
       if (error) throw error;
-      if (isNative && CapBrowser && data?.url) {
-        await CapBrowser.open({ url: data.url, windowName: "_self" });
+      if (data?.url) {
+        const encoded = encodeURIComponent(data.url);
+        window.location.href = `com.vercro.app://auth/start?url=${encoded}`;
       }
     } catch (e) { setError(e.message); setLoading(false); }
   };
 
+  const handleGoogle = async () => {
+    if (window.Capacitor?.isNative) {
+      await startNativeOAuth("google");
+    } else {
+      setLoading(true); setError(null);
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: "https://app.vercro.com" },
+        });
+        if (error) throw error;
+      } catch (e) { setError(e.message); setLoading(false); }
+    }
+  };
+
   const handleApple = async () => {
-    setLoading(true); setError(null);
-    try {
-      const isNative = !!(window.Capacitor?.isNative);
-      const CapBrowser = isNative ? window.Capacitor?.Plugins?.Browser : null;
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "apple",
-        options: {
-          redirectTo: isNative ? "com.vercro.app://" : "https://app.vercro.com",
-          skipBrowserRedirect: !!(isNative && CapBrowser),
-        },
-      });
-      if (error) throw error;
-      if (isNative && CapBrowser && data?.url) {
-        await CapBrowser.open({ url: data.url, windowName: "_self" });
-      }
-    } catch (e) { setError(e.message); setLoading(false); }
+    if (window.Capacitor?.isNative) {
+      await startNativeOAuth("apple");
+    } else {
+      setLoading(true); setError(null);
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "apple",
+          options: { redirectTo: "https://app.vercro.com" },
+        });
+        if (error) throw error;
+      } catch (e) { setError(e.message); setLoading(false); }
+    }
   };
 
   if (sent) return (
