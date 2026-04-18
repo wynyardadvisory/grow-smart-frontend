@@ -13,6 +13,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 import { useRouter } from "next/router";
+import { initCapacitorOAuth, triggerNativeOAuth } from "./capacitor-oauth";
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -480,61 +481,20 @@ function AuthScreen({ onAuth }) {
     setLoading(false);
   };
 
-  // ── Native OAuth via ASWebAuthenticationSession ─────────────────────────────
-  // On native, we pass the OAuth URL to AppDelegate.swift via a custom URL
-  // scheme. Swift opens ASWebAuthenticationSession (Apple's in-app auth browser),
-  // waits for the com.vercro.app:// callback, then posts it back to JS.
-  // JS exchanges the callback URL for a Supabase session.
-  // On web, standard signInWithOAuth redirect is used.
+  // ── Native OAuth ─────────────────────────────────────────────────────────────
+  // initCapacitorOAuth is imported from capacitor-oauth.js — a separate module
+  // that is always included in the client bundle (top-level import = never tree-shaken).
+  // It registers the vercroOAuthCallback/vercroOAuthError listeners and
+  // handles session exchange after ASWebAuthenticationSession completes.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handleCallback = async (e) => {
-      const { url } = e.detail;
-      if (!url) return;
-      try {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(url);
-        if (error) throw error;
-        if (data?.session) onAuth(data.session);
-      } catch (err) {
-        setError("Sign-in failed. Please try again.");
-        setLoading(false);
-      }
-    };
-
-    const handleOAuthError = (e) => {
-      setError(e.detail?.message || "Sign-in was cancelled.");
-      setLoading(false);
-    };
-
-    window.addEventListener("vercroOAuthCallback", handleCallback);
-    window.addEventListener("vercroOAuthError", handleOAuthError);
-    return () => {
-      window.removeEventListener("vercroOAuthCallback", handleCallback);
-      window.removeEventListener("vercroOAuthError", handleOAuthError);
-    };
+    initCapacitorOAuth(supabase, onAuth, (msg) => { setError(msg); setLoading(false); });
   }, []);
-
-  const startNativeOAuth = async (provider) => {
-    setLoading(true); setError(null);
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: "com.vercro.app://auth/callback",
-          skipBrowserRedirect: true,
-        },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.webkit?.messageHandlers?.startOAuth?.postMessage({ url: data.url });
-      }
-    } catch (e) { setError(e.message); setLoading(false); }
-  };
 
   const handleGoogle = async () => {
     if (window.Capacitor?.isNative) {
-      await startNativeOAuth("google");
+      setLoading(true); setError(null);
+      try { await triggerNativeOAuth("google", supabase); }
+      catch (e) { setError(e.message); setLoading(false); }
     } else {
       setLoading(true); setError(null);
       try {
@@ -549,7 +509,9 @@ function AuthScreen({ onAuth }) {
 
   const handleApple = async () => {
     if (window.Capacitor?.isNative) {
-      await startNativeOAuth("apple");
+      setLoading(true); setError(null);
+      try { await triggerNativeOAuth("apple", supabase); }
+      catch (e) { setError(e.message); setLoading(false); }
     } else {
       setLoading(true); setError(null);
       try {
