@@ -50,7 +50,7 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
 // Loaded at module level to prevent tree-shaking on next export.
 let SocialLogin = null;
 if (typeof window !== "undefined") {
-  import("@capgo/capacitor-social-login").then(m => { SocialLogin = m.SocialLogin; });
+  import("@capgo/capacitor-social-login").then(m => { SocialLogin = m.SocialLogin; }).catch(() => {});
 }
 
 // ── Capacitor Browser (native only) ──────────────────────────────────────────
