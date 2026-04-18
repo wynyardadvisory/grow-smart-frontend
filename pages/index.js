@@ -13,7 +13,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Analytics } from "@vercel/analytics/react";
 import { useRouter } from "next/router";
-import { initCapacitorOAuth, triggerNativeOAuth } from "../lib/capacitor-oauth";
+import Script from "next/script";
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -482,46 +482,76 @@ function AuthScreen({ onAuth }) {
   };
 
   // ── Native OAuth ─────────────────────────────────────────────────────────────
-  // initCapacitorOAuth is imported from capacitor-oauth.js — a separate module
-  // that is always included in the client bundle (top-level import = never tree-shaken).
-  // It registers the vercroOAuthCallback/vercroOAuthError listeners and
-  // handles session exchange after ASWebAuthenticationSession completes.
+  // On native, we use window.vercroStartOAuth() which is defined in
+  // public/capacitor-bridge.js — loaded via <script> tag, bypasses bundler.
+  // That script calls window.webkit.messageHandlers.startOAuth.postMessage()
+  // to trigger ASWebAuthenticationSession in MainViewController.swift.
+  // Swift posts vercroProcessCallback back to JS with the callback URL.
+  // JS then exchanges it for a Supabase session.
   useEffect(() => {
-    initCapacitorOAuth(supabase, onAuth, (msg) => { setError(msg); setLoading(false); });
+    if (typeof window === "undefined") return;
+    const handleCallback = async (e) => {
+      const url = e.detail && e.detail.url;
+      if (!url) return;
+      try {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(url);
+        if (error) throw error;
+        if (data?.session) onAuth(data.session);
+      } catch (err) {
+        setError("Sign-in failed. Please try again.");
+        setLoading(false);
+      }
+    };
+    const handleError = (e) => {
+      setError((e.detail && e.detail.message) || "Sign-in was cancelled.");
+      setLoading(false);
+    };
+    window.addEventListener("vercroProcessCallback", handleCallback);
+    window.addEventListener("vercroProcessError", handleError);
+    return () => {
+      window.removeEventListener("vercroProcessCallback", handleCallback);
+      window.removeEventListener("vercroProcessError", handleError);
+    };
   }, []);
 
   const handleGoogle = async () => {
-    if (window.Capacitor?.isNative) {
-      setLoading(true); setError(null);
-      try { await triggerNativeOAuth("google", supabase); }
-      catch (e) { setError(e.message); setLoading(false); }
-    } else {
-      setLoading(true); setError(null);
-      try {
+    setLoading(true); setError(null);
+    try {
+      if (window.Capacitor?.isNative) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (data?.url && window.vercroStartOAuth) window.vercroStartOAuth(data.url);
+      } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: { redirectTo: "https://app.vercro.com" },
         });
         if (error) throw error;
-      } catch (e) { setError(e.message); setLoading(false); }
-    }
+      }
+    } catch (e) { setError(e.message); setLoading(false); }
   };
 
   const handleApple = async () => {
-    if (window.Capacitor?.isNative) {
-      setLoading(true); setError(null);
-      try { await triggerNativeOAuth("apple", supabase); }
-      catch (e) { setError(e.message); setLoading(false); }
-    } else {
-      setLoading(true); setError(null);
-      try {
+    setLoading(true); setError(null);
+    try {
+      if (window.Capacitor?.isNative) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "apple",
+          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (data?.url && window.vercroStartOAuth) window.vercroStartOAuth(data.url);
+      } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "apple",
           options: { redirectTo: "https://app.vercro.com" },
         });
         if (error) throw error;
-      } catch (e) { setError(e.message); setLoading(false); }
-    }
+      }
+    } catch (e) { setError(e.message); setLoading(false); }
   };
 
   if (sent) return (
@@ -17972,6 +18002,7 @@ export default function GrowSmart() {
           </button>
         ))}
       </div>
+      <Script src="/capacitor-bridge.js" strategy="beforeInteractive" />
       <Analytics />
     </div>
   );
