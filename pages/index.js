@@ -472,7 +472,7 @@ function AuthScreen({ onAuth }) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "https://app.vercro.com",
+          redirectTo: window.Capacitor?.isNative ? "com.vercro.app://" : "https://app.vercro.com",
           skipBrowserRedirect: !!(window.Capacitor?.isNative && CapacitorBrowser),
         },
       });
@@ -489,7 +489,7 @@ function AuthScreen({ onAuth }) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
-          redirectTo: "https://app.vercro.com",
+          redirectTo: window.Capacitor?.isNative ? "com.vercro.app://" : "https://app.vercro.com",
           skipBrowserRedirect: !!(window.Capacitor?.isNative && CapacitorBrowser),
         },
       });
