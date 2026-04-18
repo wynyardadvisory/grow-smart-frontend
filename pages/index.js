@@ -10048,7 +10048,7 @@ function ProSubscriptionSection() {
     setManageLoading(true);
     try {
       // On iOS, Apple manages the subscription — open Apple's subscription settings
-      
+      if (window.Capacitor?.isNative) {
         window.open("https://apps.apple.com/account/subscriptions", "_system");
         setManageLoading(false);
         return;
