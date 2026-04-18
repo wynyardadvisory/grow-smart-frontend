@@ -44,6 +44,15 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   try { InAppReview = require("@capacitor-community/in-app-review").InAppReview; } catch(e) {}
 }
 
+// ── Capgo Social Login (native only) ─────────────────────────────────────────
+// Used for native Apple Sign In. Triggers ASAuthorizationAppleIDProvider
+// (the native iOS sheet) and returns an identity token for Supabase.
+// Loaded at module level to prevent tree-shaking on next export.
+let SocialLogin = null;
+if (typeof window !== "undefined") {
+  import("@capgo/capacitor-social-login").then(m => { SocialLogin = m.SocialLogin; });
+}
+
 // ── Capacitor Browser (native only) ──────────────────────────────────────────
 // Used for OAuth flows (Sign in with Apple, Google) on native iOS/Android.
 // Opens an in-app SFSafariViewController instead of full Safari, satisfying
@@ -537,13 +546,31 @@ function AuthScreen({ onAuth }) {
   const handleApple = async () => {
     setLoading(true); setError(null);
     try {
-      if (window.Capacitor?.isNative) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
+      const _applePlatform = window.Capacitor?.getPlatform?.();
+      if (_applePlatform === "ios" || _applePlatform === "android" || window.Capacitor?.isNative) {
+        // ── Native Apple Sign In via Capgo plugin ─────────────────────────────
+        // Uses ASAuthorizationAppleIDProvider — native iOS sheet, no browser.
+        // Returns identityToken + nonce which Supabase exchanges for a session.
+        if (!SocialLogin) {
+          try { const m = await import("@capgo/capacitor-social-login"); SocialLogin = m.SocialLogin; } catch(e) {}
+        }
+        if (!SocialLogin) throw new Error("SocialLogin plugin not ready — please try again");
+        await SocialLogin.initialize({ apple: {} });
+        const result = await SocialLogin.login({
           provider: "apple",
-          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true },
+          options: { scopes: ["email", "name"] },
+        });
+        // idToken may be at result.result.idToken or result.result.accessToken.token
+        const idToken = result?.result?.idToken || result?.result?.identityToken;
+        const nonce = result?.result?.nonce;
+        if (!idToken) throw new Error("Apple sign-in failed — no identity token returned");
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: "apple",
+          token: idToken,
+          nonce: nonce,
         });
         if (error) throw error;
-        if (data?.url && window.vercroStartOAuth) window.vercroStartOAuth(data.url);
+        if (data?.session) onAuth(data.session);
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "apple",
