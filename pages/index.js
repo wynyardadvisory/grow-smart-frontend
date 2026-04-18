@@ -393,7 +393,7 @@ function SectionLabel({ children }) {
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.stone, textTransform: "uppercase" }}>{children}</div>
     </div>
   );
-
+}
 
 function Spinner() {
   return <div style={{ textAlign: "center", padding: 40, color: C.stone, fontSize: 14 }}>Loading…</div>;
@@ -421,7 +421,7 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
       </div>
     </div>
   );
-
+}
 
 function ErrorMsg({ msg }) {
   return <div style={{ background: "#fdf0f0", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 16px", color: C.red, fontSize: 13, marginBottom: 16 }}>{msg}</div>;
@@ -773,7 +773,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
       </button>
     </div>
   );
-
+}
 
 function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, onClose, onAddCrop }) {
   const [state,       setState]       = useState("loading"); // loading | generating | ready | error
@@ -2979,7 +2979,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
       </div>
     </div>
   );
-
+}
 
 function GardenLog({ onLogActivity }) {
   const { isPro, isMark } = useProStatus();
@@ -3295,7 +3295,7 @@ function GardenLog({ onLogActivity }) {
       )}
     </div>
   );
-
+}
 
 function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed }) {
   const [data,         setData]        = useState(null);
@@ -4845,8 +4845,7 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
       </div>
     </div>
   );
-
-
+}
 
 function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = false }) {
   const [animating, setAnimating] = useState(false);
@@ -6843,7 +6842,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
       </div>
     </div>
   );
-
+}
 
 function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false }) {
   const CROPS_CACHE = "vercro_crops_v1";
@@ -8671,7 +8670,7 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
       </div>
     </div>
   );
-
+}
 
 function NotificationSettingsSection() {
   const [prefs,   setPrefs]   = useState(null);
@@ -8898,7 +8897,7 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
       )}
     </>
   );
-
+}
 
 function TimeAwayScreen({ onClose }) {
   const [periods,     setPeriods]     = useState([]);
@@ -10593,8 +10592,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
       </div>
     </div>
   );
-
-
+}
 
 function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   const [step,       setStep]       = useState(prefillCrop ? "photo" : "crop");
@@ -12074,7 +12072,7 @@ function MetricSection({ title, children }) {
       </div>
     </div>
   );
-
+}
 
 function MetricRow({ label, val, sub, highlight }) {
   return (
@@ -12086,7 +12084,7 @@ function MetricRow({ label, val, sub, highlight }) {
       <div style={{ fontSize: 18, fontWeight: 800, color: highlight ? C.forest : "#1a1a1a", fontFamily: "serif" }}>{val ?? "—"}</div>
     </div>
   );
-
+}
 
 function MetricCard({ label, value, sub, status, suggestion }) {
   const [open, setOpen] = useState(false);
@@ -12120,7 +12118,7 @@ function MetricCard({ label, value, sub, status, suggestion }) {
       )}
     </div>
   );
-
+}
 
 function MetricRowWithFix({ label, val, sub, status, suggestion }) {
   const [open, setOpen] = useState(false);
@@ -12156,7 +12154,7 @@ function MetricRowWithFix({ label, val, sub, status, suggestion }) {
       )}
     </>
   );
-
+}
 
 const SUGGESTIONS = {
   activation: {
@@ -12274,7 +12272,7 @@ function InviteWaitlistButton() {
       )}
     </>
   );
-
+}
 
 function AdminTools() {
   const [backfillStatus, setBackfillStatus] = useState(null);
@@ -12610,7 +12608,7 @@ function DemoAdminScreen() {
       </div>
     </div>
   );
-
+}
 
 function AdminScreen({ isDemo = false, metricsOnly = false }) {
   const [tab,       setAdminTab] = useState("metrics");
@@ -14481,7 +14479,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
       </div>
     </div>
   );
-
+}
 
 function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMark = false, onPlanNextSeason, onClose }) {
   const swipe = useSwipeToDismiss(onClose);
@@ -14619,7 +14617,7 @@ function ScoreBar({ label, value, max = 10, colour = C.forest }) {
       </div>
     </div>
   );
-
+}
 
 function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
   const colours    = [C.forest, "#2D6E9E", "#7B5EA7"];
@@ -15069,7 +15067,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
       )}
     </div>
   );
-
+}
 
 function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // Steps: "generating" | "baseline" | "ask_year_round" | "ask_improve" | "ask_preference" | "result" | "saving"
@@ -16590,7 +16588,7 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
       }}
     />
   );
-
+}
 
 function PlanScreen() {
   const PLAN_VIEW_CACHE = "vercro_plan_view_v1";
@@ -17313,8 +17311,7 @@ function PlanScreen() {
       )}
     </div>
   );
-
-
+}
 
 const TAB_ICONS = {
   dashboard: (
