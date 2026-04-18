@@ -434,6 +434,23 @@ function AuthScreen({ onAuth }) {
   const [error, setError]         = useState(null);
   const [sent, setSent]           = useState(false);
 
+  // ── Native OAuth callback handler ─────────────────────────────────────────
+  // When Supabase redirects to com.vercro.app:// after OAuth, Capacitor fires
+  // appUrlOpen. We pick up the session here and complete sign-in.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.Capacitor?.isNative) return;
+    let listener;
+    import("@capacitor/app").then(({ App }) => {
+      App.addListener("appUrlOpen", async ({ url }) => {
+        if (url.startsWith("com.vercro.app://")) {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session) onAuth(data.session);
+        }
+      }).then(l => { listener = l; });
+    });
+    return () => { listener?.remove(); };
+  }, []);
+
   const handleForgot = async () => {
     if (!email) { setError("Please enter your email address first"); return; }
     setLoading(true); setError(null);
