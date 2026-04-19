@@ -1,8 +1,6 @@
 // Vercro Service Worker — Push Notifications
 // Placed in public/sw.js
 
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-
 const CACHE_NAME = 'vercro-v1';
 
 // ── Push event — show notification ───────────────────────────────────────────
@@ -47,10 +45,8 @@ self.addEventListener('notificationclick', (event) => {
   const data    = event.notification.data || {};
   const action  = event.action;
 
-  // Build deep link URL
   let url = data.url || '/';
 
-  // Action buttons (e.g. "Mark done", "Snooze")
   if (action === 'complete' && data.task_id) {
     fetch(`https://api.vercro.com/tasks/${data.task_id}/complete`, {
       method: 'POST',
@@ -68,14 +64,12 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Mark notification as opened
   if (data.event_id) {
     fetch(`https://api.vercro.com/notifications/${data.event_id}/opened`, {
       method: 'POST',
     }).catch(() => {});
   }
 
-  // Open app to correct section
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
