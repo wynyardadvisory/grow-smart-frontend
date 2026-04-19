@@ -1,6 +1,8 @@
 // Vercro Service Worker — Push Notifications
 // Placed in public/sw.js
 
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
 const CACHE_NAME = 'vercro-v1';
 
 // ── Push event — show notification ───────────────────────────────────────────
@@ -16,8 +18,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body:    data.body || '',
-    icon:    '/icon-192.png',
-    badge:   '/badge-72.png',
+    icon:    '/icons/icon-192.png',
+    badge:   '/icons/icon-192.png',
     tag:     data.tag || data.notification_type || 'vercro',
     renotify: false,
     data: {
@@ -50,12 +52,10 @@ self.addEventListener('notificationclick', (event) => {
 
   // Action buttons (e.g. "Mark done", "Snooze")
   if (action === 'complete' && data.task_id) {
-    // Fire and forget — complete the task via API
     fetch(`https://api.vercro.com/tasks/${data.task_id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => {});
-    // Don't need to open the app
     return;
   }
 
@@ -78,14 +78,12 @@ self.addEventListener('notificationclick', (event) => {
   // Open app to correct section
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app already open, focus it and navigate
       for (const client of clientList) {
         if (client.url.includes('app.vercro.com') && 'focus' in client) {
           client.postMessage({ type: 'NAVIGATE', url, data });
           return client.focus();
         }
       }
-      // Otherwise open a new window
       if (clients.openWindow) {
         return clients.openWindow(url);
       }
@@ -100,7 +98,6 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       userVisibleOnly:      true,
       applicationServerKey: self.__VAPID_PUBLIC_KEY__,
     }).then((subscription) => {
-      // Re-register with server
       return fetch('https://api.vercro.com/notifications/register-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
