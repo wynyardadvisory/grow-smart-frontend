@@ -11,7 +11,7 @@ export default function App({ Component, pageProps }) {
     window.OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({
         appId: ONESIGNAL_APP_ID,
-        serviceWorkerPath: "/OneSignalSDKWorker.js",
+        serviceWorkerPath: "/sw.js",  // use our own SW which imports OneSignal SDK
         notifyButton: { enable: false },
         welcomeNotification: { disable: true },
         autoResubscribe: true,
