@@ -17841,7 +17841,7 @@ export default function GrowSmart() {
 
     // Register service worker for push notifications
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js")
+      navigator.serviceWorker.register("/OneSignalSDKWorker.js")
         .then(reg => console.log("[SW] Registered:", reg.scope))
         .catch(err => console.warn("[SW] Registration failed:", err));
     }
