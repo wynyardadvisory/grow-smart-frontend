@@ -12816,6 +12816,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 { id: "growth",     label: "Growth" },
                 { id: "usage",      label: "Usage" },
                 { id: "comms",      label: "Comms" },
+                { id: "revenue",    label: "Revenue" },
               ].map(t => (
                 <button key={t.id} onClick={() => setMetricTab(t.id)}
                   style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${metricTab === t.id ? C.forest : C.border}`, background: metricTab === t.id ? C.forest : "transparent", color: metricTab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -13129,6 +13130,45 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <MetricRow label="Total submissions" val={metrics.totalFeedback || "—"} />
                   <MetricRow label="Average rating" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} highlight={metrics.avgRating >= 4} />
                 </div>
+              </div>
+            )}
+
+            {metricTab === "revenue" && (
+              <div>
+                {!metrics.revenue ? (
+                  <div style={{ padding: "24px 16px", fontSize: 13, color: C.stone, textAlign: "center" }}>Revenue data unavailable</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Subscribers</div>
+                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                      <MetricRow label="Total paying" val={metrics.revenue.totalPro ?? "—"} highlight={metrics.revenue.totalPro > 0} />
+                      <MetricRow label="Conversion rate" val={metrics.revenue.conversionRate != null ? `${metrics.revenue.conversionRate}%` : "—"} sub="of activated users" status={metrics.revenue.conversionRate != null ? status(metrics.revenue.conversionRate, 5, 2) : null} />
+                      <MetricRow label="Via Stripe (web)" val={metrics.revenue.stripeCount ?? "—"} />
+                      <MetricRow label="Via RevenueCat (native)" val={metrics.revenue.rcCount ?? "—"} />
+                    </div>
+
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Plan split</div>
+                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                      <MetricRow label="Monthly" val={metrics.revenue.monthlyCount ?? "—"} />
+                      <MetricRow label="Annual" val={metrics.revenue.annualCount ?? "—"} />
+                      <MetricRow label="Trialling" val={metrics.revenue.trialCount ?? "—"} />
+                    </div>
+
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Pricing tier</div>
+                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                      <MetricRow label="Loyalty" val={metrics.revenue.loyalty ?? "—"} sub="pre-launch subscribers" />
+                      <MetricRow label="Early supporter" val={metrics.revenue.earlySupporter ?? "—"} sub="post-launch 90-day window" />
+                      <MetricRow label="Standard" val={metrics.revenue.standard ?? "—"} sub="full price" />
+                    </div>
+
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Health</div>
+                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                      <MetricRow label="MRR" val={metrics.revenue.mrrGBP ? `£${metrics.revenue.mrrGBP}` : "—"} sub="monthly recurring revenue" highlight={parseFloat(metrics.revenue.mrrGBP) > 0} />
+                      <MetricRow label="Past due (failed payment)" val={metrics.revenue.pastDueCount ?? "—"} status={metrics.revenue.pastDueCount > 0 ? "amber" : null} />
+                      <MetricRow label="Churned (previously paid)" val={metrics.revenue.churnedCount ?? "—"} status={metrics.revenue.churnedCount > 0 ? "amber" : null} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
