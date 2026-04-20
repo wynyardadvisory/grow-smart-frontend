@@ -20,10 +20,27 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.vercro.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.vercro.app</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<string>23</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Vercro uses your camera to photograph seed packets, plants and feed products for identification and diagnosis, and to add photos to your growth diary, garden areas and profile.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Vercro may save photos taken in the app to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vercro uses your photo library to upload photos of plants, crops, seed packets and feed products.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

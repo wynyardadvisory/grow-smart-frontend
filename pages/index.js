@@ -13045,6 +13045,48 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   )}
                 </div>
 
+                {metrics.pushCronLog7d?.length > 0 && (() => {
+                  const morning = metrics.pushCronLog7d.filter(r => r.window === "morning");
+                  const evening = metrics.pushCronLog7d.filter(r => r.window === "evening");
+                  const avg = (rows, key) => rows.length ? Math.round(rows.reduce((s, r) => s + (r[key] || 0), 0) / rows.length) : 0;
+                  return (
+                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                      <div style={{ padding: "10px 16px", borderBottom: `1px solid ${C.border}` }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Morning push — 7d avg per run</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>Eligible</span>
+                          <span style={{ fontWeight: 600 }}>{avg(morning, "eligible")}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>Sent</span>
+                          <span style={{ fontWeight: 600, color: "#2a7a3b" }}>{avg(morning, "sent")}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>No qualifying task</span>
+                          <span style={{ fontWeight: 600, color: "#b45309" }}>{avg(morning, "no_candidate")}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{morning.length} run{morning.length !== 1 ? "s" : ""} in last 7 days</div>
+                      </div>
+                      <div style={{ padding: "10px 16px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Evening push — 7d avg per run</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>Eligible</span>
+                          <span style={{ fontWeight: 600 }}>{avg(evening, "eligible")}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>Sent</span>
+                          <span style={{ fontWeight: 600, color: "#2a7a3b" }}>{avg(evening, "sent")}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                          <span style={{ color: C.stone }}>No qualifying task</span>
+                          <span style={{ fontWeight: 600, color: "#b45309" }}>{avg(evening, "no_candidate")}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{evening.length} run{evening.length !== 1 ? "s" : ""} in last 7 days</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email sequences</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Waitlist invites sent" val={metrics.emailWaitlistInvites || "—"} />

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vercro</string>
+    <string name="title_activity_main">Vercro</string>
+    <string name="package_name">com.vercro.app</string>
+    <string name="custom_url_scheme">com.vercro.app</string>
+</resources>
