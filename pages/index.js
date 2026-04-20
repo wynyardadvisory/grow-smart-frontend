@@ -17585,12 +17585,36 @@ function OnboardingScreen({ session, onComplete }) {
   // Pre-populate name from Apple/Google identity if available
   const [name,          setName]         = useState(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
   const [postcode,      setPostcode]     = useState("");
+  const [country,       setCountry]      = useState("GB"); // "GB" or "IE"
   const [selectedCrops, setSelectedCrops]= useState([]); // [{name, emoji}]
   const [stage,         setStage]        = useState(null);
   const [areaType,      setAreaType]     = useState(null);
   const [selfSource,    setSelfSource]   = useState(null);
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
+
+  // Country config — mirrors COUNTRY_CONFIG in api.js
+  const COUNTRY_OPTIONS = [
+    { code: "GB", flag: "🇬🇧", label: "United Kingdom" },
+    { code: "IE", flag: "🇮🇪", label: "Ireland" },
+  ];
+  const POSTCODE_CONFIG = {
+    GB: {
+      label:       "Postcode",
+      placeholder: "e.g. TS22",
+      hint:        "First part only — e.g. TS22, not TS22 5BQ",
+      validate:    (v) => /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i.test(v.replace(/\s/g, "")),
+      errorMsg:    "Enter the first part only — e.g. TS22",
+    },
+    IE: {
+      label:       "Eircode",
+      placeholder: "e.g. A65 F4E2",
+      hint:        "Full Eircode — e.g. A65 F4E2",
+      validate:    (v) => /^[A-Z][0-9]{2}\s?[A-Z0-9]{4}$/i.test(v.trim()),
+      errorMsg:    "Enter a valid Eircode — e.g. A65 F4E2",
+    },
+  };
+  const pcConfig = POSTCODE_CONFIG[country] || POSTCODE_CONFIG.GB;
 
   const toggleCrop = (crop) => {
     setSelectedCrops(prev =>
@@ -17601,7 +17625,7 @@ function OnboardingScreen({ session, onComplete }) {
   };
 
   const canAdvance = () => {
-    if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0;
+    if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0 && pcConfig.validate(postcode.trim());
     if (step === 1) return selectedCrops.length > 0;
     if (step === 2) return stage !== null;
     if (step === 3) return areaType !== null;
@@ -17643,6 +17667,7 @@ function OnboardingScreen({ session, onComplete }) {
         body: JSON.stringify({
           name: name.trim(),
           postcode: postcode.trim().toUpperCase(),
+          country,
           crops: cropsPayload,
           area_type: areaType,
           ...getStoredUTMs(),
@@ -17713,9 +17738,33 @@ function OnboardingScreen({ session, onComplete }) {
         {/* ── Step 0: Identity ─────────────────────────────────────────────── */}
         {step === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.5, marginBottom: 4 }}>
-              We'll use your postcode for local weather and task timing.
+
+            {/* Country picker */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Where are you based?</label>
+              <div style={{ display: "flex", gap: 10 }}>
+                {COUNTRY_OPTIONS.map(opt => (
+                  <button key={opt.code} onClick={() => { setCountry(opt.code); setPostcode(""); }}
+                    style={{
+                      flex: 1,
+                      padding: "12px 10px",
+                      background: country === opt.code ? C.forest : "#fff",
+                      border: `2px solid ${country === opt.code ? C.forest : C.border}`,
+                      borderRadius: 12,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      transition: "all 0.15s",
+                    }}>
+                    <span style={{ fontSize: 20 }}>{opt.flag}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, fontFamily: "serif", color: country === opt.code ? "#fff" : "#1a1a1a" }}>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>First name</label>
               <input
@@ -17727,14 +17776,14 @@ function OnboardingScreen({ session, onComplete }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Postcode</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>{pcConfig.label}</label>
               <input
                 value={postcode}
                 onChange={e => setPostcode(e.target.value.toUpperCase())}
-                placeholder="e.g. TS22"
+                placeholder={pcConfig.placeholder}
                 style={{ ...inputStyle, width: "100%" }}
               />
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>First part only — e.g. TS22, not TS22 5BQ</div>
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>{pcConfig.hint}</div>
             </div>
           </div>
         )}
