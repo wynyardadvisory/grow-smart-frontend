@@ -539,6 +539,7 @@ function AuthScreen({ onAuth }) {
           google: {
             iOSClientId: "977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc.apps.googleusercontent.com",
             iOSServerClientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com",
+            webClientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com",
             mode: "online",
           },
         });
