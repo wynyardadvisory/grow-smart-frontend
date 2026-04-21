@@ -25,9 +25,11 @@
 		<dict>
 			<key>CFBundleURLName</key>
 			<string>com.vercro.app</string>
+			<string>977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.vercro.app</string>
+			<string>977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc</string>
 			</array>
 		</dict>
 	</array>

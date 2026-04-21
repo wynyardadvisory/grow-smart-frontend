@@ -527,12 +527,26 @@ function AuthScreen({ onAuth }) {
     setLoading(true); setError(null);
     try {
       if (window.Capacitor?.isNative) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
+        // ── Native Google Sign In via Capgo SocialLogin plugin ────────────────
+        // Uses ASWebAuthenticationSession on iOS — stays fully in-app.
+        // Returns serverAuthCode which Supabase exchanges for a session.
+        if (!SocialLogin) {
+          try { const m = await import("@capgo/capacitor-social-login"); SocialLogin = m.SocialLogin; } catch(e) {}
+        }
+        if (!SocialLogin) throw new Error("SocialLogin plugin not ready — please try again");
+        await SocialLogin.initialize({ google: { iOSClientId: "977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc.apps.googleusercontent.com" } });
+        const result = await SocialLogin.login({
           provider: "google",
-          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true },
+          options: { scopes: ["email", "profile"] },
+        });
+        const idToken = result?.result?.idToken || result?.result?.accessToken?.token;
+        if (!idToken) throw new Error("Google sign-in failed — no token returned");
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken,
         });
         if (error) throw error;
-        if (data?.url && window.vercroStartOAuth) window.vercroStartOAuth(data.url);
+        if (data?.session) onAuth(data.session);
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
