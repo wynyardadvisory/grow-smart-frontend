@@ -11792,6 +11792,7 @@ function AdminFeedbackList() {
   const [showDone,      setShowDone]      = useState(false);
   const [donePrompt,    setDonePrompt]    = useState(null); // { task } when marking feedback done
   const [rankError,     setRankError]     = useState(null);
+  const [expandedTasks, setExpandedTasks] = useState(new Set()); // track which task messages are expanded
 
   // Load persisted tasks + context from localStorage
   useEffect(() => {
@@ -11822,7 +11823,7 @@ function AdminFeedbackList() {
               id:          "fb_" + f.id,
               source:      "feedback",
               type:        f.category === "bug" ? "bug" : f.category === "feature" ? "feature" : f.category === "praise" ? "praise" : "general",
-              title:       f.message?.slice(0, 80) + (f.message?.length > 80 ? "…" : ""),
+              title:       f.message || "",
               description: f.message,
               status:      "active",
               priority:    null,
@@ -11907,16 +11908,10 @@ Respond ONLY with a JSON array, no markdown, no preamble:
 
 Use the exact task IDs provided.`;
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const data = await apiFetch("/admin/rank-feedback", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+        body: JSON.stringify({ prompt }),
       });
-      const data = await response.json();
       const text = data.content?.map(c => c.text || "").join("") || "";
       const clean = text.replace(/```json|```/g, "").trim();
       const rankings = JSON.parse(clean);
@@ -12053,7 +12048,26 @@ Use the exact task IDs provided.`;
               {new Date(task.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
             </span>
           </div>
-          <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: task.reason ? 6 : 10 }}>{task.title}</div>
+          {(() => {
+            const isLong = task.title.length > 120;
+            const isExpanded = expandedTasks.has(task.id);
+            return (
+              <div style={{ marginBottom: task.reason ? 6 : 10 }}>
+                <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5 }}>
+                  {isLong && !isExpanded ? task.title.slice(0, 120) + "…" : task.title}
+                </div>
+                {isLong && (
+                  <button onClick={() => setExpandedTasks(prev => {
+                    const next = new Set(prev);
+                    isExpanded ? next.delete(task.id) : next.add(task.id);
+                    return next;
+                  })} style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", padding: "2px 0", fontWeight: 600 }}>
+                    {isExpanded ? "Show less ↑" : "Read more ↓"}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {task.reason && (
             <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic", marginBottom: 10, lineHeight: 1.4 }}>AI: {task.reason}</div>
           )}
