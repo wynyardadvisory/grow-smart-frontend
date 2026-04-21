@@ -20,30 +20,33 @@
 
   // Called by React to start native OAuth.
   // Primary path: iOS Swift bridge (ASWebAuthenticationSession via MainViewController.swift).
-  // Fallback: Capacitor Browser plugin (SFSafariViewController — accepted by Apple).
-  // This ensures Google OAuth never opens the system Safari browser.
+  // Fallback: Capacitor.Plugins.Browser (SFSafariViewController — in-app, Apple-compliant).
+  // Uses Capacitor.Plugins directly — dynamic import() does not work in plain script tags.
   window.vercroStartOAuth = function(oauthUrl) {
     // Primary: iOS webkit bridge → ASWebAuthenticationSession
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.startOAuth) {
       window.webkit.messageHandlers.startOAuth.postMessage({ url: oauthUrl });
       return true;
     }
-    // Fallback: Capacitor Browser plugin → SFSafariViewController (in-app, Apple-compliant)
+
+    // Fallback: Capacitor.Plugins.Browser → SFSafariViewController (in-app, Apple-compliant)
     if (window.Capacitor && window.Capacitor.isNative) {
-      import("@capacitor/browser").then(function(m) {
-        m.Browser.open({ url: oauthUrl, presentationStyle: "popover" }).then(function() {
-          // Listen for the app resuming after the browser closes (OAuth redirect back)
-          import("@capacitor/app").then(function(a) {
-            a.App.addListener("appUrlOpen", function(data) {
-              if (data.url && data.url.startsWith("com.vercro.app://")) {
-                window.dispatchEvent(new CustomEvent("vercroProcessCallback", { detail: { url: data.url } }));
-              }
-            });
+      var Browser = window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+      var App = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+      if (Browser && Browser.open) {
+        // Register redirect listener before opening browser
+        if (App && App.addListener) {
+          App.addListener("appUrlOpen", function(data) {
+            if (data.url && data.url.startsWith("com.vercro.app://")) {
+              window.dispatchEvent(new CustomEvent("vercroProcessCallback", { detail: { url: data.url } }));
+            }
           });
-        });
-      });
-      return true;
+        }
+        Browser.open({ url: oauthUrl, presentationStyle: "fullscreen" });
+        return true;
+      }
     }
+
     return false;
   };
 
