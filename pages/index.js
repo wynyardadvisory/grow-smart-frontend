@@ -17598,6 +17598,8 @@ function OnboardingScreen({ session, onComplete }) {
   // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading
   // Pre-populate name from Apple/Google identity if available
   const [name,          setName]         = useState(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
+  // If signed in with Apple, name is already provided — don't ask for it again (App Store guideline 4)
+  const signedInWithApple = session?.user?.app_metadata?.provider === "apple";
   const [postcode,      setPostcode]     = useState("");
   const [country,       setCountry]      = useState("GB"); // "GB" or "IE"
   const [selectedCrops, setSelectedCrops]= useState([]); // [{name, emoji}]
@@ -17639,7 +17641,7 @@ function OnboardingScreen({ session, onComplete }) {
   };
 
   const canAdvance = () => {
-    if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0 && pcConfig.validate(postcode.trim());
+    if (step === 0) return (signedInWithApple || name.trim().length > 0) && postcode.trim().length > 0 && pcConfig.validate(postcode.trim());
     if (step === 1) return selectedCrops.length > 0;
     if (step === 2) return stage !== null;
     if (step === 3) return areaType !== null;
@@ -17779,6 +17781,7 @@ function OnboardingScreen({ session, onComplete }) {
               </div>
             </div>
 
+            {!signedInWithApple && (
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>First name</label>
               <input
@@ -17789,6 +17792,7 @@ function OnboardingScreen({ session, onComplete }) {
                 style={{ ...inputStyle, width: "100%" }}
               />
             </div>
+            )}
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>{pcConfig.label}</label>
               <input
