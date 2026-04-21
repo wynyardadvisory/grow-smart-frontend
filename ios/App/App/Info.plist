@@ -25,16 +25,22 @@
 		<dict>
 			<key>CFBundleURLName</key>
 			<string>com.vercro.app</string>
-			<string>977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.vercro.app</string>
-			<string>977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Google Sign-In</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>23</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

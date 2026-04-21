@@ -534,13 +534,20 @@ function AuthScreen({ onAuth }) {
           try { const m = await import("@capgo/capacitor-social-login"); SocialLogin = m.SocialLogin; } catch(e) {}
         }
         if (!SocialLogin) throw new Error("SocialLogin plugin not ready — please try again");
-        await SocialLogin.initialize({ google: { iOSClientId: "977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc.apps.googleusercontent.com" } });
+        await SocialLogin.initialize({
+          google: {
+            iOSClientId: "977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc.apps.googleusercontent.com",
+            mode: "online",
+          },
+        });
         const result = await SocialLogin.login({
           provider: "google",
           options: { scopes: ["email", "profile"] },
         });
-        const idToken = result?.result?.idToken || result?.result?.accessToken?.token;
-        if (!idToken) throw new Error("Google sign-in failed — no token returned");
+        const idToken = result?.result?.idToken
+          || result?.result?.authentication?.idToken
+          || result?.result?.accessToken?.token;
+        if (!idToken) throw new Error("Google sign-in failed — no token returned. Result: " + JSON.stringify(result?.result));
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: "google",
           token: idToken,
