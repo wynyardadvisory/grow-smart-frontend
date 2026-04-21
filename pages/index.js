@@ -538,6 +538,7 @@ function AuthScreen({ onAuth }) {
         await SocialLogin.initialize({
           google: {
             iOSClientId: "977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc.apps.googleusercontent.com",
+            iOSServerClientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com",
             mode: "online",
           },
         });
@@ -552,6 +553,7 @@ function AuthScreen({ onAuth }) {
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: "google",
           token: idToken,
+          options: { clientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com" },
         });
         if (error) throw error;
         if (data?.session) onAuth(data.session);
