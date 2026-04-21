@@ -526,6 +526,12 @@ function AuthScreen({ onAuth }) {
   const handleGoogle = async () => {
     setLoading(true); setError(null);
     try {
+      // DEBUG — remove after testing
+      const _isNative = window.Capacitor?.isNative;
+      const _platform = window.Capacitor?.getPlatform?.();
+      setError("DEBUG: isNative=" + _isNative + " platform=" + _platform + " SocialLogin=" + (!!SocialLogin));
+      await new Promise(r => setTimeout(r, 3000));
+      setError(null);
       if (window.Capacitor?.isNative) {
         // ── Native Google Sign In via Capgo SocialLogin plugin ────────────────
         // Uses ASWebAuthenticationSession on iOS — stays fully in-app.
