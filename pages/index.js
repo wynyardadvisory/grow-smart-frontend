@@ -18044,19 +18044,34 @@ export default function GrowSmart() {
 
     // Register push notifications for native app (Capacitor iOS/Android)
     if (_isNativeApp && PushNotifications) {
+      const _doRegisterToken = async (tokenValue) => {
+        // Retry up to 5 times waiting for session — token may arrive before session is ready
+        let s = null;
+        for (let i = 0; i < 5; i++) {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.access_token) { s = data.session; break; }
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        if (!s?.access_token) { console.warn("[Push] No session — token not saved"); return; }
+        try {
+          const res = await fetch(`${API}/push/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
+            body: JSON.stringify({ token: tokenValue, platform: _capacitorPlatform })
+          });
+          console.log("[Push] Token registered:", res.status);
+        } catch (e) { console.warn("[Push] Registration failed:", e); }
+      };
       PushNotifications.requestPermissions().then(result => {
         if (result.receive === "granted") {
           PushNotifications.register();
         }
       });
       PushNotifications.addListener("registration", async token => {
-        const { data: { session: s } } = await supabase.auth.getSession();
-        if (!s?.access_token) return;
-        fetch(`${API}/push/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
-          body: JSON.stringify({ token: token.value, platform: window.Capacitor.getPlatform() })
-        }).catch(console.warn);
+        _doRegisterToken(token.value);
+      });
+      PushNotifications.addListener("registrationError", err => {
+        console.warn("[Push] Registration error:", err);
       });
     }
 
