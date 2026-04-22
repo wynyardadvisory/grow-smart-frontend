@@ -18084,7 +18084,11 @@ export default function GrowSmart() {
         } catch (e) { console.warn("[Push] Save failed:", e); }
       };
       PN.removeAllListeners().then(() => {
-        PN.addListener("registration", token => { saveToken(token.value); });
+        PN.addListener("registration", token => {
+          // Temporary debug alert — remove after push is confirmed working
+          alert("[Push Debug] Token received: " + token.value.substring(0, 20) + "...");
+          saveToken(token.value);
+        });
         PN.addListener("registrationError", err => { console.warn("[Push] Registration error:", err); });
         PN.requestPermissions().then(result => {
           if (result.receive === "granted") {
