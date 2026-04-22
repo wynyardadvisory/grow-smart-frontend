@@ -21,8 +21,12 @@ import { CSS } from "@dnd-kit/utilities";
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
 // Has no effect in the browser PWA.
+// Note: window.Capacitor?.isNative is undefined in Capacitor 8 — use getPlatform() instead.
+const _capacitorPlatform = typeof window !== "undefined" ? window.Capacitor?.getPlatform?.() : null;
+const _isNativeApp = _capacitorPlatform === "ios" || _capacitorPlatform === "android";
+
 let PushNotifications = null;
-if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+if (_isNativeApp) {
   import("@capacitor/push-notifications").then(m => { PushNotifications = m.PushNotifications; });
 }
 
@@ -30,7 +34,7 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
 // Only initialised when running inside a native Capacitor shell.
 // On web, Stripe handles payments as before.
 let Purchases = null;
-if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+if (_isNativeApp) {
   import("@revenuecat/purchases-capacitor").then(m => { Purchases = m.Purchases; });
 }
 
@@ -40,7 +44,7 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
 // Uses a runtime require() so Turbopack/webpack never tries to resolve it at
 // build time — the package only exists in the native Capacitor environment.
 let InAppReview = null;
-if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+if (_isNativeApp) {
   try { InAppReview = require("@capacitor-community/in-app-review").InAppReview; } catch(e) {}
 }
 
@@ -448,7 +452,7 @@ function AuthScreen({ onAuth }) {
   // When Supabase redirects to com.vercro.app:// after OAuth, Capacitor fires
   // appUrlOpen. We pick up the session here and complete sign-in.
   useEffect(() => {
-    if (typeof window === "undefined" || !window.Capacitor?.isNative) return;
+    if (typeof window === "undefined" || !_isNativeApp) return;
     let listener;
     import("@capacitor/app").then(({ App }) => {
       App.addListener("appUrlOpen", async ({ url }) => {
@@ -572,7 +576,7 @@ function AuthScreen({ onAuth }) {
     setLoading(true); setError(null);
     try {
       const _applePlatform = window.Capacitor?.getPlatform?.();
-      if (_applePlatform === "ios" || _applePlatform === "android" || window.Capacitor?.isNative) {
+      if (_applePlatform === "ios" || _applePlatform === "android" || _isNativeApp) {
         // ── Native Apple Sign In via Capgo plugin ─────────────────────────────
         // Uses ASAuthorizationAppleIDProvider — native iOS sheet, no browser.
         // Returns identityToken + nonce which Supabase exchanges for a session.
@@ -10148,7 +10152,7 @@ function ProSubscriptionSection() {
     setManageLoading(true);
     try {
       // On iOS, Apple manages the subscription — open Apple's subscription settings
-      if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+      if (_isNativeApp) {
         window.open("https://apps.apple.com/account/subscriptions", "_system");
         setManageLoading(false);
         return;
@@ -10969,7 +10973,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
+      if (_isNativeApp && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
         // tier: "loyalty" | "early_supporter" | "standard"
         // RevenueCat offering identifiers match exactly: loyalty, early_supporter, default
@@ -18019,7 +18023,7 @@ export default function GrowSmart() {
     }
 
     // Register push notifications for native app (Capacitor iOS/Android)
-    if (typeof window !== "undefined" && window.Capacitor?.isNative && PushNotifications) {
+    if (_isNativeApp && PushNotifications) {
       PushNotifications.requestPermissions().then(result => {
         if (result.receive === "granted") {
           PushNotifications.register();
@@ -18037,7 +18041,7 @@ export default function GrowSmart() {
     }
 
     // Initialise RevenueCat for native app
-    if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
+    if (_isNativeApp && Purchases) {
       supabase.auth.getSession().then(({ data: { session: s } }) => {
         if (!s?.user?.id) return;
         Purchases.configure({
@@ -18171,10 +18175,10 @@ export default function GrowSmart() {
           style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-          {window?.Capacitor?.isNative ? "💡" : "💬"}
+          {_isNativeApp ? "💡" : "💬"}
         </button>
       )}
-      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} isNative={!!(window?.Capacitor?.isNative)} />}
+      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} isNative={_isNativeApp} />}
 
       {/* Subscribed success toast — shown after Stripe redirect */}
       {subscribedToast && (
