@@ -26,8 +26,12 @@ const _capacitorPlatform = typeof window !== "undefined" ? window.Capacitor?.get
 const _isNativeApp = _capacitorPlatform === "ios" || _capacitorPlatform === "android";
 
 let PushNotifications = null;
+let _pushNotificationsReady = null; // Promise that resolves when plugin is loaded
 if (_isNativeApp) {
-  import("@capacitor/push-notifications").then(m => { PushNotifications = m.PushNotifications; });
+  _pushNotificationsReady = import("@capacitor/push-notifications").then(m => {
+    PushNotifications = m.PushNotifications;
+    return m.PushNotifications;
+  });
 }
 
 // ── RevenueCat (native only) ──────────────────────────────────────────────────
@@ -18043,7 +18047,9 @@ export default function GrowSmart() {
     }
 
     // Register push notifications for native app (Capacitor iOS/Android)
-    if (_isNativeApp && PushNotifications) {
+    // Wait for the dynamic import to resolve before registering
+    if (_isNativeApp && _pushNotificationsReady) {
+      _pushNotificationsReady.then(() => {
       const _doRegisterToken = async (tokenValue) => {
         // Retry up to 5 times waiting for session — token may arrive before session is ready
         let s = null;
@@ -18073,6 +18079,7 @@ export default function GrowSmart() {
       PushNotifications.addListener("registrationError", err => {
         console.warn("[Push] Registration error:", err);
       });
+      }); // end _pushNotificationsReady.then()
     }
 
     // Initialise RevenueCat for native app
