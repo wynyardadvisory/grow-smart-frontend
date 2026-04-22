@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   ios: {
     scheme: 'com.vercro.app',
+    handleApplicationNotifications: false,
   },
   android: {
     scheme: 'com.vercro.app',
