@@ -10188,7 +10188,7 @@ function ProSubscriptionSection() {
     setManageLoading(false);
   };
 
-  if (loading) return null;
+  if (loading) return <div style={{ height: 80, background: "#f0f5f3", borderRadius: 16, marginBottom: 20 }} />;
 
   const BENEFITS = [
     { icon: "🌿", text: "Unlimited plant checks" },
