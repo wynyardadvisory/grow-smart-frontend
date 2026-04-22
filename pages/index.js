@@ -18046,41 +18046,7 @@ export default function GrowSmart() {
         .catch(err => console.warn("[SW] Registration failed:", err));
     }
 
-    // Register push notifications for native app (Capacitor iOS/Android)
-    // Wait for the dynamic import to resolve before registering
-    if (_isNativeApp && _pushNotificationsReady) {
-      _pushNotificationsReady.then(() => {
-      const _doRegisterToken = async (tokenValue) => {
-        // Retry up to 5 times waiting for session — token may arrive before session is ready
-        let s = null;
-        for (let i = 0; i < 5; i++) {
-          const { data } = await supabase.auth.getSession();
-          if (data?.session?.access_token) { s = data.session; break; }
-          await new Promise(r => setTimeout(r, 1000));
-        }
-        if (!s?.access_token) { console.warn("[Push] No session — token not saved"); return; }
-        try {
-          const res = await fetch(`${API}/push/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
-            body: JSON.stringify({ token: tokenValue, platform: _capacitorPlatform })
-          });
-          console.log("[Push] Token registered:", res.status);
-        } catch (e) { console.warn("[Push] Registration failed:", e); }
-      };
-      PushNotifications.requestPermissions().then(result => {
-        if (result.receive === "granted") {
-          PushNotifications.register();
-        }
-      });
-      PushNotifications.addListener("registration", async token => {
-        _doRegisterToken(token.value);
-      });
-      PushNotifications.addListener("registrationError", err => {
-        console.warn("[Push] Registration error:", err);
-      });
-      }); // end _pushNotificationsReady.then()
-    }
+    // Push registration handled in a separate useEffect after session is confirmed
 
     // Initialise RevenueCat for native app
     if (_isNativeApp && Purchases) {
@@ -18095,6 +18061,41 @@ export default function GrowSmart() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── Native push registration — runs after session is confirmed ──────────────
+  // By running when session changes (not at boot), we guarantee:
+  // 1. User is authenticated before we try to save the token
+  // 2. Native bridge is ready
+  // 3. No race conditions with plugin loading
+  useEffect(() => {
+    if (!session || !_isNativeApp) return;
+    let pushInitStarted = false;
+    import("@capacitor/push-notifications").then(({ PushNotifications: PN }) => {
+      if (pushInitStarted) return;
+      pushInitStarted = true;
+      const saveToken = async (tokenValue) => {
+        try {
+          const res = await fetch(`${API}/push/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ token: tokenValue, platform: _capacitorPlatform })
+          });
+          console.log("[Push] Token saved:", res.status);
+        } catch (e) { console.warn("[Push] Save failed:", e); }
+      };
+      PN.removeAllListeners().then(() => {
+        PN.addListener("registration", token => { saveToken(token.value); });
+        PN.addListener("registrationError", err => { console.warn("[Push] Registration error:", err); });
+        PN.requestPermissions().then(result => {
+          if (result.receive === "granted") {
+            PN.register();
+          } else {
+            console.warn("[Push] Permission not granted:", result.receive);
+          }
+        });
+      });
+    }).catch(e => console.warn("[Push] Plugin import failed:", e));
+  }, [session?.access_token]);
 
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
