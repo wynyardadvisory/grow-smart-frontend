@@ -10139,12 +10139,32 @@ function ProSubscriptionSection() {
   const handleUpgrade = async (interval = "annual") => {
     setCheckoutLoading(true);
     try {
-      const data = await apiFetch("/subscription/create-checkout", {
-        method: "POST",
-        body: JSON.stringify({ interval }),
-      });
-      if (data?.url) window.location.href = data.url;
-    } catch (e) { console.error("Checkout error:", e); }
+      if (_isNativeApp && Purchases) {
+        // ── Native iOS/Android — use RevenueCat IAP ───────────────────────────
+        const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
+                         : pricing?.tier === "early_supporter" ? "early_supporter"
+                         : "default";
+        const allOfferings = await Purchases.getOfferings();
+        const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
+        if (!offering) throw new Error("No offering available");
+        const pkg = interval === "monthly"
+          ? (offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY"))
+          : (offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0]);
+        if (!pkg) throw new Error("No package available");
+        await Purchases.purchasePackage({ aPackage: pkg });
+        await apiFetch("/subscription/status");
+        window.location.reload();
+      } else {
+        // ── Web — use Stripe ──────────────────────────────────────────────────
+        const data = await apiFetch("/subscription/create-checkout", {
+          method: "POST",
+          body: JSON.stringify({ interval }),
+        });
+        if (data?.url) window.location.href = data.url;
+      }
+    } catch (e) {
+      if (e?.code !== "PURCHASE_CANCELLED") console.error("Checkout error:", e);
+    }
     setCheckoutLoading(false);
   };
 
