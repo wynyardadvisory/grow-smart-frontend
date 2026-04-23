@@ -40,17 +40,17 @@ if (_isNativeApp) {
 let Purchases = null;
 let _rcConfigured = false;
 
-function _configureRevenueCat(userId) {
+async function _configureRevenueCat(userId) {
   if (!Purchases || _rcConfigured || !userId) return;
   try {
-    Purchases.configure({
+    await Purchases.configure({
       apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
       appUserID: userId,
     });
     _rcConfigured = true;
     console.log("[RevenueCat] Configured for user", userId);
   } catch (e) {
-    console.error("[RevenueCat] Configure failed:", e);
+    console.error("[RevenueCat] Configure failed:", e.message || e);
   }
 }
 
@@ -10165,6 +10165,7 @@ function ProSubscriptionSection() {
   const handleUpgrade = async (interval = "annual") => {
     setCheckoutLoading(true);
     try {
+      console.log("[Upgrade] tapped", { native: _isNativeApp, purchasesLoaded: !!Purchases, platform: _capacitorPlatform, rcConfigured: _rcConfigured, rcKey: !!process.env.NEXT_PUBLIC_REVENUECAT_API_KEY });
       if (_isNativeApp && Purchases) {
         // ── Native iOS/Android — use RevenueCat IAP ───────────────────────────
         const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
@@ -11019,6 +11020,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
+      console.log("[Upgrade] tapped", { native: _isNativeApp, purchasesLoaded: !!Purchases, platform: _capacitorPlatform, rcConfigured: _rcConfigured, rcKey: !!process.env.NEXT_PUBLIC_REVENUECAT_API_KEY });
       if (_isNativeApp && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
         // tier: "loyalty" | "early_supporter" | "standard"
