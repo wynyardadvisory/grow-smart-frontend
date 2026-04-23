@@ -10165,7 +10165,6 @@ function ProSubscriptionSection() {
   const handleUpgrade = async (interval = "annual") => {
     setCheckoutLoading(true);
     try {
-      console.log("[Upgrade] tapped", { native: _isNativeApp, purchasesLoaded: !!Purchases, platform: _capacitorPlatform, rcConfigured: _rcConfigured, rcKey: !!process.env.NEXT_PUBLIC_REVENUECAT_API_KEY });
       if (_isNativeApp && Purchases) {
         // ── Native iOS/Android — use RevenueCat IAP ───────────────────────────
         const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
@@ -11020,7 +11019,6 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      console.log("[Upgrade] tapped", { native: _isNativeApp, purchasesLoaded: !!Purchases, platform: _capacitorPlatform, rcConfigured: _rcConfigured, rcKey: !!process.env.NEXT_PUBLIC_REVENUECAT_API_KEY });
       if (_isNativeApp && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
         // tier: "loyalty" | "early_supporter" | "standard"
