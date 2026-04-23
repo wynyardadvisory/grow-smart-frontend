@@ -38,8 +38,30 @@ if (_isNativeApp) {
 // Only initialised when running inside a native Capacitor shell.
 // On web, Stripe handles payments as before.
 let Purchases = null;
+let _rcConfigured = false;
+
+function _configureRevenueCat(userId) {
+  if (!Purchases || _rcConfigured || !userId) return;
+  try {
+    Purchases.configure({
+      apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
+      appUserID: userId,
+    });
+    _rcConfigured = true;
+    console.log("[RevenueCat] Configured for user", userId);
+  } catch (e) {
+    console.error("[RevenueCat] Configure failed:", e);
+  }
+}
+
 if (_isNativeApp) {
-  import("@revenuecat/purchases-capacitor").then(m => { Purchases = m.Purchases; });
+  import("@revenuecat/purchases-capacitor").then(m => {
+    Purchases = m.Purchases;
+    // Configure immediately if session already resolved before import finished
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (s?.user?.id) _configureRevenueCat(s.user.id);
+    });
+  });
 }
 
 // ── In-App Review (native only) ───────────────────────────────────────────────
@@ -18049,13 +18071,10 @@ export default function GrowSmart() {
     // Push registration handled in a separate useEffect after session is confirmed
 
     // Initialise RevenueCat for native app
-    if (_isNativeApp && Purchases) {
+    // _configureRevenueCat is idempotent — safe to call here and from the import callback
+    if (_isNativeApp) {
       supabase.auth.getSession().then(({ data: { session: s } }) => {
-        if (!s?.user?.id) return;
-        Purchases.configure({
-          apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
-          appUserID: s.user.id,
-        });
+        if (s?.user?.id) _configureRevenueCat(s.user.id);
       });
     }
 
