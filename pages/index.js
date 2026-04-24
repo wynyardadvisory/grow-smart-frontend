@@ -54,6 +54,23 @@ async function _configureRevenueCat(userId) {
   }
 }
 
+// Waits up to 5s for RevenueCat to be configured before proceeding
+function _waitForRC(timeout = 5000) {
+  if (_rcConfigured) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const interval = setInterval(() => {
+      if (_rcConfigured) {
+        clearInterval(interval);
+        resolve();
+      } else if (Date.now() - start > timeout) {
+        clearInterval(interval);
+        reject(new Error("RevenueCat not ready — please try again"));
+      }
+    }, 50);
+  });
+}
+
 if (_isNativeApp) {
   import("@revenuecat/purchases-capacitor").then(m => {
     Purchases = m.Purchases;
@@ -10167,6 +10184,7 @@ function ProSubscriptionSection() {
     try {
       if (_isNativeApp && Purchases) {
         // ── Native iOS/Android — use RevenueCat IAP ───────────────────────────
+        await _waitForRC();
         const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
                          : pricing?.tier === "early_supporter" ? "early_supporter"
                          : "default";
@@ -11022,6 +11040,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       if (_isNativeApp && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
         // tier: "loyalty" | "early_supporter" | "standard"
+        await _waitForRC();
         // RevenueCat offering identifiers match exactly: loyalty, early_supporter, default
         const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
                          : pricing?.tier === "early_supporter" ? "early_supporter"
