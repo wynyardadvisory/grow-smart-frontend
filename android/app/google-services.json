@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "360645620667",
+    "project_id": "vercro-f2695",
+    "storage_bucket": "vercro-f2695.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360645620667:android:d293736e356a47bb7f8a9e",
+        "android_client_info": {
+          "package_name": "com.vercro.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEc8_eaZbXEO2PGy3cNiUNP5f96Fwqsc4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

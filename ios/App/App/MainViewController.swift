@@ -2,6 +2,7 @@ import UIKit
 import Capacitor
 import AuthenticationServices
 import WebKit
+import StoreKit
 
 class MainViewController: CAPBridgeViewController {
 
@@ -71,6 +72,28 @@ class OAuthMessageHandler: NSObject, WKScriptMessageHandler {
 extension MainViewController: ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         return view.window ?? ASPresentationAnchor()
+    }
+}
+
+// ── StoreKit presentation context ─────────────────────────────────────────────
+// Ensures the Apple payment sheet is presented on the correct window,
+// not hidden behind the Capacitor WebView.
+@available(iOS 15.0, *)
+extension MainViewController: SKPaymentTransactionObserver {
+    func paymentQueue(_ queue: SKPaymentQueue, updatedTransactions transactions: [SKPaymentTransaction]) {
+        // RevenueCat handles all transaction processing.
+        // This observer registration ensures the payment sheet
+        // presents on the correct UIWindow.
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        SKPaymentQueue.default().add(self)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        SKPaymentQueue.default().remove(self)
     }
 }
 

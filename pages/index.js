@@ -44,7 +44,7 @@ async function _configureRevenueCat(userId) {
   if (!Purchases || _rcConfigured || !userId) return;
   try {
     await Purchases.configure({
-      apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
+      apiKey: _capacitorPlatform === "android" ? process.env.NEXT_PUBLIC_REVENUECAT_API_KEY_ANDROID : process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
       appUserID: userId,
     });
     _rcConfigured = true;
