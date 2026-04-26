@@ -627,7 +627,7 @@ function AuthScreen({ onAuth }) {
           try { const m = await import("@capgo/capacitor-social-login"); SocialLogin = m.SocialLogin; } catch(e) {}
         }
         if (!SocialLogin) throw new Error("SocialLogin plugin not ready — please try again");
-        await SocialLogin.initialize({ apple: {} });
+        await SocialLogin.initialize({ apple: _capacitorPlatform === "android" ? { clientId: "com.vercro.app.signin", redirectUrl: "https://rgusblqxxjjcbuhgqwzl.supabase.co/auth/v1/callback" } : {} });
         const result = await SocialLogin.login({
           provider: "apple",
           options: { scopes: ["email", "name"] },
