@@ -5400,9 +5400,9 @@ function GardenView({ onNavigateAdd }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div><label style={labelStyle}>Name</label>
               <input value={newLocation.name} onChange={e => setNewLocation(l => ({ ...l, name: e.target.value }))} style={inputStyle} placeholder="e.g. Allotment plot 7" /></div>
-            <div><label style={labelStyle}>Postcode</label>
-              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
+            <div><label style={labelStyle}>Postcode / ZIP code</label>
+              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22 or 90210" />
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to personalise weather and growing advice for your location.</div>
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, useful for future planning</span></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -5564,9 +5564,9 @@ function GardenView({ onNavigateAdd }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={editLocationForm.name} onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Postcode</label>
+                <div><label style={labelStyle}>Postcode / ZIP code</label>
                   <input value={editLocationForm.postcode} onChange={e => setEditLocationForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} />
-                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong></div>
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to personalise weather and growing advice for your location.</div>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -9419,15 +9419,13 @@ function EditProfileModal({ current, onSave, onClose }) {
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 100); }, []);
 
-  const ukPostcodePattern = /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i;
-
   const validate = () => {
     const e = {};
     if (!name.trim())             e.name     = "Name is required";
     if (name.trim().length > 50)  e.name     = "Name must be 50 characters or less";
-    const pc = postcode.trim().toUpperCase().replace(/\s/g, "");
-    if (!pc)                      e.postcode = "Postcode is required";
-    else if (!ukPostcodePattern.test(pc)) e.postcode = "Enter the first part only — e.g. TS22";
+    const pc = postcode.trim();
+    if (!pc)                      e.postcode = "Postcode / ZIP code is required";
+    else if (pc.length < 2)       e.postcode = "Enter a valid postcode or ZIP code";
     return e;
   };
 
@@ -9470,7 +9468,7 @@ function EditProfileModal({ current, onSave, onClose }) {
             {errors.name && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
           </div>
           <div>
-            <label style={labelStyle}>Postcode (first part only)</label>
+            <label style={labelStyle}>Postcode / ZIP code</label>
             <input
               value={postcode}
               onChange={e => { setPostcode(e.target.value.toUpperCase()); setErrors(r => ({ ...r, postcode: null })); }}
@@ -9479,7 +9477,7 @@ function EditProfileModal({ current, onSave, onClose }) {
             />
             {errors.postcode
               ? <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.postcode}</div>
-              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>e.g. <strong>TS22</strong>, not TS22 5BQ</div>
+              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to personalise weather and growing advice for your location.</div>
             }
           </div>
           <button
@@ -17772,6 +17770,14 @@ function OnboardingScreen({ session, onComplete }) {
   const COUNTRY_OPTIONS = [
     { code: "GB", flag: "🇬🇧", label: "United Kingdom" },
     { code: "IE", flag: "🇮🇪", label: "Ireland" },
+    { code: "DE", flag: "🇩🇪", label: "Germany" },
+    { code: "BE", flag: "🇧🇪", label: "Belgium" },
+    { code: "NL", flag: "🇳🇱", label: "Netherlands" },
+    { code: "SE", flag: "🇸🇪", label: "Sweden" },
+    { code: "NO", flag: "🇳🇴", label: "Norway" },
+    { code: "FI", flag: "🇫🇮", label: "Finland" },
+    { code: "US", flag: "🇺🇸", label: "United States" },
+    { code: "CA", flag: "🇨🇦", label: "Canada" },
   ];
   const POSTCODE_CONFIG = {
     GB: {
@@ -17787,6 +17793,62 @@ function OnboardingScreen({ session, onComplete }) {
       hint:        "Full Eircode — e.g. A65 F4E2",
       validate:    (v) => /^[A-Z][0-9]{2}\s?[A-Z0-9]{4}$/i.test(v.trim()),
       errorMsg:    "Enter a valid Eircode — e.g. A65 F4E2",
+    },
+    DE: {
+      label:       "Postleitzahl",
+      placeholder: "e.g. 10115",
+      hint:        "5-digit German postcode — e.g. 10115",
+      validate:    (v) => /^[0-9]{5}$/.test(v.trim()),
+      errorMsg:    "Enter a valid 5-digit German postcode",
+    },
+    BE: {
+      label:       "Postcode",
+      placeholder: "e.g. 1000",
+      hint:        "4-digit Belgian postcode — e.g. 1000",
+      validate:    (v) => /^[0-9]{4}$/.test(v.trim()),
+      errorMsg:    "Enter a valid 4-digit Belgian postcode",
+    },
+    NL: {
+      label:       "Postcode",
+      placeholder: "e.g. 1011",
+      hint:        "4-digit Dutch postcode — e.g. 1011",
+      validate:    (v) => /^[0-9]{4}([A-Z]{2})?$/i.test(v.replace(/\s/g, "")),
+      errorMsg:    "Enter a valid Dutch postcode — e.g. 1011 or 1011AB",
+    },
+    SE: {
+      label:       "Postnummer",
+      placeholder: "e.g. 11120",
+      hint:        "5-digit Swedish postcode — e.g. 11120",
+      validate:    (v) => /^[0-9]{5}$/.test(v.replace(/\s/g, "")),
+      errorMsg:    "Enter a valid 5-digit Swedish postcode",
+    },
+    NO: {
+      label:       "Postnummer",
+      placeholder: "e.g. 0150",
+      hint:        "4-digit Norwegian postcode — e.g. 0150",
+      validate:    (v) => /^[0-9]{4}$/.test(v.trim()),
+      errorMsg:    "Enter a valid 4-digit Norwegian postcode",
+    },
+    FI: {
+      label:       "Postinumero",
+      placeholder: "e.g. 00100",
+      hint:        "5-digit Finnish postcode — e.g. 00100",
+      validate:    (v) => /^[0-9]{5}$/.test(v.trim()),
+      errorMsg:    "Enter a valid 5-digit Finnish postcode",
+    },
+    US: {
+      label:       "ZIP Code",
+      placeholder: "e.g. 90210",
+      hint:        "5-digit ZIP code — e.g. 90210",
+      validate:    (v) => /^[0-9]{5}$/.test(v.trim()),
+      errorMsg:    "Enter a valid 5-digit ZIP code",
+    },
+    CA: {
+      label:       "Postal Code",
+      placeholder: "e.g. M5V",
+      hint:        "First 3 characters — e.g. M5V",
+      validate:    (v) => /^[A-Z][0-9][A-Z]$/i.test(v.replace(/\s/g, "")),
+      errorMsg:    "Enter the first 3 characters — e.g. M5V",
     },
   };
   const pcConfig = POSTCODE_CONFIG[country] || POSTCODE_CONFIG.GB;
@@ -17895,7 +17957,7 @@ function OnboardingScreen({ session, onComplete }) {
 
       <div style={{ padding: "28px 24px 0" }}>
         <div style={{ fontSize: 11, color: C.stone, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
-          Step {step + 1} of 4
+          Step {step + 1} of 5
         </div>
         <div style={{ fontSize: 24, fontWeight: 700, color: C.forest, marginBottom: 4 }}>
           {stepLabels[step]}
@@ -17917,27 +17979,29 @@ function OnboardingScreen({ session, onComplete }) {
             {/* Country picker */}
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Where are you based?</label>
-              <div style={{ display: "flex", gap: 10 }}>
+              <select
+                value={country}
+                onChange={e => { setCountry(e.target.value); setPostcode(""); }}
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  fontSize: 15,
+                  fontFamily: "Georgia, serif",
+                  background: "#fff",
+                  border: `2px solid ${C.border}`,
+                  borderRadius: 12,
+                  color: "#1a1a1a",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E6E6E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, 
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 14px center",
+                  cursor: "pointer",
+                }}>
                 {COUNTRY_OPTIONS.map(opt => (
-                  <button key={opt.code} onClick={() => { setCountry(opt.code); setPostcode(""); }}
-                    style={{
-                      flex: 1,
-                      padding: "12px 10px",
-                      background: country === opt.code ? C.forest : "#fff",
-                      border: `2px solid ${country === opt.code ? C.forest : C.border}`,
-                      borderRadius: 12,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      transition: "all 0.15s",
-                    }}>
-                    <span style={{ fontSize: 20 }}>{opt.flag}</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, fontFamily: "serif", color: country === opt.code ? "#fff" : "#1a1a1a" }}>{opt.label}</span>
-                  </button>
+                  <option key={opt.code} value={opt.code}>{opt.flag} {opt.label}</option>
                 ))}
-              </div>
+              </select>
             </div>
 
             <div>
