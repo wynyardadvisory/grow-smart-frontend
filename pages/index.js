@@ -12469,8 +12469,11 @@ function InviteWaitlistButton() {
 }
 
 function AdminTools() {
-  const [backfillStatus, setBackfillStatus] = useState(null);
-  const [running,        setRunning]        = useState(false);
+  const [backfillStatus,        setBackfillStatus]        = useState(null);
+  const [running,               setRunning]               = useState(false);
+  const [climateStatus,         setClimateStatus]         = useState(null);
+  const [climateRunning,        setClimateRunning]        = useState(false);
+  const [climateRemaining,      setClimateRemaining]      = useState(null);
 
   const runBackfill = async () => {
     if (!confirm("This will backfill badge progress for all users from their existing data. Run it?")) return;
@@ -12483,6 +12486,19 @@ function AdminTools() {
       setBackfillStatus({ ok: false, error: e.message });
     }
     setRunning(false);
+  };
+
+  const runClimateBatch = async () => {
+    setClimateRunning(true);
+    setClimateStatus(null);
+    try {
+      const result = await apiFetch("/admin/backfill-climate?limit=20", { method: "POST" });
+      setClimateRemaining(result.remaining);
+      setClimateStatus({ ok: true, processed: result.processed, remaining: result.remaining, results: result.results });
+    } catch (e) {
+      setClimateStatus({ ok: false, error: e.message });
+    }
+    setClimateRunning(false);
   };
 
   return (
@@ -12521,6 +12537,46 @@ function AdminTools() {
               </>
             ) : (
               <div style={{ color: "red", fontSize: 13 }}>❌ Error: {backfillStatus.error}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Climate backfill */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>🌍 Backfill Climate Data</div>
+        <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
+          Geocodes all locations (postcode → lat/lon) and fetches frost dates from Open-Meteo. Processes 20 at a time. Keep tapping until remaining reaches 0. Safe to re-run — skips already processed locations.
+        </div>
+        {climateRemaining !== null && climateRemaining > 0 && (
+          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
+            📍 <strong>{climateRemaining}</strong> locations still to process — keep tapping the button.
+          </div>
+        )}
+        {climateRemaining === 0 && (
+          <div style={{ fontSize: 13, color: C.forest, fontWeight: 700, marginBottom: 12 }}>✅ All locations processed!</div>
+        )}
+        <button onClick={runClimateBatch} disabled={climateRunning}
+          style={{ background: climateRunning ? C.border : C.forest, color: climateRunning ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: climateRunning ? "default" : "pointer", opacity: climateRunning ? 0.7 : 1 }}>
+          {climateRunning ? "Processing…" : climateRemaining > 0 ? `Run Next Batch (${climateRemaining} remaining)` : "Run Climate Backfill"}
+        </button>
+        {climateStatus && (
+          <div style={{ marginTop: 14, padding: "12px", borderRadius: 8, background: climateStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${climateStatus.ok ? "#b8ddb8" : "#f4b8b8"}` }}>
+            {climateStatus.ok ? (
+              <>
+                <div style={{ fontWeight: 700, color: C.forest, fontSize: 13, marginBottom: 8 }}>
+                  ✅ Batch complete — {climateStatus.processed} processed, {climateStatus.remaining} remaining
+                </div>
+                <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 12, color: C.stone }}>
+                  {(climateStatus.results || []).map((r, i) => (
+                    <div key={i} style={{ padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>
+                      {r.postcode} — {r.status === "ok" ? `✅ ${r.zone}` : `❌ ${r.status}`}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ color: "red", fontSize: 13 }}>❌ Error: {climateStatus.error}</div>
             )}
           </div>
         )}
