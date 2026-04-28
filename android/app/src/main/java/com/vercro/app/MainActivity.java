@@ -2,7 +2,6 @@ package com.vercro.app;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
-import com.getcapacitor.Plugin;
 
 import ee.forgr.capacitor.social.login.GoogleProvider;
 import ee.forgr.capacitor.social.login.SocialLoginPlugin;
@@ -12,6 +11,9 @@ import android.content.Intent;
 import android.util.Log;
 
 public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
+
+    @Override
+    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {}
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -24,12 +26,12 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
                 Log.e("MainActivity", "SocialLogin plugin not found");
                 return;
             }
-            Plugin plugin = pluginHandle.getInstance();
-            if (!(plugin instanceof SocialLoginPlugin)) {
+            if (!(pluginHandle.getInstance() instanceof SocialLoginPlugin)) {
                 Log.e("MainActivity", "SocialLogin plugin instance not found");
                 return;
             }
-            ((SocialLoginPlugin) plugin).onActivityResult(requestCode, resultCode, data);
+            SocialLoginPlugin socialLoginPlugin = (SocialLoginPlugin) pluginHandle.getInstance();
+            socialLoginPlugin.handleGoogleLoginIntent(requestCode, data);
         }
     }
 }

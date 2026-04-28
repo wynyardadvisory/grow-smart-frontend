@@ -11231,6 +11231,15 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
           Cancel anytime. No commitment.
         </div>
+
+        {/* Required by App Store — subscription legal links */}
+        <div style={{ fontSize: 10, color: C.stone, textAlign: "center", marginTop: 12, lineHeight: 1.6 }}>
+          By subscribing you agree to our{" "}
+          <a href="https://vercro.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.stone, textDecoration: "underline" }}>Terms of Use</a>
+          {" "}and{" "}
+          <a href="https://vercro.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: C.stone, textDecoration: "underline" }}>Privacy Policy</a>.
+          Subscription auto-renews until cancelled.
+        </div>
       </div>
     </div>
   );
