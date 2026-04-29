@@ -17904,7 +17904,7 @@ function OnboardingScreen({ session, onComplete }) {
       const defs = await apiFetch("/crop-definitions");
       const cropsPayload = selectedCrops.map(c => {
         // Match on canonical name — c.name is always canonical regardless of display language
-        const def = defs?.find(d => d.name.toLowerCase() === c.name.toLowerCase());
+        const def = defs?.find(d => (d.canonical_name || d.name).toLowerCase() === c.name.toLowerCase());
         return { name: c.name, crop_def_id: def?.id || null, stage };
       });
 
