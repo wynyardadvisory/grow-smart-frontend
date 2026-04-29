@@ -9411,10 +9411,11 @@ function ProfileToast({ toast }) {
 
 // ── Edit Profile Modal ────────────────────────────────────────────────────────
 function EditProfileModal({ current, onSave, onClose }) {
-  const [name,     setName]     = useState(current.name || "");
-  const [postcode, setPostcode] = useState(current.postcode || "");
-  const [errors,   setErrors]   = useState({});
-  const [saving,   setSaving]   = useState(false);
+  const [name,        setName]        = useState(current.name || "");
+  const [postcode,    setPostcode]    = useState(current.postcode || "");
+  const [country,     setCountry]     = useState(current.country_code || "GB");
+  const [errors,      setErrors]      = useState({});
+  const [saving,      setSaving]      = useState(false);
   const nameRef = useRef(null);
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 100); }, []);
@@ -9434,8 +9435,9 @@ function EditProfileModal({ current, onSave, onClose }) {
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     onSave({
-      name:     name.trim(),
-      postcode: postcode.trim().toUpperCase().replace(/\s/g, ""),
+      name:         name.trim(),
+      postcode:     postcode.trim().toUpperCase().replace(/\s/g, ""),
+      country_code: country,
     });
   };
 
@@ -9468,12 +9470,28 @@ function EditProfileModal({ current, onSave, onClose }) {
             {errors.name && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
           </div>
           <div>
+            <label style={labelStyle}>Country</label>
+            <select
+              value={country}
+              onChange={e => setCountry(e.target.value)}
+              style={{
+                ...inputStyle,
+                appearance: "none", WebkitAppearance: "none",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E6E6E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", cursor: "pointer",
+              }}>
+              {COUNTRY_OPTIONS.map(opt => (
+                <option key={opt.code} value={opt.code}>{opt.flag} {opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label style={labelStyle}>Postcode / ZIP code</label>
             <input
               value={postcode}
               onChange={e => { setPostcode(e.target.value.toUpperCase()); setErrors(r => ({ ...r, postcode: null })); }}
               style={{ ...inputStyle, borderColor: errors.postcode ? "#dc2626" : undefined }}
-              placeholder="e.g. TS22"
+              placeholder="e.g. TS22 or 90210"
             />
             {errors.postcode
               ? <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.postcode}</div>
@@ -9802,7 +9820,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
     try { localStorage.setItem("vercro_measurement_unit", unit); } catch(e) {}
     try {
       const p = await apiFetch("/auth/profile");
-      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: unit }) });
+      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: unit, country_code: p.country_code }) });
     } catch(e) { console.error("Failed to save measurement unit:", e.message); }
   };
 
