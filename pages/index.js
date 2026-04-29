@@ -17720,6 +17720,9 @@ const TABS = [
 // User lands on Today with real tasks. Never an empty screen.
 // =============================================================================
 
+// ONBOARDING_CROPS — canonical name is always the stable identity sent to the API.
+// displayNames overrides what the user sees for specific countries — display only.
+// Never change canonical name — it must match crop_definitions.name in the DB.
 const ONBOARDING_CROPS = [
   { name: "Tomatoes",     emoji: "🍅" },
   { name: "Potatoes",     emoji: "🥔" },
@@ -17729,11 +17732,16 @@ const ONBOARDING_CROPS = [
   { name: "Peas",         emoji: "🫛" },
   { name: "Beans",        emoji: "🫘" },
   { name: "Garlic",       emoji: "🧄" },
-  { name: "Courgette",    emoji: "🥒" },
+  { name: "Courgette",    emoji: "🥒", displayNames: { US: "Zucchini", CA: "Zucchini", AU: "Zucchini", DE: "Zucchini", SE: "Zucchini", NO: "Zucchini" } },
   { name: "Strawberries", emoji: "🍓" },
   { name: "Spinach",      emoji: "🥬" },
   { name: "Cabbage",      emoji: "🥦" },
 ];
+
+// Display-only localisation — canonical name is always sent to the API.
+function getOnboardingCropLabel(crop, country) {
+  return crop.displayNames?.[country] || crop.name;
+}
 
 const STAGES = [
   { id: "not_sown",    label: "Not sown yet",     desc: "I'm planning to grow this" },
@@ -17895,6 +17903,7 @@ function OnboardingScreen({ session, onComplete }) {
       // Look up crop_def_ids for selected crops
       const defs = await apiFetch("/crop-definitions");
       const cropsPayload = selectedCrops.map(c => {
+        // Match on canonical name — c.name is always canonical regardless of display language
         const def = defs?.find(d => d.name.toLowerCase() === c.name.toLowerCase());
         return { name: c.name, crop_def_id: def?.id || null, stage };
       });
@@ -18051,7 +18060,7 @@ function OnboardingScreen({ session, onComplete }) {
                     }}>
                     <span style={{ fontSize: 24 }}>{crop.emoji}</span>
                     <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "serif", color: selected ? "#fff" : "#1a1a1a" }}>
-                      {crop.name}
+                      {getOnboardingCropLabel(crop, country)}
                     </span>
                   </button>
                 );
