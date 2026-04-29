@@ -11267,10 +11267,6 @@ const ProPaywall = ProPaywallSheet;
 
 // ── My Feeds ──────────────────────────────────────────────────────────────────
 
-const KNOWN_BRANDS = [
-  "Chempak","Westland","Miracle-Gro","Vitax","Yara","Maxicrop","Levington","Phostrogen","RHS","Other"
-];
-
 function FeedsScreen() {
   const FEEDS_CACHE = "vercro_feeds_v1";
   const _cachedFeeds = (() => { try { const c = localStorage.getItem(FEEDS_CACHE); if (c) { const { feeds, catalog, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { feeds, catalog }; } } catch(e) {} return null; })();
@@ -11302,6 +11298,9 @@ function FeedsScreen() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Derive brand list from catalog — automatically country-filtered by backend
+  const KNOWN_BRANDS = [...new Set(catalog.map(c => c.brand).filter(Boolean))].sort().concat("Other");
 
   // Derive effective brand/form for filtering
   const effectiveBrand = brand === "Other" ? null : brand;
