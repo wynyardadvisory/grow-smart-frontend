@@ -10191,7 +10191,28 @@ function ProSubscriptionSection() {
 
   useEffect(() => {
     apiFetch("/subscription/pricing")
-      .then(d => setPricing(d))
+      .then(async (d) => {
+        // On native, enrich display prices with RevenueCat's localised price strings
+        if (_isNativeApp && Purchases) {
+          try {
+            await _waitForRC();
+            const offeringId = d.tier === "loyalty"         ? "loyalty"
+                             : d.tier === "early_supporter" ? "early_supporter"
+                             : "default";
+            const allOfferings = await Purchases.getOfferings();
+            const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
+            if (offering) {
+              const monthlyPkg = offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY");
+              const annualPkg  = offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0];
+              if (monthlyPkg?.product?.priceString) d.display.monthly = monthlyPkg.product.priceString;
+              if (annualPkg?.product?.priceString)  d.display.annual  = annualPkg.product.priceString;
+            }
+          } catch (e) {
+            console.warn("RC price localisation failed:", e?.message);
+          }
+        }
+        setPricing(d);
+      })
       .catch(() => setPricing({ tier: "early_supporter", display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" } }));
   }, []);
 
@@ -10983,7 +11004,30 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   // Fetch user-specific pricing on mount
   useEffect(() => {
     apiFetch("/subscription/pricing")
-      .then(d => setPricing(d))
+      .then(async (d) => {
+        // On native, enrich display prices with RevenueCat's localised price strings
+        // so non-GBP users see the correct currency (€, $, SEK etc) not hardcoded £
+        if (_isNativeApp && Purchases) {
+          try {
+            await _waitForRC();
+            const offeringId = d.tier === "loyalty"         ? "loyalty"
+                             : d.tier === "early_supporter" ? "early_supporter"
+                             : "default";
+            const allOfferings = await Purchases.getOfferings();
+            const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
+            if (offering) {
+              const monthlyPkg = offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY");
+              const annualPkg  = offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0];
+              if (monthlyPkg?.product?.priceString) d.display.monthly = monthlyPkg.product.priceString;
+              if (annualPkg?.product?.priceString)  d.display.annual  = annualPkg.product.priceString;
+            }
+          } catch (e) {
+            // RevenueCat unavailable — fall through with server display prices
+            console.warn("RC price localisation failed:", e?.message);
+          }
+        }
+        setPricing(d);
+      })
       .catch(() => setPricing({
         tier: "early_supporter",
         display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" },
