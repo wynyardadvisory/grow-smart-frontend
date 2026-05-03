@@ -310,7 +310,7 @@ function useProStatus() {
     try { return localStorage.getItem("vercro_is_pro") === "true"; } catch(e) { return false; }
   });
   const [plan,        setPlan]        = useState("free");
-  const [loading,     setLoading]     = useState(false);
+  const [loading,     setLoading]     = useState(true); // Start true — wait for API before rendering Pro/free state
   const [isMark,      setIsMark]      = useState(false);
   const [isTestUser,  setIsTestUser]  = useState(false);
 
@@ -343,7 +343,7 @@ function useProStatus() {
   // isPro for diagnosis: Mark OR actual plan is pro (ignores PRO_ENABLED flag)
   const isPreviewUser = (() => { try { return localStorage.getItem("vercro_pro_preview") === "true"; } catch(e) { return false; } })();
   const proFlagActive = PRO_ENABLED || isPreviewUser;
-  const effectiveIsPro = isMark || (proFlagActive && isPro);
+  const effectiveIsPro = isMark || isPro; // Paying users always get Pro regardless of PRO_ENABLED flag
   const isProForDiagnosis = isMark || isPro;
   return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark, isTestUser };
 }
@@ -18337,6 +18337,8 @@ export default function GrowSmart() {
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
     if (!session) { setOnboarding(null); return; }
+    // Reset to Today tab on every login/session start
+    setTabRaw("dashboard");
     // Show onboarding if user has no locations yet
     apiFetch("/locations")
       .then(locs => setOnboarding(locs.length === 0))
