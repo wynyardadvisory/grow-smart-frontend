@@ -18425,8 +18425,8 @@ export default function GrowSmart() {
         {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
-        {tab === "feeds"     && !navEnabled && <FeedsScreen />}
-        {tab === "plan"      && navEnabled   && <PlanScreen />}
+        {tab === "feeds"     && <FeedsScreen />}
+        {tab === "plan"      && <PlanScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
         {tab === "admin"     && isPartnerAdmin && !isAdmin && !isDemo && <AdminScreen metricsOnly={true} />}
