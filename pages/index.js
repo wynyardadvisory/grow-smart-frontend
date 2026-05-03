@@ -357,9 +357,17 @@ function usePlantCheckEnabled() {
   useEffect(() => {
     if (PRO_ENABLED) { setEnabled(true); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
       const email  = session?.user?.email || "";
       const userId = session?.user?.id    || "";
-      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) setEnabled(true);
+      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) {
+        setEnabled(true);
+        return;
+      }
+      // Also enable for paying Pro users regardless of PRO_ENABLED flag
+      apiFetch("/subscription/status").then(d => {
+        if (d?.is_pro === true) setEnabled(true);
+      }).catch(() => {});
     }).catch(() => {});
   }, []);
 
