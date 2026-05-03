@@ -18274,7 +18274,11 @@ export default function GrowSmart() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      // Only reset tab on actual sign-in — not on background token refresh
+      if (event === "SIGNED_IN") setTabRaw("dashboard");
+    });
 
     // Capture UTM params on first visit — stored for attribution at signup
     captureUTMs();
@@ -18337,8 +18341,6 @@ export default function GrowSmart() {
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
     if (!session) { setOnboarding(null); return; }
-    // Reset to Today tab on every login/session start
-    setTabRaw("dashboard");
     // Show onboarding if user has no locations yet
     apiFetch("/locations")
       .then(locs => setOnboarding(locs.length === 0))
