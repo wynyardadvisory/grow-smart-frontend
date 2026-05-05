@@ -5946,7 +5946,9 @@ function GardenView({ onNavigateAdd }) {
   const deleteArea = async (areaId) => {
     setSaving(true);
     try {
-      await apiFetch(`/areas/${areaId}`, { method: "DELETE" });
+      // Pass confirm=true — user has already confirmed via the UI prompt.
+      // API will cascade: delete tasks -> soft-delete crops -> delete area.
+      await apiFetch(`/areas/${areaId}?confirm=true`, { method: "DELETE" });
       setConfirmArea(null);
       await load();
     } catch (e) { setError(e.message); }
@@ -6292,7 +6294,7 @@ function GardenView({ onNavigateAdd }) {
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
                   <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} and their tasks.` : "This cannot be undone."}</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteArea(area.id)} disabled={saving}
                         style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
