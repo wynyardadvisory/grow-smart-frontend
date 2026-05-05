@@ -9192,15 +9192,19 @@ const FAQ_DATA = [
     items: [
       {
         q: "What is Vercro and how does it work?",
-        a: "Vercro is an AI garden planner built for UK home growers and allotment holders. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season.",
+        a: "Vercro is an AI garden planner for home growers and allotment holders across the UK, Ireland, Europe and North America. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season.",
       },
       {
         q: "How do I add my first crop?",
         a: "Tap the Add tab at the bottom of the screen. Select your crop, choose a variety if you know it, pick your growing area and tell us what stage it's at. Vercro generates a task schedule automatically. You can also tap 'Scan packet' to identify a crop from a photo of the seed packet.",
       },
       {
-        q: "Why do I need to add a postcode?",
-        a: "Your postcode pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate. Enter the first part only — for example TS22, not TS22 5BQ.",
+        q: "Why do I need to add my location code?",
+        a: "Your location code pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate. What you enter depends on your country — UK users enter the first part of their postcode (e.g. TS22), Irish users enter a full Eircode (e.g. A65 F4E2), and US users enter a zip code. Vercro will show you the right format when you set up your location.",
+      },
+      {
+        q: "Does Vercro work in my country?",
+        a: "Vercro currently supports the United Kingdom, Ireland, Germany, Belgium, the Netherlands, Sweden, Norway, Finland, the United States and Canada. More countries are coming. Growing advice, sow windows and frost dates are all localised to your country and region.",
       },
       {
         q: "What's the difference between a location and a growing area?",
@@ -9292,6 +9296,10 @@ const FAQ_DATA = [
     section: "Account",
     emoji: "👤",
     items: [
+      {
+        q: "Can I switch between Celsius and Fahrenheit?",
+        a: "Yes. In the Profile tab, scroll to the Preferences section. You'll find a Temperature toggle where you can switch between °C Celsius and °F Fahrenheit. Your choice is saved to your account and syncs across devices.",
+      },
       {
         q: "How do I change my name or postcode?",
         a: "Scroll up in the Profile tab to Your Details, update your name or postcode and tap Save Changes.",
