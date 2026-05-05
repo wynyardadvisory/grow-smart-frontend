@@ -8652,12 +8652,13 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
+  const _todayISO = new Date().toISOString().split("T")[0];
   const [cropDefs,  setCropDefs]  = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal",
+    status: "", sown_date: _todayISO, transplant_date: "", notes: "", lifecycle_mode: "seasonal",
   });
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
@@ -8802,7 +8803,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           setStep("form"); setSaved(false); setEnriching(false); setCropProfile(null);
           setSuccessionMode(false);
           setSuccForm({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
-          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
+          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: new Date().toISOString().split("T")[0], transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
         }, 5000);
       } catch (e) { setError(e.message); setStep("previewing"); }
       setSaving(false);
@@ -8850,7 +8851,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: new Date().toISOString().split("T")[0], transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -8865,7 +8866,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: new Date().toISOString().split("T")[0], transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
