@@ -212,6 +212,14 @@ const MARK_EMAIL = "mark@wynyardadvisory.co.uk";
 function useMeasurementUnit() {
   try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
 }
+function useTemperatureUnit() {
+  try { return localStorage.getItem("vercro_temperature_unit") || "celsius"; } catch(e) { return "celsius"; }
+}
+function formatTemperature(tempC, unit) {
+  if (tempC == null || isNaN(tempC)) return null;
+  if (unit === "fahrenheit") return `${Math.round(tempC * 9/5 + 32)}°F`;
+  return `${Math.round(tempC)}°C`;
+}
 function formatDimension(metres, unit) {
   if (metres == null || isNaN(metres)) return null;
   if (unit === "imperial") {
@@ -4266,7 +4274,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {data.weather ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, opacity: 0.85 }}>
                 {data.weather.icon_code && <img src={`https://openweathermap.org/img/wn/${data.weather.icon_code}.png`} alt="" style={{ width: 24, height: 24 }} />}
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{data.weather.temp_c}°C</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{formatTemperature(data.weather.temp_c, temperatureUnit)}</span>
                 <span style={{ fontSize: 12, opacity: 0.8, textTransform: "capitalize" }}>{data.weather.condition}</span>
                 {data.frost_risk !== "low" && (
                   <span style={{ fontSize: 11, background: data.frost_risk === "high" ? "#e74c3c" : "#f39c12", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>
@@ -5802,6 +5810,7 @@ function SortableAreaCard({ id, multiArea, children }) {
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
   const measurementUnit = useMeasurementUnit();
+  const temperatureUnit  = useTemperatureUnit();
   const GARDEN_CACHE = "vercro_garden_v1";
   const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
   const [locations, setLocations] = useState(_cachedGarden?.locs || []);
@@ -10392,6 +10401,9 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   const [measurementUnit,  setMeasurementUnit]  = useState(() => {
     try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
   });
+  const [temperatureUnit,  setTemperatureUnit]  = useState(() => {
+    try { return localStorage.getItem("vercro_temperature_unit") || "celsius"; } catch(e) { return "celsius"; }
+  });
 
   const { toast, showToast } = useProfileToast();
 
@@ -10404,6 +10416,10 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         if (p.measurement_unit) {
           setMeasurementUnit(p.measurement_unit);
           try { localStorage.setItem("vercro_measurement_unit", p.measurement_unit); } catch(e) {}
+        }
+        if (p.temperature_unit) {
+          setTemperatureUnit(p.temperature_unit);
+          try { localStorage.setItem("vercro_temperature_unit", p.temperature_unit); } catch(e) {}
         }
         try { localStorage.setItem(PROFILE_CACHE, JSON.stringify({ form: f, ts: Date.now() })); } catch(e) {}
         setLoading(false);
@@ -10448,6 +10464,15 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       const p = await apiFetch("/auth/profile");
       await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: unit, country_code: p.country_code }) });
     } catch(e) { console.error("Failed to save measurement unit:", e.message); }
+  };
+
+  const saveTemperatureUnit = async (unit) => {
+    setTemperatureUnit(unit);
+    try { localStorage.setItem("vercro_temperature_unit", unit); } catch(e) {}
+    try {
+      const p = await apiFetch("/auth/profile");
+      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: p.measurement_unit || measurementUnit, temperature_unit: unit, country_code: p.country_code }) });
+    } catch(e) { console.error("Failed to save temperature unit:", e.message); }
   };
 
   const saveEmailPreference = async (enabled) => {
@@ -10667,6 +10692,19 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {[{ value: "metric", label: "Metres" }, { value: "imperial", label: "Feet & inches" }].map(opt => (
               <button key={opt.value} onClick={() => saveMeasurementUnit(opt.value)}
                 style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Temperature */}
+        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Temperature</div>
+          <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>How temperature is shown in weather and forecasts</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ value: "celsius", label: "°C Celsius" }, { value: "fahrenheit", label: "°F Fahrenheit" }].map(opt => (
+              <button key={opt.value} onClick={() => saveTemperatureUnit(opt.value)}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${temperatureUnit === opt.value ? C.forest : C.border}`, background: temperatureUnit === opt.value ? C.forest : "transparent", color: temperatureUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {opt.label}
               </button>
             ))}
