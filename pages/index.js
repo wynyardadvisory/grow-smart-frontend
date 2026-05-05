@@ -3452,14 +3452,92 @@ function GardenLog({ onLogActivity }) {
   );
 }
 
+// §7A — Skeleton shimmer shown only when API takes >300ms
+function SkeletonDashboard() {
+  const block = (w, h, mb = 8) => (
+    <div className="skeleton-block" style={{ width: w, height: h, marginBottom: mb }} />
+  );
+  return (
+    <div style={{ animation: "syncPillFade 200ms ease" }}>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#9aab9c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today’s focus</div>
+        <div style={{ background: "#fff", border: "2px solid #dde8de", borderRadius: 14, padding: "16px 18px" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            {block("40px", "40px", 0)}
+            <div style={{ flex: 1 }}>
+              {block("60%", "14px", 8)}
+              {block("85%", "12px", 8)}
+              {block("75%", "12px", 16)}
+              {block("80px", "32px", 0)}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#9aab9c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Also today</div>
+        {[0, 1].map(i => (
+          <div key={i} style={{ background: "#fff", border: "1px solid #e8ede9", borderRadius: 12, padding: "12px 14px", marginBottom: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              {block("24px", "24px", 0)}
+              {block("45%", "14px", 0)}
+            </div>
+            {block("90%", "12px", 4)}
+            {block("70%", "12px", 0)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(false); // §7A: only shown if API >300ms
+  const skeletonTimerRef = useRef(null);
   const [error,        setError]       = useState(null);
   const [completed,      setCompleted]      = useState(new Set());
+  const completedRef = useRef(new Set()); // mirrors completed — safe in useCallback closures
+  const cancelledCompletionsRef = useRef(new Set()); // tasks undone before delayed API fired
+  const undoInsertIdRef = useRef(null); // task ID being animated back in from left (§6)
   const [undoQueue,      setUndoQueue]      = useState({});
   const [recentlyDone,        setRecentlyDone]        = useState([]);
   const [undone,              setUndone]              = useState([]);
+  // ── Phase 1: optimistic completion ───────────────────────────────────────
+  const [exitingTask,  setExitingTask]  = useState(null);   // task rendered as overlay while sliding out
+  const [focusPressing,  setFocusPressing]  = useState(false); // scale(0.98) press on focus card
+  const [focusAnimating, setFocusAnimating] = useState(false); // ✓ flash 80–120ms before slide
+  const [syncState,    setSyncState]    = useState("loading"); // loading|fresh|saving|stillupdating|issue
+  const [syncCopy,     setSyncCopy]     = useState("Updating…"); // always-visible trust pill copy
+  const lastSyncedAtRef  = useRef(null);    // ms timestamp of last confirmed successful fetch
+  const syncCopyTimerRef = useRef(null);    // interval that ages the "Updated X ago" copy
+  const syncRetryCountRef = useRef(0);      // consecutive fail counter — stop retrying after 3
+  // §7F — Offline mode
+  const [isOffline,    setIsOffline]    = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  const lastSyncedDateRef = useRef(null); // "YYYY-MM-DD" of last confirmed fetch — for day boundary check
+  const offlineDataRef    = useRef(null); // snapshot of data at last successful fetch
+  // §4 — Four Laws
+  const sessionQueueRef    = useRef(null);
+  const sessionLockedRef   = useRef(false);
+  const focusItemLockedIdRef = useRef(null); // §4 Law 1: locked task ID — resolved fresh each render
+  // §7D — Pull to refresh
+  const [ptrState,    setPtrState]    = useState("idle"); // idle | pulling | refreshing
+  const [ptrProgress, setPtrProgress] = useState(0);     // 0–1, drives indicator
+  const ptrStartY   = useRef(null);
+  const ptrStartX   = useRef(null);
+  const ptrLocked   = useRef(false);
+  const PTR_THRESHOLD = 72;
+  const [bgQueue,        setBgQueue]       = useState([]);
+  const [urgentInserts,  setUrgentInserts] = useState([]);
+  const [urgentBanner,   setUrgentBanner]  = useState(false);
+  const [newTasksToast,  setNewTasksToast] = useState(null);
+  const [urgentGlowing,  setUrgentGlowing] = useState({});
+  const [undoPill,     setUndoPill]     = useState(null);   // {task,error}|null
+  const [undoPillFading, setUndoPillFading] = useState(false); // true during 500ms fade-out
+  const undoPillTimerRef  = useRef(null);
+  const undoPillFadeTimer = useRef(null);
+  const slowSaveTimerRef = useRef(null);
+  const stillUpdTimerRef = useRef(null);
   const [harvestedIds,        setHarvestedIds]        = useState(new Set());
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
@@ -3512,34 +3590,150 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // engineRefreshing removed — dashboard now runs engine synchronously server-side
 
   const CACHE_KEY = "vercro_dashboard_v1";
+  const PCQ_KEY      = "vercro_pending_completions_v1"; // §7C pending completions queue
+  const OFFLINE_KEY  = "vercro_offline_snapshot_v1";    // §7F: today's snapshot, survives app kill
+
+  useEffect(() => { completedRef.current = completed; }, [completed]);
 
   const load = useCallback(async (isBackground = false) => {
-    // Show cached data instantly if available
+    // V5: server is source of truth. No stale task cache served to users.
+    // Cache key retained only to clear any stale data from previous versions.
     if (!isBackground) {
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data: cachedData, ts } = JSON.parse(cached);
-          const age = Date.now() - ts;
-          if (age < 5 * 60 * 1000) { // under 5 minutes — show immediately
-            setData(cachedData);
-            setLoading(false);
-          }
-        }
-      } catch(e) {}
+      try { localStorage.removeItem(CACHE_KEY); } catch(e) {}
+      // §7B — 10s debounce: skip if synced very recently
+      if (lastSyncedAtRef.current && (Date.now() - lastSyncedAtRef.current) < 10000) {
+        setLoading(false); return;
+      }
+      setSyncState("loading");
+      setSyncCopy("Updating…");
+      // §7A — 300ms skeleton gate: only show shimmer if API is slow
+      clearTimeout(skeletonTimerRef.current);
+      skeletonTimerRef.current = setTimeout(() => setShowSkeleton(true), 300);
     }
 
-    // Always fetch fresh in background
+    // §7F — Offline guard: if no connection, serve last snapshot or show offline state
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setIsOffline(true);
+      const today = new Date().toISOString().split("T")[0];
+      let snapshot = offlineDataRef.current;
+      let snapshotDate = lastSyncedDateRef.current;
+      if (!snapshot) {
+        try { const s = JSON.parse(localStorage.getItem(OFFLINE_KEY) || "null"); if (s) { snapshot = s.data; snapshotDate = s.date; } } catch(e) {}
+      }
+      if (snapshot && snapshotDate === today) {
+        setData(snapshot); offlineDataRef.current = snapshot; lastSyncedDateRef.current = snapshotDate;
+        setSyncState("offline"); setSyncCopy("Offline — showing last update");
+      } else if (snapshot && snapshotDate !== today) {
+        offlineDataRef.current = null;
+        try { localStorage.removeItem(OFFLINE_KEY); } catch(e) {}
+        setSyncState("offline"); setSyncCopy("New day — reconnect to load today’s tasks");
+      } else {
+        setSyncState("offline"); setSyncCopy("Offline — reconnect to load today’s tasks");
+      }
+      setLoading(false); return;
+    }
+
+    // Always fetch fresh
     try {
       const [d, bp] = await Promise.all([
         apiFetch("/dashboard"),
         apiFetch("/blocked-periods").catch(() => []),
       ]);
+      clearTimeout(skeletonTimerRef.current);
+      setShowSkeleton(false);
       setData(d);
+      setIsOffline(false);
       setBlockedPeriods(bp || []);
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
+
+      // §4 — session queue lock
+      const incomingToday = d.tasks?.today || [];
+      if (!sessionLockedRef.current) {
+        sessionQueueRef.current   = incomingToday.map(t => t.id);
+        sessionLockedRef.current  = true;
+        focusItemLockedIdRef.current = null; // will lock on first render
+      } else if (isBackground) {
+        const knownIds = new Set(sessionQueueRef.current);
+        const newTasks = incomingToday.filter(t => !knownIds.has(t.id) && !completedRef.current.has(t.id));
+        if (newTasks.length > 0) {
+          const todayStr = new Date().toISOString().split("T")[0];
+          // §5A: urgent = frost_alert or pest_* alert, not every high-urgency task
+          const URGENT_IDS = /^(frost_alert|pest_)/;
+          const urgent    = newTasks.filter(t => t.urgency === "high" && t.due_date === todayStr && (URGENT_IDS.test(t.rule_id || "") || t.record_type === "alert"));
+          const nonUrgent = newTasks.filter(t => !urgent.includes(t));
+          if (urgent.length > 0) {
+            setUrgentInserts(prev => { const ids = new Set(prev.map(t => t.id)); return [...prev, ...urgent.filter(t => !ids.has(t.id))]; });
+            sessionQueueRef.current = [sessionQueueRef.current[0], ...urgent.map(t => t.id), ...sessionQueueRef.current.slice(1)].filter((id, i, a) => a.indexOf(id) === i);
+            setUrgentBanner(true); setTimeout(() => setUrgentBanner(false), 3000);
+            const glows = {}; urgent.forEach(t => { glows[t.id] = true; });
+            setUrgentGlowing(glows); setTimeout(() => setUrgentGlowing({}), 1500);
+          }
+          if (nonUrgent.length > 0) {
+            setBgQueue(prev => {
+              const ids = new Set(prev.map(t => t.id));
+              const fresh = nonUrgent.filter(t => !ids.has(t.id));
+              if (!fresh.length) return prev;
+              const next = [...prev, ...fresh];
+              setNewTasksToast(next.length); setTimeout(() => setNewTasksToast(null), 3000);
+              return next;
+            });
+            sessionQueueRef.current = [...sessionQueueRef.current, ...nonUrgent.map(t => t.id).filter(id => !sessionQueueRef.current.includes(id))];
+          }
+        }
+      }
+
+      // §7C — Retry pending completions silently on every successful fetch
+      const pcq = readPCQ();
+      if (pcq.length > 0) {
+        // §7F — Pre-hide per action: complete=hide, undo=show
+        // Blanket-hiding all PCQ tasks would keep undo actions hidden — wrong.
+        const pcqSorted = [...pcq].sort((a, b) => (a.timestamp || a.completedAt) - (b.timestamp || b.completedAt));
+        pcqSorted.forEach(e => {
+          if (e.action === "undo") {
+            setCompleted(prev => { const s = new Set(prev); s.delete(e.taskId); return s; });
+          } else {
+            setCompleted(prev => new Set([...prev, e.taskId]));
+          }
+        });
+        // Replay every action in timestamp order — server idempotency makes duplicates safe
+        (async () => {
+          for (const e of pcqSorted) {
+            const ep = e.action === "undo" ? `/tasks/${e.taskId}/uncomplete` : `/tasks/${e.taskId}/complete`;
+            try {
+              await apiFetch(ep, { method: "POST" });
+              removeEntryFromPCQ(e.taskId, e.action);
+            } catch {
+              // Still failed — reverse the optimistic UI change and keep in PCQ
+              if (e.action === "undo") {
+                setCompleted(prev => new Set([...prev, e.taskId]));
+              } else {
+                setCompleted(prev => { const s = new Set(prev); s.delete(e.taskId); return s; });
+              }
+            }
+          }
+        })();
+      }
+
+      // Record confirmed sync time and date, save offline snapshot, update trust pill
+      lastSyncedAtRef.current  = Date.now();
+      lastSyncedDateRef.current = new Date().toISOString().split("T")[0];
+      offlineDataRef.current   = d; // in-memory (fast path)
+      try { localStorage.setItem(OFFLINE_KEY, JSON.stringify({ data: d, date: new Date().toISOString().split("T")[0] })); } catch(e) {}
+      syncRetryCountRef.current = 0;
+      setSyncState("fresh");
+      setSyncCopy("Updated just now");
+      // Start ageing interval — updates copy every 60s
+      clearInterval(syncCopyTimerRef.current);
+      syncCopyTimerRef.current = setInterval(() => {
+        const mins = Math.floor((Date.now() - lastSyncedAtRef.current) / 60000);
+        if (mins < 1)        setSyncCopy("Updated just now");
+        else if (mins < 60)  setSyncCopy(`Updated ${mins} min ago`);
+        else                 setSyncCopy("Updated earlier today");
+      }, 60000);
     } catch (e) {
+      syncRetryCountRef.current += 1;
       if (!isBackground) setError(e.message);
+      setSyncState("issue");
+      setSyncCopy("Having trouble updating");
     }
     setLoading(false);
   }, []);
@@ -3548,6 +3742,28 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     load();
     checkPendingUnlocks();
     loadRecentHarvests();
+
+    // §7F — Online/offline detection
+    const handleOnline = () => {
+      setIsOffline(false);
+      setSyncState("loading");
+      setSyncCopy("Syncing saved changes…");
+      load(false); // reconnected — fetch fresh immediately
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      setSyncState("offline");
+      setSyncCopy("Offline — showing last update");
+    };
+    window.addEventListener("online",  handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Cleanup ageing interval and event listeners on unmount
+    return () => {
+      clearInterval(syncCopyTimerRef.current);
+      window.removeEventListener("online",  handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, [load]);
 
   // No client-side retry needed — dashboard now runs engine synchronously when tasks are empty.
@@ -3560,17 +3776,167 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     } catch(e) {}
   };
 
+  // ── §7C Pending Completions Queue — survives app kill ──────────────────
+  const readPCQ = () => {
+    try {
+      const raw = localStorage.getItem(PCQ_KEY);
+      if (!raw) return [];
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      return JSON.parse(raw).filter(e => (e.timestamp || e.completedAt) > cutoff);
+    } catch { return []; }
+  };
+  const writePCQ = (q) => { try { localStorage.setItem(PCQ_KEY, JSON.stringify(q)); } catch {} };
+  const addToPCQ = (taskId, action = "complete") => {
+    const q = readPCQ().filter(e => !(e.taskId === taskId && e.action === action));
+    q.push({ taskId, action, timestamp: Date.now(), completedAt: Date.now() });
+    writePCQ(q);
+  };
+  const addUndoToPCQ      = (taskId) => addToPCQ(taskId, "undo");
+  const removeFromPCQ     = (taskId) => writePCQ(readPCQ().filter(e => e.taskId !== taskId));
+  // Removes ONE specific entry by taskId+action — used in replay so confirming
+  // a "complete" does not also wipe a subsequent pending "undo" entry
+  const removeEntryFromPCQ = (taskId, action) => writePCQ(readPCQ().filter(e => !(e.taskId === taskId && e.action === action)));
+
+  // §7D — Pull to refresh
+  const ptrRefresh = async () => {
+    setPtrState("refreshing");
+    triggerHaptic();
+    // Clear completedIds — spec §7D: "clears completedIds entirely"
+    setCompleted(new Set());
+    const pcq = readPCQ();
+    if (pcq.length > 0) setCompleted(new Set(pcq.map(e => e.taskId)));
+    // Reset session queue so next load re-locks from fresh server data
+    sessionQueueRef.current    = null;
+    sessionLockedRef.current   = false;
+    focusItemLockedIdRef.current = null;
+    setBgQueue([]);
+    setUrgentInserts([]);
+    await load(false);
+    setPtrState("idle");
+    setPtrProgress(0);
+  };
+
+  const ptrOnTouchStart = (e) => {
+    if (ptrState !== "idle") return;
+    ptrStartY.current = e.touches[0].clientY;
+    ptrStartX.current = e.touches[0].clientX;
+    ptrLocked.current = false;
+  };
+  const ptrOnTouchMove = (e) => {
+    if (ptrState !== "idle" || ptrStartY.current === null) return;
+    if (window.scrollY > 2) { ptrLocked.current = true; return; }
+    const dy = e.touches[0].clientY - ptrStartY.current;
+    const dx = Math.abs(e.touches[0].clientX - ptrStartX.current);
+    if (dy < 0 || dx > dy) { ptrLocked.current = true; return; }
+    if (ptrLocked.current) return;
+    setPtrState("pulling");
+    setPtrProgress(Math.min(Math.min(dy, PTR_THRESHOLD * 1.4) / PTR_THRESHOLD, 1));
+  };
+  const ptrOnTouchEnd = () => {
+    if (ptrState !== "pulling") { ptrStartY.current = null; return; }
+    ptrStartY.current = null;
+    if (ptrProgress >= 1) { ptrRefresh(); }
+    else { setPtrState("idle"); setPtrProgress(0); }
+  };
+
+  // Focus card completion — exact same sequence as TaskCard: press → flash → slide
+  const handleFocusPressStart = () => { if (!focusAnimating && !exitingTask) setFocusPressing(true); };
+  const handleFocusPressEnd   = () => setFocusPressing(false);
+  const handleFocusComplete = () => {
+    if (focusAnimating || exitingTask || !focusItem) return;
+    handleFocusPressEnd();
+    setFocusAnimating(true); // ✓ flash: card fades (checkmark visible) for 120ms
+    setTimeout(() => {
+      setFocusAnimating(false);
+      completeTask(focusItem); // parent owns the slide-out — same as TaskCard → onComplete
+    }, 120);
+  };
+
+  const triggerHaptic = () => {
+    try {
+      if (window?.Capacitor?.Plugins?.Haptics) {
+        window.Capacitor.Plugins.Haptics.impact({ style: "LIGHT" });
+      } else if (navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+    } catch(e) {}
+  };
+
   const completeTask = async (task) => {
+    // Guard: ignore tap if an animation is already in progress
+    if (exitingTask) return;
+
+    // STEP 1: Haptic + set exiting task overlay (this keeps the card visible while sliding)
+    triggerHaptic();
+    setExitingTask(task);
+
+    // STEP 2: Immediately promote next task by updating completed Set.
+    // The exiting task overlay stays rendered on top of the new focusItem.
     setCompleted(prev => new Set([...prev, task.id]));
-    setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     setUndone(prev => prev.filter(t => t.id !== task.id));
-    // Increment local week count immediately
     setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
+
+    // STEP 3: After slide animation completes (220ms), remove overlay
+    setTimeout(() => setExitingTask(null), 220);
+
+    // STEP 4: Show undo pill for 5 seconds
+    clearTimeout(undoPillTimerRef.current);
+    clearTimeout(slowSaveTimerRef.current);
+    clearTimeout(stillUpdTimerRef.current);
+    setUndoPill({ task, error: false });
+    undoPillTimerRef.current = setTimeout(() => dismissUndoPill(), 5000);
+
+    // STEP 5: Write to PCQ immediately — survives app kill before API resolves
+    addToPCQ(task.id);
+
+    // §7F — Offline: skip API call, queue completion for when signal returns
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      // PCQ already written — completion will retry on next open
+      // Show offline-specific undo pill copy per spec
+      clearTimeout(undoPillTimerRef.current);
+      setUndoPill({ task, error: false, offline: true });
+      undoPillTimerRef.current = setTimeout(() => dismissUndoPill(), 5000);
+      return;
+    }
+
+    // STEP 6: Fire API after slide animation completes (220ms) — spec §2
+    setTimeout(async () => {
+    // Undo-wins guard: if user undid this task during the 220ms window, abort
+    if (cancelledCompletionsRef.current.has(task.id)) {
+      cancelledCompletionsRef.current.delete(task.id);
+      removeFromPCQ(task.id); // clean up PCQ — completion was cancelled
+      return;
+    }
+    slowSaveTimerRef.current = setTimeout(() => setSyncState("saving"), 400);
+    stillUpdTimerRef.current = setTimeout(() => setSyncState("stillupdating"), 3000);
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
-      // Nudge to share after 5th task — high-emotion moment
-      const newCount = (data?.tasks_completed_this_week || 0) + 1;
+      clearTimeout(slowSaveTimerRef.current);
+      clearTimeout(stillUpdTimerRef.current);
+      // Second guard: user may have undone while API was in flight
+      if (cancelledCompletionsRef.current.has(task.id)) {
+        cancelledCompletionsRef.current.delete(task.id);
+        // Server has the task complete — fire uncomplete to honour the undo
+        removeFromPCQ(task.id);
+        apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" }).catch(() => {
+          // If uncomplete fails, add undo to PCQ so it retries on next open
+          addUndoToPCQ(task.id);
+        });
+        return;
+      }
+      // Confirmed — remove from PCQ
+      removeFromPCQ(task.id);
+      // Restore to fresh — update ageing copy from last confirmed sync time
+      setSyncState("fresh");
+      if (lastSyncedAtRef.current) {
+        const mins = Math.floor((Date.now() - lastSyncedAtRef.current) / 60000);
+        setSyncCopy(mins < 1 ? "Updated just now" : mins < 60 ? `Updated ${mins} min ago` : "Updated earlier today");
+      } else {
+        setSyncCopy("Updated just now");
+      }
+
+      // Share nudge after 5th completion
       const totalKey = "vercro_total_completed";
       const total = parseInt(localStorage.getItem(totalKey) || "0") + 1;
       localStorage.setItem(totalKey, String(total));
@@ -3578,11 +3944,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         setTimeout(() => setShowShareNudge(true), 800);
         localStorage.setItem("vercro_share_nudge_shown", "1");
       }
-      if (total === 2) maybePromptForReview(); // Trigger: 2nd task completed
+      if (total === 2) maybePromptForReview();
 
-      // Session complete hook — show "what's next tomorrow" modal
-      // Triggers when: user completes 2+ tasks in session OR no today tasks remain
-      // modalShownRef guards against double-trigger (undo → re-complete, rapid taps)
+      // Session complete hook
       sessionCompletedCountRef.current += 1;
       const remainingAfterThis = grouped.today.filter(t => !completed.has(t.id) && t.id !== task.id).length;
       const sessionThreshold = sessionCompletedCountRef.current >= 2;
@@ -3590,80 +3954,107 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       if ((allTodayDone || sessionThreshold) && !showSessionComplete && !sessionModalShownRef.current) {
         sessionModalShownRef.current = true;
-
-        // Find best "tomorrow" task — exclude low-value checks and vague perennial prompts
+        const _twoDaysOut = new Date(); _twoDaysOut.setDate(_twoDaysOut.getDate() + 2);
+        const _twoDaysOutStr = _twoDaysOut.toISOString().split("T")[0];
         const upcomingPool = [...(grouped.this_week || []), ...(grouped.coming_up || [])]
           .filter(t => {
             if (completed.has(t.id) || t.id === task.id) return false;
-            // Exclude weak task types that would undermine the modal
             if (t.urgency === "low" && t.task_type === "check" && !t.crop?.name) return false;
             if (["perennial_flowering_upcoming", "perennial_harvest_upcoming", "null_crop_fallback"].includes(t.rule_id)) return false;
+            // Only show tasks due within 2 days — prevents far-future tasks appearing as "coming up next"
+            if (!t.due_date || t.due_date > _twoDaysOutStr) return false;
             return true;
           })
           .sort((a, b) => {
-            // Prefer higher urgency and sooner due dates
             const urgencyRank = { high: 3, medium: 2, low: 1 };
             const uDiff = (urgencyRank[b.urgency] || 0) - (urgencyRank[a.urgency] || 0);
             if (uDiff !== 0) return uDiff;
             return (a.due_date || "").localeCompare(b.due_date || "");
           });
-        const nextTask = upcomingPool[0] || null;
-
         setTimeout(() => {
-          setSessionCompleteData({
-            nextTask,
-            completedCount: sessionCompletedCountRef.current,
-          });
+          setSessionCompleteData({ nextTask: upcomingPool[0] || null, completedCount: sessionCompletedCountRef.current });
           setShowSessionComplete(true);
         }, 600);
       }
     } catch {
+      // Rollback on failure — remove from PCQ (task restored, no retry needed)
+      removeFromPCQ(task.id);
+      clearTimeout(slowSaveTimerRef.current);
+      clearTimeout(stillUpdTimerRef.current);
+      setSyncState("issue");
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
-      setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
       setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
-      return;
+      clearTimeout(undoPillTimerRef.current);
+      setUndoPill({ task, error: true });
+      undoPillTimerRef.current = setTimeout(() => { dismissUndoPill(); setSyncState("fresh"); }, 6000);
     }
+    }, 220); // end setTimeout — API fires after animation
 
-    // Undo window — 10 seconds
+    // Legacy undo queue — kept to avoid breaking other references
     const timeout = setTimeout(() => {
       setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
-    }, 10000);
+    }, 5000);
     setUndoQueue(prev => ({ ...prev, [task.id]: timeout }));
   };
 
-  const undoComplete = async (task) => {
+  const dismissUndoPill = () => {
+    clearTimeout(undoPillTimerRef.current);
+    clearTimeout(undoPillFadeTimer.current);
+    setUndoPillFading(true);
+    undoPillFadeTimer.current = setTimeout(() => { setUndoPill(null); setUndoPillFading(false); }, 500);
+  };
+
+  const undoComplete = async (task, isRetry = false) => {
+    // Register cancellation immediately — before clearing timers
+    // The 220ms setTimeout checks this ref before firing the complete API
+    cancelledCompletionsRef.current.add(task.id);
+    // Clear timers — shared by both paths
+    clearTimeout(undoPillTimerRef.current);
+    clearTimeout(undoPillFadeTimer.current);
+    clearTimeout(slowSaveTimerRef.current);
+    clearTimeout(stillUpdTimerRef.current);
     clearTimeout(undoQueue[task.id]);
     setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
-
-    // Remove from completed — this makes it active again
+    setUndoPill(null);
+    setUndoPillFading(false);
+    setSyncState("fresh");
+    // Optimistic UI restore — same for online and offline
     setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
-    setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
     setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
-    // Add to undone so it appears in active list even if not in data.tasks
     setUndone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
-
+    // §6: insert at position 2 in session queue + mark for slide-from-left animation
+    if (sessionQueueRef.current && sessionLockedRef.current) {
+      const q = sessionQueueRef.current.filter(id => id !== task.id);
+      sessionQueueRef.current = [q[0], task.id, ...q.slice(1)].filter(Boolean);
+    }
+    undoInsertIdRef.current = task.id;
+    setTimeout(() => { undoInsertIdRef.current = null; }, 300);
+    // §7F — offline: queue the undo and return — do not attempt API
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      addUndoToPCQ(task.id);
+      return;
+    }
+    // Online: clear any pending complete entry and fire API
+    removeFromPCQ(task.id);
     try {
       await apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" });
     } catch {
-      // Revert — mark as completed again
-      setCompleted(prev => new Set([...prev, task.id]));
-      setUndone(prev => prev.filter(t => t.id !== task.id));
-      setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
+      if (!isRetry) {
+        setCompleted(prev => new Set([...prev, task.id]));
+        setUndone(prev => prev.filter(t => t.id !== task.id));
+        setUndoPill({ task, undoError: true });
+        undoPillTimerRef.current = setTimeout(() => dismissUndoPill(), 4000);
+      } else {
+        setCompleted(prev => new Set([...prev, task.id]));
+        setUndone(prev => prev.filter(t => t.id !== task.id));
+        dismissUndoPill();
+      }
     }
   };
 
   if (error && !data) return <ErrorMsg msg={error} />;
-  if (loading && !data) return (
-    <div style={{ padding: "60px 24px 80px", textAlign: "center" }}>
-      <div style={{ fontSize: 44, marginBottom: 16 }}>🌱</div>
-      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
-        Looking at your garden
-      </div>
-      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
-        Checking what needs doing today…
-      </div>
-    </div>
-  );
+  // §7A — return null (<300ms) or skeleton (>300ms); chrome visible via App wrapper
+  if (loading && !data) return showSkeleton ? <SkeletonDashboard /> : null;
   if (!data) return null;
 
   const today   = todayISO();
@@ -3735,19 +4126,49 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       return true;
     });
   };
-  const todayTasks     = dedupeByAction(grouped.today.filter(t => !completed.has(t.id)));
+  // §4 Law 2: session-ordered todayTasks
+  const rawTodayActive = grouped.today.filter(t => !completed.has(t.id));
+  const todayTasks = dedupeByAction((() => {
+    if (!sessionLockedRef.current || !sessionQueueRef.current) return rawTodayActive;
+    const byId = Object.fromEntries(rawTodayActive.map(t => [t.id, t]));
+    const ordered = sessionQueueRef.current.map(id => byId[id]).filter(Boolean);
+    const extras = rawTodayActive.filter(t => !new Set(sessionQueueRef.current).has(t.id));
+    return [...ordered, ...extras];
+  })());
   const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id)));
   const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
 
-  // Hero focus: critical alert > high task > medium task > first check
+  // §4 Law 1: focusItem locked — position 1 is sacred, never replaced mid-session
+  // Lock stores the task ID only. Fresh task object resolved from current task map
+  // each render so copy/data stays up to date after background sync.
   const focusItem = (() => {
-    const crit = alerts.find(a => a.urgency === "high" || a.urgency === "critical");
-    if (crit) return { ...crit, _source: "alert" };
-    const highTask = todayTasks.find(t => t.urgency === "high");
-    if (highTask) return { ...highTask, _source: "task" };
-    const medTask = todayTasks[0];
-    if (medTask) return { ...medTask, _source: "task" };
-    return null;
+    // Build a lookup map from all active today tasks
+    const todayById = Object.fromEntries(rawTodayActive.map(t => [t.id, t]));
+
+    if (focusItemLockedIdRef.current) {
+      const lockedTask = todayById[focusItemLockedIdRef.current];
+      if (lockedTask && !completed.has(lockedTask.id)) {
+        // Resolve fresh object — same ID, latest data
+        return { ...lockedTask, _source: "task" };
+      }
+      // Task completed or no longer in list — release lock
+      focusItemLockedIdRef.current = null;
+    }
+
+    // Derive next focus: pre-lock, alerts may claim pos 1; post-lock, queue order only
+    const derived = !sessionLockedRef.current
+      ? (() => {
+          const crit = alerts.find(a => a.urgency === "high" || a.urgency === "critical");
+          if (crit) return { ...crit, _source: "alert" };
+          return todayTasks[0] ? { ...todayTasks[0], _source: "task" } : null;
+        })()
+      : todayTasks[0] ? { ...todayTasks[0], _source: "task" } : null;
+
+    // Lock the ID (not the object) once session is established
+    if (derived && sessionLockedRef.current && derived._source === "task") {
+      focusItemLockedIdRef.current = derived.id;
+    }
+    return derived;
   })();
 
   // Remaining today tasks (exclude focus item)
@@ -3821,7 +4242,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   };
 
   return (
-    <div>
+    <div
+      onTouchStart={ptrOnTouchStart}
+      onTouchMove={ptrOnTouchMove}
+      onTouchEnd={ptrOnTouchEnd}
+    >
+
+      {/* ── §7D Pull-to-refresh indicator ── */}
+      {(ptrState === "pulling" || ptrState === "refreshing") && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: ptrState === "refreshing" ? 44 : Math.round(ptrProgress * 44), overflow: "hidden", transition: ptrState === "refreshing" ? "none" : "height 0.05s linear", marginBottom: 6 }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.sage}`, borderTopColor: C.forest, opacity: ptrState === "refreshing" ? 1 : ptrProgress, animation: ptrState === "refreshing" ? "ptrSpin 0.7s linear infinite" : "none", transform: ptrState === "pulling" ? `rotate(${Math.round(ptrProgress * 270)}deg)` : "none" }} />
+        </div>
+      )}
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
@@ -3908,11 +4340,56 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       />
 
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, position: "relative" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today&apos;s focus</div>
 
+        {/* Exiting task overlay — rendered on top while sliding out, behind it the next task is already live */}
+        {exitingTask && (
+          <div style={{
+            position: "absolute", left: 0, right: 0, zIndex: 10,
+            margin: "0 20px",
+            background: "#e8f2ec",
+            border: `2px solid ${exitingTask.urgency === "high" ? C.red : exitingTask._source === "alert" ? "#f39c12" : C.forest}`,
+            borderRadius: 14, padding: "16px 18px",
+            transform: "translateX(-110%)", opacity: 0,
+            animation: "taskSlideOut 220ms cubic-bezier(0.2,0.8,0.2,1) forwards",
+            pointerEvents: "none",
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>✅</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+                  {exitingTask.crop?.name || "Garden task"}
+                </div>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{exitingTask.action}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {focusItem ? (
-          <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: 14, padding: "16px 18px" }}>
+          <div
+            onMouseDown={handleFocusPressStart} onMouseUp={handleFocusPressEnd} onMouseLeave={handleFocusPressEnd}
+            onTouchStart={handleFocusPressStart} onTouchEnd={handleFocusPressEnd}
+            style={{
+              background: C.cardBg,
+              borderRadius: 14, padding: "16px 18px",
+              // Press scale — instant physical feedback
+              transform: focusPressing ? "scale(0.98)" : "scale(1)",
+              transition: focusPressing
+                ? "transform 0.05s ease"
+                : focusAnimating
+                  ? "border-color 0ms, transform 0.2s cubic-bezier(0.2,0.8,0.2,1)"
+                  : "transform 0.2s cubic-bezier(0.2,0.8,0.2,1), border-color 1.5s ease",
+              // Flash: border snaps to confirmed green — card stays fully visible
+              // The ✓ on the button also flips to confirmed state during this window
+              border: focusAnimating
+                ? `2px solid ${C.forest}`
+                : `2px solid ${urgentGlowing[focusItem.id] ? "#D9A441" : focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`,
+              animation: undoInsertIdRef.current === focusItem.id
+                ? "taskSlideFromLeft 220ms cubic-bezier(0.2,0.8,0.2,1) forwards"
+                : exitingTask ? "taskSlideIn 220ms cubic-bezier(0.2,0.8,0.2,1) forwards" : "none",
+            }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
               <div style={{ flex: 1 }}>
@@ -3921,9 +4398,20 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 </div>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => completeTask(focusItem)}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
-                    ✓ Mark done
+                  <button
+                    onMouseDown={handleFocusPressStart} onMouseUp={handleFocusPressEnd}
+                    onTouchStart={handleFocusPressStart} onTouchEnd={handleFocusPressEnd}
+                    onClick={handleFocusComplete}
+                    style={{
+                      flex: 1, border: "none", borderRadius: 10, padding: "10px",
+                      fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif",
+                      // Confirmed flash: button brightens to signal completion before slide
+                      background: focusAnimating ? "#4CAF50" : C.forest,
+                      color: "#fff",
+                      transform: focusAnimating ? "scale(1.02)" : "scale(1)",
+                      transition: "background 0ms, transform 0ms",
+                    }}>
+                    {focusAnimating ? "✓ Done!" : "✓ Mark done"}
                   </button>
                   <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
@@ -3940,17 +4428,79 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             </div>
           </div>
         ) : (
-          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 28 }}>🌿</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
+          // §8 — Empty state: reward, not dead end
+          <div style={{ animation: "syncPillFade 300ms ease" }}>
+            <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "18px 18px 14px" }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🌱</div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest, marginBottom: 6, lineHeight: 1.3 }}>
+                You&apos;re all caught up — time to enjoy your garden
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.55, marginBottom: 10 }}>
+                Nothing urgent needs doing right now. Take a look around, enjoy what&apos;s growing, or explore a quick tip while you&apos;re here.
+              </div>
+              {doneToday > 0 && (
+                <div style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginBottom: 4 }}>
+                  ✓ {doneToday} task{doneToday !== 1 ? "s" : ""} done today
+                </div>
+              )}
               <div style={{ fontSize: 12, color: C.stone }}>
-                {thisWeekTasks.length > 0 ? `${thisWeekTasks.length} thing${thisWeekTasks.length !== 1 ? "s" : ""} coming up this week` : comingUpTasks.length > 0 ? `${comingUpTasks.length} task${comingUpTasks.length !== 1 ? "s" : ""} planned ahead` : "Nothing urgent — enjoy your garden"}
+                {(thisWeekTasks.length + comingUpTasks.length) > 0
+                  ? `Next up: ${thisWeekTasks.length + comingUpTasks.length} gentle check${(thisWeekTasks.length + comingUpTasks.length) !== 1 ? "s" : ""} later this week`
+                  : "Nothing scheduled yet this week — your garden is in good shape."}
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              {harvestCount > 0 ? (
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 22 }}>🌾</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Ready to harvest?</div>
+                    <div style={{ fontSize: 12, color: C.stone }}>{harvestCount} crop{harvestCount !== 1 ? "s" : ""} in harvest window now</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 22 }}>💡</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Garden tip of the day</div>
+                    <div style={{ fontSize: 12, color: C.stone }}>Tap to explore growing advice for your crops</div>
+                  </div>
+                </div>
+              )}
+              <div onClick={() => onTabChange("share")}
+                style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                <span style={{ fontSize: 22 }}>🌿</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Share my garden</div>
+                  <div style={{ fontSize: 12, color: C.stone }}>Show off what&apos;s growing</div>
+                </div>
+              </div>
+              <div onClick={() => onTabChange("profile", { openReferral: true })}
+                style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                <span style={{ fontSize: 22 }}>👋</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Invite a gardening friend</div>
+                  <div style={{ fontSize: 12, color: C.stone }}>It&apos;s free for them too</div>
+                </div>
               </div>
             </div>
           </div>
         )}
 
+        {/* §4 bgQueue — non-urgent new arrivals appended after session tasks */}
+        {bgQueue.filter(t => !completed.has(t.id)).length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            {bgQueue.filter(t => !completed.has(t.id)).map(t => (
+              <div key={t.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: C.stone, fontWeight: 600 }}>{t.crop?.name || "Garden task"}</div>
+                  <div style={{ fontSize: 13, color: "#1a1a1a", marginTop: 2 }}>{t.action}</div>
+                </div>
+                <button onClick={() => completeTask(t)} style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>✓</button>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Also today — grouped by crop/succession group, max 3 groups */}
         {remainingToday.length > 0 && (() => {
           const alsoGrouped = {};
@@ -4087,23 +4637,59 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           );
         })()}
 
-        {/* Recently done */}
-        {recentlyDone.length > 0 && (
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-            {recentlyDone.map(t => (
-              <div key={t.id} style={{ background: "#f5faf5", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
-                <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
-                {undoQueue[t.id] && (
-                  <button onClick={() => undoComplete(t)}
-                    style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
-                    Undo
-                  </button>
-                )}
+        {/* ── Sync trust pill — always visible, 4 states ── */}
+        {(() => {
+          const isFresh   = syncState === "fresh";
+          const isSaving  = syncState === "saving" || syncState === "stillupdating";
+          const isIssue   = syncState === "issue";
+          const isLoading = syncState === "loading";
+          const isOfflineState = syncState === "offline";
+          const canRetry  = isIssue && syncRetryCountRef.current < 3;
+          const gaveUp    = isIssue && syncRetryCountRef.current >= 3;
+          const dotColor  = isFresh ? "#6FAF63" : isIssue ? "#c0392b" : isOfflineState ? "#888" : "#D9A441";
+          const textColor = isFresh ? "#2F5D50" : isIssue ? "#c0392b" : isOfflineState ? "#555" : "#9a6e1c";
+          const bgColor   = isFresh ? "rgba(47,93,80,0.07)" : isIssue ? "rgba(192,57,43,0.07)" : isOfflineState ? "rgba(0,0,0,0.04)" : "rgba(217,164,65,0.08)";
+          const borderColor = isFresh ? "rgba(47,93,80,0.18)" : isIssue ? "rgba(192,57,43,0.2)" : isOfflineState ? "rgba(0,0,0,0.12)" : "rgba(217,164,65,0.25)";
+          const copy = isFresh ? syncCopy
+            : isSaving ? (syncState === "stillupdating" ? "Still updating…" : "Saving…")
+            : isLoading ? "Updating…"
+            : isOfflineState ? syncCopy
+            : gaveUp ? "Tap to retry"
+            : "Having trouble — tap to retry";
+          const icon = isFresh ? "●" : isIssue ? "⚠" : isOfflineState ? "○" : "⟳";
+          return (
+            <div style={{ marginTop: 8 }}>
+              <div
+                onClick={isIssue ? () => load() : undefined}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  background: bgColor,
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: 20, padding: "3px 10px",
+                  fontSize: 11, color: textColor,
+                  cursor: isIssue ? "pointer" : "default",
+                  transition: "background 300ms ease, border-color 300ms ease, color 300ms ease",
+                }}>
+                <span style={{ fontSize: isFresh ? 7 : 9, color: dotColor }}>{icon}</span>
+                {copy}
               </div>
-            ))}
+            </div>
+          );
+        })()}
+
+        {/* ── §4 Urgent banner ── */}
+        {urgentBanner && (
+          <div style={{ marginTop: 8, padding: "7px 12px", background: "rgba(217,164,65,0.10)", border: "1px solid rgba(217,164,65,0.35)", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#9a6e1c", animation: "syncPillFade 300ms ease" }}>
+            ⚡ New priority just added ↓
           </div>
         )}
+        {/* ── §4 New-tasks toast ── */}
+        {newTasksToast && (
+          <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: "#1e3d33", color: "rgba(255,255,255,0.9)", borderRadius: 20, padding: "7px 16px", fontSize: 12, fontWeight: 600, zIndex: 200, pointerEvents: "none", animation: "syncPillFade 300ms ease" }}>
+            {newTasksToast} task{newTasksToast !== 1 ? "s" : ""} added
+          </div>
+        )}
+        {/* ── Undo pill — rendered fixed at bottom of screen (see end of Dashboard return) ── */}
       </div>
 
       {/* ── TIME AWAY ENTRY POINTS ──────────────────────────────────────────── */}
@@ -4558,18 +5144,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         </button>
       </div>
 
-      {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
-            You're all caught up
-          </div>
-          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
-            Your garden is in good shape — check back tomorrow.
-          </div>
-        </div>
-      )}
-
       </> /* end Today view */}
 
       {/* ── MODALS — rendered outside Today/Log views so they work from both ── */}
@@ -4598,6 +5172,56 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           onClose={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); }}
           onDone={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); load(true); }}
         />
+      )}
+      {/* ── §6 Undo pill — fixed bottom, above nav bar, non-blocking ── */}
+      {undoPill && (
+        <div style={{
+          position: "fixed",
+          bottom: 72,  // above nav bar (nav is ~60px)
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "calc(100% - 32px)",
+          maxWidth: 420,
+          zIndex: 300,
+          background: (undoPill.error || undoPill.undoError) ? "rgba(192,57,43,0.95)" : "#1e3d33",
+          border: (undoPill.error || undoPill.undoError) ? "1px solid rgba(192,57,43,0.4)" : "none",
+          borderRadius: 12, padding: "11px 16px",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.22)",
+          animation: undoPillFading ? "undoPillFadeOut 500ms ease forwards" : "syncPillFade 200ms ease",
+          pointerEvents: "auto",
+        }}>
+          <span style={{
+            fontSize: 13,
+            color: (undoPill.error || undoPill.undoError) ? "#fff" : "rgba(255,255,255,0.9)",
+            flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {undoPill.error
+              ? "Couldn't save — tap to retry"
+              : undoPill.undoError
+                ? "Couldn't undo — tap to retry"
+                : undoPill.offline
+                  ? `✓ ${((undoPill.task.crop?.name ? undoPill.task.crop.name + " — " : "") + (undoPill.task.action || "")).slice(0, 22)}… noted offline`
+                  : `✓ ${((undoPill.task.crop?.name ? undoPill.task.crop.name + " — " : "") + (undoPill.task.action || "")).slice(0, 28)}… done`
+            }
+          </span>
+          {undoPill.error ? (
+            <button onClick={() => { setUndoPill(null); setSyncState("fresh"); completeTask(undoPill.task); }}
+              style={{ fontSize: 12, color: "#fff", background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>
+              Retry
+            </button>
+          ) : undoPill.undoError ? (
+            <button onClick={() => { setUndoPill(null); undoComplete(undoPill.task, true); }}
+              style={{ fontSize: 12, color: "#fff", background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>
+              Retry
+            </button>
+          ) : (
+            <button onClick={() => { clearTimeout(undoPillTimerRef.current); clearTimeout(undoPillFadeTimer.current); setUndoPillFading(false); setUndoPill(null); undoComplete(undoPill.task); }}
+              style={{ fontSize: 12, color: "#6FAF63", background: "none", border: "1px solid rgba(111,175,99,0.4)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>
+              Undo
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -5048,15 +5672,23 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
     if (meta?.why) whyText = meta.why;
   } catch {}
 
+  const [pressing, setPressing] = useState(false);
+
   const handleComplete = () => {
     if (completed || animating) return;
+    // Flash the checkmark for 100ms, then call parent — parent owns the slide-out
     setAnimating(true);
-    setTimeout(() => { setAnimating(false); onComplete(task); }, 350);
+    setTimeout(() => { setAnimating(false); onComplete(task); }, 120);
   };
+
+  const handlePressStart = () => { if (!completed && !animating) setPressing(true); };
+  const handlePressEnd   = () => setPressing(false);
 
   return (
     <div style={{ marginBottom: 10 }}>
       <div
+        onMouseDown={handlePressStart} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd}
+        onTouchStart={handlePressStart} onTouchEnd={handlePressEnd}
         style={{
           background: completed ? "#f0f4f2" : C.cardBg,
           border: `1px solid ${completed ? C.border : timingColor + "55"}`,
@@ -5064,8 +5696,8 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
           borderRadius: 12,
           padding: "13px 14px",
           opacity: animating ? 0 : completed ? 0.55 : 1,
-          transform: animating ? "translateX(30px)" : "translateX(0)",
-          transition: "opacity 0.35s ease, transform 0.35s ease",
+          transform: pressing ? "scale(0.98)" : animating ? "translateX(30px)" : "translateX(0)",
+          transition: pressing ? "transform 0.05s ease" : "opacity 0.25s cubic-bezier(0.2,0.8,0.2,1), transform 0.25s cubic-bezier(0.2,0.8,0.2,1)",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Timing dot */}
@@ -18269,6 +18901,52 @@ function IOSInstallBanner({ onDismiss }) {
 
 export default function GrowSmart() {
   const router = useRouter();
+  useEffect(() => {
+    if (document.getElementById("vercro-task-anim")) return;
+    const s = document.createElement("style");
+    s.id = "vercro-task-anim";
+    s.textContent = `
+      @keyframes taskSlideOut {
+        from { transform: translateX(0);    opacity: 1; }
+        to   { transform: translateX(-110%); opacity: 0; }
+      }
+      @keyframes taskSlideIn {
+        from { transform: translateY(8px); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+      }
+      @keyframes taskPressScale {
+        from { transform: scale(1); }
+        to   { transform: scale(0.98); }
+      }
+      @keyframes undoPillFadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to   { opacity: 0; transform: translateY(4px); }
+      }
+      @keyframes syncPillFade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+      @keyframes shimmer {
+        0%   { background-position: -400px 0; }
+        100% { background-position:  400px 0; }
+      }
+      @keyframes ptrSpin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      @keyframes taskSlideFromLeft {
+        from { transform: translateX(-60px); opacity: 0; }
+        to   { transform: translateX(0);     opacity: 1; }
+      }
+      .skeleton-block {
+        border-radius: 10px;
+        background: linear-gradient(90deg, #e8ede9 25%, #d4ddd5 50%, #e8ede9 75%);
+        background-size: 800px 100%;
+        animation: shimmer 1.4s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(s);
+  }, []);
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
   const [tab,         setTabRaw]      = useState("dashboard");
