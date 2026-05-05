@@ -18501,11 +18501,11 @@ const TABS = [
 const ONBOARDING_CROPS = [
   { name: "Tomatoes",     emoji: "🍅" },
   { name: "Potatoes",     emoji: "🥔" },
-  { name: "Carrots",      emoji: "🥕" },
+  { name: "Carrot",       emoji: "🥕" },
   { name: "Lettuce",      emoji: "🥬" },
-  { name: "Onions",       emoji: "🧅" },
-  { name: "Peas",         emoji: "🫛" },
-  { name: "Beans",        emoji: "🫘" },
+  { name: "Onion",        emoji: "🧅" },
+  { name: "Pea",          emoji: "🫛" },
+  { name: "Bean",         emoji: "🫘" },
   { name: "Garlic",       emoji: "🧄" },
   { name: "Courgette",    emoji: "🥒", displayNames: { US: "Zucchini", CA: "Zucchini", AU: "Zucchini", DE: "Zucchini", SE: "Zucchini", NO: "Zucchini" } },
   { name: "Strawberries", emoji: "🍓" },
@@ -18547,6 +18547,7 @@ function OnboardingScreen({ session, onComplete }) {
   const [areaType,      setAreaType]     = useState(null);
   const [selfSource,    setSelfSource]   = useState(null);
   const [pushGranted,   setPushGranted]  = useState(false); // tracks whether push was enabled in onboarding
+  const [submitting,    setSubmitting]   = useState(false); // prevents double-submit
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
 
@@ -18663,7 +18664,9 @@ function OnboardingScreen({ session, onComplete }) {
   };
 
   const submit = async () => {
-    setStep(5); // loading screen
+    if (submitting) return;
+    setSubmitting(true);
+    setStep(6); // loading screen
     const msgs = [
       "Setting up your first crops...",
       "Checking local weather...",
@@ -19018,18 +19021,18 @@ function OnboardingScreen({ session, onComplete }) {
         {/* ── Continue / Submit button ─────────────────────────────────────── */}
         <button
           onClick={next}
-          disabled={!canAdvance()}
+          disabled={!canAdvance() || submitting}
           style={{
             width: "100%",
             marginTop: 28,
             padding: 16,
-            background: canAdvance() ? C.forest : C.border,
-            color: canAdvance() ? "#fff" : C.stone,
+            background: (canAdvance() && !submitting) ? C.forest : C.border,
+            color: (canAdvance() && !submitting) ? "#fff" : C.stone,
             border: "none",
             borderRadius: 12,
             fontSize: 16,
             fontWeight: 700,
-            cursor: canAdvance() ? "pointer" : "not-allowed",
+            cursor: (canAdvance() && !submitting) ? "pointer" : "not-allowed",
             fontFamily: "serif",
             transition: "background 0.2s",
           }}>
