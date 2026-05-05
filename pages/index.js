@@ -3555,6 +3555,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
   const plantCheckEnabled = usePlantCheckEnabled();
   const { isMark } = useProStatus();
+  const temperatureUnit = useTemperatureUnit();
 
   const loadAllHarvestsForShare = async () => {
     try {
