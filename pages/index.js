@@ -11674,6 +11674,13 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const { isTestUser } = useProStatus();
   const swipe = useSwipeToDismiss(onClose);
 
+  // Non-UK web users see app store links instead of Stripe checkout
+  // Native apps handle their own localised pricing via RevenueCat
+  const isUKWeb = !_isNativeApp && (
+    typeof navigator !== "undefined" &&
+    (navigator.language === "en-GB" || navigator.language?.startsWith("en-GB"))
+  );
+
   // Fetch user-specific pricing on mount
   useEffect(() => {
     apiFetch("/subscription/pricing")
@@ -11900,70 +11907,102 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           </div>
         )}
 
-        {/* Pricing block — dynamic per user tier */}
-        {pricing ? (
-          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
-            {/* Monthly option */}
-            <button
-              onClick={() => setInterval_("monthly")}
-              style={{
-                width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent",
-                border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
-                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
-              }}>
-              <div style={{ fontSize: 13, color: C.stone, textAlign: "left" }}>Monthly</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{pricing.display.monthly} / month</div>
-            </button>
-            {/* Annual option — highlighted */}
-            <button
-              onClick={() => setInterval_("annual")}
-              style={{
-                width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                background: interval === "annual" ? "#fff" : "transparent",
-                border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
-                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
-              }}>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing.display.annual} / year</div>
-                {pricing.display.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
-                {pricing.display.badge}
-              </div>
-            </button>
+        {/* Pricing block — UK web: normal Stripe flow. Non-UK web: app store redirect. Native: handled by RevenueCat above. */}
+        {!_isNativeApp && !isUKWeb ? (
+          // ── Non-UK web users — redirect to app ──────────────────────────────
+          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px 16px", marginBottom: 6, textAlign: "center" }}>
+            <div style={{ fontSize: 15, marginBottom: 8 }}>🌍</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+              Subscribe via the app
+            </div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
+              For pricing in your local currency, subscribe through the iOS or Android app.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <a
+                href="https://apps.apple.com/app/vercro/id6744673685"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block", background: "#000", color: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                🍎 App Store
+              </a>
+              <a
+                href="https://play.google.com/store/apps/details?id=com.vercro.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block", background: "#000", color: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                🤖 Google Play
+              </a>
+            </div>
           </div>
         ) : (
-          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px", marginBottom: 6, textAlign: "center" }}>
-            <div style={{ fontSize: 12, color: C.stone }}>Loading pricing…</div>
-          </div>
+          // ── UK web users — normal Stripe pricing flow ────────────────────────
+          <>
+            {pricing ? (
+              <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+                {/* Monthly option */}
+                <button
+                  onClick={() => setInterval_("monthly")}
+                  style={{
+                    width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                    marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent",
+                    border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
+                    borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                  }}>
+                  <div style={{ fontSize: 13, color: C.stone, textAlign: "left" }}>Monthly</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{pricing.display.monthly} / month</div>
+                </button>
+                {/* Annual option — highlighted */}
+                <button
+                  onClick={() => setInterval_("annual")}
+                  style={{
+                    width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                    background: interval === "annual" ? "#fff" : "transparent",
+                    border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
+                    borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                  }}>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing.display.annual} / year</div>
+                    {pricing.display.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
+                    {pricing.display.badge}
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px", marginBottom: 6, textAlign: "center" }}>
+                <div style={{ fontSize: 12, color: C.stone }}>Loading pricing…</div>
+              </div>
+            )}
+
+            {/* Social proof */}
+            <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
+              {pricing?.tier === "loyalty" ? "Your loyalty price — locked in for life if you subscribe today" :
+               pricing?.tier === "early_supporter" ? "Limited-time offer · Cancel anytime" :
+               "Cancel anytime. No commitment."}
+            </div>
+
+            {/* Primary CTA */}
+            <button
+              onClick={handleUpgrade}
+              disabled={loading || !pricing}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
+              {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
+            </button>
+
+            {/* Secondary */}
+            <button
+              onClick={onClose}
+              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
+              Not now
+            </button>
+
+            <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+              Cancel anytime. No commitment.
+            </div>
+          </>
         )}
-
-        {/* Social proof */}
-        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
-          {pricing?.tier === "loyalty" ? "Your loyalty price — locked in for life if you subscribe today" :
-           pricing?.tier === "early_supporter" ? "Limited-time offer · Cancel anytime" :
-           "Cancel anytime. No commitment."}
-        </div>
-
-        {/* Primary CTA */}
-        <button
-          onClick={handleUpgrade}
-          disabled={loading || !pricing}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
-          {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
-        </button>
-
-        {/* Secondary */}
-        <button
-          onClick={onClose}
-          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
-          Not now
-        </button>
-
-        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
-          Cancel anytime. No commitment.
-        </div>
 
         {/* Required by App Store — subscription legal links */}
         <div style={{ fontSize: 10, color: C.stone, textAlign: "center", marginTop: 12, lineHeight: 1.6 }}>
