@@ -4450,31 +4450,17 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-              {harvestCount > 0 ? (
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 22 }}>🌾</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Ready to harvest?</div>
-                    <div style={{ fontSize: 12, color: C.stone }}>{harvestCount} crop{harvestCount !== 1 ? "s" : ""} in harvest window now</div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 22 }}>💡</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Garden tip of the day</div>
-                    <div style={{ fontSize: 12, color: C.stone }}>Tap to explore growing advice for your crops</div>
-                  </div>
-                </div>
-              )}
-              <div onClick={() => onTabChange("share")}
-                style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <span style={{ fontSize: 22 }}>🌿</span>
+              {/* Garden tip — always promoted when caught up, scrolls to TipsSection below */}
+              <div
+                onClick={() => document.getElementById("tips-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                style={{ background: C.forest, borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                <span style={{ fontSize: 24 }}>💡</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Share my garden</div>
-                  <div style={{ fontSize: 12, color: C.stone }}>Show off what&apos;s growing</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>Garden tip of the day</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>See what&apos;s worth knowing for your crops this week ↓</div>
                 </div>
               </div>
+              {/* Invite a friend */}
               <div onClick={() => onTabChange("profile", { openReferral: true })}
                 style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
                 <span style={{ fontSize: 22 }}>👋</span>
@@ -4922,7 +4908,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       </div>
 
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
-      <TipsSection />
+      <div id="tips-section"><TipsSection /></div>
 
       {/* Plant Check hero card now rendered above Today's focus — removed from here */}
 
