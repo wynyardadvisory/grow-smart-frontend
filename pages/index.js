@@ -18535,7 +18535,7 @@ const AREA_TYPES = [
 
 function OnboardingScreen({ session, onComplete }) {
   const [step,          setStep]         = useState(0);
-  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading
+  // step 0 = identity, 1 = crops, 2 = notifications, 3 = stage, 4 = area, 5 = source, 6 = loading
   // Pre-populate name from Apple/Google identity if available
   const [name,          setName]         = useState(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
   // If signed in with Apple, name is already provided — don't ask for it again (App Store guideline 4)
@@ -18546,6 +18546,7 @@ function OnboardingScreen({ session, onComplete }) {
   const [stage,         setStage]        = useState(null);
   const [areaType,      setAreaType]     = useState(null);
   const [selfSource,    setSelfSource]   = useState(null);
+  const [pushGranted,   setPushGranted]  = useState(false); // tracks whether push was enabled in onboarding
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
 
@@ -18647,16 +18648,17 @@ function OnboardingScreen({ session, onComplete }) {
   const canAdvance = () => {
     if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0 && pcConfig.validate(postcode.trim());
     if (step === 1) return selectedCrops.length > 0;
-    if (step === 2) return stage !== null;
-    if (step === 3) return areaType !== null;
-    if (step === 4) return true; // source question is optional — always skippable
+    if (step === 2) return true; // notifications step — always skippable
+    if (step === 3) return stage !== null;
+    if (step === 4) return areaType !== null;
+    if (step === 5) return true; // source question is optional — always skippable
     return false;
   };
 
   const next = () => {
     setError(null);
-    if (step < 4) { setStep(s => s + 1); return; }
-    // Step 4 → submit
+    if (step < 5) { setStep(s => s + 1); return; }
+    // Step 5 → submit
     submit();
   };
 
@@ -18708,7 +18710,7 @@ function OnboardingScreen({ session, onComplete }) {
   };
 
   // ── Loading screen ──────────────────────────────────────────────────────────
-  if (step === 5) {
+  if (step === 6) {
     return (
       <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif" }}>
         <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
@@ -18844,8 +18846,96 @@ function OnboardingScreen({ session, onComplete }) {
           </div>
         )}
 
-        {/* ── Step 2: Growth stage (one answer for all crops) ──────────────── */}
+        {/* ── Step 2: Notifications ─────────────────────────────────────────── */}
         {step === 2 && (
+          <div>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>🔔</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 10, lineHeight: 1.3 }}>
+                Stay on top of your garden
+              </div>
+              <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
+                Vercro tells you when to water, when frost is coming, and when your crops are ready to harvest. Notifications are how it reaches you — at the right time, not all day long.
+              </div>
+            </div>
+            <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+              {[
+                { icon: "🌡️", text: "Frost alerts before they happen" },
+                { icon: "💧", text: "Watering reminders based on your weather" },
+                { icon: "🥕", text: "Harvest nudges when crops are ready" },
+                { icon: "🐛", text: "Pest and disease alerts for your area" },
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: i < 3 ? 10 : 0 }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
+                  <span style={{ fontSize: 13, color: "#1a1a1a" }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={async () => {
+                if (_isNativeApp) {
+                  // Native — trigger OS permission dialog then move on
+                  try {
+                    const { PushNotifications: PN } = await import("@capacitor/push-notifications");
+                    await PN.removeAllListeners();
+                    PN.addListener("registration", async (token) => {
+                      try {
+                        await fetch(`${API}/push/register`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+                          body: JSON.stringify({ token: token.value, platform: _capacitorPlatform }),
+                        });
+                      } catch (e) { console.warn("[Push] Save failed:", e); }
+                    });
+                    const result = await PN.requestPermissions();
+                    if (result.receive === "granted") {
+                      await PN.register();
+                      setPushGranted(true);
+                    }
+                  } catch (e) { console.warn("[Push] Native onboarding failed:", e); }
+                } else {
+                  // Web — trigger browser permission
+                  try {
+                    const { publicKey } = await apiFetch("/notifications/vapid-key");
+                    if (publicKey) {
+                      const permission = await Notification.requestPermission();
+                      if (permission === "granted") {
+                        const sub = await registerPushSubscription(publicKey);
+                        if (sub) {
+                          await apiFetch("/notifications/register-token", {
+                            method: "POST",
+                            body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
+                          });
+                          await apiFetch("/notifications/preferences", {
+                            method: "PUT",
+                            body: JSON.stringify({
+                              push_enabled: true, due_today_enabled: true, coming_up_enabled: true,
+                              weather_alerts_enabled: true, pest_alerts_enabled: true,
+                              crop_checks_enabled: true, weekly_summary_enabled: true, milestones_enabled: true,
+                              morning_time_local: "07:00", evening_time_local: "18:00",
+                            }),
+                          });
+                          setPushGranted(true);
+                        }
+                      }
+                    }
+                  } catch (e) { console.warn("[Push] Web onboarding failed:", e); }
+                }
+                next(); // always advance regardless of outcome
+              }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Turn on notifications
+            </button>
+            <button
+              onClick={() => next()}
+              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px", textDecoration: "underline" }}>
+              Maybe later
+            </button>
+          </div>
+        )}
+
+        {/* ── Step 3: Growth stage (one answer for all crops) ──────────────── */}
+        {step === 3 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               A rough answer is fine — we'll build your plan from this.
@@ -18874,8 +18964,8 @@ function OnboardingScreen({ session, onComplete }) {
           </div>
         )}
 
-        {/* ── Step 3: Area type ────────────────────────────────────────────── */}
-        {step === 3 && (
+        {/* ── Step 4: Area type ────────────────────────────────────────────── */}
+        {step === 4 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               Pick where these crops will end up — this is their final growing spot. We'll tailor watering, frost alerts and task timings to match.
@@ -18908,8 +18998,8 @@ function OnboardingScreen({ session, onComplete }) {
           </div>
         )}
 
-        {/* ── Step 4: How did you hear about us ───────────────────────────── */}
-        {step === 4 && (
+        {/* ── Step 5: How did you hear about us ───────────────────────────── */}
+        {step === 5 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               Helps us focus on what's working. Skip if you'd rather not say.
@@ -18943,7 +19033,7 @@ function OnboardingScreen({ session, onComplete }) {
             fontFamily: "serif",
             transition: "background 0.2s",
           }}>
-          {step === 4 ? "Build my plan 🌱" : "Continue →"}
+          {step === 5 ? "Build my plan 🌱" : "Continue →"}
         </button>
 
         {step > 0 && (
@@ -19062,41 +19152,6 @@ export default function GrowSmart() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // ── Native push registration — runs after session is confirmed ──────────────
-  // By running when session changes (not at boot), we guarantee:
-  // 1. User is authenticated before we try to save the token
-  // 2. Native bridge is ready
-  // 3. No race conditions with plugin loading
-  useEffect(() => {
-    if (!session || !_isNativeApp) return;
-    let pushInitStarted = false;
-    import("@capacitor/push-notifications").then(({ PushNotifications: PN }) => {
-      if (pushInitStarted) return;
-      pushInitStarted = true;
-      const saveToken = async (tokenValue) => {
-        try {
-          const res = await fetch(`${API}/push/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-            body: JSON.stringify({ token: tokenValue, platform: _capacitorPlatform })
-          });
-          console.log("[Push] Token saved:", res.status);
-        } catch (e) { console.warn("[Push] Save failed:", e); }
-      };
-      PN.removeAllListeners().then(() => {
-        PN.addListener("registration", token => { saveToken(token.value); });
-        PN.addListener("registrationError", err => { console.warn("[Push] Registration error:", err); });
-        PN.requestPermissions().then(result => {
-          if (result.receive === "granted") {
-            PN.register();
-          } else {
-            console.warn("[Push] Permission not granted:", result.receive);
-          }
-        });
-      });
-    }).catch(e => console.warn("[Push] Plugin import failed:", e));
-  }, [session?.access_token]);
 
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
