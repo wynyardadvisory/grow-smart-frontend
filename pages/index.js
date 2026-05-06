@@ -19157,7 +19157,12 @@ export default function GrowSmart() {
   const [showLogActivityGlobal, setShowLogActivityGlobal] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        posthog.identify(session.user.id, { email: session.user.email });
+      }
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       // Only reset tab on actual sign-in — not on background token refresh
