@@ -196,6 +196,14 @@ const supabase = createClient(
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+const AREA_DEFAULTS = {
+  raised_bed:  { width_m: "1.2", length_m: "2.4" },
+  open_ground: { width_m: "2",   length_m: "8"   },
+  greenhouse:  { width_m: "2.4", length_m: "3"   },
+  polytunnel:  { width_m: "3",   length_m: "6"   },
+  container:   { width_m: "0.4", length_m: "0.4" },
+};
+
 // ── Pro feature flag ──────────────────────────────────────────────────────────
 // Set NEXT_PUBLIC_PRO_ENABLED=true in Vercel env vars to show Pro UI to users.
 // When false (default), all paywall triggers and upgrade prompts are hidden.
@@ -5837,8 +5845,8 @@ function GardenView({ onNavigateAdd }) {
   // Add area form state
   const [showAddArea,     setShowAddArea]     = useState(false);
   const [showAddLocation, setShowAddLocation] = useState(false);
-  const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
-  const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "", width_m: "", length_m: "" });
+  const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "", width_m: "1.2", length_m: "2.4", soil_ph: "", soil_temperature_c: "" });
+  const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "", width_m: "10", length_m: "10" });
   const [saving,          setSaving]          = useState(false);
   const [deleteLocationTarget, setDeleteLocationTarget] = useState(null);
   const [deletingLocation,     setDeletingLocation]     = useState(false);
@@ -5885,7 +5893,7 @@ function GardenView({ onNavigateAdd }) {
     setSaving(true);
     try {
       await apiFetch("/areas", { method: "POST", body: JSON.stringify(newArea) });
-      setNewArea({ name: "", type: "raised_bed", location_id: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
+      setNewArea({ name: "", type: "raised_bed", location_id: "", width_m: "1.2", length_m: "2.4", soil_ph: "", soil_temperature_c: "" });
       setShowAddArea(false);
       try { localStorage.removeItem("vercro_garden_v1"); } catch(e) {}
       await load();
@@ -5898,7 +5906,7 @@ function GardenView({ onNavigateAdd }) {
     setSaving(true);
     try {
       await apiFetch("/locations", { method: "POST", body: JSON.stringify(newLocation) });
-      setNewLocation({ name: "", postcode: "", width_m: "", length_m: "" });
+      setNewLocation({ name: "", postcode: "", width_m: "10", length_m: "10" });
       setShowAddLocation(false);
       await load();
     } catch (e) { setError(e.message); }
@@ -6240,7 +6248,7 @@ function GardenView({ onNavigateAdd }) {
                 <div><label style={labelStyle}>Name</label>
                   <input value={newArea.name} onChange={e => setNewArea(a => ({ ...a, name: e.target.value }))} style={inputStyle} placeholder="e.g. Raised bed 2, Greenhouse" /></div>
                 <div><label style={labelStyle}>Type</label>
-                  <select value={newArea.type} onChange={e => setNewArea(a => ({ ...a, type: e.target.value }))} style={inputStyle}>
+                  <select value={newArea.type} onChange={e => setNewArea(a => ({ ...a, type: e.target.value, ...(AREA_DEFAULTS[e.target.value] || {}) }))} style={inputStyle}>
                     <option value="raised_bed">Raised bed</option>
                     <option value="open_ground">Open ground</option>
                     <option value="greenhouse">Greenhouse</option>
