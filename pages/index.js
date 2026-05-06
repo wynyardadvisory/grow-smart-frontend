@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import posthog from "posthog-js";
 import { Analytics } from "@vercel/analytics/react";
 import { useRouter } from "next/router";
 import Script from "next/script";
@@ -3936,6 +3937,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       }
       // Confirmed — remove from PCQ
       removeFromPCQ(task.id);
+      // PostHog: task completed
+      posthog.capture("task_completed", { task_type: task.task_type || task.action || null });
       // Restore to fresh — update ageing copy from last confirmed sync time
       setSyncState("fresh");
       if (lastSyncedAtRef.current) {
@@ -8841,6 +8844,8 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
       if (result.enriching) setEnriching(true);
       try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
+      // PostHog: crop added
+      posthog.capture("crop_added", { crop_name: cropName, has_sown_date: !!(showSowDate && form.sown_date) });
       // Trigger: 5th crop added
       try {
         const cropCount = parseInt(localStorage.getItem("vercro_total_crops_added") || "0") + 1;
@@ -11686,6 +11691,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
 
   // Fetch user-specific pricing on mount
   useEffect(() => {
+    posthog.capture("paywall_viewed", { trigger, mode });
     apiFetch("/subscription/pricing")
       .then(async (d) => {
         // On native, enrich display prices with RevenueCat's localised price strings
@@ -18552,6 +18558,11 @@ function OnboardingScreen({ session, onComplete }) {
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
 
+  // PostHog: fire onboarding_step_viewed each time step changes
+  useEffect(() => {
+    if (step <= 5) posthog.capture("onboarding_step_viewed", { step });
+  }, [step]);
+
   // Country config — mirrors COUNTRY_CONFIG in api.js
   const COUNTRY_OPTIONS = [
     { code: "GB", flag: "🇬🇧", label: "United Kingdom" },
@@ -18659,6 +18670,14 @@ function OnboardingScreen({ session, onComplete }) {
 
   const next = () => {
     setError(null);
+    // PostHog: track step completion with relevant value
+    const stepValue = step === 0 ? { country }
+                    : step === 1 ? { crops_selected: selectedCrops.length }
+                    : step === 2 ? { push_granted: pushGranted }
+                    : step === 3 ? { stage }
+                    : step === 4 ? { area_type: areaType }
+                    : {};
+    posthog.capture("onboarding_step_completed", { step, ...stepValue });
     if (step < 5) { setStep(s => s + 1); return; }
     // Step 5 → submit
     submit();
@@ -18705,6 +18724,7 @@ function OnboardingScreen({ session, onComplete }) {
       clearInterval(interval);
       // Small deliberate pause so loading feels intentional
       await new Promise(r => setTimeout(r, 600));
+      posthog.capture("onboarding_completed", { crops_count: selectedCrops.length, country, push_granted: pushGranted });
       onComplete();
     } catch (e) {
       clearInterval(interval);
@@ -18895,6 +18915,9 @@ function OnboardingScreen({ session, onComplete }) {
                     if (result.receive === "granted") {
                       await PN.register();
                       setPushGranted(true);
+                      posthog.capture("push_permission_granted", { platform: "native" });
+                    } else {
+                      posthog.capture("push_permission_declined", { platform: "native" });
                     }
                   } catch (e) { console.warn("[Push] Native onboarding failed:", e); }
                 } else {
@@ -18920,7 +18943,10 @@ function OnboardingScreen({ session, onComplete }) {
                             }),
                           });
                           setPushGranted(true);
+                          posthog.capture("push_permission_granted", { platform: "web" });
                         }
+                      } else {
+                        posthog.capture("push_permission_declined", { platform: "web" });
                       }
                     }
                   } catch (e) { console.warn("[Push] Web onboarding failed:", e); }
@@ -18931,7 +18957,7 @@ function OnboardingScreen({ session, onComplete }) {
               Turn on notifications
             </button>
             <button
-              onClick={() => next()}
+              onClick={() => { posthog.capture("push_permission_declined", { platform: _isNativeApp ? "native" : "web" }); next(); }}
               style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px", textDecoration: "underline" }}>
               Maybe later
             </button>
@@ -19118,7 +19144,11 @@ export default function GrowSmart() {
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
   const [tab,         setTabRaw]      = useState("dashboard");
-  const setTab = (newTab) => { window.scrollTo(0, 0); setTabRaw(newTab); };
+  const setTab = (newTab) => {
+    window.scrollTo(0, 0);
+    setTabRaw(newTab);
+    posthog.capture("tab_viewed", { tab: newTab });
+  };
   const [addPrefill,  setAddPrefill]  = useState(null);
   const [prevTab,     setPrevTab]     = useState("dashboard");
   const [editCropFocus, setEditCropFocus] = useState(null);
@@ -19131,7 +19161,19 @@ export default function GrowSmart() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       // Only reset tab on actual sign-in — not on background token refresh
-      if (event === "SIGNED_IN") setTabRaw("dashboard");
+      if (event === "SIGNED_IN") {
+        setTabRaw("dashboard");
+        if (s?.user) {
+          posthog.identify(s.user.id, { email: s.user.email });
+          const daysSinceSignup = s.user.created_at
+            ? Math.floor((Date.now() - new Date(s.user.created_at).getTime()) / 86400000)
+            : null;
+          posthog.capture("session_started", {
+            platform: _isNativeApp ? (_capacitorPlatform || "native") : "web",
+            days_since_signup: daysSinceSignup,
+          });
+        }
+      }
     });
 
     // Capture UTM params on first visit — stored for attribution at signup
