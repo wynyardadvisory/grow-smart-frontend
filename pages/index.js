@@ -19219,6 +19219,28 @@ export default function GrowSmart() {
       setSession(session);
       if (session?.user) {
         posthog.identify(session.user.id, { email: session.user.email });
+        // Silently re-register Android push token on every app open
+        // Ensures existing users get an OneSignal subscription ID if FCM was connected after they registered
+        if (_capacitorPlatform === "android") {
+          import("@capacitor/push-notifications").then(({ PushNotifications: PN }) => {
+            PN.checkPermissions().then(status => {
+              if (status.receive === "granted") {
+                PN.removeAllListeners().then(() => {
+                  PN.addListener("registration", async (token) => {
+                    try {
+                      await fetch(`${API}/push/register`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({ token: token.value, platform: "android" }),
+                      });
+                    } catch (e) { console.warn("[Push] Android re-registration failed:", e); }
+                  });
+                  PN.register().catch(() => {});
+                });
+              }
+            }).catch(() => {});
+          }).catch(() => {});
+        }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
