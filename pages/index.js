@@ -1591,6 +1591,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       setSavedEntry({ ...entry, photo_url: photoPreview || null });
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id, isFinal);
+      posthog.capture("harvest_logged", { crop_name: item.crop || null, has_quantity: !!quantity, is_final: !!isFinal });
       maybePromptForReview(); // Trigger: 1st harvest logged
     } catch (e) {
       console.error(e);
@@ -4127,6 +4128,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         method: "POST",
         body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity }),
       });
+      posthog.capture("observation_logged", { observation_type: type });
       load(); // refresh dashboard after observation
     } catch(e) { console.error("[Observe]", e); }
   };
@@ -10923,6 +10925,7 @@ function ProSubscriptionSection() {
         if (!pkg) throw new Error("No package available");
         await Purchases.purchasePackage({ aPackage: pkg });
         await apiFetch("/subscription/status");
+        posthog.capture("subscription_started", { interval, platform: "native" });
         window.location.reload();
       } else {
         // ── Web — use Stripe ──────────────────────────────────────────────────
@@ -11550,6 +11553,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 
       setResult(data);
       setStep("result");
+      posthog.capture("plantcheck_used");
       // Trigger: 2nd photo diagnosis completed
       try {
         const diagCount = parseInt(localStorage.getItem("vercro_total_diagnoses") || "0") + 1;
@@ -11816,6 +11820,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         if (!pkg) throw new Error("No package available for " + offeringId + " / " + interval);
         await Purchases.purchasePackage({ aPackage: pkg });
         await apiFetch("/subscription/status");
+        posthog.capture("subscription_started", { interval, platform: "native" });
         window.location.reload();
       } else {
         // Web — Stripe with server-resolved price for this user's tier
