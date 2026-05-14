@@ -8663,7 +8663,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
           {filtered.map(def => (
-            <div key={def.id} onMouseDown={() => { selectingRef.current = true; handleSelect(def); }}
+            <div key={def.id} onPointerDown={() => { selectingRef.current = true; handleSelect(def); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -8671,14 +8671,14 @@ function CropSearchInput({ cropDefs, value, onChange }) {
             </div>
           ))}
           {query.trim() ? (
-            <div onMouseDown={() => { selectingRef.current = true; handleSelect({ id: "__other__", name: query.trim() }); }}
+            <div onPointerDown={() => { selectingRef.current = true; handleSelect({ id: "__other__", name: query.trim() }); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               🔍 Not in list — identify "{query.trim()}" with AI
             </div>
           ) : (
-            <div onMouseDown={() => { selectingRef.current = true; setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
+            <div onPointerDown={() => { selectingRef.current = true; setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
