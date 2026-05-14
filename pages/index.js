@@ -3660,6 +3660,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       ]);
       clearTimeout(skeletonTimerRef.current);
       setShowSkeleton(false);
+      // Normalise harvest_forecast: API returns crop_name, components expect crop
+      if (d?.harvest_forecast) {
+        d.harvest_forecast = d.harvest_forecast.map(h => ({ ...h, crop: h.crop || h.crop_name }));
+      }
       setData(d);
       setIsOffline(false);
       setBlockedPeriods(bp || []);
@@ -7685,6 +7689,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [filterLocation, setFilterLocation] = useState("");    // "" | location_id
   const [sortBy,        setSortBy]        = useState("recent"); // "recent" | "alpha" | "pct"
   const [showFilters,   setShowFilters]   = useState(false);
+  const [cropSearchQuery, setCropSearchQuery] = useState(""); // free-text search
   const [cropPlantCheck, setCropPlantCheck] = useState(null); // crop object when Plant Check opened from crop card
   const plantCheckEnabled = usePlantCheckEnabled();
   const [cropTab, setCropTab] = useState("crops"); // "crops" | "feeds" — toggle inside Crops tab
@@ -7837,6 +7842,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     if (filterLocation && crop.area?.location_id !== filterLocation) return false;
     if (filterArea   && crop.area_id !== filterArea)  return false;
     if (filterType   && inferCropType(crop.name) !== filterType) return false;
+    if (cropSearchQuery.trim()) {
+      const q = cropSearchQuery.trim().toLowerCase();
+      const nameMatch    = crop.name?.toLowerCase().includes(q);
+      const varietyMatch = (typeof crop.variety === "string" ? crop.variety : crop.variety?.name || "").toLowerCase().includes(q);
+      if (!nameMatch && !varietyMatch) return false;
+    }
     return true;
   });
 
@@ -7928,6 +7939,21 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
+        </div>
+        {/* Search input */}
+        <div style={{ position: "relative", marginBottom: 8 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: C.stone, pointerEvents: "none" }}>🔍</span>
+          <input
+            type="text"
+            value={cropSearchQuery}
+            onChange={e => setCropSearchQuery(e.target.value)}
+            placeholder="Search your crops…"
+            style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px 9px 34px", borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 14, fontFamily: "sans-serif", background: C.offwhite, color: "#1a1a1a", outline: "none" }}
+          />
+          {cropSearchQuery && (
+            <button onClick={() => setCropSearchQuery("")}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
+          )}
         </div>
         {/* Filter/sort dropdown */}
         {showFilters && (
@@ -8067,7 +8093,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setExpandedGroups(e => ({ ...e, [group.id]: !isExpanded }))}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                   <span style={{ fontSize: 18 }}>{getCropEmoji(group.crop_name)}</span>
-                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", minWidth: 0, wordBreak: "break-word" }}>
                     {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
                   </div>
                   <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>
@@ -8585,7 +8611,8 @@ function CropSearchInput({ cropDefs, value, onChange }) {
   const [query,   setQuery]   = useState("");
   const [open,    setOpen]    = useState(false);
   const [focused, setFocused] = useState(false);
-  const inputRef = useRef(null);
+  const inputRef    = useRef(null);
+  const selectingRef = useRef(false); // guard: true during mousedown → mouseup on a suggestion
 
   const displayText = focused ? query : (value?.name || query);
 
@@ -8610,13 +8637,14 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 
   const handleFocus = () => { setFocused(true); setQuery(value?.name || ""); setOpen(true); };
   const handleBlur  = () => {
+    if (selectingRef.current) return; // a suggestion is being selected — don't overwrite
     setTimeout(() => {
       setFocused(false); setOpen(false);
       if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
     }, 150);
   };
   const handleChange = e => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); };
-  const handleSelect = def => { onChange(def); setQuery(def.name); setOpen(false); setFocused(false); inputRef.current?.blur(); };
+  const handleSelect = def => { selectingRef.current = false; onChange(def); setQuery(def.name); setOpen(false); setFocused(false); inputRef.current?.blur(); };
   const handleKeyDown = e => {
     if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
     if (e.key === "Enter" && filtered.length > 0) { e.preventDefault(); handleSelect(filtered[0]); }
@@ -8635,7 +8663,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
           {filtered.map(def => (
-            <div key={def.id} onMouseDown={() => handleSelect(def)}
+            <div key={def.id} onMouseDown={() => { selectingRef.current = true; handleSelect(def); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -8643,14 +8671,14 @@ function CropSearchInput({ cropDefs, value, onChange }) {
             </div>
           ))}
           {query.trim() ? (
-            <div onMouseDown={() => handleSelect({ id: "__other__", name: query.trim() })}
+            <div onMouseDown={() => { selectingRef.current = true; handleSelect({ id: "__other__", name: query.trim() }); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               🔍 Not in list — identify "{query.trim()}" with AI
             </div>
           ) : (
-            <div onMouseDown={() => { setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
+            <div onMouseDown={() => { selectingRef.current = true; setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
