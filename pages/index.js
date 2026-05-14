@@ -8637,14 +8637,20 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 
   const handleFocus = () => { setFocused(true); setQuery(value?.name || ""); setOpen(true); };
   const handleBlur  = () => {
-    if (selectingRef.current) return; // a suggestion is being selected — don't overwrite
-    setTimeout(() => {
-      setFocused(false); setOpen(false);
-      if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
-    }, 150);
+    if (selectingRef.current) { selectingRef.current = false; return; } // selection in progress — ignore blur
+    setFocused(false);
+    setOpen(false);
+    if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
   };
   const handleChange = e => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); };
-  const handleSelect = def => { selectingRef.current = false; onChange(def); setQuery(def.name); setOpen(false); setFocused(false); inputRef.current?.blur(); };
+  const handleSelect = def => {
+    selectingRef.current = true; // set BEFORE blur fires
+    onChange(def);
+    setQuery(def.name);
+    setOpen(false);
+    setFocused(false);
+    inputRef.current?.blur();
+  };
   const handleKeyDown = e => {
     if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
     if (e.key === "Enter" && filtered.length > 0) { e.preventDefault(); handleSelect(filtered[0]); }
@@ -8663,7 +8669,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
           {filtered.map(def => (
-            <div key={def.id} onPointerDown={() => { selectingRef.current = true; handleSelect(def); }}
+            <div key={def.id} onPointerDown={() => handleSelect(def)}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -8671,7 +8677,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
             </div>
           ))}
           {query.trim() ? (
-            <div onPointerDown={() => { selectingRef.current = true; handleSelect({ id: "__other__", name: query.trim() }); }}
+            <div onPointerDown={() => handleSelect({ id: "__other__", name: query.trim() })}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
