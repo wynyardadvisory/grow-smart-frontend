@@ -8504,7 +8504,18 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
 
               {/* Progress bar */}
               {(() => {
-                const stageKey = crop.stage || "seed";
+                const stageKey = (() => {
+                  const dbStage = crop.stage || "seed";
+                  // If the user has confirmed a stage above seed, always respect it
+                  if (dbStage !== "seed") return dbStage;
+                  // stage is seed but crop may have grown past germination — derive from pct
+                  if (pct >= 96) return "harvesting";
+                  if (pct >= 81) return "fruiting";
+                  if (pct >= 66) return "flowering";
+                  if (pct >= 36) return "vegetative";
+                  if (pct >= 16) return "seedling";
+                  return "seed";
+                })();
                 const stageColor = STAGE_COLOR[stageKey] || C.stone;
                 // Calculate % grown
                 let pct;
