@@ -35,6 +35,78 @@ if (_isNativeApp) {
   });
 }
 
+// ── App Badge (native only) ───────────────────────────────────────────────────
+// Sets the red badge count on the app icon when there are outstanding tasks.
+// Uses @capawesome/capacitor-badge — compatible with Capacitor 8.
+let Badge = null;
+if (_isNativeApp) {
+  import("@capawesome/capacitor-badge").then(m => {
+    Badge = m.Badge;
+    // Request permission silently — if denied, badges simply won't appear
+    Badge.requestPermissions().catch(() => {});
+  }).catch(() => {});
+}
+
+// ── Badge helpers ─────────────────────────────────────────────────────────────
+// updateAppBadge: sets native app icon badge count (iOS/Android)
+async function updateAppBadge(count) {
+  if (!_isNativeApp || !Badge) return;
+  try {
+    if (count > 0) {
+      await Badge.set({ count });
+    } else {
+      await Badge.clear();
+    }
+  } catch (e) {
+    // Badge permission denied or plugin unavailable — fail silently
+  }
+}
+
+// updateFaviconBadge: draws a red circle with count over the favicon (web only)
+let _originalFaviconHref = null;
+function updateFaviconBadge(count) {
+  if (typeof document === "undefined" || _isNativeApp) return;
+  try {
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    // Store original favicon on first call
+    if (!_originalFaviconHref) _originalFaviconHref = link.href || "/favicon.ico";
+
+    if (count <= 0) {
+      link.href = _originalFaviconHref;
+      return;
+    }
+
+    const img = new Image();
+    img.src = _originalFaviconHref;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 32;
+      canvas.height = 32;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, 32, 32);
+      // Red circle
+      const r = 9;
+      ctx.beginPath();
+      ctx.arc(26, 6, r, 0, 2 * Math.PI);
+      ctx.fillStyle = "#e74c3c";
+      ctx.fill();
+      // Count text
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 11px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(count > 9 ? "9+" : String(count), 26, 6);
+      link.href = canvas.toDataURL("image/png");
+    };
+    img.onerror = () => {}; // fail silently if favicon can't load
+  } catch (e) {}
+}
+
 // ── RevenueCat (native only) ──────────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell.
 // On web, Stripe handles payments as before.
@@ -3613,6 +3685,15 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const OFFLINE_KEY  = "vercro_offline_snapshot_v1";    // §7F: today's snapshot, survives app kill
 
   useEffect(() => { completedRef.current = completed; }, [completed]);
+
+  // ── Badge count — updates app icon and favicon when outstanding tasks change ──
+  useEffect(() => {
+    if (!data) return;
+    const todayTasks = data.tasks?.today || [];
+    const count = todayTasks.filter(t => !completedRef.current.has(t.id)).length;
+    updateAppBadge(count);
+    updateFaviconBadge(count);
+  }, [data, completed]);
 
   const load = useCallback(async (isBackground = false) => {
     // V5: server is source of truth. No stale task cache served to users.
