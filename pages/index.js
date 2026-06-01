@@ -3515,7 +3515,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const skeletonTimerRef = useRef(null);
   const [error,        setError]       = useState(null);
   const [completed,      setCompleted]      = useState(new Set());
-  const completedRef = useRef(new Set()); // mirrors completed — safe in useCallback closures
+  const completedRef = useRef(new Set()); // mirrors completed — survives re-renders, used as filter of last resort
   const cancelledCompletionsRef = useRef(new Set()); // tasks undone before delayed API fired
   const undoInsertIdRef = useRef(null); // task ID being animated back in from left (§6)
   const [undoQueue,      setUndoQueue]      = useState({});
@@ -3824,10 +3824,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const ptrRefresh = async () => {
     setPtrState("refreshing");
     triggerHaptic();
-    // Clear completedIds — spec §7D: "clears completedIds entirely"
-    setCompleted(new Set());
+    // Rebuild completed from PCQ — preserves any completions made this session
     const pcq = readPCQ();
-    if (pcq.length > 0) setCompleted(new Set(pcq.map(e => e.taskId)));
+    const restoredCompleted = new Set(pcq.map(e => e.taskId));
+    // Also carry forward anything in completedRef that isn't in PCQ yet (in-flight completions)
+    completedRef.current.forEach(id => restoredCompleted.add(id));
+    setCompleted(restoredCompleted);
+    completedRef.current = restoredCompleted;
     // Reset session queue so next load re-locks from fresh server data
     sessionQueueRef.current    = null;
     sessionLockedRef.current   = false;
@@ -3895,7 +3898,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
     // STEP 2: Immediately promote next task by updating completed Set.
     // The exiting task overlay stays rendered on top of the new focusItem.
-    setCompleted(prev => new Set([...prev, task.id]));
+    setCompleted(prev => {
+      const next = new Set([...prev, task.id]);
+      completedRef.current = next; // keep ref in sync
+      return next;
+    });
     setUndone(prev => prev.filter(t => t.id !== task.id));
     setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
 
@@ -4044,7 +4051,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     setUndoPillFading(false);
     setSyncState("fresh");
     // Optimistic UI restore — same for online and offline
-    setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
+    setCompleted(prev => { const s = new Set(prev); s.delete(task.id); completedRef.current = s; return s; });
     setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
     setUndone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     // §6: insert at position 2 in session queue + mark for slide-from-left animation
@@ -4140,7 +4147,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // ── Derived data for new dashboard layout ────────────────────────────────────
 
   // Today's focus — single most important item
-  const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id));
+  const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id) && !completedRef.current.has(t.id));
   // Deduplicate tasks with identical action text — handles users with multiple instances
   // of the same crop (e.g. 2 x Lettuce generating 2 x feed tasks)
   const dedupeByAction = (tasks) => {
@@ -4153,7 +4160,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     });
   };
   // §4 Law 2: session-ordered todayTasks
-  const rawTodayActive = grouped.today.filter(t => !completed.has(t.id));
+  // Filter uses both completed state AND completedRef — completedRef is the session-level suppression guarantee
+  const rawTodayActive = grouped.today.filter(t => !completed.has(t.id) && !completedRef.current.has(t.id));
   const todayTasks = dedupeByAction((() => {
     if (!sessionLockedRef.current || !sessionQueueRef.current) return rawTodayActive;
     const byId = Object.fromEntries(rawTodayActive.map(t => [t.id, t]));
@@ -4161,8 +4169,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     const extras = rawTodayActive.filter(t => !new Set(sessionQueueRef.current).has(t.id));
     return [...ordered, ...extras];
   })());
-  const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id)));
-  const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
+  const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id) && !completedRef.current.has(t.id)));
+  const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id) && !completedRef.current.has(t.id)));
 
   // §4 Law 1: focusItem locked — position 1 is sacred, never replaced mid-session
   // Lock stores the task ID only. Fresh task object resolved from current task map
@@ -4825,7 +4833,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                           style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                           ✓ Done
                         </button>
-                        <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); }}
+                        <button onClick={() => group.forEach(x => completeTask(x))}
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
                           Dismiss
                         </button>
