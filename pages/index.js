@@ -1740,51 +1740,40 @@ function BadgeCelebrationSheet({ unlocks, onClose }) {
 }
 
 // ── Today Badge Buttons ───────────────────────────────────────────────────────
-function TodayBadgeCard({ onViewBadges }) {
-  const { badges, loading } = useBadges();
-  if (loading || !badges) return null;
+// ── Streak Card — replaces TodayBadgeCard on the Today tab ───────────────────
+// Shows current streak with a flame. Taps through to the badges tab.
+// Shown only when streak >= 1. Hidden for new users with no activity yet.
+function StreakCard({ streak, longestStreak, onViewBadges }) {
+  if (!streak || streak < 1) return null;
 
-  const recentEarned = (badges.recent_unlocks || []).slice(0, 5);
-  const nextBadge = (badges.badges || [])
-    .filter(b => !b.is_completed)
-    .sort((a, b) => (b.current_progress / b.threshold_value) - (a.current_progress / a.threshold_value))[0];
-  const monthly = badges.monthly_challenge;
-  const next = nextBadge || (monthly && !monthly.is_completed ? monthly : null);
+  const getMessage = (n) => {
+    if (n === 1)  return "You're on a roll — keep it going today";
+    if (n < 3)    return "Good start — consistency is what counts";
+    if (n < 7)    return "You're building a solid habit";
+    if (n < 14)   return "One week strong — your garden thanks you";
+    if (n < 30)   return "Two weeks of consistent gardening 🎉";
+    return "You're a dedicated grower — impressive streak";
+  };
 
-  // Stacked emoji — overlapping like admin pill buttons content
-  const stackedIcons = recentEarned.length > 0
-    ? <span style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
-        {recentEarned.map((u, i) => (
-          <span key={i} style={{ position:"relative", marginLeft: i === 0 ? 0 : -6, fontSize:14, zIndex: recentEarned.length - i }}>
-            {u.badge?.icon_key || "🏆"}
-          </span>
-        ))}
-      </span>
-    : <span style={{ fontSize:14, opacity:0.4 }}>🏆</span>;
+  const flameSize = streak >= 7 ? 22 : 18;
 
   return (
-    <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
-      {/* Earned badges pill */}
-      <button onClick={onViewBadges}
-        style={{ padding:"8px 14px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.stone, fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
-        {stackedIcons}
-        <span>{recentEarned.length > 0 ? `${recentEarned.length} earned` : "No badges yet"}</span>
-      </button>
-
-      {/* Next badge pill */}
-      {next && (
-        <button onClick={onViewBadges}
-          style={{ padding:"8px 14px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.stone, fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
-          <span style={{ fontSize:14, filter:"grayscale(1)", opacity:0.5 }}>{next.icon_key || next.icon_key}</span>
-          <span style={{ color:"#888" }}>{next.title || next.title}</span>
-          <span style={{ color:C.stone, fontWeight:400 }}>
-            {next.current_progress !== undefined
-              ? `${next.current_progress} / ${next.threshold_value}`
-              : `${next.progress} / ${next.threshold}`}
-          </span>
-        </button>
+    <button onClick={onViewBadges} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: streak >= 7 ? "linear-gradient(135deg, #fff8f0 0%, #fff3e0 100%)" : C.offwhite, border: `1px solid ${streak >= 7 ? "#ffe0b2" : C.border}`, borderRadius: 12, padding: "11px 14px", marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: flameSize, lineHeight: 1 }}>🔥</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: streak >= 7 ? "#e65100" : "#1a1a1a", lineHeight: 1.2 }}>
+            {streak} day{streak !== 1 ? "s" : ""} in a row
+          </div>
+          <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{getMessage(streak)}</div>
+        </div>
+      </div>
+      {longestStreak > streak && (
+        <div style={{ fontSize: 10, color: C.stone, textAlign: "right", flexShrink: 0 }}>
+          Best: {longestStreak}d
+        </div>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -3830,8 +3819,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── TIME AWAY BANNER ─────────────────────────────────────────────────── */}
       <TimeAwayTodayBanner blockedPeriods={blockedPeriods} onTabChange={onTabChange} />
 
-      {/* ── BADGES PILL ────────────────────────────────────────────────────── */}
-      <TodayBadgeCard onViewBadges={() => onTabChange("badges")} />
+      {/* ── STREAK CARD ────────────────────────────────────────────────────── */}
+      <StreakCard
+        streak={data.current_streak_days}
+        longestStreak={data.longest_streak_days}
+        onViewBadges={() => onTabChange("badges")}
+      />
 
       {/* ── PLANT CHECK HERO — position 2, above Today's focus ───────── */}
       <PlantCheckHeroCard
