@@ -11,7 +11,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import posthog from "posthog-js";
 import { Analytics } from "@vercel/analytics/react";
 import { useRouter } from "next/router";
 import Script from "next/script";
@@ -22,136 +21,17 @@ import { CSS } from "@dnd-kit/utilities";
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
 // Has no effect in the browser PWA.
-// Note: window.Capacitor?.isNative is undefined in Capacitor 8 — use getPlatform() instead.
-const _capacitorPlatform = typeof window !== "undefined" ? window.Capacitor?.getPlatform?.() : null;
-const _isNativeApp = _capacitorPlatform === "ios" || _capacitorPlatform === "android";
-
 let PushNotifications = null;
-let _pushNotificationsReady = null; // Promise that resolves when plugin is loaded
-if (_isNativeApp) {
-  _pushNotificationsReady = import("@capacitor/push-notifications").then(m => {
-    PushNotifications = m.PushNotifications;
-    return m.PushNotifications;
-  });
-}
-
-// ── App Badge (native only) ───────────────────────────────────────────────────
-// Sets the red badge count on the app icon when there are outstanding tasks.
-// Uses @capawesome/capacitor-badge — compatible with Capacitor 8.
-let Badge = null;
-if (_isNativeApp) {
-  import("@capawesome/capacitor-badge").then(m => {
-    Badge = m.Badge;
-    // Request permission silently — if denied, badges simply won't appear
-    Badge.requestPermissions().catch(() => {});
-  }).catch(() => {});
-}
-
-// ── Badge helpers ─────────────────────────────────────────────────────────────
-// updateAppBadge: sets native app icon badge count (iOS/Android)
-async function updateAppBadge(count) {
-  if (!_isNativeApp || !Badge) return;
-  try {
-    if (count > 0) {
-      await Badge.set({ count });
-    } else {
-      await Badge.clear();
-    }
-  } catch (e) {
-    // Badge permission denied or plugin unavailable — fail silently
-  }
-}
-
-// updateFaviconBadge: draws a red circle with count over the favicon (web only)
-let _originalFaviconHref = null;
-function updateFaviconBadge(count) {
-  if (typeof document === "undefined" || _isNativeApp) return;
-  try {
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
-    }
-    // Store original favicon on first call
-    if (!_originalFaviconHref) _originalFaviconHref = link.href || "/favicon.ico";
-
-    if (count <= 0) {
-      link.href = _originalFaviconHref;
-      return;
-    }
-
-    const img = new Image();
-    img.src = _originalFaviconHref;
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 32;
-      canvas.height = 32;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, 32, 32);
-      // Red circle
-      const r = 9;
-      ctx.beginPath();
-      ctx.arc(26, 6, r, 0, 2 * Math.PI);
-      ctx.fillStyle = "#e74c3c";
-      ctx.fill();
-      // Count text
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 11px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(count > 9 ? "9+" : String(count), 26, 6);
-      link.href = canvas.toDataURL("image/png");
-    };
-    img.onerror = () => {}; // fail silently if favicon can't load
-  } catch (e) {}
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+  import("@capacitor/push-notifications").then(m => { PushNotifications = m.PushNotifications; });
 }
 
 // ── RevenueCat (native only) ──────────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell.
 // On web, Stripe handles payments as before.
 let Purchases = null;
-let _rcConfigured = false;
-
-async function _configureRevenueCat(userId) {
-  if (!Purchases || _rcConfigured || !userId) return;
-  try {
-    await Purchases.configure({
-      apiKey: _capacitorPlatform === "android" ? process.env.NEXT_PUBLIC_REVENUECAT_API_KEY_ANDROID : process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
-      appUserID: userId,
-    });
-    _rcConfigured = true;
-    console.log("[RevenueCat] Configured for user", userId);
-  } catch (e) {
-    console.error("[RevenueCat] Configure failed:", e.message || e);
-  }
-}
-
-// Waits up to 5s for RevenueCat to be configured before proceeding
-function _waitForRC(timeout = 5000) {
-  if (_rcConfigured) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    const interval = setInterval(() => {
-      if (_rcConfigured) {
-        clearInterval(interval);
-        resolve();
-      } else if (Date.now() - start > timeout) {
-        clearInterval(interval);
-        reject(new Error("RevenueCat not ready — please try again"));
-      }
-    }, 50);
-  });
-}
-
-if (_isNativeApp) {
-  import("@revenuecat/purchases-capacitor").then(m => {
-    Purchases = m.Purchases;
-    // Configure immediately if session already resolved before import finished
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (s?.user?.id) _configureRevenueCat(s.user.id);
-    });
-  });
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
+  import("@revenuecat/purchases-capacitor").then(m => { Purchases = m.Purchases; });
 }
 
 // ── In-App Review (native only) ───────────────────────────────────────────────
@@ -160,7 +40,7 @@ if (_isNativeApp) {
 // Uses a runtime require() so Turbopack/webpack never tries to resolve it at
 // build time — the package only exists in the native Capacitor environment.
 let InAppReview = null;
-if (_isNativeApp) {
+if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   try { InAppReview = require("@capacitor-community/in-app-review").InAppReview; } catch(e) {}
 }
 
@@ -268,14 +148,6 @@ const supabase = createClient(
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-const AREA_DEFAULTS = {
-  raised_bed:  { width_m: "1.2", length_m: "2.4" },
-  open_ground: { width_m: "2",   length_m: "8"   },
-  greenhouse:  { width_m: "2.4", length_m: "3"   },
-  polytunnel:  { width_m: "3",   length_m: "6"   },
-  container:   { width_m: "0.4", length_m: "0.4" },
-};
-
 // ── Pro feature flag ──────────────────────────────────────────────────────────
 // Set NEXT_PUBLIC_PRO_ENABLED=true in Vercel env vars to show Pro UI to users.
 // When false (default), all paywall triggers and upgrade prompts are hidden.
@@ -292,14 +164,6 @@ const MARK_EMAIL = "mark@wynyardadvisory.co.uk";
 // useMeasurementUnit() reads the preference from localStorage (set on profile load).
 function useMeasurementUnit() {
   try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
-}
-function useTemperatureUnit() {
-  try { return localStorage.getItem("vercro_temperature_unit") || "celsius"; } catch(e) { return "celsius"; }
-}
-function formatTemperature(tempC, unit) {
-  if (tempC == null || isNaN(tempC)) return null;
-  if (unit === "fahrenheit") return `${Math.round(tempC * 9/5 + 32)}°F`;
-  return `${Math.round(tempC)}°C`;
 }
 function formatDimension(metres, unit) {
   if (metres == null || isNaN(metres)) return null;
@@ -399,7 +263,7 @@ function useProStatus() {
     try { return localStorage.getItem("vercro_is_pro") === "true"; } catch(e) { return false; }
   });
   const [plan,        setPlan]        = useState("free");
-  const [loading,     setLoading]     = useState(true); // Start true — wait for API before rendering Pro/free state
+  const [loading,     setLoading]     = useState(false);
   const [isMark,      setIsMark]      = useState(false);
   const [isTestUser,  setIsTestUser]  = useState(false);
 
@@ -432,7 +296,7 @@ function useProStatus() {
   // isPro for diagnosis: Mark OR actual plan is pro (ignores PRO_ENABLED flag)
   const isPreviewUser = (() => { try { return localStorage.getItem("vercro_pro_preview") === "true"; } catch(e) { return false; } })();
   const proFlagActive = PRO_ENABLED || isPreviewUser;
-  const effectiveIsPro = isMark || isPro; // Paying users always get Pro regardless of PRO_ENABLED flag
+  const effectiveIsPro = isMark || (proFlagActive && isPro);
   const isProForDiagnosis = isMark || isPro;
   return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark, isTestUser };
 }
@@ -446,17 +310,9 @@ function usePlantCheckEnabled() {
   useEffect(() => {
     if (PRO_ENABLED) { setEnabled(true); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
       const email  = session?.user?.email || "";
       const userId = session?.user?.id    || "";
-      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) {
-        setEnabled(true);
-        return;
-      }
-      // Also enable for paying Pro users regardless of PRO_ENABLED flag
-      apiFetch("/subscription/status").then(d => {
-        if (d?.is_pro === true) setEnabled(true);
-      }).catch(() => {});
+      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) setEnabled(true);
     }).catch(() => {});
   }, []);
 
@@ -592,7 +448,7 @@ function AuthScreen({ onAuth }) {
   // When Supabase redirects to com.vercro.app:// after OAuth, Capacitor fires
   // appUrlOpen. We pick up the session here and complete sign-in.
   useEffect(() => {
-    if (typeof window === "undefined" || !_isNativeApp) return;
+    if (typeof window === "undefined" || !window.Capacitor?.isNative) return;
     let listener;
     import("@capacitor/app").then(({ App }) => {
       App.addListener("appUrlOpen", async ({ url }) => {
@@ -670,38 +526,13 @@ function AuthScreen({ onAuth }) {
   const handleGoogle = async () => {
     setLoading(true); setError(null);
     try {
-      const _gPlatform = window.Capacitor?.getPlatform?.();
-      if (_gPlatform === "ios" || _gPlatform === "android") {
-        // ── Native Google Sign In via Capgo SocialLogin plugin ────────────────
-        // Uses ASWebAuthenticationSession on iOS — stays fully in-app.
-        // Returns serverAuthCode which Supabase exchanges for a session.
-        if (!SocialLogin) {
-          try { const m = await import("@capgo/capacitor-social-login"); SocialLogin = m.SocialLogin; } catch(e) {}
-        }
-        if (!SocialLogin) throw new Error("SocialLogin plugin not ready — please try again");
-        await SocialLogin.initialize({
-          google: {
-            iOSClientId: "977326517017-uojkpgrkhji9bkhtg5735akv37aojpbc.apps.googleusercontent.com",
-            iOSServerClientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com",
-            webClientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com",
-            mode: "online",
-          },
-        });
-        const result = await SocialLogin.login({
+      if (window.Capacitor?.isNative) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { scopes: ["email", "profile"] },
-        });
-        const idToken = result?.result?.idToken
-          || result?.result?.authentication?.idToken
-          || result?.result?.accessToken?.token;
-        if (!idToken) throw new Error("Google sign-in failed — no token returned. Result: " + JSON.stringify(result?.result));
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: idToken,
-          options: { clientId: "977326517017-90p42rc9tc5hskorkqillfbpjj8ofhlu.apps.googleusercontent.com" },
+          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true },
         });
         if (error) throw error;
-        if (data?.session) onAuth(data.session);
+        if (data?.url && window.vercroStartOAuth) window.vercroStartOAuth(data.url);
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -716,7 +547,7 @@ function AuthScreen({ onAuth }) {
     setLoading(true); setError(null);
     try {
       const _applePlatform = window.Capacitor?.getPlatform?.();
-      if (_applePlatform === "ios" || _applePlatform === "android" || _isNativeApp) {
+      if (_applePlatform === "ios" || _applePlatform === "android" || window.Capacitor?.isNative) {
         // ── Native Apple Sign In via Capgo plugin ─────────────────────────────
         // Uses ASAuthorizationAppleIDProvider — native iOS sheet, no browser.
         // Returns identityToken + nonce which Supabase exchanges for a session.
@@ -724,7 +555,7 @@ function AuthScreen({ onAuth }) {
           try { const m = await import("@capgo/capacitor-social-login"); SocialLogin = m.SocialLogin; } catch(e) {}
         }
         if (!SocialLogin) throw new Error("SocialLogin plugin not ready — please try again");
-        await SocialLogin.initialize({ apple: _capacitorPlatform === "android" ? { clientId: "com.vercro.app.signin", redirectUrl: "https://rgusblqxxjjcbuhgqwzl.supabase.co/auth/v1/callback" } : {} });
+        await SocialLogin.initialize({ apple: {} });
         const result = await SocialLogin.login({
           provider: "apple",
           options: { scopes: ["email", "name"] },
@@ -1663,7 +1494,6 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       setSavedEntry({ ...entry, photo_url: photoPreview || null });
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id, isFinal);
-      posthog.capture("harvest_logged", { crop_name: item.crop || null, has_quantity: !!quantity, is_final: !!isFinal });
       maybePromptForReview(); // Trigger: 1st harvest logged
     } catch (e) {
       console.error(e);
@@ -3542,92 +3372,14 @@ function GardenLog({ onLogActivity }) {
   );
 }
 
-// §7A — Skeleton shimmer shown only when API takes >300ms
-function SkeletonDashboard() {
-  const block = (w, h, mb = 8) => (
-    <div className="skeleton-block" style={{ width: w, height: h, marginBottom: mb }} />
-  );
-  return (
-    <div style={{ animation: "syncPillFade 200ms ease" }}>
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#9aab9c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today’s focus</div>
-        <div style={{ background: "#fff", border: "2px solid #dde8de", borderRadius: 14, padding: "16px 18px" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            {block("40px", "40px", 0)}
-            <div style={{ flex: 1 }}>
-              {block("60%", "14px", 8)}
-              {block("85%", "12px", 8)}
-              {block("75%", "12px", 16)}
-              {block("80px", "32px", 0)}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#9aab9c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Also today</div>
-        {[0, 1].map(i => (
-          <div key={i} style={{ background: "#fff", border: "1px solid #e8ede9", borderRadius: 12, padding: "12px 14px", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-              {block("24px", "24px", 0)}
-              {block("45%", "14px", 0)}
-            </div>
-            {block("90%", "12px", 4)}
-            {block("70%", "12px", 0)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
-  const [showSkeleton, setShowSkeleton] = useState(false); // §7A: only shown if API >300ms
-  const skeletonTimerRef = useRef(null);
   const [error,        setError]       = useState(null);
   const [completed,      setCompleted]      = useState(new Set());
-  const completedRef = useRef(new Set()); // mirrors completed — survives re-renders, used as filter of last resort
-  const cancelledCompletionsRef = useRef(new Set()); // tasks undone before delayed API fired
-  const undoInsertIdRef = useRef(null); // task ID being animated back in from left (§6)
   const [undoQueue,      setUndoQueue]      = useState({});
   const [recentlyDone,        setRecentlyDone]        = useState([]);
   const [undone,              setUndone]              = useState([]);
-  // ── Phase 1: optimistic completion ───────────────────────────────────────
-  const [exitingTask,  setExitingTask]  = useState(null);   // task rendered as overlay while sliding out
-  const [focusPressing,  setFocusPressing]  = useState(false); // scale(0.98) press on focus card
-  const [focusAnimating, setFocusAnimating] = useState(false); // ✓ flash 80–120ms before slide
-  const [syncState,    setSyncState]    = useState("loading"); // loading|fresh|saving|stillupdating|issue
-  const [syncCopy,     setSyncCopy]     = useState("Updating…"); // always-visible trust pill copy
-  const lastSyncedAtRef  = useRef(null);    // ms timestamp of last confirmed successful fetch
-  const syncCopyTimerRef = useRef(null);    // interval that ages the "Updated X ago" copy
-  const syncRetryCountRef = useRef(0);      // consecutive fail counter — stop retrying after 3
-  // §7F — Offline mode
-  const [isOffline,    setIsOffline]    = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
-  const lastSyncedDateRef = useRef(null); // "YYYY-MM-DD" of last confirmed fetch — for day boundary check
-  const offlineDataRef    = useRef(null); // snapshot of data at last successful fetch
-  // §4 — Four Laws
-  const sessionQueueRef    = useRef(null);
-  const sessionLockedRef   = useRef(false);
-  const focusItemLockedIdRef = useRef(null); // §4 Law 1: locked task ID — resolved fresh each render
-  // §7D — Pull to refresh
-  const [ptrState,    setPtrState]    = useState("idle"); // idle | pulling | refreshing
-  const [ptrProgress, setPtrProgress] = useState(0);     // 0–1, drives indicator
-  const ptrStartY   = useRef(null);
-  const ptrStartX   = useRef(null);
-  const ptrLocked   = useRef(false);
-  const PTR_THRESHOLD = 72;
-  const [bgQueue,        setBgQueue]       = useState([]);
-  const [urgentInserts,  setUrgentInserts] = useState([]);
-  const [urgentBanner,   setUrgentBanner]  = useState(false);
-  const [newTasksToast,  setNewTasksToast] = useState(null);
-  const [urgentGlowing,  setUrgentGlowing] = useState({});
-  const [undoPill,     setUndoPill]     = useState(null);   // {task,error}|null
-  const [undoPillFading, setUndoPillFading] = useState(false); // true during 500ms fade-out
-  const undoPillTimerRef  = useRef(null);
-  const undoPillFadeTimer = useRef(null);
-  const slowSaveTimerRef = useRef(null);
-  const stillUpdTimerRef = useRef(null);
   const [harvestedIds,        setHarvestedIds]        = useState(new Set());
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
@@ -3637,7 +3389,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
   const plantCheckEnabled = usePlantCheckEnabled();
   const { isMark } = useProStatus();
-  const temperatureUnit = useTemperatureUnit();
 
   const loadAllHarvestsForShare = async () => {
     try {
@@ -3681,163 +3432,34 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // engineRefreshing removed — dashboard now runs engine synchronously server-side
 
   const CACHE_KEY = "vercro_dashboard_v1";
-  const PCQ_KEY      = "vercro_pending_completions_v1"; // §7C pending completions queue
-  const OFFLINE_KEY  = "vercro_offline_snapshot_v1";    // §7F: today's snapshot, survives app kill
-
-  useEffect(() => { completedRef.current = completed; }, [completed]);
-
-  // ── Badge count — updates app icon and favicon when outstanding tasks change ──
-  useEffect(() => {
-    if (!data) return;
-    const todayTasks = data.tasks?.today || [];
-    const count = todayTasks.filter(t => !completedRef.current.has(t.id)).length;
-    updateAppBadge(count);
-    updateFaviconBadge(count);
-  }, [data, completed]);
 
   const load = useCallback(async (isBackground = false) => {
-    // V5: server is source of truth. No stale task cache served to users.
-    // Cache key retained only to clear any stale data from previous versions.
+    // Show cached data instantly if available
     if (!isBackground) {
-      try { localStorage.removeItem(CACHE_KEY); } catch(e) {}
-      // §7B — 10s debounce: skip if synced very recently
-      if (lastSyncedAtRef.current && (Date.now() - lastSyncedAtRef.current) < 10000) {
-        setLoading(false); return;
-      }
-      setSyncState("loading");
-      setSyncCopy("Updating…");
-      // §7A — 300ms skeleton gate: only show shimmer if API is slow
-      clearTimeout(skeletonTimerRef.current);
-      skeletonTimerRef.current = setTimeout(() => setShowSkeleton(true), 300);
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data: cachedData, ts } = JSON.parse(cached);
+          const age = Date.now() - ts;
+          if (age < 5 * 60 * 1000) { // under 5 minutes — show immediately
+            setData(cachedData);
+            setLoading(false);
+          }
+        }
+      } catch(e) {}
     }
 
-    // §7F — Offline guard: if no connection, serve last snapshot or show offline state
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setIsOffline(true);
-      const today = new Date().toISOString().split("T")[0];
-      let snapshot = offlineDataRef.current;
-      let snapshotDate = lastSyncedDateRef.current;
-      if (!snapshot) {
-        try { const s = JSON.parse(localStorage.getItem(OFFLINE_KEY) || "null"); if (s) { snapshot = s.data; snapshotDate = s.date; } } catch(e) {}
-      }
-      if (snapshot && snapshotDate === today) {
-        setData(snapshot); offlineDataRef.current = snapshot; lastSyncedDateRef.current = snapshotDate;
-        setSyncState("offline"); setSyncCopy("Offline — showing last update");
-      } else if (snapshot && snapshotDate !== today) {
-        offlineDataRef.current = null;
-        try { localStorage.removeItem(OFFLINE_KEY); } catch(e) {}
-        setSyncState("offline"); setSyncCopy("New day — reconnect to load today’s tasks");
-      } else {
-        setSyncState("offline"); setSyncCopy("Offline — reconnect to load today’s tasks");
-      }
-      setLoading(false); return;
-    }
-
-    // Always fetch fresh
+    // Always fetch fresh in background
     try {
       const [d, bp] = await Promise.all([
         apiFetch("/dashboard"),
         apiFetch("/blocked-periods").catch(() => []),
       ]);
-      clearTimeout(skeletonTimerRef.current);
-      setShowSkeleton(false);
-      // Normalise harvest_forecast: API returns crop_name, components expect crop
-      if (d?.harvest_forecast) {
-        d.harvest_forecast = d.harvest_forecast.map(h => ({ ...h, crop: h.crop || h.crop_name }));
-      }
       setData(d);
-      setIsOffline(false);
       setBlockedPeriods(bp || []);
-
-      // §4 — session queue lock
-      const incomingToday = d.tasks?.today || [];
-      if (!sessionLockedRef.current) {
-        sessionQueueRef.current   = incomingToday.map(t => t.id);
-        sessionLockedRef.current  = true;
-        focusItemLockedIdRef.current = null; // will lock on first render
-      } else if (isBackground) {
-        const knownIds = new Set(sessionQueueRef.current);
-        const newTasks = incomingToday.filter(t => !knownIds.has(t.id) && !completedRef.current.has(t.id));
-        if (newTasks.length > 0) {
-          const todayStr = new Date().toISOString().split("T")[0];
-          // §5A: urgent = frost_alert or pest_* alert, not every high-urgency task
-          const URGENT_IDS = /^(frost_alert|pest_)/;
-          const urgent    = newTasks.filter(t => t.urgency === "high" && t.due_date === todayStr && (URGENT_IDS.test(t.rule_id || "") || t.record_type === "alert"));
-          const nonUrgent = newTasks.filter(t => !urgent.includes(t));
-          if (urgent.length > 0) {
-            setUrgentInserts(prev => { const ids = new Set(prev.map(t => t.id)); return [...prev, ...urgent.filter(t => !ids.has(t.id))]; });
-            sessionQueueRef.current = [sessionQueueRef.current[0], ...urgent.map(t => t.id), ...sessionQueueRef.current.slice(1)].filter((id, i, a) => a.indexOf(id) === i);
-            setUrgentBanner(true); setTimeout(() => setUrgentBanner(false), 3000);
-            const glows = {}; urgent.forEach(t => { glows[t.id] = true; });
-            setUrgentGlowing(glows); setTimeout(() => setUrgentGlowing({}), 1500);
-          }
-          if (nonUrgent.length > 0) {
-            setBgQueue(prev => {
-              const ids = new Set(prev.map(t => t.id));
-              const fresh = nonUrgent.filter(t => !ids.has(t.id));
-              if (!fresh.length) return prev;
-              const next = [...prev, ...fresh];
-              setNewTasksToast(next.length); setTimeout(() => setNewTasksToast(null), 3000);
-              return next;
-            });
-            sessionQueueRef.current = [...sessionQueueRef.current, ...nonUrgent.map(t => t.id).filter(id => !sessionQueueRef.current.includes(id))];
-          }
-        }
-      }
-
-      // §7C — Retry pending completions silently on every successful fetch
-      const pcq = readPCQ();
-      if (pcq.length > 0) {
-        // §7F — Pre-hide per action: complete=hide, undo=show
-        // Blanket-hiding all PCQ tasks would keep undo actions hidden — wrong.
-        const pcqSorted = [...pcq].sort((a, b) => (a.timestamp || a.completedAt) - (b.timestamp || b.completedAt));
-        pcqSorted.forEach(e => {
-          if (e.action === "undo") {
-            setCompleted(prev => { const s = new Set(prev); s.delete(e.taskId); return s; });
-          } else {
-            setCompleted(prev => new Set([...prev, e.taskId]));
-          }
-        });
-        // Replay every action in timestamp order — server idempotency makes duplicates safe
-        (async () => {
-          for (const e of pcqSorted) {
-            const ep = e.action === "undo" ? `/tasks/${e.taskId}/uncomplete` : `/tasks/${e.taskId}/complete`;
-            try {
-              await apiFetch(ep, { method: "POST" });
-              removeEntryFromPCQ(e.taskId, e.action);
-            } catch {
-              // Still failed — reverse the optimistic UI change and keep in PCQ
-              if (e.action === "undo") {
-                setCompleted(prev => new Set([...prev, e.taskId]));
-              } else {
-                setCompleted(prev => { const s = new Set(prev); s.delete(e.taskId); return s; });
-              }
-            }
-          }
-        })();
-      }
-
-      // Record confirmed sync time and date, save offline snapshot, update trust pill
-      lastSyncedAtRef.current  = Date.now();
-      lastSyncedDateRef.current = new Date().toISOString().split("T")[0];
-      offlineDataRef.current   = d; // in-memory (fast path)
-      try { localStorage.setItem(OFFLINE_KEY, JSON.stringify({ data: d, date: new Date().toISOString().split("T")[0] })); } catch(e) {}
-      syncRetryCountRef.current = 0;
-      setSyncState("fresh");
-      setSyncCopy("Updated just now");
-      // Start ageing interval — updates copy every 60s
-      clearInterval(syncCopyTimerRef.current);
-      syncCopyTimerRef.current = setInterval(() => {
-        const mins = Math.floor((Date.now() - lastSyncedAtRef.current) / 60000);
-        if (mins < 1)        setSyncCopy("Updated just now");
-        else if (mins < 60)  setSyncCopy(`Updated ${mins} min ago`);
-        else                 setSyncCopy("Updated earlier today");
-      }, 60000);
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
     } catch (e) {
-      syncRetryCountRef.current += 1;
       if (!isBackground) setError(e.message);
-      setSyncState("issue");
-      setSyncCopy("Having trouble updating");
     }
     setLoading(false);
   }, []);
@@ -3846,28 +3468,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     load();
     checkPendingUnlocks();
     loadRecentHarvests();
-
-    // §7F — Online/offline detection
-    const handleOnline = () => {
-      setIsOffline(false);
-      setSyncState("loading");
-      setSyncCopy("Syncing saved changes…");
-      load(false); // reconnected — fetch fresh immediately
-    };
-    const handleOffline = () => {
-      setIsOffline(true);
-      setSyncState("offline");
-      setSyncCopy("Offline — showing last update");
-    };
-    window.addEventListener("online",  handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    // Cleanup ageing interval and event listeners on unmount
-    return () => {
-      clearInterval(syncCopyTimerRef.current);
-      window.removeEventListener("online",  handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
   }, [load]);
 
   // No client-side retry needed — dashboard now runs engine synchronously when tasks are empty.
@@ -3880,176 +3480,17 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     } catch(e) {}
   };
 
-  // ── §7C Pending Completions Queue — survives app kill ──────────────────
-  const readPCQ = () => {
-    try {
-      const raw = localStorage.getItem(PCQ_KEY);
-      if (!raw) return [];
-      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-      return JSON.parse(raw).filter(e => (e.timestamp || e.completedAt) > cutoff);
-    } catch { return []; }
-  };
-  const writePCQ = (q) => { try { localStorage.setItem(PCQ_KEY, JSON.stringify(q)); } catch {} };
-  const addToPCQ = (taskId, action = "complete") => {
-    const q = readPCQ().filter(e => !(e.taskId === taskId && e.action === action));
-    q.push({ taskId, action, timestamp: Date.now(), completedAt: Date.now() });
-    writePCQ(q);
-  };
-  const addUndoToPCQ      = (taskId) => addToPCQ(taskId, "undo");
-  const removeFromPCQ     = (taskId) => writePCQ(readPCQ().filter(e => e.taskId !== taskId));
-  // Removes ONE specific entry by taskId+action — used in replay so confirming
-  // a "complete" does not also wipe a subsequent pending "undo" entry
-  const removeEntryFromPCQ = (taskId, action) => writePCQ(readPCQ().filter(e => !(e.taskId === taskId && e.action === action)));
-
-  // §7D — Pull to refresh
-  const ptrRefresh = async () => {
-    setPtrState("refreshing");
-    triggerHaptic();
-    // Rebuild completed from PCQ — preserves any completions made this session
-    const pcq = readPCQ();
-    const restoredCompleted = new Set(pcq.map(e => e.taskId));
-    // Also carry forward anything in completedRef that isn't in PCQ yet (in-flight completions)
-    completedRef.current.forEach(id => restoredCompleted.add(id));
-    setCompleted(restoredCompleted);
-    completedRef.current = restoredCompleted;
-    // Reset session queue so next load re-locks from fresh server data
-    sessionQueueRef.current    = null;
-    sessionLockedRef.current   = false;
-    focusItemLockedIdRef.current = null;
-    setBgQueue([]);
-    setUrgentInserts([]);
-    await load(false);
-    setPtrState("idle");
-    setPtrProgress(0);
-  };
-
-  const ptrOnTouchStart = (e) => {
-    if (ptrState !== "idle") return;
-    ptrStartY.current = e.touches[0].clientY;
-    ptrStartX.current = e.touches[0].clientX;
-    ptrLocked.current = false;
-  };
-  const ptrOnTouchMove = (e) => {
-    if (ptrState !== "idle" || ptrStartY.current === null) return;
-    if (window.scrollY > 2) { ptrLocked.current = true; return; }
-    const dy = e.touches[0].clientY - ptrStartY.current;
-    const dx = Math.abs(e.touches[0].clientX - ptrStartX.current);
-    if (dy < 0 || dx > dy) { ptrLocked.current = true; return; }
-    if (ptrLocked.current) return;
-    setPtrState("pulling");
-    setPtrProgress(Math.min(Math.min(dy, PTR_THRESHOLD * 1.4) / PTR_THRESHOLD, 1));
-  };
-  const ptrOnTouchEnd = () => {
-    if (ptrState !== "pulling") { ptrStartY.current = null; return; }
-    ptrStartY.current = null;
-    if (ptrProgress >= 1) { ptrRefresh(); }
-    else { setPtrState("idle"); setPtrProgress(0); }
-  };
-
-  // Focus card completion — exact same sequence as TaskCard: press → flash → slide
-  const handleFocusPressStart = () => { if (!focusAnimating && !exitingTask) setFocusPressing(true); };
-  const handleFocusPressEnd   = () => setFocusPressing(false);
-  const handleFocusComplete = () => {
-    if (focusAnimating || exitingTask || !focusItem) return;
-    handleFocusPressEnd();
-    setFocusAnimating(true); // ✓ flash: card fades (checkmark visible) for 120ms
-    setTimeout(() => {
-      setFocusAnimating(false);
-      completeTask(focusItem); // parent owns the slide-out — same as TaskCard → onComplete
-    }, 120);
-  };
-
-  const triggerHaptic = () => {
-    try {
-      if (window?.Capacitor?.Plugins?.Haptics) {
-        window.Capacitor.Plugins.Haptics.impact({ style: "LIGHT" });
-      } else if (navigator.vibrate) {
-        navigator.vibrate(30);
-      }
-    } catch(e) {}
-  };
-
   const completeTask = async (task) => {
-    // Guard: ignore tap if an animation is already in progress
-    if (exitingTask) return;
-
-    // STEP 1: Haptic + set exiting task overlay (this keeps the card visible while sliding)
-    triggerHaptic();
-    setExitingTask(task);
-
-    // STEP 2: Immediately promote next task by updating completed Set.
-    // The exiting task overlay stays rendered on top of the new focusItem.
-    setCompleted(prev => {
-      const next = new Set([...prev, task.id]);
-      completedRef.current = next; // keep ref in sync
-      return next;
-    });
+    setCompleted(prev => new Set([...prev, task.id]));
+    setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     setUndone(prev => prev.filter(t => t.id !== task.id));
+    // Increment local week count immediately
     setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
-
-    // STEP 3: After slide animation completes (220ms), remove overlay
-    setTimeout(() => setExitingTask(null), 220);
-
-    // STEP 4: Show undo pill for 5 seconds
-    clearTimeout(undoPillTimerRef.current);
-    clearTimeout(slowSaveTimerRef.current);
-    clearTimeout(stillUpdTimerRef.current);
-    setUndoPill({ task, error: false });
-    undoPillTimerRef.current = setTimeout(() => dismissUndoPill(), 5000);
-
-    // STEP 5: Write to PCQ immediately — survives app kill before API resolves
-    addToPCQ(task.id);
-
-    // §7F — Offline: skip API call, queue completion for when signal returns
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      // PCQ already written — completion will retry on next open
-      // Show offline-specific undo pill copy per spec
-      clearTimeout(undoPillTimerRef.current);
-      setUndoPill({ task, error: false, offline: true });
-      undoPillTimerRef.current = setTimeout(() => dismissUndoPill(), 5000);
-      return;
-    }
-
-    // STEP 6: Fire API after slide animation completes (220ms) — spec §2
-    setTimeout(async () => {
-    // Undo-wins guard: if user undid this task during the 220ms window, abort
-    if (cancelledCompletionsRef.current.has(task.id)) {
-      cancelledCompletionsRef.current.delete(task.id);
-      removeFromPCQ(task.id); // clean up PCQ — completion was cancelled
-      return;
-    }
-    slowSaveTimerRef.current = setTimeout(() => setSyncState("saving"), 400);
-    stillUpdTimerRef.current = setTimeout(() => setSyncState("stillupdating"), 3000);
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
-      clearTimeout(slowSaveTimerRef.current);
-      clearTimeout(stillUpdTimerRef.current);
-      // Second guard: user may have undone while API was in flight
-      if (cancelledCompletionsRef.current.has(task.id)) {
-        cancelledCompletionsRef.current.delete(task.id);
-        // Server has the task complete — fire uncomplete to honour the undo
-        removeFromPCQ(task.id);
-        apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" }).catch(() => {
-          // If uncomplete fails, add undo to PCQ so it retries on next open
-          addUndoToPCQ(task.id);
-        });
-        return;
-      }
-      // Confirmed — remove from PCQ
-      removeFromPCQ(task.id);
-      // PostHog: task completed
-      posthog.capture("task_completed", { task_type: task.task_type || task.action || null });
-      // Restore to fresh — update ageing copy from last confirmed sync time
-      setSyncState("fresh");
-      if (lastSyncedAtRef.current) {
-        const mins = Math.floor((Date.now() - lastSyncedAtRef.current) / 60000);
-        setSyncCopy(mins < 1 ? "Updated just now" : mins < 60 ? `Updated ${mins} min ago` : "Updated earlier today");
-      } else {
-        setSyncCopy("Updated just now");
-      }
-
-      // Share nudge after 5th completion
+      // Nudge to share after 5th task — high-emotion moment
+      const newCount = (data?.tasks_completed_this_week || 0) + 1;
       const totalKey = "vercro_total_completed";
       const total = parseInt(localStorage.getItem(totalKey) || "0") + 1;
       localStorage.setItem(totalKey, String(total));
@@ -4057,9 +3498,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         setTimeout(() => setShowShareNudge(true), 800);
         localStorage.setItem("vercro_share_nudge_shown", "1");
       }
-      if (total === 2) maybePromptForReview();
+      if (total === 2) maybePromptForReview(); // Trigger: 2nd task completed
 
-      // Session complete hook
+      // Session complete hook — show "what's next tomorrow" modal
+      // Triggers when: user completes 2+ tasks in session OR no today tasks remain
+      // modalShownRef guards against double-trigger (undo → re-complete, rapid taps)
       sessionCompletedCountRef.current += 1;
       const remainingAfterThis = grouped.today.filter(t => !completed.has(t.id) && t.id !== task.id).length;
       const sessionThreshold = sessionCompletedCountRef.current >= 2;
@@ -4067,107 +3510,80 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       if ((allTodayDone || sessionThreshold) && !showSessionComplete && !sessionModalShownRef.current) {
         sessionModalShownRef.current = true;
-        const _twoDaysOut = new Date(); _twoDaysOut.setDate(_twoDaysOut.getDate() + 2);
-        const _twoDaysOutStr = _twoDaysOut.toISOString().split("T")[0];
+
+        // Find best "tomorrow" task — exclude low-value checks and vague perennial prompts
         const upcomingPool = [...(grouped.this_week || []), ...(grouped.coming_up || [])]
           .filter(t => {
             if (completed.has(t.id) || t.id === task.id) return false;
+            // Exclude weak task types that would undermine the modal
             if (t.urgency === "low" && t.task_type === "check" && !t.crop?.name) return false;
             if (["perennial_flowering_upcoming", "perennial_harvest_upcoming", "null_crop_fallback"].includes(t.rule_id)) return false;
-            // Only show tasks due within 2 days — prevents far-future tasks appearing as "coming up next"
-            if (!t.due_date || t.due_date > _twoDaysOutStr) return false;
             return true;
           })
           .sort((a, b) => {
+            // Prefer higher urgency and sooner due dates
             const urgencyRank = { high: 3, medium: 2, low: 1 };
             const uDiff = (urgencyRank[b.urgency] || 0) - (urgencyRank[a.urgency] || 0);
             if (uDiff !== 0) return uDiff;
             return (a.due_date || "").localeCompare(b.due_date || "");
           });
+        const nextTask = upcomingPool[0] || null;
+
         setTimeout(() => {
-          setSessionCompleteData({ nextTask: upcomingPool[0] || null, completedCount: sessionCompletedCountRef.current });
+          setSessionCompleteData({
+            nextTask,
+            completedCount: sessionCompletedCountRef.current,
+          });
           setShowSessionComplete(true);
         }, 600);
       }
     } catch {
-      // Rollback on failure — remove from PCQ (task restored, no retry needed)
-      removeFromPCQ(task.id);
-      clearTimeout(slowSaveTimerRef.current);
-      clearTimeout(stillUpdTimerRef.current);
-      setSyncState("issue");
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
+      setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
       setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
-      clearTimeout(undoPillTimerRef.current);
-      setUndoPill({ task, error: true });
-      undoPillTimerRef.current = setTimeout(() => { dismissUndoPill(); setSyncState("fresh"); }, 6000);
+      return;
     }
-    }, 220); // end setTimeout — API fires after animation
 
-    // Legacy undo queue — kept to avoid breaking other references
+    // Undo window — 10 seconds
     const timeout = setTimeout(() => {
       setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
-    }, 5000);
+    }, 10000);
     setUndoQueue(prev => ({ ...prev, [task.id]: timeout }));
   };
 
-  const dismissUndoPill = () => {
-    clearTimeout(undoPillTimerRef.current);
-    clearTimeout(undoPillFadeTimer.current);
-    setUndoPillFading(true);
-    undoPillFadeTimer.current = setTimeout(() => { setUndoPill(null); setUndoPillFading(false); }, 500);
-  };
-
-  const undoComplete = async (task, isRetry = false) => {
-    // Register cancellation immediately — before clearing timers
-    // The 220ms setTimeout checks this ref before firing the complete API
-    cancelledCompletionsRef.current.add(task.id);
-    // Clear timers — shared by both paths
-    clearTimeout(undoPillTimerRef.current);
-    clearTimeout(undoPillFadeTimer.current);
-    clearTimeout(slowSaveTimerRef.current);
-    clearTimeout(stillUpdTimerRef.current);
+  const undoComplete = async (task) => {
     clearTimeout(undoQueue[task.id]);
     setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
-    setUndoPill(null);
-    setUndoPillFading(false);
-    setSyncState("fresh");
-    // Optimistic UI restore — same for online and offline
-    setCompleted(prev => { const s = new Set(prev); s.delete(task.id); completedRef.current = s; return s; });
+
+    // Remove from completed — this makes it active again
+    setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
+    setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
     setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
+    // Add to undone so it appears in active list even if not in data.tasks
     setUndone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
-    // §6: insert at position 2 in session queue + mark for slide-from-left animation
-    if (sessionQueueRef.current && sessionLockedRef.current) {
-      const q = sessionQueueRef.current.filter(id => id !== task.id);
-      sessionQueueRef.current = [q[0], task.id, ...q.slice(1)].filter(Boolean);
-    }
-    undoInsertIdRef.current = task.id;
-    setTimeout(() => { undoInsertIdRef.current = null; }, 300);
-    // §7F — offline: queue the undo and return — do not attempt API
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      addUndoToPCQ(task.id);
-      return;
-    }
-    // Online: clear any pending complete entry and fire API
-    removeFromPCQ(task.id);
+
     try {
       await apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" });
     } catch {
-      if (!isRetry) {
-        setCompleted(prev => new Set([...prev, task.id]));
-        setUndone(prev => prev.filter(t => t.id !== task.id));
-        setUndoPill({ task, undoError: true });
-        undoPillTimerRef.current = setTimeout(() => dismissUndoPill(), 4000);
-      } else {
-        setCompleted(prev => new Set([...prev, task.id]));
-        setUndone(prev => prev.filter(t => t.id !== task.id));
-        dismissUndoPill();
-      }
+      // Revert — mark as completed again
+      setCompleted(prev => new Set([...prev, task.id]));
+      setUndone(prev => prev.filter(t => t.id !== task.id));
+      setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     }
   };
 
   if (error && !data) return <ErrorMsg msg={error} />;
-  // §7A — return null (<300ms) or skeleton (>300ms); chrome visible via App wrapper
-  if (loading && !data) return showSkeleton ? <SkeletonDashboard /> : null;
+  if (loading && !data) return (
+    <div style={{ padding: "60px 24px 80px", textAlign: "center" }}>
+      <div style={{ fontSize: 44, marginBottom: 16 }}>🌱</div>
+      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+        Looking at your garden
+      </div>
+      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
+        Checking what needs doing today…
+      </div>
+    </div>
+  );
   if (!data) return null;
 
   const today   = todayISO();
@@ -4220,7 +3636,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         method: "POST",
         body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity }),
       });
-      posthog.capture("observation_logged", { observation_type: type });
       load(); // refresh dashboard after observation
     } catch(e) { console.error("[Observe]", e); }
   };
@@ -4228,7 +3643,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // ── Derived data for new dashboard layout ────────────────────────────────────
 
   // Today's focus — single most important item
-  const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id) && !completedRef.current.has(t.id));
+  const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id));
   // Deduplicate tasks with identical action text — handles users with multiple instances
   // of the same crop (e.g. 2 x Lettuce generating 2 x feed tasks)
   const dedupeByAction = (tasks) => {
@@ -4240,50 +3655,19 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       return true;
     });
   };
-  // §4 Law 2: session-ordered todayTasks
-  // Filter uses both completed state AND completedRef — completedRef is the session-level suppression guarantee
-  const rawTodayActive = grouped.today.filter(t => !completed.has(t.id) && !completedRef.current.has(t.id));
-  const todayTasks = dedupeByAction((() => {
-    if (!sessionLockedRef.current || !sessionQueueRef.current) return rawTodayActive;
-    const byId = Object.fromEntries(rawTodayActive.map(t => [t.id, t]));
-    const ordered = sessionQueueRef.current.map(id => byId[id]).filter(Boolean);
-    const extras = rawTodayActive.filter(t => !new Set(sessionQueueRef.current).has(t.id));
-    return [...ordered, ...extras];
-  })());
-  const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id) && !completedRef.current.has(t.id)));
-  const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id) && !completedRef.current.has(t.id)));
+  const todayTasks     = dedupeByAction(grouped.today.filter(t => !completed.has(t.id)));
+  const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id)));
+  const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
 
-  // §4 Law 1: focusItem locked — position 1 is sacred, never replaced mid-session
-  // Lock stores the task ID only. Fresh task object resolved from current task map
-  // each render so copy/data stays up to date after background sync.
+  // Hero focus: critical alert > high task > medium task > first check
   const focusItem = (() => {
-    // Build a lookup map from all active today tasks
-    const todayById = Object.fromEntries(rawTodayActive.map(t => [t.id, t]));
-
-    if (focusItemLockedIdRef.current) {
-      const lockedTask = todayById[focusItemLockedIdRef.current];
-      if (lockedTask && !completed.has(lockedTask.id)) {
-        // Resolve fresh object — same ID, latest data
-        return { ...lockedTask, _source: "task" };
-      }
-      // Task completed or no longer in list — release lock
-      focusItemLockedIdRef.current = null;
-    }
-
-    // Derive next focus: pre-lock, alerts may claim pos 1; post-lock, queue order only
-    const derived = !sessionLockedRef.current
-      ? (() => {
-          const crit = alerts.find(a => a.urgency === "high" || a.urgency === "critical");
-          if (crit) return { ...crit, _source: "alert" };
-          return todayTasks[0] ? { ...todayTasks[0], _source: "task" } : null;
-        })()
-      : todayTasks[0] ? { ...todayTasks[0], _source: "task" } : null;
-
-    // Lock the ID (not the object) once session is established
-    if (derived && sessionLockedRef.current && derived._source === "task") {
-      focusItemLockedIdRef.current = derived.id;
-    }
-    return derived;
+    const crit = alerts.find(a => a.urgency === "high" || a.urgency === "critical");
+    if (crit) return { ...crit, _source: "alert" };
+    const highTask = todayTasks.find(t => t.urgency === "high");
+    if (highTask) return { ...highTask, _source: "task" };
+    const medTask = todayTasks[0];
+    if (medTask) return { ...medTask, _source: "task" };
+    return null;
   })();
 
   // Remaining today tasks (exclude focus item)
@@ -4357,18 +3741,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   };
 
   return (
-    <div
-      onTouchStart={ptrOnTouchStart}
-      onTouchMove={ptrOnTouchMove}
-      onTouchEnd={ptrOnTouchEnd}
-    >
-
-      {/* ── §7D Pull-to-refresh indicator ── */}
-      {(ptrState === "pulling" || ptrState === "refreshing") && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: ptrState === "refreshing" ? 44 : Math.round(ptrProgress * 44), overflow: "hidden", transition: ptrState === "refreshing" ? "none" : "height 0.05s linear", marginBottom: 6 }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.sage}`, borderTopColor: C.forest, opacity: ptrState === "refreshing" ? 1 : ptrProgress, animation: ptrState === "refreshing" ? "ptrSpin 0.7s linear infinite" : "none", transform: ptrState === "pulling" ? `rotate(${Math.round(ptrProgress * 270)}deg)` : "none" }} />
-        </div>
-      )}
+    <div>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
@@ -4381,7 +3754,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {data.weather ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, opacity: 0.85 }}>
                 {data.weather.icon_code && <img src={`https://openweathermap.org/img/wn/${data.weather.icon_code}.png`} alt="" style={{ width: 24, height: 24 }} />}
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{formatTemperature(data.weather.temp_c, temperatureUnit)}</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{data.weather.temp_c}°C</span>
                 <span style={{ fontSize: 12, opacity: 0.8, textTransform: "capitalize" }}>{data.weather.condition}</span>
                 {data.frost_risk !== "low" && (
                   <span style={{ fontSize: 11, background: data.frost_risk === "high" ? "#e74c3c" : "#f39c12", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>
@@ -4455,56 +3828,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       />
 
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20, position: "relative" }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today&apos;s focus</div>
 
-        {/* Exiting task overlay — rendered on top while sliding out, behind it the next task is already live */}
-        {exitingTask && (
-          <div style={{
-            position: "absolute", left: 0, right: 0, zIndex: 10,
-            margin: "0 20px",
-            background: "#e8f2ec",
-            border: `2px solid ${exitingTask.urgency === "high" ? C.red : exitingTask._source === "alert" ? "#f39c12" : C.forest}`,
-            borderRadius: 14, padding: "16px 18px",
-            transform: "translateX(-110%)", opacity: 0,
-            animation: "taskSlideOut 220ms cubic-bezier(0.2,0.8,0.2,1) forwards",
-            pointerEvents: "none",
-          }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>✅</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
-                  {exitingTask.crop?.name || "Garden task"}
-                </div>
-                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{exitingTask.action}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {focusItem ? (
-          <div
-            onMouseDown={handleFocusPressStart} onMouseUp={handleFocusPressEnd} onMouseLeave={handleFocusPressEnd}
-            onTouchStart={handleFocusPressStart} onTouchEnd={handleFocusPressEnd}
-            style={{
-              background: C.cardBg,
-              borderRadius: 14, padding: "16px 18px",
-              // Press scale — instant physical feedback
-              transform: focusPressing ? "scale(0.98)" : "scale(1)",
-              transition: focusPressing
-                ? "transform 0.05s ease"
-                : focusAnimating
-                  ? "border-color 0ms, transform 0.2s cubic-bezier(0.2,0.8,0.2,1)"
-                  : "transform 0.2s cubic-bezier(0.2,0.8,0.2,1), border-color 1.5s ease",
-              // Flash: border snaps to confirmed green — card stays fully visible
-              // The ✓ on the button also flips to confirmed state during this window
-              border: focusAnimating
-                ? `2px solid ${C.forest}`
-                : `2px solid ${urgentGlowing[focusItem.id] ? "#D9A441" : focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`,
-              animation: undoInsertIdRef.current === focusItem.id
-                ? "taskSlideFromLeft 220ms cubic-bezier(0.2,0.8,0.2,1) forwards"
-                : exitingTask ? "taskSlideIn 220ms cubic-bezier(0.2,0.8,0.2,1) forwards" : "none",
-            }}>
+          <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
               <div style={{ flex: 1 }}>
@@ -4513,20 +3841,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 </div>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onMouseDown={handleFocusPressStart} onMouseUp={handleFocusPressEnd}
-                    onTouchStart={handleFocusPressStart} onTouchEnd={handleFocusPressEnd}
-                    onClick={handleFocusComplete}
-                    style={{
-                      flex: 1, border: "none", borderRadius: 10, padding: "10px",
-                      fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif",
-                      // Confirmed flash: button brightens to signal completion before slide
-                      background: focusAnimating ? "#4CAF50" : C.forest,
-                      color: "#fff",
-                      transform: focusAnimating ? "scale(1.02)" : "scale(1)",
-                      transition: "background 0ms, transform 0ms",
-                    }}>
-                    {focusAnimating ? "✓ Done!" : "✓ Mark done"}
+                  <button onClick={() => completeTask(focusItem)}
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                    ✓ Mark done
                   </button>
                   <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
@@ -4543,65 +3860,17 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             </div>
           </div>
         ) : (
-          // §8 — Empty state: reward, not dead end
-          <div style={{ animation: "syncPillFade 300ms ease" }}>
-            <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "18px 18px 14px" }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>🌱</div>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest, marginBottom: 6, lineHeight: 1.3 }}>
-                You&apos;re all caught up — time to enjoy your garden
-              </div>
-              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.55, marginBottom: 10 }}>
-                Nothing urgent needs doing right now. Take a look around, enjoy what&apos;s growing, or explore a quick tip while you&apos;re here.
-              </div>
-              {doneToday > 0 && (
-                <div style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginBottom: 4 }}>
-                  ✓ {doneToday} task{doneToday !== 1 ? "s" : ""} done today
-                </div>
-              )}
+          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 28 }}>🌿</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
               <div style={{ fontSize: 12, color: C.stone }}>
-                {(thisWeekTasks.length + comingUpTasks.length) > 0
-                  ? `Next up: ${thisWeekTasks.length + comingUpTasks.length} gentle check${(thisWeekTasks.length + comingUpTasks.length) !== 1 ? "s" : ""} later this week`
-                  : "Nothing scheduled yet this week — your garden is in good shape."}
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-              {/* Garden tip — always promoted when caught up, scrolls to TipsSection below */}
-              <div
-                onClick={() => document.getElementById("tips-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                style={{ background: C.forest, borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <span style={{ fontSize: 24 }}>💡</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>Garden tip of the day</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>See what&apos;s worth knowing for your crops this week ↓</div>
-                </div>
-              </div>
-              {/* Invite a friend */}
-              <div onClick={() => onTabChange("profile", { openReferral: true })}
-                style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <span style={{ fontSize: 22 }}>👋</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Invite a gardening friend</div>
-                  <div style={{ fontSize: 12, color: C.stone }}>It&apos;s free for them too</div>
-                </div>
+                {thisWeekTasks.length > 0 ? `${thisWeekTasks.length} thing${thisWeekTasks.length !== 1 ? "s" : ""} coming up this week` : comingUpTasks.length > 0 ? `${comingUpTasks.length} task${comingUpTasks.length !== 1 ? "s" : ""} planned ahead` : "Nothing urgent — enjoy your garden"}
               </div>
             </div>
           </div>
         )}
 
-        {/* §4 bgQueue — non-urgent new arrivals appended after session tasks */}
-        {bgQueue.filter(t => !completed.has(t.id)).length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            {bgQueue.filter(t => !completed.has(t.id)).map(t => (
-              <div key={t.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: C.stone, fontWeight: 600 }}>{t.crop?.name || "Garden task"}</div>
-                  <div style={{ fontSize: 13, color: "#1a1a1a", marginTop: 2 }}>{t.action}</div>
-                </div>
-                <button onClick={() => completeTask(t)} style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>✓</button>
-              </div>
-            ))}
-          </div>
-        )}
         {/* Also today — grouped by crop/succession group, max 3 groups */}
         {remainingToday.length > 0 && (() => {
           const alsoGrouped = {};
@@ -4738,59 +4007,23 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           );
         })()}
 
-        {/* ── Sync trust pill — always visible, 4 states ── */}
-        {(() => {
-          const isFresh   = syncState === "fresh";
-          const isSaving  = syncState === "saving" || syncState === "stillupdating";
-          const isIssue   = syncState === "issue";
-          const isLoading = syncState === "loading";
-          const isOfflineState = syncState === "offline";
-          const canRetry  = isIssue && syncRetryCountRef.current < 3;
-          const gaveUp    = isIssue && syncRetryCountRef.current >= 3;
-          const dotColor  = isFresh ? "#6FAF63" : isIssue ? "#c0392b" : isOfflineState ? "#888" : "#D9A441";
-          const textColor = isFresh ? "#2F5D50" : isIssue ? "#c0392b" : isOfflineState ? "#555" : "#9a6e1c";
-          const bgColor   = isFresh ? "rgba(47,93,80,0.07)" : isIssue ? "rgba(192,57,43,0.07)" : isOfflineState ? "rgba(0,0,0,0.04)" : "rgba(217,164,65,0.08)";
-          const borderColor = isFresh ? "rgba(47,93,80,0.18)" : isIssue ? "rgba(192,57,43,0.2)" : isOfflineState ? "rgba(0,0,0,0.12)" : "rgba(217,164,65,0.25)";
-          const copy = isFresh ? syncCopy
-            : isSaving ? (syncState === "stillupdating" ? "Still updating…" : "Saving…")
-            : isLoading ? "Updating…"
-            : isOfflineState ? syncCopy
-            : gaveUp ? "Tap to retry"
-            : "Having trouble — tap to retry";
-          const icon = isFresh ? "●" : isIssue ? "⚠" : isOfflineState ? "○" : "⟳";
-          return (
-            <div style={{ marginTop: 8 }}>
-              <div
-                onClick={isIssue ? () => load() : undefined}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  background: bgColor,
-                  border: `1px solid ${borderColor}`,
-                  borderRadius: 20, padding: "3px 10px",
-                  fontSize: 11, color: textColor,
-                  cursor: isIssue ? "pointer" : "default",
-                  transition: "background 300ms ease, border-color 300ms ease, color 300ms ease",
-                }}>
-                <span style={{ fontSize: isFresh ? 7 : 9, color: dotColor }}>{icon}</span>
-                {copy}
+        {/* Recently done */}
+        {recentlyDone.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            {recentlyDone.map(t => (
+              <div key={t.id} style={{ background: "#f5faf5", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
+                <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
+                {undoQueue[t.id] && (
+                  <button onClick={() => undoComplete(t)}
+                    style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+                    Undo
+                  </button>
+                )}
               </div>
-            </div>
-          );
-        })()}
-
-        {/* ── §4 Urgent banner ── */}
-        {urgentBanner && (
-          <div style={{ marginTop: 8, padding: "7px 12px", background: "rgba(217,164,65,0.10)", border: "1px solid rgba(217,164,65,0.35)", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#9a6e1c", animation: "syncPillFade 300ms ease" }}>
-            ⚡ New priority just added ↓
+            ))}
           </div>
         )}
-        {/* ── §4 New-tasks toast ── */}
-        {newTasksToast && (
-          <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: "#1e3d33", color: "rgba(255,255,255,0.9)", borderRadius: 20, padding: "7px 16px", fontSize: 12, fontWeight: 600, zIndex: 200, pointerEvents: "none", animation: "syncPillFade 300ms ease" }}>
-            {newTasksToast} task{newTasksToast !== 1 ? "s" : ""} added
-          </div>
-        )}
-        {/* ── Undo pill — rendered fixed at bottom of screen (see end of Dashboard return) ── */}
       </div>
 
       {/* ── TIME AWAY ENTRY POINTS ──────────────────────────────────────────── */}
@@ -4914,7 +4147,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                           style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                           ✓ Done
                         </button>
-                        <button onClick={() => group.forEach(x => completeTask(x))}
+                        <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); }}
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
                           Dismiss
                         </button>
@@ -5023,7 +4256,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       </div>
 
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
-      <div id="tips-section"><TipsSection /></div>
+      <TipsSection />
 
       {/* Plant Check hero card now rendered above Today's focus — removed from here */}
 
@@ -5245,6 +4478,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         </button>
       </div>
 
+      {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
+        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+            You're all caught up
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+            Your garden is in good shape — check back tomorrow.
+          </div>
+        </div>
+      )}
+
       </> /* end Today view */}
 
       {/* ── MODALS — rendered outside Today/Log views so they work from both ── */}
@@ -5273,56 +4518,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           onClose={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); }}
           onDone={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); load(true); }}
         />
-      )}
-      {/* ── §6 Undo pill — fixed bottom, above nav bar, non-blocking ── */}
-      {undoPill && (
-        <div style={{
-          position: "fixed",
-          bottom: 72,  // above nav bar (nav is ~60px)
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "calc(100% - 32px)",
-          maxWidth: 420,
-          zIndex: 300,
-          background: (undoPill.error || undoPill.undoError) ? "rgba(192,57,43,0.95)" : "#1e3d33",
-          border: (undoPill.error || undoPill.undoError) ? "1px solid rgba(192,57,43,0.4)" : "none",
-          borderRadius: 12, padding: "11px 16px",
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.22)",
-          animation: undoPillFading ? "undoPillFadeOut 500ms ease forwards" : "syncPillFade 200ms ease",
-          pointerEvents: "auto",
-        }}>
-          <span style={{
-            fontSize: 13,
-            color: (undoPill.error || undoPill.undoError) ? "#fff" : "rgba(255,255,255,0.9)",
-            flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {undoPill.error
-              ? "Couldn't save — tap to retry"
-              : undoPill.undoError
-                ? "Couldn't undo — tap to retry"
-                : undoPill.offline
-                  ? `✓ ${((undoPill.task.crop?.name ? undoPill.task.crop.name + " — " : "") + (undoPill.task.action || "")).slice(0, 22)}… noted offline`
-                  : `✓ ${((undoPill.task.crop?.name ? undoPill.task.crop.name + " — " : "") + (undoPill.task.action || "")).slice(0, 28)}… done`
-            }
-          </span>
-          {undoPill.error ? (
-            <button onClick={() => { setUndoPill(null); setSyncState("fresh"); completeTask(undoPill.task); }}
-              style={{ fontSize: 12, color: "#fff", background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>
-              Retry
-            </button>
-          ) : undoPill.undoError ? (
-            <button onClick={() => { setUndoPill(null); undoComplete(undoPill.task, true); }}
-              style={{ fontSize: 12, color: "#fff", background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>
-              Retry
-            </button>
-          ) : (
-            <button onClick={() => { clearTimeout(undoPillTimerRef.current); clearTimeout(undoPillFadeTimer.current); setUndoPillFading(false); setUndoPill(null); undoComplete(undoPill.task); }}
-              style={{ fontSize: 12, color: "#6FAF63", background: "none", border: "1px solid rgba(111,175,99,0.4)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>
-              Undo
-            </button>
-          )}
-        </div>
       )}
     </div>
   );
@@ -5773,23 +4968,15 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
     if (meta?.why) whyText = meta.why;
   } catch {}
 
-  const [pressing, setPressing] = useState(false);
-
   const handleComplete = () => {
     if (completed || animating) return;
-    // Flash the checkmark for 100ms, then call parent — parent owns the slide-out
     setAnimating(true);
-    setTimeout(() => { setAnimating(false); onComplete(task); }, 120);
+    setTimeout(() => { setAnimating(false); onComplete(task); }, 350);
   };
-
-  const handlePressStart = () => { if (!completed && !animating) setPressing(true); };
-  const handlePressEnd   = () => setPressing(false);
 
   return (
     <div style={{ marginBottom: 10 }}>
       <div
-        onMouseDown={handlePressStart} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd}
-        onTouchStart={handlePressStart} onTouchEnd={handlePressEnd}
         style={{
           background: completed ? "#f0f4f2" : C.cardBg,
           border: `1px solid ${completed ? C.border : timingColor + "55"}`,
@@ -5797,8 +4984,8 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
           borderRadius: 12,
           padding: "13px 14px",
           opacity: animating ? 0 : completed ? 0.55 : 1,
-          transform: pressing ? "scale(0.98)" : animating ? "translateX(30px)" : "translateX(0)",
-          transition: pressing ? "transform 0.05s ease" : "opacity 0.25s cubic-bezier(0.2,0.8,0.2,1), transform 0.25s cubic-bezier(0.2,0.8,0.2,1)",
+          transform: animating ? "translateX(30px)" : "translateX(0)",
+          transition: "opacity 0.35s ease, transform 0.35s ease",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Timing dot */}
@@ -5917,7 +5104,6 @@ function SortableAreaCard({ id, multiArea, children }) {
 // ── Garden view ───────────────────────────────────────────────────────────────
 function GardenView({ onNavigateAdd }) {
   const measurementUnit = useMeasurementUnit();
-  const temperatureUnit  = useTemperatureUnit();
   const GARDEN_CACHE = "vercro_garden_v1";
   const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
   const [locations, setLocations] = useState(_cachedGarden?.locs || []);
@@ -5940,8 +5126,8 @@ function GardenView({ onNavigateAdd }) {
   // Add area form state
   const [showAddArea,     setShowAddArea]     = useState(false);
   const [showAddLocation, setShowAddLocation] = useState(false);
-  const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "", width_m: "1.2", length_m: "2.4", soil_ph: "", soil_temperature_c: "" });
-  const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "", width_m: "10", length_m: "10" });
+  const [newArea,         setNewArea]         = useState({ name: "", type: "raised_bed", location_id: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
+  const [newLocation,     setNewLocation]     = useState({ name: "", postcode: "", width_m: "", length_m: "" });
   const [saving,          setSaving]          = useState(false);
   const [deleteLocationTarget, setDeleteLocationTarget] = useState(null);
   const [deletingLocation,     setDeletingLocation]     = useState(false);
@@ -5988,7 +5174,7 @@ function GardenView({ onNavigateAdd }) {
     setSaving(true);
     try {
       await apiFetch("/areas", { method: "POST", body: JSON.stringify(newArea) });
-      setNewArea({ name: "", type: "raised_bed", location_id: "", width_m: "1.2", length_m: "2.4", soil_ph: "", soil_temperature_c: "" });
+      setNewArea({ name: "", type: "raised_bed", location_id: "", width_m: "", length_m: "", soil_ph: "", soil_temperature_c: "" });
       setShowAddArea(false);
       try { localStorage.removeItem("vercro_garden_v1"); } catch(e) {}
       await load();
@@ -6001,7 +5187,7 @@ function GardenView({ onNavigateAdd }) {
     setSaving(true);
     try {
       await apiFetch("/locations", { method: "POST", body: JSON.stringify(newLocation) });
-      setNewLocation({ name: "", postcode: "", width_m: "10", length_m: "10" });
+      setNewLocation({ name: "", postcode: "", width_m: "", length_m: "" });
       setShowAddLocation(false);
       await load();
     } catch (e) { setError(e.message); }
@@ -6052,9 +5238,7 @@ function GardenView({ onNavigateAdd }) {
   const deleteArea = async (areaId) => {
     setSaving(true);
     try {
-      // Pass confirm=true — user has already confirmed via the UI prompt.
-      // API will cascade: delete tasks -> soft-delete crops -> delete area.
-      await apiFetch(`/areas/${areaId}?confirm=true`, { method: "DELETE" });
+      await apiFetch(`/areas/${areaId}`, { method: "DELETE" });
       setConfirmArea(null);
       await load();
     } catch (e) { setError(e.message); }
@@ -6144,9 +5328,9 @@ function GardenView({ onNavigateAdd }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div><label style={labelStyle}>Name</label>
               <input value={newLocation.name} onChange={e => setNewLocation(l => ({ ...l, name: e.target.value }))} style={inputStyle} placeholder="e.g. Allotment plot 7" /></div>
-            <div><label style={labelStyle}>Postcode / ZIP code</label>
-              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22 or 90210" />
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to personalise weather and growing advice for your location.</div>
+            <div><label style={labelStyle}>Postcode</label>
+              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, useful for future planning</span></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -6308,9 +5492,9 @@ function GardenView({ onNavigateAdd }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={editLocationForm.name} onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Postcode / ZIP code</label>
+                <div><label style={labelStyle}>Postcode</label>
                   <input value={editLocationForm.postcode} onChange={e => setEditLocationForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} />
-                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to personalise weather and growing advice for your location.</div>
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong></div>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -6343,7 +5527,7 @@ function GardenView({ onNavigateAdd }) {
                 <div><label style={labelStyle}>Name</label>
                   <input value={newArea.name} onChange={e => setNewArea(a => ({ ...a, name: e.target.value }))} style={inputStyle} placeholder="e.g. Raised bed 2, Greenhouse" /></div>
                 <div><label style={labelStyle}>Type</label>
-                  <select value={newArea.type} onChange={e => setNewArea(a => ({ ...a, type: e.target.value, ...(AREA_DEFAULTS[e.target.value] || {}) }))} style={inputStyle}>
+                  <select value={newArea.type} onChange={e => setNewArea(a => ({ ...a, type: e.target.value }))} style={inputStyle}>
                     <option value="raised_bed">Raised bed</option>
                     <option value="open_ground">Open ground</option>
                     <option value="greenhouse">Greenhouse</option>
@@ -6400,7 +5584,7 @@ function GardenView({ onNavigateAdd }) {
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
                   <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} and their tasks.` : "This cannot be undone."}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteArea(area.id)} disabled={saving}
                         style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
@@ -7778,7 +6962,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [filterLocation, setFilterLocation] = useState("");    // "" | location_id
   const [sortBy,        setSortBy]        = useState("recent"); // "recent" | "alpha" | "pct"
   const [showFilters,   setShowFilters]   = useState(false);
-  const [cropSearchQuery, setCropSearchQuery] = useState(""); // free-text search
   const [cropPlantCheck, setCropPlantCheck] = useState(null); // crop object when Plant Check opened from crop card
   const plantCheckEnabled = usePlantCheckEnabled();
   const [cropTab, setCropTab] = useState("crops"); // "crops" | "feeds" — toggle inside Crops tab
@@ -7931,12 +7114,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     if (filterLocation && crop.area?.location_id !== filterLocation) return false;
     if (filterArea   && crop.area_id !== filterArea)  return false;
     if (filterType   && inferCropType(crop.name) !== filterType) return false;
-    if (cropSearchQuery.trim()) {
-      const q = cropSearchQuery.trim().toLowerCase();
-      const nameMatch    = crop.name?.toLowerCase().includes(q);
-      const varietyMatch = (typeof crop.variety === "string" ? crop.variety : crop.variety?.name || "").toLowerCase().includes(q);
-      if (!nameMatch && !varietyMatch) return false;
-    }
     return true;
   });
 
@@ -8028,21 +7205,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
-        </div>
-        {/* Search input */}
-        <div style={{ position: "relative", marginBottom: 8 }}>
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: C.stone, pointerEvents: "none" }}>🔍</span>
-          <input
-            type="text"
-            value={cropSearchQuery}
-            onChange={e => setCropSearchQuery(e.target.value)}
-            placeholder="Search your crops…"
-            style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px 9px 34px", borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 14, fontFamily: "sans-serif", background: C.offwhite, color: "#1a1a1a", outline: "none" }}
-          />
-          {cropSearchQuery && (
-            <button onClick={() => setCropSearchQuery("")}
-              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
-          )}
         </div>
         {/* Filter/sort dropdown */}
         {showFilters && (
@@ -8182,7 +7344,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setExpandedGroups(e => ({ ...e, [group.id]: !isExpanded }))}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                   <span style={{ fontSize: 18 }}>{getCropEmoji(group.crop_name)}</span>
-                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", minWidth: 0, wordBreak: "break-word" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>
                     {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
                   </div>
                   <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>
@@ -8593,18 +7755,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
 
               {/* Progress bar */}
               {(() => {
-                const stageKey = (() => {
-                  const dbStage = crop.stage || "seed";
-                  // If the user has confirmed a stage above seed, always respect it
-                  if (dbStage !== "seed") return dbStage;
-                  // stage is seed but crop may have grown past germination — derive from pct
-                  if (pct >= 96) return "harvesting";
-                  if (pct >= 81) return "fruiting";
-                  if (pct >= 66) return "flowering";
-                  if (pct >= 36) return "vegetative";
-                  if (pct >= 16) return "seedling";
-                  return "seed";
-                })();
+                const stageKey = crop.stage || "seed";
                 const stageColor = STAGE_COLOR[stageKey] || C.stone;
                 // Calculate % grown
                 let pct;
@@ -8711,8 +7862,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
   const [query,   setQuery]   = useState("");
   const [open,    setOpen]    = useState(false);
   const [focused, setFocused] = useState(false);
-  const inputRef    = useRef(null);
-  const selectingRef = useRef(false); // guard: true during mousedown → mouseup on a suggestion
+  const inputRef = useRef(null);
 
   const displayText = focused ? query : (value?.name || query);
 
@@ -8737,20 +7887,13 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 
   const handleFocus = () => { setFocused(true); setQuery(value?.name || ""); setOpen(true); };
   const handleBlur  = () => {
-    if (selectingRef.current) { selectingRef.current = false; return; } // selection in progress — ignore blur
-    setFocused(false);
-    setOpen(false);
-    if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
+    setTimeout(() => {
+      setFocused(false); setOpen(false);
+      if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
+    }, 150);
   };
   const handleChange = e => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); };
-  const handleSelect = def => {
-    selectingRef.current = true; // set BEFORE blur fires
-    onChange(def);
-    setQuery(def.name);
-    setOpen(false);
-    setFocused(false);
-    inputRef.current?.blur();
-  };
+  const handleSelect = def => { onChange(def); setQuery(def.name); setOpen(false); setFocused(false); inputRef.current?.blur(); };
   const handleKeyDown = e => {
     if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
     if (e.key === "Enter" && filtered.length > 0) { e.preventDefault(); handleSelect(filtered[0]); }
@@ -8769,7 +7912,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
           {filtered.map(def => (
-            <div key={def.id} onPointerDown={() => handleSelect(def)}
+            <div key={def.id} onMouseDown={() => handleSelect(def)}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#1a1a1a", borderBottom: `1px solid ${C.border}` }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -8777,14 +7920,14 @@ function CropSearchInput({ cropDefs, value, onChange }) {
             </div>
           ))}
           {query.trim() ? (
-            <div onPointerDown={() => handleSelect({ id: "__other__", name: query.trim() })}
+            <div onMouseDown={() => handleSelect({ id: "__other__", name: query.trim() })}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               🔍 Not in list — identify "{query.trim()}" with AI
             </div>
           ) : (
-            <div onPointerDown={() => { selectingRef.current = true; setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
+            <div onMouseDown={() => { setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -8799,13 +7942,12 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 
 // ── Add crop ──────────────────────────────────────────────────────────────────
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
-  const _todayISO = new Date().toISOString().split("T")[0];
   const [cropDefs,  setCropDefs]  = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    status: "", sown_date: _todayISO, transplant_date: "", notes: "", lifecycle_mode: "seasonal",
+    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal",
   });
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
@@ -8950,7 +8092,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           setStep("form"); setSaved(false); setEnriching(false); setCropProfile(null);
           setSuccessionMode(false);
           setSuccForm({ target_sowings: 3, interval_days: 14, first_sown_date: "" });
-          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: new Date().toISOString().split("T")[0], transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
+          setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
         }, 5000);
       } catch (e) { setError(e.message); setStep("previewing"); }
       setSaving(false);
@@ -8988,8 +8130,6 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
       if (result.enriching) setEnriching(true);
       try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
-      // PostHog: crop added
-      posthog.capture("crop_added", { crop_name: cropName, has_sown_date: !!(showSowDate && form.sown_date) });
       // Trigger: 5th crop added
       try {
         const cropCount = parseInt(localStorage.getItem("vercro_total_crops_added") || "0") + 1;
@@ -9000,7 +8140,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       setTimeout(() => {
         setStep("form");
         setSaved(false); setEnriching(false); setCropProfile(null);
-        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: new Date().toISOString().split("T")[0], transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
+        setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" });
       }, 5000);
     } catch (e) { setError(e.message); setStep("previewing"); }
     setSaving(false);
@@ -9015,7 +8155,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
-        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: new Date().toISOString().split("T")[0], transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
+        <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
           style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
           Add Another Crop
         </button>
@@ -9345,19 +8485,15 @@ const FAQ_DATA = [
     items: [
       {
         q: "What is Vercro and how does it work?",
-        a: "Vercro is an AI garden planner for home growers and allotment holders across the UK, Ireland, Europe and North America. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season.",
+        a: "Vercro is an AI garden planner built for UK home growers and allotment holders. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season.",
       },
       {
         q: "How do I add my first crop?",
         a: "Tap the Add tab at the bottom of the screen. Select your crop, choose a variety if you know it, pick your growing area and tell us what stage it's at. Vercro generates a task schedule automatically. You can also tap 'Scan packet' to identify a crop from a photo of the seed packet.",
       },
       {
-        q: "Why do I need to add my location code?",
-        a: "Your location code pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate. What you enter depends on your country — UK users enter the first part of their postcode (e.g. TS22), Irish users enter a full Eircode (e.g. A65 F4E2), and US users enter a zip code. Vercro will show you the right format when you set up your location.",
-      },
-      {
-        q: "Does Vercro work in my country?",
-        a: "Vercro currently supports the United Kingdom, Ireland, Germany, Belgium, the Netherlands, Sweden, Norway, Finland, the United States and Canada. More countries are coming. Growing advice, sow windows and frost dates are all localised to your country and region.",
+        q: "Why do I need to add a postcode?",
+        a: "Your postcode pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate. Enter the first part only — for example TS22, not TS22 5BQ.",
       },
       {
         q: "What's the difference between a location and a growing area?",
@@ -9449,10 +8585,6 @@ const FAQ_DATA = [
     section: "Account",
     emoji: "👤",
     items: [
-      {
-        q: "Can I switch between Celsius and Fahrenheit?",
-        a: "Yes. In the Profile tab, scroll to the Preferences section. You'll find a Temperature toggle where you can switch between °C Celsius and °F Fahrenheit. Your choice is saved to your account and syncs across devices.",
-      },
       {
         q: "How do I change my name or postcode?",
         a: "Scroll up in the Profile tab to Your Details, update your name or postcode and tap Save Changes.",
@@ -10207,22 +9339,23 @@ function ProfileToast({ toast }) {
 
 // ── Edit Profile Modal ────────────────────────────────────────────────────────
 function EditProfileModal({ current, onSave, onClose }) {
-  const [name,        setName]        = useState(current.name || "");
-  const [postcode,    setPostcode]    = useState(current.postcode || "");
-  const [country,     setCountry]     = useState(current.country_code || "GB");
-  const [errors,      setErrors]      = useState({});
-  const [saving,      setSaving]      = useState(false);
+  const [name,     setName]     = useState(current.name || "");
+  const [postcode, setPostcode] = useState(current.postcode || "");
+  const [errors,   setErrors]   = useState({});
+  const [saving,   setSaving]   = useState(false);
   const nameRef = useRef(null);
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 100); }, []);
+
+  const ukPostcodePattern = /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i;
 
   const validate = () => {
     const e = {};
     if (!name.trim())             e.name     = "Name is required";
     if (name.trim().length > 50)  e.name     = "Name must be 50 characters or less";
-    const pc = postcode.trim();
-    if (!pc)                      e.postcode = "Postcode / ZIP code is required";
-    else if (pc.length < 2)       e.postcode = "Enter a valid postcode or ZIP code";
+    const pc = postcode.trim().toUpperCase().replace(/\s/g, "");
+    if (!pc)                      e.postcode = "Postcode is required";
+    else if (!ukPostcodePattern.test(pc)) e.postcode = "Enter the first part only — e.g. TS22";
     return e;
   };
 
@@ -10231,9 +9364,8 @@ function EditProfileModal({ current, onSave, onClose }) {
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     onSave({
-      name:         name.trim(),
-      postcode:     postcode.trim().toUpperCase().replace(/\s/g, ""),
-      country_code: country,
+      name:     name.trim(),
+      postcode: postcode.trim().toUpperCase().replace(/\s/g, ""),
     });
   };
 
@@ -10266,32 +9398,16 @@ function EditProfileModal({ current, onSave, onClose }) {
             {errors.name && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
           </div>
           <div>
-            <label style={labelStyle}>Country</label>
-            <select
-              value={country}
-              onChange={e => setCountry(e.target.value)}
-              style={{
-                ...inputStyle,
-                appearance: "none", WebkitAppearance: "none",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E6E6E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", cursor: "pointer",
-              }}>
-              {COUNTRY_OPTIONS.map(opt => (
-                <option key={opt.code} value={opt.code}>{opt.flag} {opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Postcode / ZIP code</label>
+            <label style={labelStyle}>Postcode (first part only)</label>
             <input
               value={postcode}
               onChange={e => { setPostcode(e.target.value.toUpperCase()); setErrors(r => ({ ...r, postcode: null })); }}
               style={{ ...inputStyle, borderColor: errors.postcode ? "#dc2626" : undefined }}
-              placeholder="e.g. TS22 or 90210"
+              placeholder="e.g. TS22"
             />
             {errors.postcode
               ? <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.postcode}</div>
-              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to personalise weather and growing advice for your location.</div>
+              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>e.g. <strong>TS22</strong>, not TS22 5BQ</div>
             }
           </div>
           <button
@@ -10562,9 +9678,6 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   const [measurementUnit,  setMeasurementUnit]  = useState(() => {
     try { return localStorage.getItem("vercro_measurement_unit") || "metric"; } catch(e) { return "metric"; }
   });
-  const [temperatureUnit,  setTemperatureUnit]  = useState(() => {
-    try { return localStorage.getItem("vercro_temperature_unit") || "celsius"; } catch(e) { return "celsius"; }
-  });
 
   const { toast, showToast } = useProfileToast();
 
@@ -10577,10 +9690,6 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         if (p.measurement_unit) {
           setMeasurementUnit(p.measurement_unit);
           try { localStorage.setItem("vercro_measurement_unit", p.measurement_unit); } catch(e) {}
-        }
-        if (p.temperature_unit) {
-          setTemperatureUnit(p.temperature_unit);
-          try { localStorage.setItem("vercro_temperature_unit", p.temperature_unit); } catch(e) {}
         }
         try { localStorage.setItem(PROFILE_CACHE, JSON.stringify({ form: f, ts: Date.now() })); } catch(e) {}
         setLoading(false);
@@ -10623,17 +9732,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
     try { localStorage.setItem("vercro_measurement_unit", unit); } catch(e) {}
     try {
       const p = await apiFetch("/auth/profile");
-      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: unit, country_code: p.country_code }) });
+      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: unit }) });
     } catch(e) { console.error("Failed to save measurement unit:", e.message); }
-  };
-
-  const saveTemperatureUnit = async (unit) => {
-    setTemperatureUnit(unit);
-    try { localStorage.setItem("vercro_temperature_unit", unit); } catch(e) {}
-    try {
-      const p = await apiFetch("/auth/profile");
-      await apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ name: p.name, postcode: p.postcode, measurement_unit: p.measurement_unit || measurementUnit, temperature_unit: unit, country_code: p.country_code }) });
-    } catch(e) { console.error("Failed to save temperature unit:", e.message); }
   };
 
   const saveEmailPreference = async (enabled) => {
@@ -10736,7 +9836,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       </div>
 
       {/* ── 2. PRO CARD — gated, invisible to all except mark/test user ── */}
-      <ProSubscriptionSection />
+      {PRO_ENABLED && <ProSubscriptionSection />}
 
       {/* ── 3. HARVEST SUMMARY — hero card ── */}
       {harvestStats && (
@@ -10853,19 +9953,6 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {[{ value: "metric", label: "Metres" }, { value: "imperial", label: "Feet & inches" }].map(opt => (
               <button key={opt.value} onClick={() => saveMeasurementUnit(opt.value)}
                 style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Temperature */}
-        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Temperature</div>
-          <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>How temperature is shown in weather and forecasts</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[{ value: "celsius", label: "°C Celsius" }, { value: "fahrenheit", label: "°F Fahrenheit" }].map(opt => (
-              <button key={opt.value} onClick={() => saveTemperatureUnit(opt.value)}
-                style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${temperatureUnit === opt.value ? C.forest : C.border}`, background: temperatureUnit === opt.value ? C.forest : "transparent", color: temperatureUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {opt.label}
               </button>
             ))}
@@ -11016,62 +10103,19 @@ function ProSubscriptionSection() {
 
   useEffect(() => {
     apiFetch("/subscription/pricing")
-      .then(async (d) => {
-        // On native, enrich display prices with RevenueCat's localised price strings
-        if (_isNativeApp && Purchases) {
-          try {
-            await _waitForRC();
-            const offeringId = d.tier === "loyalty"         ? "loyalty"
-                             : d.tier === "early_supporter" ? "early_supporter"
-                             : "default";
-            const allOfferings = await Purchases.getOfferings();
-            const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
-            if (offering) {
-              const monthlyPkg = offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY");
-              const annualPkg  = offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0];
-              if (monthlyPkg?.product?.priceString) d.display.monthly = monthlyPkg.product.priceString;
-              if (annualPkg?.product?.priceString)  d.display.annual  = annualPkg.product.priceString;
-            }
-          } catch (e) {
-            console.warn("RC price localisation failed:", e?.message);
-          }
-        }
-        setPricing(d);
-      })
+      .then(d => setPricing(d))
       .catch(() => setPricing({ tier: "early_supporter", display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" } }));
   }, []);
 
   const handleUpgrade = async (interval = "annual") => {
     setCheckoutLoading(true);
     try {
-      if (_isNativeApp && Purchases) {
-        // ── Native iOS/Android — use RevenueCat IAP ───────────────────────────
-        await _waitForRC();
-        const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
-                         : pricing?.tier === "early_supporter" ? "early_supporter"
-                         : "default";
-        const allOfferings = await Purchases.getOfferings();
-        const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
-        if (!offering) throw new Error("No offering available");
-        const pkg = interval === "monthly"
-          ? (offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY"))
-          : (offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0]);
-        if (!pkg) throw new Error("No package available");
-        await Purchases.purchasePackage({ aPackage: pkg });
-        await apiFetch("/subscription/status");
-        posthog.capture("subscription_started", { interval, platform: "native" });
-        window.location.reload();
-      } else {
-        // ── Web — use Stripe ──────────────────────────────────────────────────
-        const data = await apiFetch("/subscription/create-checkout", {
-          method: "POST",
-          body: JSON.stringify({ interval }),
-        });
-        if (data?.url) window.location.href = data.url;
-      }
-    } catch (e) {
-      if (e?.code !== "PURCHASE_CANCELLED") console.error("Checkout error:", e);
-    }
+      const data = await apiFetch("/subscription/create-checkout", {
+        method: "POST",
+        body: JSON.stringify({ interval }),
+      });
+      if (data?.url) window.location.href = data.url;
+    } catch (e) { console.error("Checkout error:", e); }
     setCheckoutLoading(false);
   };
 
@@ -11079,7 +10123,7 @@ function ProSubscriptionSection() {
     setManageLoading(true);
     try {
       // On iOS, Apple manages the subscription — open Apple's subscription settings
-      if (_isNativeApp) {
+      if (typeof window !== "undefined" && window.Capacitor?.isNative) {
         window.open("https://apps.apple.com/account/subscriptions", "_system");
         setManageLoading(false);
         return;
@@ -11091,7 +10135,7 @@ function ProSubscriptionSection() {
     setManageLoading(false);
   };
 
-  if (loading) return <div style={{ height: 80, background: "#f0f5f3", borderRadius: 16, marginBottom: 20 }} />;
+  if (loading) return null;
 
   const BENEFITS = [
     { icon: "🌿", text: "Unlimited plant checks" },
@@ -11687,7 +10731,6 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 
       setResult(data);
       setStep("result");
-      posthog.capture("plantcheck_used");
       // Trigger: 2nd photo diagnosis completed
       try {
         const diagCount = parseInt(localStorage.getItem("vercro_total_diagnoses") || "0") + 1;
@@ -11828,41 +10871,10 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const { isTestUser } = useProStatus();
   const swipe = useSwipeToDismiss(onClose);
 
-  // Non-UK web users see app store links instead of Stripe checkout
-  // Native apps handle their own localised pricing via RevenueCat
-  const isUKWeb = !_isNativeApp && (
-    typeof navigator !== "undefined" &&
-    (navigator.language === "en-GB" || navigator.language?.startsWith("en-GB"))
-  );
-
   // Fetch user-specific pricing on mount
   useEffect(() => {
-    posthog.capture("paywall_viewed", { trigger, mode });
     apiFetch("/subscription/pricing")
-      .then(async (d) => {
-        // On native, enrich display prices with RevenueCat's localised price strings
-        // so non-GBP users see the correct currency (€, $, SEK etc) not hardcoded £
-        if (_isNativeApp && Purchases) {
-          try {
-            await _waitForRC();
-            const offeringId = d.tier === "loyalty"         ? "loyalty"
-                             : d.tier === "early_supporter" ? "early_supporter"
-                             : "default";
-            const allOfferings = await Purchases.getOfferings();
-            const offering = allOfferings?.all?.[offeringId] || allOfferings?.current;
-            if (offering) {
-              const monthlyPkg = offering.monthly || offering.availablePackages?.find(p => p.packageType === "MONTHLY");
-              const annualPkg  = offering.annual  || offering.availablePackages?.find(p => p.packageType === "ANNUAL") || offering.availablePackages?.[0];
-              if (monthlyPkg?.product?.priceString) d.display.monthly = monthlyPkg.product.priceString;
-              if (annualPkg?.product?.priceString)  d.display.annual  = annualPkg.product.priceString;
-            }
-          } catch (e) {
-            // RevenueCat unavailable — fall through with server display prices
-            console.warn("RC price localisation failed:", e?.message);
-          }
-        }
-        setPricing(d);
-      })
+      .then(d => setPricing(d))
       .catch(() => setPricing({
         tier: "early_supporter",
         display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" },
@@ -11932,10 +10944,9 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      if (_isNativeApp && Purchases) {
+      if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
         // tier: "loyalty" | "early_supporter" | "standard"
-        await _waitForRC();
         // RevenueCat offering identifiers match exactly: loyalty, early_supporter, default
         const offeringId = pricing?.tier === "loyalty"         ? "loyalty"
                          : pricing?.tier === "early_supporter" ? "early_supporter"
@@ -11954,7 +10965,6 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         if (!pkg) throw new Error("No package available for " + offeringId + " / " + interval);
         await Purchases.purchasePackage({ aPackage: pkg });
         await apiFetch("/subscription/status");
-        posthog.capture("subscription_started", { interval, platform: "native" });
         window.location.reload();
       } else {
         // Web — Stripe with server-resolved price for this user's tier
@@ -12063,110 +11073,69 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           </div>
         )}
 
-        {/* Pricing block — UK web: normal Stripe flow. Non-UK web: app store redirect. Native: handled by RevenueCat above. */}
-        {!_isNativeApp && !isUKWeb ? (
-          // ── Non-UK web users — redirect to app ──────────────────────────────
-          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px 16px", marginBottom: 6, textAlign: "center" }}>
-            <div style={{ fontSize: 15, marginBottom: 8 }}>🌍</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
-              Subscribe via the app
-            </div>
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
-              For pricing in your local currency, subscribe through the iOS or Android app.
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <a
-                href="https://apps.apple.com/app/vercro/id6744673685"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "inline-block", background: "#000", color: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-                🍎 App Store
-              </a>
-              <a
-                href="https://play.google.com/store/apps/details?id=com.vercro.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "inline-block", background: "#000", color: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-                🤖 Google Play
-              </a>
-            </div>
+        {/* Pricing block — dynamic per user tier */}
+        {pricing ? (
+          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+            {/* Monthly option */}
+            <button
+              onClick={() => setInterval_("monthly")}
+              style={{
+                width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent",
+                border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+              }}>
+              <div style={{ fontSize: 13, color: C.stone, textAlign: "left" }}>Monthly</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{pricing.display.monthly} / month</div>
+            </button>
+            {/* Annual option — highlighted */}
+            <button
+              onClick={() => setInterval_("annual")}
+              style={{
+                width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                background: interval === "annual" ? "#fff" : "transparent",
+                border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+              }}>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing.display.annual} / year</div>
+                {pricing.display.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
+                {pricing.display.badge}
+              </div>
+            </button>
           </div>
         ) : (
-          // ── UK web users — normal Stripe pricing flow ────────────────────────
-          <>
-            {pricing ? (
-              <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
-                {/* Monthly option */}
-                <button
-                  onClick={() => setInterval_("monthly")}
-                  style={{
-                    width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                    marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent",
-                    border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
-                    borderRadius: 8, padding: "10px 12px", cursor: "pointer",
-                  }}>
-                  <div style={{ fontSize: 13, color: C.stone, textAlign: "left" }}>Monthly</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{pricing.display.monthly} / month</div>
-                </button>
-                {/* Annual option — highlighted */}
-                <button
-                  onClick={() => setInterval_("annual")}
-                  style={{
-                    width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-                    background: interval === "annual" ? "#fff" : "transparent",
-                    border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
-                    borderRadius: 8, padding: "10px 12px", cursor: "pointer",
-                  }}>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing.display.annual} / year</div>
-                    {pricing.display.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
-                    {pricing.display.badge}
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px", marginBottom: 6, textAlign: "center" }}>
-                <div style={{ fontSize: 12, color: C.stone }}>Loading pricing…</div>
-              </div>
-            )}
-
-            {/* Social proof */}
-            <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
-              {pricing?.tier === "loyalty" ? "Your loyalty price — locked in for life if you subscribe today" :
-               pricing?.tier === "early_supporter" ? "Limited-time offer · Cancel anytime" :
-               "Cancel anytime. No commitment."}
-            </div>
-
-            {/* Primary CTA */}
-            <button
-              onClick={handleUpgrade}
-              disabled={loading || !pricing}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
-              {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
-            </button>
-
-            {/* Secondary */}
-            <button
-              onClick={onClose}
-              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
-              Not now
-            </button>
-
-            <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
-              Cancel anytime. No commitment.
-            </div>
-          </>
+          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px", marginBottom: 6, textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: C.stone }}>Loading pricing…</div>
+          </div>
         )}
 
-        {/* Required by App Store — subscription legal links */}
-        <div style={{ fontSize: 10, color: C.stone, textAlign: "center", marginTop: 12, lineHeight: 1.6 }}>
-          By subscribing you agree to our{" "}
-          <a href="https://vercro.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.stone, textDecoration: "underline" }}>Terms of Use</a>
-          {" "}and{" "}
-          <a href="https://vercro.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: C.stone, textDecoration: "underline" }}>Privacy Policy</a>.
-          Subscription auto-renews until cancelled.
+        {/* Social proof */}
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginBottom: 16 }}>
+          {pricing?.tier === "loyalty" ? "Your loyalty price — locked in for life if you subscribe today" :
+           pricing?.tier === "early_supporter" ? "Limited-time offer · Cancel anytime" :
+           "Cancel anytime. No commitment."}
+        </div>
+
+        {/* Primary CTA */}
+        <button
+          onClick={handleUpgrade}
+          disabled={loading || !pricing}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
+          {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
+        </button>
+
+        {/* Secondary */}
+        <button
+          onClick={onClose}
+          style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
+          Not now
+        </button>
+
+        <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8 }}>
+          Cancel anytime. No commitment.
         </div>
       </div>
     </div>
@@ -12178,6 +11147,10 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
 const ProPaywall = ProPaywallSheet;
 
 // ── My Feeds ──────────────────────────────────────────────────────────────────
+
+const KNOWN_BRANDS = [
+  "Chempak","Westland","Miracle-Gro","Vitax","Yara","Maxicrop","Levington","Phostrogen","RHS","Other"
+];
 
 function FeedsScreen() {
   const FEEDS_CACHE = "vercro_feeds_v1";
@@ -12210,9 +11183,6 @@ function FeedsScreen() {
   };
 
   useEffect(() => { load(); }, []);
-
-  // Derive brand list from catalog — automatically country-filtered by backend
-  const KNOWN_BRANDS = [...new Set(catalog.map(c => c.brand).filter(Boolean))].sort().concat("Other");
 
   // Derive effective brand/form for filtering
   const effectiveBrand = brand === "Other" ? null : brand;
@@ -12822,7 +11792,6 @@ function AdminFeedbackList() {
   const [showDone,      setShowDone]      = useState(false);
   const [donePrompt,    setDonePrompt]    = useState(null); // { task } when marking feedback done
   const [rankError,     setRankError]     = useState(null);
-  const [expandedTasks, setExpandedTasks] = useState(new Set()); // track which task messages are expanded
 
   // Load persisted tasks + context from localStorage
   useEffect(() => {
@@ -12853,7 +11822,7 @@ function AdminFeedbackList() {
               id:          "fb_" + f.id,
               source:      "feedback",
               type:        f.category === "bug" ? "bug" : f.category === "feature" ? "feature" : f.category === "praise" ? "praise" : "general",
-              title:       f.message || "",
+              title:       f.message?.slice(0, 80) + (f.message?.length > 80 ? "…" : ""),
               description: f.message,
               status:      "active",
               priority:    null,
@@ -12938,10 +11907,16 @@ Respond ONLY with a JSON array, no markdown, no preamble:
 
 Use the exact task IDs provided.`;
 
-      const data = await apiFetch("/admin/rank-feedback", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        body: JSON.stringify({ prompt }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }],
+        }),
       });
+      const data = await response.json();
       const text = data.content?.map(c => c.text || "").join("") || "";
       const clean = text.replace(/```json|```/g, "").trim();
       const rankings = JSON.parse(clean);
@@ -13078,26 +12053,7 @@ Use the exact task IDs provided.`;
               {new Date(task.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
             </span>
           </div>
-          {(() => {
-            const isLong = task.title.length > 120;
-            const isExpanded = expandedTasks.has(task.id);
-            return (
-              <div style={{ marginBottom: task.reason ? 6 : 10 }}>
-                <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5 }}>
-                  {isLong && !isExpanded ? task.title.slice(0, 120) + "…" : task.title}
-                </div>
-                {isLong && (
-                  <button onClick={() => setExpandedTasks(prev => {
-                    const next = new Set(prev);
-                    isExpanded ? next.delete(task.id) : next.add(task.id);
-                    return next;
-                  })} style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", padding: "2px 0", fontWeight: 600 }}>
-                    {isExpanded ? "Show less ↑" : "Read more ↓"}
-                  </button>
-                )}
-              </div>
-            );
-          })()}
+          <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.5, marginBottom: task.reason ? 6 : 10 }}>{task.title}</div>
           {task.reason && (
             <div style={{ fontSize: 11, color: C.stone, fontStyle: "italic", marginBottom: 10, lineHeight: 1.4 }}>AI: {task.reason}</div>
           )}
@@ -13396,11 +12352,8 @@ function InviteWaitlistButton() {
 }
 
 function AdminTools() {
-  const [backfillStatus,        setBackfillStatus]        = useState(null);
-  const [running,               setRunning]               = useState(false);
-  const [climateStatus,         setClimateStatus]         = useState(null);
-  const [climateRunning,        setClimateRunning]        = useState(false);
-  const [climateRemaining,      setClimateRemaining]      = useState(null);
+  const [backfillStatus, setBackfillStatus] = useState(null);
+  const [running,        setRunning]        = useState(false);
 
   const runBackfill = async () => {
     if (!confirm("This will backfill badge progress for all users from their existing data. Run it?")) return;
@@ -13413,19 +12366,6 @@ function AdminTools() {
       setBackfillStatus({ ok: false, error: e.message });
     }
     setRunning(false);
-  };
-
-  const runClimateBatch = async () => {
-    setClimateRunning(true);
-    setClimateStatus(null);
-    try {
-      const result = await apiFetch("/admin/backfill-climate?limit=20", { method: "POST" });
-      setClimateRemaining(result.remaining);
-      setClimateStatus({ ok: true, processed: result.processed, remaining: result.remaining, results: result.results });
-    } catch (e) {
-      setClimateStatus({ ok: false, error: e.message });
-    }
-    setClimateRunning(false);
   };
 
   return (
@@ -13464,46 +12404,6 @@ function AdminTools() {
               </>
             ) : (
               <div style={{ color: "red", fontSize: 13 }}>❌ Error: {backfillStatus.error}</div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Climate backfill */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>🌍 Backfill Climate Data</div>
-        <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
-          Geocodes all locations (postcode → lat/lon) and fetches frost dates from Open-Meteo. Processes 20 at a time. Keep tapping until remaining reaches 0. Safe to re-run — skips already processed locations.
-        </div>
-        {climateRemaining !== null && climateRemaining > 0 && (
-          <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
-            📍 <strong>{climateRemaining}</strong> locations still to process — keep tapping the button.
-          </div>
-        )}
-        {climateRemaining === 0 && (
-          <div style={{ fontSize: 13, color: C.forest, fontWeight: 700, marginBottom: 12 }}>✅ All locations processed!</div>
-        )}
-        <button onClick={runClimateBatch} disabled={climateRunning}
-          style={{ background: climateRunning ? C.border : C.forest, color: climateRunning ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: climateRunning ? "default" : "pointer", opacity: climateRunning ? 0.7 : 1 }}>
-          {climateRunning ? "Processing…" : climateRemaining > 0 ? `Run Next Batch (${climateRemaining} remaining)` : "Run Climate Backfill"}
-        </button>
-        {climateStatus && (
-          <div style={{ marginTop: 14, padding: "12px", borderRadius: 8, background: climateStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${climateStatus.ok ? "#b8ddb8" : "#f4b8b8"}` }}>
-            {climateStatus.ok ? (
-              <>
-                <div style={{ fontWeight: 700, color: C.forest, fontSize: 13, marginBottom: 8 }}>
-                  ✅ Batch complete — {climateStatus.processed} processed, {climateStatus.remaining} remaining
-                </div>
-                <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 12, color: C.stone }}>
-                  {(climateStatus.results || []).map((r, i) => (
-                    <div key={i} style={{ padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>
-                      {r.postcode} — {r.status === "ok" ? `✅ ${r.zone}` : `❌ ${r.status}`}
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{ color: "red", fontSize: 13 }}>❌ Error: {climateStatus.error}</div>
             )}
           </div>
         )}
@@ -13916,7 +12816,6 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 { id: "growth",     label: "Growth" },
                 { id: "usage",      label: "Usage" },
                 { id: "comms",      label: "Comms" },
-                { id: "revenue",    label: "Revenue" },
               ].map(t => (
                 <button key={t.id} onClick={() => setMetricTab(t.id)}
                   style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${metricTab === t.id ? C.forest : C.border}`, background: metricTab === t.id ? C.forest : "transparent", color: metricTab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -14230,45 +13129,6 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <MetricRow label="Total submissions" val={metrics.totalFeedback || "—"} />
                   <MetricRow label="Average rating" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} highlight={metrics.avgRating >= 4} />
                 </div>
-              </div>
-            )}
-
-            {metricTab === "revenue" && (
-              <div>
-                {!metrics.revenue ? (
-                  <div style={{ padding: "24px 16px", fontSize: 13, color: C.stone, textAlign: "center" }}>Revenue data unavailable</div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Subscribers</div>
-                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                      <MetricRow label="Total paying" val={metrics.revenue.totalPro ?? "—"} highlight={metrics.revenue.totalPro > 0} />
-                      <MetricRow label="Conversion rate" val={metrics.revenue.conversionRate != null ? `${metrics.revenue.conversionRate}%` : "—"} sub="of activated users" status={metrics.revenue.conversionRate != null ? status(metrics.revenue.conversionRate, 5, 2) : null} />
-                      <MetricRow label="Via Stripe (web)" val={metrics.revenue.stripeCount ?? "—"} />
-                      <MetricRow label="Via RevenueCat (native)" val={metrics.revenue.rcCount ?? "—"} />
-                    </div>
-
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Plan split</div>
-                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                      <MetricRow label="Monthly" val={metrics.revenue.monthlyCount ?? "—"} />
-                      <MetricRow label="Annual" val={metrics.revenue.annualCount ?? "—"} />
-                      <MetricRow label="Trialling" val={metrics.revenue.trialCount ?? "—"} />
-                    </div>
-
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Pricing tier</div>
-                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                      <MetricRow label="Loyalty" val={metrics.revenue.loyalty ?? "—"} sub="pre-launch subscribers" />
-                      <MetricRow label="Early supporter" val={metrics.revenue.earlySupporter ?? "—"} sub="post-launch 90-day window" />
-                      <MetricRow label="Standard" val={metrics.revenue.standard ?? "—"} sub="full price" />
-                    </div>
-
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Health</div>
-                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                      <MetricRow label="MRR" val={metrics.revenue.mrrGBP ? `£${metrics.revenue.mrrGBP}` : "—"} sub="monthly recurring revenue" highlight={parseFloat(metrics.revenue.mrrGBP) > 0} />
-                      <MetricRow label="Past due (failed payment)" val={metrics.revenue.pastDueCount ?? "—"} status={metrics.revenue.pastDueCount > 0 ? "amber" : null} />
-                      <MetricRow label="Churned (previously paid)" val={metrics.revenue.churnedCount ?? "—"} status={metrics.revenue.churnedCount > 0 ? "amber" : null} />
-                    </div>
-                  </>
-                )}
               </div>
             )}
 
@@ -18649,28 +17509,20 @@ const TABS = [
 // User lands on Today with real tasks. Never an empty screen.
 // =============================================================================
 
-// ONBOARDING_CROPS — canonical name is always the stable identity sent to the API.
-// displayNames overrides what the user sees for specific countries — display only.
-// Never change canonical name — it must match crop_definitions.name in the DB.
 const ONBOARDING_CROPS = [
   { name: "Tomatoes",     emoji: "🍅" },
   { name: "Potatoes",     emoji: "🥔" },
-  { name: "Carrot",       emoji: "🥕" },
+  { name: "Carrots",      emoji: "🥕" },
   { name: "Lettuce",      emoji: "🥬" },
-  { name: "Onion",        emoji: "🧅" },
-  { name: "Pea",          emoji: "🫛" },
-  { name: "Bean",         emoji: "🫘" },
+  { name: "Onions",       emoji: "🧅" },
+  { name: "Peas",         emoji: "🫛" },
+  { name: "Beans",        emoji: "🫘" },
   { name: "Garlic",       emoji: "🧄" },
-  { name: "Courgette",    emoji: "🥒", displayNames: { US: "Zucchini", CA: "Zucchini", AU: "Zucchini", DE: "Zucchini", SE: "Zucchini", NO: "Zucchini" } },
+  { name: "Courgette",    emoji: "🥒" },
   { name: "Strawberries", emoji: "🍓" },
   { name: "Spinach",      emoji: "🥬" },
   { name: "Cabbage",      emoji: "🥦" },
 ];
-
-// Display-only localisation — canonical name is always sent to the API.
-function getOnboardingCropLabel(crop, country) {
-  return crop.displayNames?.[country] || crop.name;
-}
 
 const STAGES = [
   { id: "not_sown",    label: "Not sown yet",     desc: "I'm planning to grow this" },
@@ -18689,113 +17541,16 @@ const AREA_TYPES = [
 
 function OnboardingScreen({ session, onComplete }) {
   const [step,          setStep]         = useState(0);
-  // step 0 = identity, 1 = crops, 2 = notifications, 3 = stage, 4 = area, 5 = source, 6 = loading
+  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading
   // Pre-populate name from Apple/Google identity if available
   const [name,          setName]         = useState(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
-  // If signed in with Apple, name is already provided — don't ask for it again (App Store guideline 4)
-
   const [postcode,      setPostcode]     = useState("");
-  const [country,       setCountry]      = useState("GB"); // "GB" or "IE"
   const [selectedCrops, setSelectedCrops]= useState([]); // [{name, emoji}]
   const [stage,         setStage]        = useState(null);
   const [areaType,      setAreaType]     = useState(null);
   const [selfSource,    setSelfSource]   = useState(null);
-  const [pushGranted,   setPushGranted]  = useState(false); // tracks whether push was enabled in onboarding
-  const [submitting,    setSubmitting]   = useState(false); // prevents double-submit
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
-
-  // PostHog: fire onboarding_step_viewed each time step changes
-  useEffect(() => {
-    if (step <= 5) posthog.capture("onboarding_step_viewed", { step });
-  }, [step]);
-
-  // Country config — mirrors COUNTRY_CONFIG in api.js
-  const COUNTRY_OPTIONS = [
-    { code: "GB", flag: "🇬🇧", label: "United Kingdom" },
-    { code: "IE", flag: "🇮🇪", label: "Ireland" },
-    { code: "DE", flag: "🇩🇪", label: "Germany" },
-    { code: "BE", flag: "🇧🇪", label: "Belgium" },
-    { code: "NL", flag: "🇳🇱", label: "Netherlands" },
-    { code: "SE", flag: "🇸🇪", label: "Sweden" },
-    { code: "NO", flag: "🇳🇴", label: "Norway" },
-    { code: "FI", flag: "🇫🇮", label: "Finland" },
-    { code: "US", flag: "🇺🇸", label: "United States" },
-    { code: "CA", flag: "🇨🇦", label: "Canada" },
-  ];
-  const POSTCODE_CONFIG = {
-    GB: {
-      label:       "Postcode",
-      placeholder: "e.g. TS22",
-      hint:        "First part only — e.g. TS22, not TS22 5BQ",
-      validate:    (v) => /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i.test(v.replace(/\s/g, "")),
-      errorMsg:    "Enter the first part only — e.g. TS22",
-    },
-    IE: {
-      label:       "Eircode",
-      placeholder: "e.g. A65 F4E2",
-      hint:        "Full Eircode — e.g. A65 F4E2",
-      validate:    (v) => /^[A-Z][0-9]{2}\s?[A-Z0-9]{4}$/i.test(v.trim()),
-      errorMsg:    "Enter a valid Eircode — e.g. A65 F4E2",
-    },
-    DE: {
-      label:       "Postleitzahl",
-      placeholder: "e.g. 10115",
-      hint:        "5-digit German postcode — e.g. 10115",
-      validate:    (v) => /^[0-9]{5}$/.test(v.trim()),
-      errorMsg:    "Enter a valid 5-digit German postcode",
-    },
-    BE: {
-      label:       "Postcode",
-      placeholder: "e.g. 1000",
-      hint:        "4-digit Belgian postcode — e.g. 1000",
-      validate:    (v) => /^[0-9]{4}$/.test(v.trim()),
-      errorMsg:    "Enter a valid 4-digit Belgian postcode",
-    },
-    NL: {
-      label:       "Postcode",
-      placeholder: "e.g. 1011",
-      hint:        "4-digit Dutch postcode — e.g. 1011",
-      validate:    (v) => /^[0-9]{4}([A-Z]{2})?$/i.test(v.replace(/\s/g, "")),
-      errorMsg:    "Enter a valid Dutch postcode — e.g. 1011 or 1011AB",
-    },
-    SE: {
-      label:       "Postnummer",
-      placeholder: "e.g. 11120",
-      hint:        "5-digit Swedish postcode — e.g. 11120",
-      validate:    (v) => /^[0-9]{5}$/.test(v.replace(/\s/g, "")),
-      errorMsg:    "Enter a valid 5-digit Swedish postcode",
-    },
-    NO: {
-      label:       "Postnummer",
-      placeholder: "e.g. 0150",
-      hint:        "4-digit Norwegian postcode — e.g. 0150",
-      validate:    (v) => /^[0-9]{4}$/.test(v.trim()),
-      errorMsg:    "Enter a valid 4-digit Norwegian postcode",
-    },
-    FI: {
-      label:       "Postinumero",
-      placeholder: "e.g. 00100",
-      hint:        "5-digit Finnish postcode — e.g. 00100",
-      validate:    (v) => /^[0-9]{5}$/.test(v.trim()),
-      errorMsg:    "Enter a valid 5-digit Finnish postcode",
-    },
-    US: {
-      label:       "ZIP Code",
-      placeholder: "e.g. 90210",
-      hint:        "5-digit ZIP code — e.g. 90210",
-      validate:    (v) => /^[0-9]{5}$/.test(v.trim()),
-      errorMsg:    "Enter a valid 5-digit ZIP code",
-    },
-    CA: {
-      label:       "Postal Code",
-      placeholder: "e.g. M5V",
-      hint:        "First 3 characters — e.g. M5V",
-      validate:    (v) => /^[A-Z][0-9][A-Z]$/i.test(v.replace(/\s/g, "")),
-      errorMsg:    "Enter the first 3 characters — e.g. M5V",
-    },
-  };
-  const pcConfig = POSTCODE_CONFIG[country] || POSTCODE_CONFIG.GB;
 
   const toggleCrop = (crop) => {
     setSelectedCrops(prev =>
@@ -18806,34 +17561,23 @@ function OnboardingScreen({ session, onComplete }) {
   };
 
   const canAdvance = () => {
-    if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0 && pcConfig.validate(postcode.trim());
+    if (step === 0) return name.trim().length > 0 && postcode.trim().length > 0;
     if (step === 1) return selectedCrops.length > 0;
-    if (step === 2) return true; // notifications step — always skippable
-    if (step === 3) return stage !== null;
-    if (step === 4) return areaType !== null;
-    if (step === 5) return true; // source question is optional — always skippable
+    if (step === 2) return stage !== null;
+    if (step === 3) return areaType !== null;
+    if (step === 4) return true; // source question is optional — always skippable
     return false;
   };
 
   const next = () => {
     setError(null);
-    // PostHog: track step completion with relevant value
-    const stepValue = step === 0 ? { country }
-                    : step === 1 ? { crops_selected: selectedCrops.length }
-                    : step === 2 ? { push_granted: pushGranted }
-                    : step === 3 ? { stage }
-                    : step === 4 ? { area_type: areaType }
-                    : {};
-    posthog.capture("onboarding_step_completed", { step, ...stepValue });
-    if (step < 5) { setStep(s => s + 1); return; }
-    // Step 5 → submit
+    if (step < 4) { setStep(s => s + 1); return; }
+    // Step 4 → submit
     submit();
   };
 
   const submit = async () => {
-    if (submitting) return;
-    setSubmitting(true);
-    setStep(6); // loading screen
+    setStep(5); // loading screen
     const msgs = [
       "Setting up your first crops...",
       "Checking local weather...",
@@ -18850,8 +17594,7 @@ function OnboardingScreen({ session, onComplete }) {
       // Look up crop_def_ids for selected crops
       const defs = await apiFetch("/crop-definitions");
       const cropsPayload = selectedCrops.map(c => {
-        // Match on canonical name — c.name is always canonical regardless of display language
-        const def = defs?.find(d => (d.canonical_name || d.name).toLowerCase() === c.name.toLowerCase());
+        const def = defs?.find(d => d.name.toLowerCase() === c.name.toLowerCase());
         return { name: c.name, crop_def_id: def?.id || null, stage };
       });
 
@@ -18860,7 +17603,6 @@ function OnboardingScreen({ session, onComplete }) {
         body: JSON.stringify({
           name: name.trim(),
           postcode: postcode.trim().toUpperCase(),
-          country,
           crops: cropsPayload,
           area_type: areaType,
           ...getStoredUTMs(),
@@ -18871,7 +17613,6 @@ function OnboardingScreen({ session, onComplete }) {
       clearInterval(interval);
       // Small deliberate pause so loading feels intentional
       await new Promise(r => setTimeout(r, 600));
-      posthog.capture("onboarding_completed", { crops_count: selectedCrops.length, country, push_granted: pushGranted });
       onComplete();
     } catch (e) {
       clearInterval(interval);
@@ -18881,7 +17622,7 @@ function OnboardingScreen({ session, onComplete }) {
   };
 
   // ── Loading screen ──────────────────────────────────────────────────────────
-  if (step === 6) {
+  if (step === 5) {
     return (
       <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif" }}>
         <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
@@ -18914,7 +17655,7 @@ function OnboardingScreen({ session, onComplete }) {
 
       <div style={{ padding: "28px 24px 0" }}>
         <div style={{ fontSize: 11, color: C.stone, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
-          Step {step + 1} of 5
+          Step {step + 1} of 4
         </div>
         <div style={{ fontSize: 24, fontWeight: 700, color: C.forest, marginBottom: 4 }}>
           {stepLabels[step]}
@@ -18932,54 +17673,28 @@ function OnboardingScreen({ session, onComplete }) {
         {/* ── Step 0: Identity ─────────────────────────────────────────────── */}
         {step === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-
-            {/* Country picker */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Where are you based?</label>
-              <select
-                value={country}
-                onChange={e => { setCountry(e.target.value); setPostcode(""); }}
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  fontSize: 15,
-                  fontFamily: "Georgia, serif",
-                  background: "#fff",
-                  border: `2px solid ${C.border}`,
-                  borderRadius: 12,
-                  color: "#1a1a1a",
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E6E6E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, 
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 14px center",
-                  cursor: "pointer",
-                }}>
-                {COUNTRY_OPTIONS.map(opt => (
-                  <option key={opt.code} value={opt.code}>{opt.flag} {opt.label}</option>
-                ))}
-              </select>
+            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.5, marginBottom: 4 }}>
+              We'll use your postcode for local weather and task timing.
             </div>
-
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>What shall we call you?</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>First name</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Sarah, GardenMark, Veg lover..."
+                placeholder="e.g. Sarah"
                 autoFocus
                 style={{ ...inputStyle, width: "100%" }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>{pcConfig.label}</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Postcode</label>
               <input
                 value={postcode}
                 onChange={e => setPostcode(e.target.value.toUpperCase())}
-                placeholder={pcConfig.placeholder}
+                placeholder="e.g. TS22"
                 style={{ ...inputStyle, width: "100%" }}
               />
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>{pcConfig.hint}</div>
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>First part only — e.g. TS22, not TS22 5BQ</div>
             </div>
           </div>
         )}
@@ -19008,7 +17723,7 @@ function OnboardingScreen({ session, onComplete }) {
                     }}>
                     <span style={{ fontSize: 24 }}>{crop.emoji}</span>
                     <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "serif", color: selected ? "#fff" : "#1a1a1a" }}>
-                      {getOnboardingCropLabel(crop, country)}
+                      {crop.name}
                     </span>
                   </button>
                 );
@@ -19017,102 +17732,8 @@ function OnboardingScreen({ session, onComplete }) {
           </div>
         )}
 
-        {/* ── Step 2: Notifications ─────────────────────────────────────────── */}
+        {/* ── Step 2: Growth stage (one answer for all crops) ──────────────── */}
         {step === 2 && (
-          <div>
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>🔔</div>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 10, lineHeight: 1.3 }}>
-                Stay on top of your garden
-              </div>
-              <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
-                Vercro tells you when to water, when frost is coming, and when your crops are ready to harvest. Notifications are how it reaches you — at the right time, not all day long.
-              </div>
-            </div>
-            <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
-              {[
-                { icon: "🌡️", text: "Frost alerts before they happen" },
-                { icon: "💧", text: "Watering reminders based on your weather" },
-                { icon: "🥕", text: "Harvest nudges when crops are ready" },
-                { icon: "🐛", text: "Pest and disease alerts for your area" },
-              ].map((item, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: i < 3 ? 10 : 0 }}>
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
-                  <span style={{ fontSize: 13, color: "#1a1a1a" }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={async () => {
-                if (_isNativeApp) {
-                  // Native — trigger OS permission dialog then move on
-                  try {
-                    const { PushNotifications: PN } = await import("@capacitor/push-notifications");
-                    await PN.removeAllListeners();
-                    PN.addListener("registration", async (token) => {
-                      try {
-                        await fetch(`${API}/push/register`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-                          body: JSON.stringify({ token: token.value, platform: _capacitorPlatform }),
-                        });
-                      } catch (e) { console.warn("[Push] Save failed:", e); }
-                    });
-                    const result = await PN.requestPermissions();
-                    if (result.receive === "granted") {
-                      await PN.register();
-                      setPushGranted(true);
-                      posthog.capture("push_permission_granted", { platform: "native" });
-                    } else {
-                      posthog.capture("push_permission_declined", { platform: "native" });
-                    }
-                  } catch (e) { console.warn("[Push] Native onboarding failed:", e); }
-                } else {
-                  // Web — trigger browser permission
-                  try {
-                    const { publicKey } = await apiFetch("/notifications/vapid-key");
-                    if (publicKey) {
-                      const permission = await Notification.requestPermission();
-                      if (permission === "granted") {
-                        const sub = await registerPushSubscription(publicKey);
-                        if (sub) {
-                          await apiFetch("/notifications/register-token", {
-                            method: "POST",
-                            body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
-                          });
-                          await apiFetch("/notifications/preferences", {
-                            method: "PUT",
-                            body: JSON.stringify({
-                              push_enabled: true, due_today_enabled: true, coming_up_enabled: true,
-                              weather_alerts_enabled: true, pest_alerts_enabled: true,
-                              crop_checks_enabled: true, weekly_summary_enabled: true, milestones_enabled: true,
-                              morning_time_local: "07:00", evening_time_local: "18:00",
-                            }),
-                          });
-                          setPushGranted(true);
-                          posthog.capture("push_permission_granted", { platform: "web" });
-                        }
-                      } else {
-                        posthog.capture("push_permission_declined", { platform: "web" });
-                      }
-                    }
-                  } catch (e) { console.warn("[Push] Web onboarding failed:", e); }
-                }
-                next(); // always advance regardless of outcome
-              }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
-              Turn on notifications
-            </button>
-            <button
-              onClick={() => { posthog.capture("push_permission_declined", { platform: _isNativeApp ? "native" : "web" }); next(); }}
-              style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px", textDecoration: "underline" }}>
-              Maybe later
-            </button>
-          </div>
-        )}
-
-        {/* ── Step 3: Growth stage (one answer for all crops) ──────────────── */}
-        {step === 3 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               A rough answer is fine — we'll build your plan from this.
@@ -19141,8 +17762,8 @@ function OnboardingScreen({ session, onComplete }) {
           </div>
         )}
 
-        {/* ── Step 4: Area type ────────────────────────────────────────────── */}
-        {step === 4 && (
+        {/* ── Step 3: Area type ────────────────────────────────────────────── */}
+        {step === 3 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               Pick where these crops will end up — this is their final growing spot. We'll tailor watering, frost alerts and task timings to match.
@@ -19175,8 +17796,8 @@ function OnboardingScreen({ session, onComplete }) {
           </div>
         )}
 
-        {/* ── Step 5: How did you hear about us ───────────────────────────── */}
-        {step === 5 && (
+        {/* ── Step 4: How did you hear about us ───────────────────────────── */}
+        {step === 4 && (
           <div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               Helps us focus on what's working. Skip if you'd rather not say.
@@ -19195,22 +17816,22 @@ function OnboardingScreen({ session, onComplete }) {
         {/* ── Continue / Submit button ─────────────────────────────────────── */}
         <button
           onClick={next}
-          disabled={!canAdvance() || submitting}
+          disabled={!canAdvance()}
           style={{
             width: "100%",
             marginTop: 28,
             padding: 16,
-            background: (canAdvance() && !submitting) ? C.forest : C.border,
-            color: (canAdvance() && !submitting) ? "#fff" : C.stone,
+            background: canAdvance() ? C.forest : C.border,
+            color: canAdvance() ? "#fff" : C.stone,
             border: "none",
             borderRadius: 12,
             fontSize: 16,
             fontWeight: 700,
-            cursor: (canAdvance() && !submitting) ? "pointer" : "not-allowed",
+            cursor: canAdvance() ? "pointer" : "not-allowed",
             fontFamily: "serif",
             transition: "background 0.2s",
           }}>
-          {step === 5 ? "Build my plan 🌱" : "Continue →"}
+          {step === 4 ? "Build my plan 🌱" : "Continue →"}
         </button>
 
         {step > 0 && (
@@ -19242,60 +17863,10 @@ function IOSInstallBanner({ onDismiss }) {
 
 export default function GrowSmart() {
   const router = useRouter();
-  useEffect(() => {
-    if (document.getElementById("vercro-task-anim")) return;
-    const s = document.createElement("style");
-    s.id = "vercro-task-anim";
-    s.textContent = `
-      @keyframes taskSlideOut {
-        from { transform: translateX(0);    opacity: 1; }
-        to   { transform: translateX(-110%); opacity: 0; }
-      }
-      @keyframes taskSlideIn {
-        from { transform: translateY(8px); opacity: 0; }
-        to   { transform: translateY(0);   opacity: 1; }
-      }
-      @keyframes taskPressScale {
-        from { transform: scale(1); }
-        to   { transform: scale(0.98); }
-      }
-      @keyframes undoPillFadeOut {
-        from { opacity: 1; transform: translateY(0); }
-        to   { opacity: 0; transform: translateY(4px); }
-      }
-      @keyframes syncPillFade {
-        from { opacity: 0; }
-        to   { opacity: 1; }
-      }
-      @keyframes shimmer {
-        0%   { background-position: -400px 0; }
-        100% { background-position:  400px 0; }
-      }
-      @keyframes ptrSpin {
-        from { transform: rotate(0deg); }
-        to   { transform: rotate(360deg); }
-      }
-      @keyframes taskSlideFromLeft {
-        from { transform: translateX(-60px); opacity: 0; }
-        to   { transform: translateX(0);     opacity: 1; }
-      }
-      .skeleton-block {
-        border-radius: 10px;
-        background: linear-gradient(90deg, #e8ede9 25%, #d4ddd5 50%, #e8ede9 75%);
-        background-size: 800px 100%;
-        animation: shimmer 1.4s ease-in-out infinite;
-      }
-    `;
-    document.head.appendChild(s);
-  }, []);
   const [session,     setSession]     = useState(undefined); // undefined = loading
   const [onboarding,  setOnboarding]  = useState(null);      // null = checking, true/false = resolved
   const [tab,         setTabRaw]      = useState("dashboard");
-  const setTab = (newTab) => {
-    window.scrollTo(0, 0);
-    setTabRaw(newTab);
-    posthog.capture("tab_viewed", { tab: newTab });
-  };
+  const setTab = (newTab) => { window.scrollTo(0, 0); setTabRaw(newTab); };
   const [addPrefill,  setAddPrefill]  = useState(null);
   const [prevTab,     setPrevTab]     = useState("dashboard");
   const [editCropFocus, setEditCropFocus] = useState(null);
@@ -19304,51 +17875,8 @@ export default function GrowSmart() {
   const [showLogActivityGlobal, setShowLogActivityGlobal] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        posthog.identify(session.user.id, { email: session.user.email });
-        // Silently re-register Android push token on every app open
-        // Ensures existing users get an OneSignal subscription ID if FCM was connected after they registered
-        if (_capacitorPlatform === "android") {
-          import("@capacitor/push-notifications").then(({ PushNotifications: PN }) => {
-            PN.checkPermissions().then(status => {
-              if (status.receive === "granted") {
-                PN.removeAllListeners().then(() => {
-                  PN.addListener("registration", async (token) => {
-                    try {
-                      await fetch(`${API}/push/register`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-                        body: JSON.stringify({ token: token.value, platform: "android" }),
-                      });
-                    } catch (e) { console.warn("[Push] Android re-registration failed:", e); }
-                  });
-                  PN.register().catch(() => {});
-                });
-              }
-            }).catch(() => {});
-          }).catch(() => {});
-        }
-      }
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      setSession(s);
-      // Only reset tab on actual sign-in — not on background token refresh
-      if (event === "SIGNED_IN") {
-        setTabRaw("dashboard");
-        if (s?.user) {
-          posthog.identify(s.user.id, { email: s.user.email });
-          const daysSinceSignup = s.user.created_at
-            ? Math.floor((Date.now() - new Date(s.user.created_at).getTime()) / 86400000)
-            : null;
-          posthog.capture("session_started", {
-            platform: _isNativeApp ? (_capacitorPlatform || "native") : "web",
-            days_since_signup: daysSinceSignup,
-          });
-        }
-      }
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
 
     // Capture UTM params on first visit — stored for attribution at signup
     captureUTMs();
@@ -19360,13 +17888,32 @@ export default function GrowSmart() {
         .catch(err => console.warn("[SW] Registration failed:", err));
     }
 
-    // Push registration handled in a separate useEffect after session is confirmed
+    // Register push notifications for native app (Capacitor iOS/Android)
+    if (typeof window !== "undefined" && window.Capacitor?.isNative && PushNotifications) {
+      PushNotifications.requestPermissions().then(result => {
+        if (result.receive === "granted") {
+          PushNotifications.register();
+        }
+      });
+      PushNotifications.addListener("registration", async token => {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s?.access_token) return;
+        fetch(`${API}/push/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
+          body: JSON.stringify({ token: token.value, platform: window.Capacitor.getPlatform() })
+        }).catch(console.warn);
+      });
+    }
 
     // Initialise RevenueCat for native app
-    // _configureRevenueCat is idempotent — safe to call here and from the import callback
-    if (_isNativeApp) {
+    if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
       supabase.auth.getSession().then(({ data: { session: s } }) => {
-        if (s?.user?.id) _configureRevenueCat(s.user.id);
+        if (!s?.user?.id) return;
+        Purchases.configure({
+          apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY,
+          appUserID: s.user.id,
+        });
       });
     }
 
@@ -19460,8 +18007,8 @@ export default function GrowSmart() {
         {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
-        {tab === "feeds"     && <FeedsScreen />}
-        {tab === "plan"      && <PlanScreen />}
+        {tab === "feeds"     && !navEnabled && <FeedsScreen />}
+        {tab === "plan"      && navEnabled   && <PlanScreen />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
         {tab === "admin"     && isPartnerAdmin && !isAdmin && !isDemo && <AdminScreen metricsOnly={true} />}
@@ -19494,10 +18041,10 @@ export default function GrowSmart() {
           style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-          {_isNativeApp ? "💡" : "💬"}
+          {window?.Capacitor?.isNative ? "💡" : "💬"}
         </button>
       )}
-      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} isNative={_isNativeApp} />}
+      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} isNative={!!(window?.Capacitor?.isNative)} />}
 
       {/* Subscribed success toast — shown after Stripe redirect */}
       {subscribedToast && (
@@ -19508,13 +18055,16 @@ export default function GrowSmart() {
 
       {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "rgba(247,246,242,0.96)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {[...[
+        {[...(navEnabled
+    ? [
         { id: "dashboard", label: "Today",   icon: TAB_ICONS.dashboard },
         { id: "garden",    label: "Garden",  icon: TAB_ICONS.garden },
         { id: "plan",      label: "Plan",    icon: TAB_ICONS.plan },
         { id: "crops",     label: "Crops",   icon: TAB_ICONS.crops },
         { id: "profile",   label: "Profile", icon: TAB_ICONS.profile },
-      ], ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...((isViewer || isPartnerAdmin) && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
+      ]
+    : TABS
+  ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...((isViewer || isPartnerAdmin) && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
