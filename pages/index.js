@@ -3418,6 +3418,20 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       if (onExternalLogActivityConsumed) onExternalLogActivityConsumed();
     }
   }, [externalShowLogActivity]);
+
+  // Listen for harvests logged from the Crops tab — update harvestedIds immediately
+  // so the harvest forecast section removes the crop without waiting for a data reload.
+  useEffect(() => {
+    const handler = (e) => {
+      const { crop_instance_id, isFinal } = e.detail || {};
+      if (isFinal && crop_instance_id) {
+        setHarvestedIds(s => new Set([...s, crop_instance_id]));
+        loadRecentHarvests();
+      }
+    };
+    window.addEventListener("vercroHarvestLogged", handler);
+    return () => window.removeEventListener("vercroHarvestLogged", handler);
+  }, []);
   const [blockedPeriods,     setBlockedPeriods]     = useState([]);
   const [showFirstRun,       setShowFirstRun]       = useState(() => {
     try { return localStorage.getItem("vercro_first_run_seen") !== "1"; } catch(e) { return false; }
@@ -7083,6 +7097,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [timelineCrop,  setTimelineCrop]  = useState(null);  // crop to show timeline for
   const [cropMenuOpen,  setCropMenuOpen]  = useState(null);  // crop.id of open overflow menu
   const [duplicateCrop, setDuplicateCrop] = useState(null); // crop to duplicate
+  const [pendingHarvest, setPendingHarvest] = useState(null); // crop being harvested from crop card
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
@@ -7282,6 +7297,18 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
+      {pendingHarvest && (
+        <HarvestModal
+          item={{ crop: pendingHarvest.name, variety: pendingHarvest.variety || null, crop_instance_id: pendingHarvest.id }}
+          onClose={() => setPendingHarvest(null)}
+          onSaved={(cropInstanceId, isFinal) => {
+            setPendingHarvest(null);
+            load();
+            // Notify Today tab so harvest forecast removes the crop immediately
+            window.dispatchEvent(new CustomEvent("vercroHarvestLogged", { detail: { crop_instance_id: cropInstanceId, isFinal } }));
+          }}
+        />
+      )}
       {duplicateCrop && (
         <DuplicateCropSheet
           crop={duplicateCrop}
@@ -7855,6 +7882,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                 onClick={() => { setCropMenuOpen(null); startEdit(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: "#1a1a1a", cursor: "pointer", textAlign: "left" }}>
                                 Edit crop
+                              </button>
+                              <div style={{ height: 1, background: C.border }} />
+                              <button
+                                onClick={() => { setCropMenuOpen(null); setPendingHarvest(crop); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
+                                🌾 Log harvest
                               </button>
                               <div style={{ height: 1, background: C.border }} />
                               <button
