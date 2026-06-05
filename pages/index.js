@@ -4923,9 +4923,115 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
 }
 
 
+// =============================================================================
+// WHY NOW? BOTTOM SHEET
+// AI-generated explanation for why a task is suggested today.
+// Free users: 3 lifetime uses then paywall. Pro: unlimited.
+// Cache: per-session ref keyed by task ID — never calls API twice for same task.
+// =============================================================================
+
+const whyNowCache = {}; // module-level cache — persists for app session
+
+function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
+  const [state,       setState]       = useState("loading"); // "loading" | "ready" | "error"
+  const [explanation, setExplanation] = useState(null);
+  const [whyRemaining, setWhyRemaining] = useState(null);
+  const swipe = useSwipeToDismiss(onClose);
+
+  useEffect(() => {
+    if (!task?.id) return;
+
+    // Return cached result instantly
+    if (whyNowCache[task.id]) {
+      setExplanation(whyNowCache[task.id].explanation);
+      setWhyRemaining(whyNowCache[task.id].why_remaining);
+      setState("ready");
+      return;
+    }
+
+    setState("loading");
+    apiFetch(`/tasks/${task.id}/why-now`, { method: "POST" })
+      .then(data => {
+        whyNowCache[task.id] = data;
+        setExplanation(data.explanation);
+        setWhyRemaining(data.why_remaining);
+        setState("ready");
+      })
+      .catch(err => {
+        const msg = err?.message || "";
+        if (msg.includes("upgrade_required") || msg.includes("free Why now?") || msg.includes("Upgrade to Pro")) {
+          onClose();
+          onUpgradeRequired();
+          return;
+        }
+        setState("error");
+      });
+  }, [task?.id]);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+
+      {/* Sheet */}
+      <div {...swipe} style={{ position: "relative", background: "#fff", borderRadius: "18px 18px 0 0", padding: "20px 20px 36px", maxHeight: "70vh", overflowY: "auto" }}>
+        {/* Drag handle */}
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: "#e0e0e0", margin: "0 auto 16px" }} />
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "#222" }}>💡 Why now?</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: C.stone, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+
+        {/* Task label */}
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, padding: "8px 10px", background: C.offwhite, borderRadius: 8, lineHeight: 1.4 }}>
+          {task?.action}
+        </div>
+
+        {/* Loading shimmer */}
+        {state === "loading" && (
+          <div>
+            {[80, 95, 65].map((w, i) => (
+              <div key={i} style={{ height: 13, borderRadius: 6, background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)", backgroundSize: "200% 100%", animation: "whyShimmer 1.4s infinite", width: `${w}%`, marginBottom: 10 }} />
+            ))}
+            <style>{`@keyframes whyShimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }`}</style>
+          </div>
+        )}
+
+        {/* Explanation */}
+        {state === "ready" && explanation && (
+          <div style={{ fontSize: 14, color: "#333", lineHeight: 1.65 }}>
+            {explanation}
+          </div>
+        )}
+
+        {/* Error */}
+        {state === "error" && (
+          <div style={{ fontSize: 13, color: C.stone, textAlign: "center", padding: "12px 0" }}>
+            Couldn't load explanation right now. Try again in a moment.
+          </div>
+        )}
+
+        {/* Free usage counter */}
+        {state === "ready" && whyRemaining !== null && (
+          <div style={{ marginTop: 14, fontSize: 11, color: C.stone, textAlign: "center" }}>
+            {whyRemaining === 0
+              ? "You've used all 3 free explanations — upgrade to Pro for unlimited."
+              : `${whyRemaining} free explanation${whyRemaining !== 1 ? "s" : ""} remaining`}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = false }) {
-  const [animating, setAnimating] = useState(false);
-  const [expanded,  setExpanded]  = useState(false);
+  const [animating,      setAnimating]      = useState(false);
+  const [expanded,       setExpanded]       = useState(false);
+  const [showWhyNow,     setShowWhyNow]     = useState(false);
+  const [showWhyPaywall, setShowWhyPaywall] = useState(false);
+  const { isPro, isMark } = useProStatus();
 
   // ── Timing colour ──────────────────────────────────────────────────────────
   const timing = task.timing_status || "peak";
@@ -5048,7 +5154,15 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
                   ⚠ At risk
                 </span>
               )}
-              {/* Expand why */}
+              {/* Why now? pill — today tasks only, not completed, not upcoming */}
+              {!isUpcoming && !completed && (
+                <span
+                  onClick={e => { e.stopPropagation(); setShowWhyNow(true); }}
+                  style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                  💡 Why now?
+                </span>
+              )}
+              {/* Expand why (static meta.why — legacy) */}
               {whyText && !completed && (
                 <span onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
                   style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
@@ -5077,6 +5191,20 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
           </div>
         </div>
       </div>
+
+      {/* Why now? sheet */}
+      {showWhyNow && (
+        <WhyNowSheet
+          task={task}
+          onClose={() => setShowWhyNow(false)}
+          onUpgradeRequired={() => setShowWhyPaywall(true)}
+        />
+      )}
+
+      {/* Why now? paywall */}
+      {showWhyPaywall && (
+        <ProPaywallSheet trigger="why_now" onClose={() => setShowWhyPaywall(false)} />
+      )}
     </div>
   );
 }
@@ -10918,6 +11046,12 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       subtext:  "Plan ahead, catch problems early, and make better use of every bed with Vercro Pro.",
       nudgeText: null,
       nudgeSubtext: null,
+    },
+    why_now: {
+      headline: "Understand exactly why every task matters — and when",
+      subtext:  "Get unlimited AI explanations for every task, tailored to your crops, growth stage, and current conditions.",
+      nudgeText: "Want to keep getting personalised explanations?",
+      nudgeSubtext: "Unlimited Why now? is included with Vercro Pro.",
     },
   };
 
