@@ -5494,9 +5494,9 @@ function GardenView({ onNavigateAdd }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div><label style={labelStyle}>Name</label>
               <input value={newLocation.name} onChange={e => setNewLocation(l => ({ ...l, name: e.target.value }))} style={inputStyle} placeholder="e.g. Allotment plot 7" /></div>
-            <div><label style={labelStyle}>Postcode</label>
-              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22" />
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong>, not TS22 5BQ</div>
+            <div><label style={labelStyle}>Postcode or zip code</label>
+              <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22 or 90210" />
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to get local weather for your garden</div>
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, useful for future planning</span></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -5658,9 +5658,9 @@ function GardenView({ onNavigateAdd }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={editLocationForm.name} onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Postcode</label>
+                <div><label style={labelStyle}>Postcode or zip code</label>
                   <input value={editLocationForm.postcode} onChange={e => setEditLocationForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} />
-                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>First part only — e.g. <strong>TS22</strong></div>
+                  <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to get local weather for your garden</div>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -8678,7 +8678,7 @@ const FAQ_DATA = [
       },
       {
         q: "Why do I need to add a postcode?",
-        a: "Your postcode pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate. Enter the first part only — for example TS22, not TS22 5BQ.",
+        a: "Your postcode or zip code pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate.",
       },
       {
         q: "What's the difference between a location and a growing area?",
@@ -9532,15 +9532,13 @@ function EditProfileModal({ current, onSave, onClose }) {
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 100); }, []);
 
-  const ukPostcodePattern = /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i;
-
   const validate = () => {
     const e = {};
     if (!name.trim())             e.name     = "Name is required";
     if (name.trim().length > 50)  e.name     = "Name must be 50 characters or less";
-    const pc = postcode.trim().toUpperCase().replace(/\s/g, "");
-    if (!pc)                      e.postcode = "Postcode is required";
-    else if (!ukPostcodePattern.test(pc)) e.postcode = "Enter the first part only — e.g. TS22";
+    const pc = postcode.trim().replace(/\s/g, "");
+    if (!pc)                      e.postcode = "Postcode or zip code is required";
+    else if (pc.length < 2 || pc.length > 10) e.postcode = "Enter a valid postcode or zip code";
     return e;
   };
 
@@ -9583,16 +9581,16 @@ function EditProfileModal({ current, onSave, onClose }) {
             {errors.name && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
           </div>
           <div>
-            <label style={labelStyle}>Postcode (first part only)</label>
+            <label style={labelStyle}>Postcode or zip code</label>
             <input
               value={postcode}
               onChange={e => { setPostcode(e.target.value.toUpperCase()); setErrors(r => ({ ...r, postcode: null })); }}
               style={{ ...inputStyle, borderColor: errors.postcode ? "#dc2626" : undefined }}
-              placeholder="e.g. TS22"
+              placeholder="e.g. TS22 or 90210"
             />
             {errors.postcode
               ? <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.postcode}</div>
-              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>e.g. <strong>TS22</strong>, not TS22 5BQ</div>
+              : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to get local weather for your garden</div>
             }
           </div>
           <button
@@ -17878,14 +17876,14 @@ function OnboardingScreen({ session, onComplete }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Postcode</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Postcode or zip code</label>
               <input
                 value={postcode}
                 onChange={e => setPostcode(e.target.value.toUpperCase())}
-                placeholder="e.g. TS22"
+                placeholder="e.g. TS22 or 90210"
                 style={{ ...inputStyle, width: "100%" }}
               />
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>First part only — e.g. TS22, not TS22 5BQ</div>
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 5 }}>Used to get local weather for your garden</div>
             </div>
           </div>
         )}
