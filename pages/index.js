@@ -7496,6 +7496,9 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [cropMenuOpen,  setCropMenuOpen]  = useState(null);  // crop.id of open overflow menu
   const [duplicateCrop, setDuplicateCrop] = useState(null); // crop to duplicate
   const [pendingHarvest, setPendingHarvest] = useState(null); // crop being harvested from crop card
+  const [pendingDormant, setPendingDormant] = useState(null); // crop being marked dormant
+  const [pendingFail,    setPendingFail]    = useState(null); // crop being marked failed
+  const [failReason,     setFailReason]     = useState(null); // selected failure reason
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
@@ -7707,6 +7710,92 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           }}
         />
       )}
+
+      {/* ── Mark dormant confirmation sheet ───────────────────────────────── */}
+      {pendingDormant && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) setPendingDormant(null); }}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 10 }}>
+              Mark {pendingDormant.name} as dormant?
+            </div>
+            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
+              This {pendingDormant.name} will enter its dormant period. It stays in your garden and will still receive winter maintenance reminders. It reactivates automatically when spring tasks become relevant.
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await apiFetch(`/crops/${pendingDormant.id}/dormant`, { method: "PATCH", body: JSON.stringify({}) });
+                  setPendingDormant(null);
+                  load();
+                } catch(e) { alert(e.message); }
+              }}
+              style={{ width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              💤 Mark dormant
+            </button>
+            <button
+              onClick={() => setPendingDormant(null)}
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mark as failed reason picker sheet ────────────────────────────── */}
+      {pendingFail && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) { setPendingFail(null); setFailReason(null); } }}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+              What happened to {pendingFail.name}?
+            </div>
+            <div style={{ fontSize: 14, color: C.stone, marginBottom: 20 }}>Select a reason to help Vercro learn from failures.</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
+              {[
+                { key: "frost",       label: "❄️ Frost damage" },
+                { key: "disease",     label: "🍄 Disease" },
+                { key: "pest_damage", label: "🐛 Pest damage" },
+                { key: "drought",     label: "☀️ Drought" },
+                { key: "neglect",     label: "😔 Neglect" },
+                { key: "other",       label: "Other" },
+              ].map(({ key, label }) => (
+                <button key={key}
+                  onClick={() => setFailReason(key)}
+                  style={{
+                    padding: "10px 12px", borderRadius: 10, border: `2px solid ${failReason === key ? C.red : C.border}`,
+                    background: failReason === key ? "#fff5f5" : "#fff",
+                    color: failReason === key ? C.red : "#1a1a1a",
+                    fontSize: 13, fontWeight: failReason === key ? 700 : 500, cursor: "pointer", textAlign: "left",
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              disabled={!failReason}
+              onClick={async () => {
+                try {
+                  await apiFetch(`/crops/${pendingFail.id}/fail`, { method: "PATCH", body: JSON.stringify({ reason: failReason }) });
+                  setPendingFail(null);
+                  setFailReason(null);
+                  load();
+                } catch(e) { alert(e.message); }
+              }}
+              style={{ width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", fontFamily: "serif", marginBottom: 10 }}>
+              Mark as failed
+            </button>
+            <button
+              onClick={() => { setPendingFail(null); setFailReason(null); }}
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {duplicateCrop && (
         <DuplicateCropSheet
           crop={duplicateCrop}
@@ -7766,7 +7855,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Status</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["harvested", "Harvested"]].map(([val, label]) => (
+                {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["dormant", "💤 Dormant"], ["harvested", "Harvested"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterStatus(val)}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterStatus === val ? C.forest : C.border}`, background: filterStatus === val ? C.forest : "transparent", color: filterStatus === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {label}
@@ -8248,7 +8337,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      {crop.status === "dormant" && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "1px 7px" }}>💤 Dormant</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
                   </div>
                   {/* Right: Check + Timeline stacked, overflow menu */}
@@ -8286,6 +8380,32 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                 onClick={() => { setCropMenuOpen(null); setPendingHarvest(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
                                 🌾 Log harvest
+                              </button>
+                              <div style={{ height: 1, background: C.border }} />
+                              {crop.crop_def?.is_perennial && crop.status !== "dormant" && (
+                                <>
+                                  <button
+                                    onClick={() => { setCropMenuOpen(null); setPendingDormant(crop); }}
+                                    style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
+                                    💤 Mark dormant
+                                  </button>
+                                  <div style={{ height: 1, background: C.border }} />
+                                </>
+                              )}
+                              {crop.status === "dormant" && (
+                                <>
+                                  <button
+                                    onClick={async () => { setCropMenuOpen(null); try { await apiFetch(`/crops/${crop.id}/reactivate`, { method: "PATCH" }); load(); } catch(e) { alert(e.message); } }}
+                                    style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
+                                    🌱 Reactivate
+                                  </button>
+                                  <div style={{ height: 1, background: C.border }} />
+                                </>
+                              )}
+                              <button
+                                onClick={() => { setCropMenuOpen(null); setFailReason(null); setPendingFail(crop); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.amber, cursor: "pointer", textAlign: "left" }}>
+                                ✕ Mark as failed
                               </button>
                               <div style={{ height: 1, background: C.border }} />
                               <button
