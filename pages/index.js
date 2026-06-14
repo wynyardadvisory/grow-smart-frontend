@@ -8281,6 +8281,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                         </button>
                       )}
                       <div ref={cropIdx === 0 ? tourRefs.tourRef_cropMenu : null} style={{ position: "relative" }}>
+                        <button
+                          onClick={() => setCropMenuOpen(cropMenuOpen === crop.id ? null : crop.id)}
                           style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                           ⋯
                         </button>
