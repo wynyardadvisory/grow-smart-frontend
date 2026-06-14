@@ -384,43 +384,26 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
 
 // ── TourPill ──────────────────────────────────────────────────────────────────
 function TourPill({ tab, onStart }) {
-  const readDone = () => {
-    if (typeof window === "undefined") return false;
-    try { const v = localStorage.getItem("vercro_walkthrough_completed"); return v ? JSON.parse(v)[tab] === true : false; } catch { return false; }
-  };
-  const [done, setDone] = React.useState(readDone);
-
-  React.useEffect(() => {
-    const check = () => setDone(readDone());
-    // Refresh on window focus (returning from another tab/app)
-    window.addEventListener("focus", check);
-    // Refresh instantly when any tour completes — fired by WalkthroughOverlay
-    window.addEventListener("vercroTourCompleted", check);
-    return () => {
-      window.removeEventListener("focus", check);
-      window.removeEventListener("vercroTourCompleted", check);
-    };
-  }, [tab]);
-
   return (
-    <div style={{ marginBottom: 12 }}>
-      <button
-        onClick={() => {
-          typeof window !== "undefined" && window.posthog?.capture?.("tour_started", { tab, source: "pill" });
-          onStart(tab);
-        }}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          background: "#f0f7f4", border: `1px solid ${C.sage}`,
-          borderRadius: 20, padding: "6px 14px",
-          fontSize: 12, fontWeight: done ? 500 : 700,
-          color: C.forest, cursor: "pointer",
-          opacity: done ? 0.65 : 1,
-          fontFamily: "sans-serif",
-        }}>
-        🗺 {done ? "Tour" : `Take a tour of this tab →`}
-      </button>
-    </div>
+    <button
+      onClick={() => {
+        typeof window !== "undefined" && window.posthog?.capture?.("tour_started", { tab, source: "pill" });
+        onStart(tab);
+      }}
+      style={{
+        background: "none",
+        border: `1px solid ${C.forest}`,
+        borderRadius: 20,
+        padding: "5px 14px",
+        fontSize: 12,
+        fontWeight: 600,
+        color: C.forest,
+        cursor: "pointer",
+        fontFamily: "sans-serif",
+        flexShrink: 0,
+      }}>
+      Guide
+    </button>
   );
 }
 
@@ -18647,34 +18630,22 @@ export default function GrowSmart() {
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", paddingTop: "max(16px, env(safe-area-inset-top))", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Vercro 🌱</div>
+          {["dashboard","garden","plan","crops","profile"].includes(tab) && (
+            <TourPill tab={tab === "dashboard" ? "today" : tab} onStart={startTour} />
+          )}
         </div>
       </div>
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <>
-          <TourPill tab="today" onStart={startTour} />
-          <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} dashboardView={dashboardView} onDashboardViewChange={setDashboardView} externalShowLogActivity={showLogActivityGlobal} onExternalLogActivityConsumed={() => setShowLogActivityGlobal(false)} tourRefs={tourRefs} />
-        </>}
-        {tab === "garden" && <>
-          <TourPill tab="garden" onStart={startTour} />
-          <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} tourRefs={tourRefs} />
-        </>}
-        {tab === "crops" && <>
-          <TourPill tab="crops" onStart={startTour} />
-          <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} tourRefs={tourRefs} />
-        </>}
+        {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} dashboardView={dashboardView} onDashboardViewChange={setDashboardView} externalShowLogActivity={showLogActivityGlobal} onExternalLogActivityConsumed={() => setShowLogActivityGlobal(false)} tourRefs={tourRefs} />}
+        {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} tourRefs={tourRefs} />}
+        {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} tourRefs={tourRefs} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && !navEnabled && <FeedsScreen />}
-        {tab === "plan"      && navEnabled && <>
-          <TourPill tab="plan" onStart={startTour} />
-          <PlanScreen tourRefs={tourRefs} />
-        </>}
-        {tab === "profile" && <>
-          <TourPill tab="profile" onStart={startTour} />
-          <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} tourRefs={tourRefs} />
-        </>}
+        {tab === "plan"      && navEnabled && <PlanScreen tourRefs={tourRefs} />}
+        {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} tourRefs={tourRefs} />}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
         {tab === "admin"     && isPartnerAdmin && !isAdmin && !isDemo && <AdminScreen metricsOnly={true} />}
         {tab === "admin"     && isViewer && !isAdmin && !isDemo && !isPartnerAdmin && <ViewerAdminScreen />}
