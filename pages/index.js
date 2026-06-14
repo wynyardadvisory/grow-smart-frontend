@@ -6288,6 +6288,8 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                             Log
                           </button>
                         <div ref={areaIdx === 0 ? tourRefs.tourRef_areaMenu : null} style={{ position: "relative" }}>
+                          <button
+                            onClick={() => setAreaMenuOpen(areaMenuOpen === area.id ? null : area.id)}
                             style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                             ⋯
                           </button>
