@@ -161,36 +161,45 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
   const measureRef = React.useCallback((refName) => {
     const el = refs[refName]?.current;
     if (!el) return null;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    // Small delay to allow scroll to settle
+    // Use instant scroll so position is deterministic before measuring
+    el.scrollIntoView({ behavior: "instant", block: "center" });
+    // 600ms settle time — safer across iOS/Android WebView
     return new Promise(resolve => setTimeout(() => {
       const r = el.getBoundingClientRect();
-      resolve(r.top === 0 && r.bottom === 0 ? null : r);
-    }, 300));
+      if (r.width === 0 && r.height === 0) { resolve(null); return; }
+      resolve(r);
+    }, 600));
   }, [refs]);
+
+  // Fallback copy for Today tab steps that need tasks to exist
+  const NO_TASK_FALLBACK = {
+    tourRef_todayFocus: { title: "Today's focus", body: "When you have tasks due, your most important one appears here — chosen by Vercro based on urgency, crop stage and your local conditions." },
+    tourRef_whyNowPill: { title: "Why now? 💡",   body: "Each task card has a Why Now button that explains exactly why Vercro is recommending it today. Free users get 3 uses — Pro users get unlimited." },
+  };
 
   React.useEffect(() => {
     let cancelled = false;
     const measure = async () => {
-      // Skip steps where ref is null, but retry once after a short delay
-      // in case content hasn't finished rendering yet
       let s = step;
       while (s < steps.length) {
         let r = await measureRef(steps[s].ref);
         if (cancelled) return;
         if (!r) {
-          // Wait 800ms and retry once before skipping
+          // If this step has a no-content fallback, show tooltip centred with no spotlight
+          if (NO_TASK_FALLBACK[steps[s].ref]) {
+            setRect({ left: 0, top: -1000, right: 0, bottom: -1000, width: 0, height: 0, isFallback: true });
+            return;
+          }
+          // Otherwise retry once after 800ms
           await new Promise(res => setTimeout(res, 800));
           if (cancelled) return;
           r = await measureRef(steps[s].ref);
           if (cancelled) return;
         }
         if (r) { setRect(r); return; }
-        // Still null after retry — skip this step
         s++;
         setStep(s);
       }
-      // All remaining steps null after retries — close gracefully, don't mark complete
       onSkip();
     };
     measure();
@@ -292,35 +301,39 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
 
   if (!rect || step >= steps.length) return null;
 
+  const isFallback = rect.isFallback === true;
   const PAD = 8;
   const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
   const cl = rect.left - PAD;
   const ct = rect.top - PAD;
   const cw = rect.width + PAD * 2;
   const ch = rect.height + PAD * 2;
 
-  // Tooltip position: prefer below, flip above if too close to bottom
+  // Tooltip position: prefer below element, flip above if near bottom, clamp to viewport
   const viewH = window.innerHeight;
   const viewW = window.innerWidth;
-  const TOOLTIP_H = 200;
+  const TOOLTIP_H = 220;
   const TOOLTIP_W = Math.min(320, viewW - 32);
-  let ttTop = rect.bottom + PAD + 8;
-  if (ttTop + TOOLTIP_H > viewH - 16) ttTop = rect.top - PAD - 8 - TOOLTIP_H;
-  let ttLeft = Math.max(16, Math.min(cx - TOOLTIP_W / 2, viewW - TOOLTIP_W - 16));
+  let ttTop = isFallback ? (viewH - TOOLTIP_H) / 2 : rect.bottom + PAD + 8;
+  if (!isFallback && ttTop + TOOLTIP_H > viewH - 16) ttTop = rect.top - PAD - 8 - TOOLTIP_H;
+  if (ttTop < 16) ttTop = Math.max(16, (viewH - TOOLTIP_H) / 2);
+  let ttLeft = Math.max(16, Math.min((isFallback ? viewW / 2 : cx) - TOOLTIP_W / 2, viewW - TOOLTIP_W - 16));
 
   const currentStep = steps[step];
+  const fallback = NO_TASK_FALLBACK[currentStep?.ref];
+  const displayTitle = fallback ? fallback.title : currentStep?.title;
+  const displayBody  = fallback ? fallback.body  : currentStep?.body;
 
   return (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 1100 }}
       onClick={(e) => { if (e.target === e.currentTarget) handleSkip(); }}>
-      {/* Dark backdrop with cutout using clip-path */}
+      {/* Dark backdrop — no cutout for fallback steps (no element to highlight) */}
       <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
         <defs>
           <mask id="tour-mask">
             <rect width="100%" height="100%" fill="white" />
-            <rect x={cl} y={ct} width={cw} height={ch} rx={8} fill="black" />
+            {!isFallback && <rect x={cl} y={ct} width={cw} height={ch} rx={8} fill="black" />}
           </mask>
         </defs>
         <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#tour-mask)" />
@@ -342,12 +355,12 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
         {/* Step counter */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
           <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", flex: 1 }}>
-            {currentStep.title}
+            {displayTitle}
             {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.amber, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
           </div>
           <div style={{ fontSize: 11, color: C.stone, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>{step + 1} of {steps.length}</div>
         </div>
-        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>{currentStep.body}</div>
+        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>{displayBody}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {step > 0 && (
             <button onClick={handleBack}
