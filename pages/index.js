@@ -3861,18 +3861,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     loadRecentHarvests();
   }, [load]);
 
-  // Sync app icon badge when task data loads or changes
+  // Clear app icon badge when app loads — Option B nudge model.
+  // Push sets badge to 1 as a nudge; opening the app clears it.
   useEffect(() => {
-    if (!data || !CapacitorBadge) return;
-    const today = new Date().toISOString().split("T")[0];
-    const todayTasks = [
-      ...(data.tasks?.today || []),
-      ...(data.tasks?.this_week || []),
-      ...(data.tasks?.coming_up || []),
-    ].filter(t => (t.due_date || "") <= today);
-    const outstanding = todayTasks.filter(t => !t.completed_at && t.status !== "expired" && !completed.has(t.id)).length;
-    CapacitorBadge.set({ count: outstanding }).catch(() => {});
-  }, [data]);
+    if (!CapacitorBadge) return;
+    CapacitorBadge.set({ count: 0 }).catch(() => {});
+  }, []);
 
   // No client-side retry needed — dashboard now runs engine synchronously when tasks are empty.
   // Engine runs server-side and response always contains fresh data.
@@ -3884,13 +3878,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     } catch(e) {}
   };
 
-  // ── App icon badge helper ────────────────────────────────────────────────────
-  const updateAppBadge = (count) => {
-    if (!CapacitorBadge) return;
-    const n = Math.max(0, count);
-    CapacitorBadge.set({ count: n }).catch(() => {});
-  };
-
   const completeTask = async (task) => {
     setCompleted(prev => new Set([...prev, task.id]));
     setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
@@ -3900,8 +3887,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
-      // Update app icon badge — one fewer task remaining
-      updateAppBadge(grouped.today.filter(t => !completed.has(t.id) && t.id !== task.id).length);
+      // Nudge to share after 5th task — high-emotion moment
       const newCount = (data?.tasks_completed_this_week || 0) + 1;
       const totalKey = "vercro_total_completed";
       const total = parseInt(localStorage.getItem(totalKey) || "0") + 1;
@@ -3976,8 +3962,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
     try {
       await apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" });
-      // Update app icon badge — one more task now active
-      updateAppBadge(grouped.today.filter(t => !completed.has(t.id)).length + 1);
     } catch {
       // Revert — mark as completed again
       setCompleted(prev => new Set([...prev, task.id]));
