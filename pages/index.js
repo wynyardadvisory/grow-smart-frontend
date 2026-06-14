@@ -61,6 +61,390 @@ if (typeof window !== "undefined" && window.Capacitor?.isNative) {
   import("@capawesome/capacitor-badge").then(m => { CapacitorBadge = m.Badge; }).catch(() => {});
 }
 
+// ── Tab Walkthrough System ────────────────────────────────────────────────────
+// Group J — interactive guided tours for each app tab.
+// State stored in localStorage (primary, instant) + profiles.walkthrough_completed
+// (background Supabase write for analytics/re-engagement).
+//
+// Tour order: Today → Garden → Plan → Crops → Profile
+// Each tab has its own self-contained step list.
+// PostHog events fire at prompt, start, step, complete, skip, chain, and all-done.
+
+const TOUR_TABS = ["today", "garden", "plan", "crops", "profile"];
+
+const TOUR_STEPS = {
+  today: [
+    { ref: "tourRef_todayHeader",    title: "Your daily dashboard",    body: "Welcome to Today. Every morning Vercro analyses your crops, location, weather and season to build a personalised growing plan. Most gardeners spend less than 5 minutes here each day." },
+    { ref: "tourRef_todayLogToggle", title: "Today & Log",             body: "Switch between your task plan for today and your garden activity log — a record of everything you've done." },
+    { ref: "tourRef_streakCard",     title: "Your streak",             body: "Tracks how many days in a row you've checked in. Small daily habits make a real difference to your harvest." },
+    { ref: "tourRef_plantCheckCard", title: "Plant Check 📷",          body: "Not sure what's wrong with a plant? Take a photo and Vercro will identify problems, estimate growth stage and tell you what to do next. Free users get 3 lifetime checks — Pro users get unlimited.", pro: true },
+    { ref: "tourRef_todayFocus",     title: "Today's focus",           body: "Your single most important task right now — chosen by Vercro based on urgency, crop stage and your local conditions. Mark it done or snooze it." },
+    { ref: "tourRef_whyNowPill",     title: "Why now? 💡",             body: "Wondering if a task is actually important? Why Now explains exactly why Vercro is recommending it today, using your crop stage, local weather and growing conditions. Free users get 3 uses — Pro users get unlimited.", pro: true },
+    { ref: "tourRef_logActivityBtn", title: "Log activity 📋",         body: "Done something that wasn't on the list? Tap here to manually log watering, feeding, observations, or harvests." },
+  ],
+  garden: [
+    { ref: "tourRef_gardenLocation", title: "Your growing locations",  body: "Locations let you manage different growing spaces separately — for example your garden, allotment, greenhouse or polytunnel. Free users can have up to 3 locations — Pro users get unlimited.", pro: true },
+    { ref: "tourRef_gardenArea",     title: "Growing areas",           body: "Each bed or container within your location shows here, with the crops currently growing in it. Tap to expand." },
+    { ref: "tourRef_areaMenu",       title: "Area options ···",        body: "Tap ··· on any area to edit it, log watering, view its crop timeline, or check soil details." },
+    { ref: "tourRef_suggestCrops",   title: "AI planting suggestions", body: "Get AI-powered planting suggestions for any bed — Vercro picks the best crops for your space and season. Free users get 3 uses — Pro users get unlimited.", pro: true },
+  ],
+  plan: [
+    { ref: "tourRef_planCanvas",           title: "Your garden visualised", body: "A bird's-eye view of your garden — your beds laid out spatially, showing what's growing where." },
+    { ref: "tourRef_planLocationSelector", title: "Location selector",      body: "Switch between different growing locations if you have more than one. Additional locations are a Pro feature.", pro: true },
+    { ref: "tourRef_planSelector",         title: "Current garden & plans", body: "View your current live garden, or switch to a draft plan to explore what you might grow next season — without changing anything live." },
+    { ref: "tourRef_newPlanBtn",           title: "New plan",               body: "Pro users can create draft plans to map out what to grow next season before committing. Plan, rearrange, and experiment freely.", pro: true },
+  ],
+  crops: [
+    { ref: "tourRef_cropFeedsToggle", title: "Crops & Feeds",          body: "Switch between your crops list and your fertilisers and feeds — managed in one place." },
+    { ref: "tourRef_firstCropCard",   title: "Your crops",             body: "This is the master list of everything you're growing. Tap any crop to see its history, upcoming tasks, harvests and growing progress." },
+    { ref: "tourRef_filterSortBtn",   title: "Filter & Sort",          body: "Filter by status, area, or crop type — and sort by recent activity, name, or completion percentage." },
+    { ref: "tourRef_cropMenu",        title: "Crop options ···",       body: "Tap ··· on any crop to edit its details, log a harvest, run a PlantCheck, or view its full growing diary." },
+    { ref: "tourRef_addCropBtn",      title: "Add a crop",             body: "Tap + Add Crop to add something new to your garden. Vercro builds a personalised task plan for it straight away." },
+  ],
+  profile: [
+    { ref: "tourRef_profileDetails", title: "Your details",     body: "Your name and postcode. Your postcode powers local weather data and frost alerts — keep it accurate." },
+    { ref: "tourRef_timeAway",       title: "Time away ✈️",    body: "Going away? Set a blocked period and Vercro pauses your tasks and reschedules them for when you return. Your streak is protected too." },
+    { ref: "tourRef_harvestLog",     title: "Harvest log 🌾",  body: "A full record of everything you've harvested, by crop and year. Tap to expand and browse your growing history." },
+    { ref: "tourRef_notifications",  title: "Notifications 🔔", body: "Control your daily task reminders, weather alerts, and how Vercro communicates with you." },
+  ],
+};
+
+// ── Tour state hook ───────────────────────────────────────────────────────────
+function useTourState() {
+  const LS_KEY = "vercro_walkthrough_completed";
+  const DEFAULT = { today: false, garden: false, plan: false, crops: false, profile: false };
+  const read = () => {
+    if (typeof window === "undefined") return DEFAULT;
+    try {
+      const v = localStorage.getItem(LS_KEY);
+      return v ? JSON.parse(v) : DEFAULT;
+    } catch { return DEFAULT; }
+  };
+  const [completed, setCompleted] = React.useState(read);
+
+  const markComplete = React.useCallback((tab) => {
+    setCompleted(prev => {
+      const next = { ...prev, [tab]: true };
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(next));
+        // Notify TourPills to refresh instantly
+        window.dispatchEvent(new CustomEvent("vercroTourCompleted", { detail: { tab } }));
+      } catch {}
+      // Silent background Supabase write — don't await
+      apiFetch("/auth/profile", { method: "POST", body: JSON.stringify({ walkthrough_completed: next }) }).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const nextIncomplete = React.useCallback((currentTab) => {
+    const idx = TOUR_TABS.indexOf(currentTab);
+    for (let i = idx + 1; i < TOUR_TABS.length; i++) {
+      if (!completed[TOUR_TABS[i]]) return TOUR_TABS[i];
+    }
+    return null;
+  }, [completed]);
+
+  const allDone = TOUR_TABS.every(t => completed[t]);
+
+  return { completed, markComplete, nextIncomplete, allDone };
+}
+
+// ── WalkthroughOverlay ────────────────────────────────────────────────────────
+function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
+  const steps = TOUR_STEPS[tab] || [];
+  const [step, setStep] = React.useState(0);
+  const [rect, setRect] = React.useState(null);
+  const [showCompletion, setShowCompletion] = React.useState(false);
+  const [allDoneOnComplete, setAllDoneOnComplete] = React.useState(false);
+  const { nextIncomplete, allDone, markComplete } = useTourState();
+
+  const measureRef = React.useCallback((refName) => {
+    const el = refs[refName]?.current;
+    if (!el) return null;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Small delay to allow scroll to settle
+    return new Promise(resolve => setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      resolve(r.top === 0 && r.bottom === 0 ? null : r);
+    }, 300));
+  }, [refs]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const measure = async () => {
+      // Skip steps where ref is null, but retry once after a short delay
+      // in case content hasn't finished rendering yet
+      let s = step;
+      while (s < steps.length) {
+        let r = await measureRef(steps[s].ref);
+        if (cancelled) return;
+        if (!r) {
+          // Wait 800ms and retry once before skipping
+          await new Promise(res => setTimeout(res, 800));
+          if (cancelled) return;
+          r = await measureRef(steps[s].ref);
+          if (cancelled) return;
+        }
+        if (r) { setRect(r); return; }
+        // Still null after retry — skip this step
+        s++;
+        setStep(s);
+      }
+      // All remaining steps null after retries — close gracefully, don't mark complete
+      onSkip();
+    };
+    measure();
+    return () => { cancelled = true; };
+  }, [step]);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const el = refs[steps[step]?.ref]?.current;
+      if (el) setRect(el.getBoundingClientRect());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [step, refs, steps]);
+
+  React.useEffect(() => {
+    const handleKey = (e) => { if (e.key === "Escape") handleSkip(); };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  const posthog = () => typeof window !== "undefined" && window.posthog;
+
+  const handleDone = () => {
+    markComplete(tab);
+    posthog()?.capture?.("tour_completed", { tab });
+    // Read fresh from localStorage to check if all done
+    let freshAllDone = false;
+    try {
+      const v = localStorage.getItem("vercro_walkthrough_completed");
+      const state = v ? JSON.parse(v) : {};
+      state[tab] = true; // include the one just marked
+      freshAllDone = TOUR_TABS.every(t => state[t]);
+    } catch {}
+    setShowCompletion(true);
+    // Store for use in completion card
+    setAllDoneOnComplete(freshAllDone);
+  };
+
+  const handleSkip = () => {
+    posthog()?.capture?.("tour_skipped", { tab, step_reached: step + 1 });
+    onSkip();
+  };
+
+  const handleNext = () => {
+    posthog()?.capture?.("tour_step_viewed", { tab, step: step + 1, element: steps[step]?.ref });
+    if (step + 1 >= steps.length) { handleDone(); return; }
+    setStep(s => s + 1);
+  };
+
+  const handleBack = () => { if (step > 0) setStep(s => s - 1); };
+
+  const tabLabel = { today: "Today", garden: "Garden", plan: "Plan", crops: "Crops", profile: "Profile" }[tab];
+  const next = nextIncomplete(tab);
+  const nextLabel = next ? { today: "Today", garden: "Garden", plan: "Plan", crops: "Crops", profile: "Profile" }[next] : null;
+
+  // Completion card
+  if (showCompletion) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
+        <div style={{ background: "#fff", borderRadius: 20, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+            You know the {tabLabel} tab
+          </div>
+          {!allDoneOnComplete && nextLabel && (
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>
+              Next recommended tour: <strong>{nextLabel}</strong>
+            </div>
+          )}
+          {allDoneOnComplete && (
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>
+              You know Vercro inside out 🌱
+            </div>
+          )}
+          {!allDoneOnComplete && nextLabel && (
+            <button
+              onClick={() => { posthog()?.capture?.("tour_completion_next_cta", { from_tab: tab, to_tab: next }); onComplete(next); }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Take the {nextLabel} tour
+            </button>
+          )}
+          {allDoneOnComplete && (
+            <button
+              onClick={() => { posthog()?.capture?.("tour_all_complete"); onComplete(null); }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Great, thanks!
+            </button>
+          )}
+          <button
+            onClick={() => onComplete(null)}
+            style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
+            Maybe later
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!rect || step >= steps.length) return null;
+
+  const PAD = 8;
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const cl = rect.left - PAD;
+  const ct = rect.top - PAD;
+  const cw = rect.width + PAD * 2;
+  const ch = rect.height + PAD * 2;
+
+  // Tooltip position: prefer below, flip above if too close to bottom
+  const viewH = window.innerHeight;
+  const viewW = window.innerWidth;
+  const TOOLTIP_H = 200;
+  const TOOLTIP_W = Math.min(320, viewW - 32);
+  let ttTop = rect.bottom + PAD + 8;
+  if (ttTop + TOOLTIP_H > viewH - 16) ttTop = rect.top - PAD - 8 - TOOLTIP_H;
+  let ttLeft = Math.max(16, Math.min(cx - TOOLTIP_W / 2, viewW - TOOLTIP_W - 16));
+
+  const currentStep = steps[step];
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 1100 }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleSkip(); }}>
+      {/* Dark backdrop with cutout using clip-path */}
+      <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+        <defs>
+          <mask id="tour-mask">
+            <rect width="100%" height="100%" fill="white" />
+            <rect x={cl} y={ct} width={cw} height={ch} rx={8} fill="black" />
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#tour-mask)" />
+      </svg>
+
+      {/* Tooltip */}
+      <div style={{
+        position: "absolute",
+        top: ttTop,
+        left: ttLeft,
+        width: TOOLTIP_W,
+        background: "#fff",
+        borderRadius: 14,
+        padding: "16px 18px",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
+        zIndex: 1200,
+        transition: "top 0.2s ease, left 0.2s ease",
+      }}>
+        {/* Step counter */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", flex: 1 }}>
+            {currentStep.title}
+            {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.amber, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
+          </div>
+          <div style={{ fontSize: 11, color: C.stone, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>{step + 1} of {steps.length}</div>
+        </div>
+        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>{currentStep.body}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {step > 0 && (
+            <button onClick={handleBack}
+              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
+              Back
+            </button>
+          )}
+          <button onClick={handleNext}
+            style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            {step + 1 >= steps.length ? "Done" : "Next"}
+          </button>
+          <button onClick={handleSkip}
+            style={{ background: "none", border: "none", fontSize: 12, color: C.stone, cursor: "pointer", padding: "0 4px", textDecoration: "underline" }}>
+            Skip
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TourPill ──────────────────────────────────────────────────────────────────
+function TourPill({ tab, onStart }) {
+  const readDone = () => {
+    if (typeof window === "undefined") return false;
+    try { const v = localStorage.getItem("vercro_walkthrough_completed"); return v ? JSON.parse(v)[tab] === true : false; } catch { return false; }
+  };
+  const [done, setDone] = React.useState(readDone);
+
+  React.useEffect(() => {
+    const check = () => setDone(readDone());
+    // Refresh on window focus (returning from another tab/app)
+    window.addEventListener("focus", check);
+    // Refresh instantly when any tour completes — fired by WalkthroughOverlay
+    window.addEventListener("vercroTourCompleted", check);
+    return () => {
+      window.removeEventListener("focus", check);
+      window.removeEventListener("vercroTourCompleted", check);
+    };
+  }, [tab]);
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <button
+        onClick={() => {
+          typeof window !== "undefined" && window.posthog?.capture?.("tour_started", { tab, source: "pill" });
+          onStart(tab);
+        }}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: "#f0f7f4", border: `1px solid ${C.sage}`,
+          borderRadius: 20, padding: "6px 14px",
+          fontSize: 12, fontWeight: done ? 500 : 700,
+          color: C.forest, cursor: "pointer",
+          opacity: done ? 0.65 : 1,
+          fontFamily: "sans-serif",
+        }}>
+        🗺 {done ? "Tour" : `Take a tour of this tab →`}
+      </button>
+    </div>
+  );
+}
+
+// ── PostOnboardingTourPrompt ──────────────────────────────────────────────────
+function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
+  const posthog = () => typeof window !== "undefined" && window.posthog;
+  React.useEffect(() => {
+    posthog()?.capture?.("tour_prompt_shown");
+  }, []);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={e => { if (e.target === e.currentTarget) { posthog()?.capture?.("tour_prompt_dismissed"); onDismiss(); } }}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 10 }}>
+          Want a quick tour?
+        </div>
+        <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
+          We'll walk you through each tab so you know where everything is. Takes about 2 minutes.
+        </div>
+        <button
+          onClick={() => { posthog()?.capture?.("tour_prompt_accepted"); onStartTour(); }}
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+          Start tour
+        </button>
+        <button
+          onClick={() => { posthog()?.capture?.("tour_prompt_dismissed"); onDismiss(); }}
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+          Maybe later
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Capacitor Browser (native only) ──────────────────────────────────────────
 // Used for OAuth flows (Sign in with Apple, Google) on native iOS/Android.
 // Opens an in-app SFSafariViewController instead of full Safari, satisfying
@@ -3369,7 +3753,7 @@ function GardenLog({ onLogActivity }) {
   );
 }
 
-function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed }) {
+function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed, tourRefs = {} }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
   const [error,        setError]       = useState(null);
@@ -3778,7 +4162,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     <div>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
+      <div ref={tourRefs.tourRef_todayHeader} style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
@@ -3805,7 +4189,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       </div>
 
       {/* ── SEGMENTED CONTROL — Today / Log ───────────────────────────────── */}
-      <div style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
+      <div ref={tourRefs.tourRef_todayLogToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
         {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
           <button key={id} onClick={() => onDashboardViewChange(id)}
             style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: "sans-serif", boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
@@ -3851,22 +4235,26 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       <TimeAwayTodayBanner blockedPeriods={blockedPeriods} onTabChange={onTabChange} />
 
       {/* ── STREAK CARD ────────────────────────────────────────────────────── */}
-      <StreakCard
-        streak={data.current_streak_days}
-        longestStreak={data.longest_streak_days}
-        onViewBadges={() => onTabChange("badges")}
-      />
+      <div ref={tourRefs.tourRef_streakCard}>
+        <StreakCard
+          streak={data.current_streak_days}
+          longestStreak={data.longest_streak_days}
+          onViewBadges={() => onTabChange("badges")}
+        />
+      </div>
 
       {/* ── PLANT CHECK HERO — position 2, above Today's focus ───────── */}
-      <PlantCheckHeroCard
-        isMark={isMark}
-        plantCheckEnabled={plantCheckEnabled}
-        remainingChecks={data?.diagnoses_remaining ?? null}
-        onOpen={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
-      />
+      <div ref={tourRefs.tourRef_plantCheckCard}>
+        <PlantCheckHeroCard
+          isMark={isMark}
+          plantCheckEnabled={plantCheckEnabled}
+          remainingChecks={data?.diagnoses_remaining ?? null}
+          onOpen={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
+        />
+      </div>
 
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
+      <div ref={tourRefs.tourRef_todayFocus} style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today&apos;s focus</div>
 
         {focusItem ? (
@@ -3887,6 +4275,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
                     Later
                   </button>
+                </div>
+                <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <span ref={tourRefs.tourRef_whyNowPill}
+                    onClick={() => { /* Why now handled at task level */ }}
+                    style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 20, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                    💡 Why now?
+                  </span>
                 </div>
                 {focusItem.crop_instance_id && (
                   <button onClick={() => setShowLogForCrop({ id: focusItem.crop_instance_id, name: focusItem.crop?.name || "crop", task_type: focusItem.task_type })}
@@ -4509,7 +4904,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       )}
 
       {/* Standalone log activity button — always visible at bottom of Today */}
-      <div style={{ padding: "12px 0 4px" }}>
+      <div ref={tourRefs.tourRef_logActivityBtn} style={{ padding: "12px 0 4px" }}>
         <button onClick={() => setShowLogActivity(true)}
           style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <span style={{ fontSize: 16 }}>📋</span> Log activity
@@ -5064,7 +5459,7 @@ function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
   );
 }
 
-function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = false }) {
+function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = false, whyNowRef = null }) {
   const [animating,      setAnimating]      = useState(false);
   const [expanded,       setExpanded]       = useState(false);
   const [showWhyNow,     setShowWhyNow]     = useState(false);
@@ -5195,6 +5590,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
               {/* Why now? pill — today tasks only, not completed, not upcoming */}
               {!isUpcoming && !completed && (
                 <span
+                  ref={whyNowRef}
                   onClick={e => { e.stopPropagation(); setShowWhyNow(true); }}
                   style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                   💡 Why now?
@@ -5268,7 +5664,7 @@ function SortableAreaCard({ id, multiArea, children }) {
 }
 
 // ── Garden view ───────────────────────────────────────────────────────────────
-function GardenView({ onNavigateAdd }) {
+function GardenView({ onNavigateAdd, tourRefs = {} }) {
   const measurementUnit = useMeasurementUnit();
   const GARDEN_CACHE = "vercro_garden_v1";
   const _cachedGarden = (() => { try { const c = localStorage.getItem(GARDEN_CACHE); if (c) { const { locs, cropsData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { locs, cropsData }; } } catch(e) {} return null; })();
@@ -5591,8 +5987,8 @@ function GardenView({ onNavigateAdd }) {
         </div>
       )}
 
-      {locations.map(loc => (
-        <div key={loc.id} style={{ marginBottom: 28 }}>
+      {locations.map((loc, locIdx) => (
+        <div key={loc.id} ref={locIdx === 0 ? tourRefs.tourRef_gardenLocation : null} style={{ marginBottom: 28 }}>
           {/* Location header — tap name to collapse */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }}
@@ -5741,11 +6137,11 @@ function GardenView({ onNavigateAdd }) {
                 onDragEnd={e => handleAreaDragEnd(loc.id, e)}
               >
                 <SortableContext items={displayAreas.map(a => a.id)} strategy={verticalListSortingStrategy}>
-                  {displayAreas.map(area => {
+                  {displayAreas.map((area, areaIdx) => {
                     const areaCrops = cropsByArea[area.id] || [];
                     return (
                       <SortableAreaCard key={area.id} id={area.id} multiArea={multiArea}>{handleProps => (
-                      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+                      <div ref={areaIdx === 0 ? tourRefs.tourRef_gardenArea : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
 
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
@@ -5891,9 +6287,7 @@ function GardenView({ onNavigateAdd }) {
                             style={{ height: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
                             Log
                           </button>
-                        <div style={{ position: "relative" }}>
-                          <button
-                            onClick={() => setAreaMenuOpen(areaMenuOpen === area.id ? null : area.id)}
+                        <div ref={areaIdx === 0 ? tourRefs.tourRef_areaMenu : null} style={{ position: "relative" }}>
                             style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                             ⋯
                           </button>
@@ -5953,9 +6347,7 @@ function GardenView({ onNavigateAdd }) {
                     {areaCrops.length === 0 && (
                       <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 6 }}>No crops yet</div>
                     )}
-                    <button onClick={async () => {
-                        // Pro and Mark — always open
-                        if (isPro || isMark) { setSuggestArea(area); return; }
+                    <button ref={areaIdx === 0 ? tourRefs.tourRef_suggestCrops : null} onClick={async () => {
                         // PRO_ENABLED off and not a preview/test user — open freely (pre-launch)
                         const proActive = PRO_ENABLED || isGardenTestUser;
                         if (!proActive) { setSuggestArea(area); return; }
@@ -7086,7 +7478,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
   );
 }
 
-function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false }) {
+function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false, tourRefs = {} }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
   const [crops,    setCrops]   = useState(_cachedCrops?.cropsData || []);
@@ -7351,7 +7743,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       )}
       {/* Crops / Feed toggle — only shown when nav is redesigned (Mark or PRO_ENABLED) */}
       {navEnabled && (
-        <div style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
+        <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
           {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
             <button key={id} onClick={() => setCropTab(id)}
               style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif", transition: "all 0.15s" }}>
@@ -7375,11 +7767,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{visibleCrops.length} of {crops.length} crop{crops.length !== 1 ? "s" : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => onAddCrop()}
+            <button ref={tourRefs.tourRef_addCropBtn} onClick={() => onAddCrop()}
               style={{ background: C.forest, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               + Add Crop
             </button>
-            <button onClick={() => setShowFilters(v => !v)}
+            <button ref={tourRefs.tourRef_filterSortBtn} onClick={() => setShowFilters(v => !v)}
               style={{ background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
@@ -7702,8 +8094,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         );
       })}
 
-      {visibleCrops.map(crop => (
-        <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+      {visibleCrops.map((crop, cropIdx) => (
+        <div key={crop.id} ref={cropIdx === 0 ? tourRefs.tourRef_firstCropCard : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
 
           {/* Confirm delete overlay */}
           {confirm === crop.id && (
@@ -7886,9 +8278,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                           🔍 Check
                         </button>
                       )}
-                      <div style={{ position: "relative" }}>
-                        <button
-                          onClick={() => setCropMenuOpen(cropMenuOpen === crop.id ? null : crop.id)}
+                      <div ref={cropIdx === 0 ? tourRefs.tourRef_cropMenu : null} style={{ position: "relative" }}>
                           style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                           ⋯
                         </button>
@@ -9833,7 +10223,7 @@ function NotificationsScreen({ onBack }) {
 }
 
 // ── Main ProfileScreen ────────────────────────────────────────────────────────
-function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayOpened }) {
+function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayOpened, tourRefs = {} }) {
   const PROFILE_CACHE = "vercro_profile_v1";
   const _cachedProfile = (() => {
     try { const c = localStorage.getItem(PROFILE_CACHE); if (c) { const { form, ts } = JSON.parse(c); if (Date.now() - ts < 10 * 60 * 1000) return form; } } catch(e) {}
@@ -9988,6 +10378,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 1. IDENTITY HEADER ── */}
       <div
+        ref={tourRefs.tourRef_profileDetails}
         onClick={() => setShowEditModal(true)}
         style={{
           background: "#fff", borderRadius: 16, padding: "20px 16px",
@@ -10079,7 +10470,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       )}
 
       {/* ── 4. HARVEST LOG ── */}
-      <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div ref={tourRefs.tourRef_harvestLog} style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         <button onClick={() => setLogOpen(o => !o)}
           style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -10117,12 +10508,14 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 6. NOTIFICATIONS ROW ── */}
       <div style={sectionLabel}>Notifications</div>
-      <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         {chevronRow("🔔", "Notifications", "Daily tasks, weather alerts and reminders", () => setShowNotifScreen(true))}
       </div>
 
       {/* ── 7. TIME AWAY ── */}
-      <TimeAwaySection openOnMount={openTimeAway} onOpened={onTimeAwayOpened} />
+      <div ref={tourRefs.tourRef_timeAway}>
+        <TimeAwaySection openOnMount={openTimeAway} onOpened={onTimeAwayOpened} />
+      </div>
 
       {/* ── 8. PREFERENCES ── */}
       <div style={sectionLabel}>Measurements & Communications</div>
@@ -16898,7 +17291,7 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
   );
 }
 
-function PlanScreen() {
+function PlanScreen({ tourRefs = {} }) {
   const PLAN_VIEW_CACHE = "vercro_plan_view_v1";
   const _savedView = (() => { try { const v = localStorage.getItem(PLAN_VIEW_CACHE); return v ? JSON.parse(v) : null; } catch(e) { return null; } })();
 
@@ -17183,7 +17576,7 @@ function PlanScreen() {
 
       {/* ── Location selector — always visible, Pro gated for additional locations ── */}
       {locations.length > 0 && (
-        <div style={{marginBottom:12}}>
+        <div ref={tourRefs.tourRef_planLocationSelector} style={{marginBottom:12}}>
           <div style={{fontSize:11,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Location</div>
           <div style={{position:"relative"}}>
             <select
@@ -17212,7 +17605,7 @@ function PlanScreen() {
       )}
 
       {/* Plan selector */}
-      <div style={{marginBottom:12}}>
+      <div ref={tourRefs.tourRef_planSelector} style={{marginBottom:12}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{flex:1,position:"relative"}}>
             <select
@@ -17229,7 +17622,7 @@ function PlanScreen() {
             </select>
             <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:C.stone,fontSize:12}}>▾</div>
           </div>
-          <button onClick={() => {
+          <button ref={tourRefs.tourRef_newPlanBtn} onClick={() => {
               if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
@@ -17352,7 +17745,7 @@ function PlanScreen() {
         }
 
         return (
-          <div ref={containerRef} style={{width:"100%",display:"flex",justifyContent:"center"}}>
+          <div ref={el => { containerRef.current = el; if (tourRefs.tourRef_planCanvas) tourRefs.tourRef_planCanvas.current = el; }} style={{width:"100%",display:"flex",justifyContent:"center"}}>
           <div style={{width:stageW,borderRadius:18,overflow:"hidden",border:`1px solid ${isPlanMode?"rgba(47,93,80,0.3)":"rgba(0,0,0,0.1)"}`,boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
             {(savedToast||planToast) && (
               <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
@@ -18063,6 +18456,48 @@ export default function GrowSmart() {
   const [dashboardView, setDashboardView] = useState("today");
   const [showLogActivityGlobal, setShowLogActivityGlobal] = useState(false);
 
+  // ── Tour state ──────────────────────────────────────────────────────────────
+  const [showTourPrompt,   setShowTourPrompt]   = useState(false);
+  const [activeTourTab,    setActiveTourTab]     = useState(null); // which tab is being toured
+  // Refs for all tour targets — passed down to tab components
+  const tourRefs = {
+    tourRef_todayHeader:        React.useRef(null),
+    tourRef_todayLogToggle:     React.useRef(null),
+    tourRef_streakCard:         React.useRef(null),
+    tourRef_plantCheckCard:     React.useRef(null),
+    tourRef_todayFocus:         React.useRef(null),
+    tourRef_whyNowPill:         React.useRef(null),
+    tourRef_logActivityBtn:     React.useRef(null),
+    tourRef_gardenLocation:     React.useRef(null),
+    tourRef_gardenArea:         React.useRef(null),
+    tourRef_areaMenu:           React.useRef(null),
+    tourRef_suggestCrops:       React.useRef(null),
+    tourRef_planCanvas:         React.useRef(null),
+    tourRef_planLocationSelector: React.useRef(null),
+    tourRef_planSelector:       React.useRef(null),
+    tourRef_newPlanBtn:         React.useRef(null),
+    tourRef_cropFeedsToggle:    React.useRef(null),
+    tourRef_firstCropCard:      React.useRef(null),
+    tourRef_filterSortBtn:      React.useRef(null),
+    tourRef_cropMenu:           React.useRef(null),
+    tourRef_addCropBtn:         React.useRef(null),
+    tourRef_profileDetails:     React.useRef(null),
+    tourRef_timeAway:           React.useRef(null),
+    tourRef_harvestLog:         React.useRef(null),
+    tourRef_notifications:      React.useRef(null),
+  };
+
+  const startTour = React.useCallback((tourTab) => {
+    // Map tab id to tour tab name
+    const tabMap = { dashboard: "today", garden: "garden", plan: "plan", crops: "crops", profile: "profile" };
+    const t = tourTab in tabMap ? tabMap[tourTab] : tourTab;
+    setActiveTourTab(t);
+    // Navigate to the correct tab
+    const navMap = { today: "dashboard", garden: "garden", plan: "plan", crops: "crops", profile: "profile" };
+    setTab(navMap[t] || t);
+    // Note: tour_started PostHog event is fired by TourPill on user tap — not here, to avoid duplicates
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
@@ -18178,7 +18613,16 @@ export default function GrowSmart() {
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: C.stone, fontSize: 14 }}>Loading…</div>;
   }
   if (!session)   return <AuthScreen onAuth={setSession} />;
-  if (onboarding) return <OnboardingScreen session={session} onComplete={() => setOnboarding(false)} />;
+  if (onboarding) return <OnboardingScreen session={session} onComplete={() => {
+    setOnboarding(false);
+    // Show tour prompt for new users (only once ever)
+    try {
+      if (!localStorage.getItem("vercro_tour_prompted")) {
+        localStorage.setItem("vercro_tour_prompted", "1");
+        setShowTourPrompt(true);
+      }
+    } catch {}
+  }} />;
 
   return (
     <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto", paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -18191,14 +18635,29 @@ export default function GrowSmart() {
 
       {/* Content */}
       <div style={{ padding: "20px 20px 110px" }}>
-        {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} dashboardView={dashboardView} onDashboardViewChange={setDashboardView} externalShowLogActivity={showLogActivityGlobal} onExternalLogActivityConsumed={() => setShowLogActivityGlobal(false)} />}
-        {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} />}
-        {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} />}
+        {tab === "dashboard" && <>
+          <TourPill tab="today" onStart={startTour} />
+          <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} dashboardView={dashboardView} onDashboardViewChange={setDashboardView} externalShowLogActivity={showLogActivityGlobal} onExternalLogActivityConsumed={() => setShowLogActivityGlobal(false)} tourRefs={tourRefs} />
+        </>}
+        {tab === "garden" && <>
+          <TourPill tab="garden" onStart={startTour} />
+          <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} tourRefs={tourRefs} />
+        </>}
+        {tab === "crops" && <>
+          <TourPill tab="crops" onStart={startTour} />
+          <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} tourRefs={tourRefs} />
+        </>}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && !navEnabled && <FeedsScreen />}
-        {tab === "plan"      && navEnabled   && <PlanScreen />}
-        {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} />}
+        {tab === "plan"      && navEnabled && <>
+          <TourPill tab="plan" onStart={startTour} />
+          <PlanScreen tourRefs={tourRefs} />
+        </>}
+        {tab === "profile" && <>
+          <TourPill tab="profile" onStart={startTour} />
+          <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} tourRefs={tourRefs} />
+        </>}
         {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
         {tab === "admin"     && isPartnerAdmin && !isAdmin && !isDemo && <AdminScreen metricsOnly={true} />}
         {tab === "admin"     && isViewer && !isAdmin && !isDemo && !isPartnerAdmin && <ViewerAdminScreen />}
@@ -18262,6 +18721,37 @@ export default function GrowSmart() {
       </div>
       <Script src="/capacitor-bridge.js" strategy="beforeInteractive" />
       <Analytics />
+
+      {/* ── Tour overlay ──────────────────────────────────────────────────── */}
+      {activeTourTab && (
+        <WalkthroughOverlay
+          tab={activeTourTab}
+          refs={tourRefs}
+          onComplete={(nextTab) => {
+            setActiveTourTab(null);
+            if (nextTab) {
+              // Navigate and start next tour
+              const navMap = { today: "dashboard", garden: "garden", plan: "plan", crops: "crops", profile: "profile" };
+              setTab(navMap[nextTab] || nextTab);
+              setTimeout(() => setActiveTourTab(nextTab), 400);
+            }
+          }}
+          onSkip={() => setActiveTourTab(null)}
+        />
+      )}
+
+      {/* ── Post-onboarding tour prompt ───────────────────────────────────── */}
+      {showTourPrompt && (
+        <PostOnboardingTourPrompt
+          onStartTour={() => {
+            setShowTourPrompt(false);
+            startTour("today");
+          }}
+          onDismiss={() => {
+            setShowTourPrompt(false);
+          }}
+        />
+      )}
     </div>
   );
 }
