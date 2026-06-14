@@ -12088,7 +12088,7 @@ function FeedsScreen() {
         </div>
       ) : (
         feeds.map(feed => (
-          <div key={feed.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+          <div key={feed.id} style={{ background: feed.out_of_stock ? "#f5f5f3" : C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, opacity: feed.out_of_stock ? 0.72 : 1, transition: "opacity 0.2s, background 0.2s" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: "serif" }}>
@@ -12107,8 +12107,38 @@ function FeedsScreen() {
                 )}
                 {feed.notes && <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>{feed.notes}</div>}
               </div>
-              <button onClick={() => deleteFeed(feed.id)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: C.stone, fontSize: 18, padding: "0 0 0 12px", lineHeight: 1 }}>×</button>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, paddingLeft: 12, flexShrink: 0 }}>
+                {/* Out of stock toggle */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    onClick={async () => {
+                      const newVal = !feed.out_of_stock;
+                      setFeeds(prev => prev.map(f => f.id === feed.id ? { ...f, out_of_stock: newVal } : f));
+                      try {
+                        await apiFetch(`/feeds/${feed.id}/stock`, { method: "PATCH", body: JSON.stringify({ out_of_stock: newVal }) });
+                      } catch(e) {
+                        // Revert on error
+                        setFeeds(prev => prev.map(f => f.id === feed.id ? { ...f, out_of_stock: !newVal } : f));
+                      }
+                    }}
+                    style={{
+                      width: 36, height: 20, borderRadius: 10, cursor: "pointer",
+                      background: feed.out_of_stock ? C.stone : C.forest,
+                      position: "relative", transition: "background 0.2s", flexShrink: 0,
+                    }}>
+                    <div style={{
+                      position: "absolute", top: 2, left: feed.out_of_stock ? 18 : 2,
+                      width: 16, height: 16, borderRadius: "50%", background: "#fff",
+                      transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    }} />
+                  </div>
+                </div>
+                {feed.out_of_stock && (
+                  <div style={{ fontSize: 10, color: C.stone, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Ran out</div>
+                )}
+                <button onClick={() => deleteFeed(feed.id)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: C.stone, fontSize: 18, padding: 0, lineHeight: 1, marginTop: 2 }}>×</button>
+              </div>
             </div>
           </div>
         ))
