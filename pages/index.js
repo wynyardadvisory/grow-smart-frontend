@@ -537,13 +537,15 @@ const supabase = createClient(
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // ── Pro feature flag ──────────────────────────────────────────────────────────
-// Set NEXT_PUBLIC_PRO_ENABLED=true in Vercel env vars to show Pro UI to users.
+// Pro paywalls are permanently active for all users.
 // When false (default), all paywall triggers and upgrade prompts are hidden.
 // Existing users see no change until you deliberately flip this flag.
-const PRO_ENABLED = process.env.NEXT_PUBLIC_PRO_ENABLED === "true";
+// Pro paywalls are permanently active. All users see Pro features;
+// free users hit limits (3 PlantChecks, 3 locations, 3 boosts).
+// PRO_ENABLED flag has been removed — behaviour is now hardcoded.
 
 // ── Mark bypass ───────────────────────────────────────────────────────────────
-// Mark's account always sees all Pro features regardless of PRO_ENABLED flag.
+// Mark's account always sees all Pro features regardless of plan.
 // No other account is affected. Everyone else sees exactly what they always saw.
 const MARK_EMAIL = "mark@wynyardadvisory.co.uk";
 
@@ -567,20 +569,15 @@ function formatDimension(metres, unit) {
 }
 
 // ── Test user IDs ─────────────────────────────────────────────────────────────
-// These users see the full new UI and hit paywalls, but the upgrade CTA shows
-// "coming soon" instead of hitting Stripe. Global PRO_ENABLED stays false so
-// no other users are affected. Remove IDs here when going fully live.
+// These accounts are used for App Store review and internal testing.
 const TEST_USER_IDS = [
   "448095f2-d379-4232-90f2-6ac7cebe1c70",
-  "bc820dcb-fe7f-4311-a9cc-2439b215adc1", // demo account — Plant Check visible for App Review
-  "a6b10628-a36d-41b2-ad83-58fa6ecad254", // appdemo account — App Review account
+  "bc820dcb-fe7f-4311-a9cc-2439b215adc1", // demo account — App Review
+  "a6b10628-a36d-41b2-ad83-58fa6ecad254", // appdemo account — App Review
 ];
 
 // ── Pro preview user IDs ─────────────────────────────────────────────────────
-// These users experience the full PRO_ENABLED=true flow — real paywalls, real
-// Stripe/RevenueCat checkout — even while the global flag is still false.
-// Use for testing the paywall journey before going fully live.
-// Remove IDs here once PRO_ENABLED is flipped globally.
+// These users experience real paywalls and Stripe/RevenueCat checkout.
 const PRO_PREVIEW_USER_IDS = [
   "b1584cf2-8bc1-4599-87bc-c01a5d67b9c4",
 ];
@@ -644,8 +641,8 @@ async function apiFetch(path, options = {}) {
 
 // ── Pro subscription hook ────────────────────────────────────────────────────
 // Fetches subscription status from the API. Returns { isPro, plan, loading, isMark }.
-// Mark's account always gets isPro=true regardless of PRO_ENABLED or plan.
-// All other users only get Pro if PRO_ENABLED=true AND their plan is pro.
+// Mark's account always gets isPro=true regardless of plan.
+// All other users get isPro based on their actual subscription plan.
 function useProStatus() {
   const [isPro,       setIsPro]       = useState(() => {
     try { return localStorage.getItem("vercro_is_pro") === "true"; } catch(e) { return false; }
@@ -656,7 +653,7 @@ function useProStatus() {
   const [isTestUser,  setIsTestUser]  = useState(false);
 
   useEffect(() => {
-    // Always fetch status — needed for Mark/test bypasses even when PRO_ENABLED=false
+    // Always fetch status — needed for Mark/test bypasses and plan checks
     setLoading(true);
     Promise.all([
       apiFetch("/subscription/status").catch(() => null),
@@ -679,32 +676,21 @@ function useProStatus() {
     .finally(() => setLoading(false));
   }, []);
 
-  // isPro for general Pro UI: Mark OR (PRO_ENABLED=true AND plan is pro) OR test user
-  // Test/preview users see all Pro UI and real paywalls but are NOT isPro themselves.
-  // isPro for diagnosis: Mark OR actual plan is pro (ignores PRO_ENABLED flag)
+  // isPro for general Pro UI: Mark OR actual plan is pro
+  // isPro for diagnosis: Mark OR actual plan is pro
   const isPreviewUser = (() => { try { return localStorage.getItem("vercro_pro_preview") === "true"; } catch(e) { return false; } })();
-  const proFlagActive = PRO_ENABLED || isPreviewUser;
+  const proFlagActive = true; // PRO_ENABLED permanently true — paywalls always active
   const effectiveIsPro = isMark || (proFlagActive && isPro);
   const isProForDiagnosis = isMark || isPro;
   return { isPro: effectiveIsPro, isProForDiagnosis, plan, loading, isMark, isTestUser };
 }
 
 // ── Plant Check visibility hook ──────────────────────────────────────────────
-// Returns true only for Mark's account OR when PRO_ENABLED=true.
-// Everyone else (including demo) sees nothing until the flag is flipped.
+// PlantCheck is visible to all users. Free users get 3 lifetime checks then hit the paywall.
 function usePlantCheckEnabled() {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    if (PRO_ENABLED) { setEnabled(true); return; }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const email  = session?.user?.email || "";
-      const userId = session?.user?.id    || "";
-      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) setEnabled(true);
-    }).catch(() => {});
-  }, []);
-
-  return enabled;
+  // PRO_ENABLED permanently true — PlantCheck visible to all users.
+  // Free users get 3 lifetime checks then hit the paywall.
+  return true;
 }
 
 // ── useSwipeToDismiss — adds swipe-down-to-close to bottom sheets ─────────────
@@ -742,20 +728,9 @@ function useSwipeToDismiss(onClose) {
 }
 
 // ── Nav redesign visibility hook ─────────────────────────────────────────────
-// Returns true only for Mark's account OR when PRO_ENABLED=true.
-// When false: nav is unchanged, Feeds tab stays, Plan tab hidden.
-// When true: Plan tab replaces Feeds, Feeds moves inside Crops tab.
+// Nav is permanently enabled — Plan tab active, Feeds inside Crops tab.
 function useNavEnabled() {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => {
-    if (PRO_ENABLED) { setEnabled(true); return; }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const email  = session?.user?.email || "";
-      const userId = session?.user?.id    || "";
-      if (email === MARK_EMAIL || TEST_USER_IDS.includes(userId) || PARTNER_ADMIN_IDS.includes(userId) || PRO_PREVIEW_USER_IDS.includes(userId)) setEnabled(true);
-    }).catch(() => {});
-  }, []);
-  return enabled;
+  return true;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -5803,7 +5778,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{locations.length} location{locations.length !== 1 ? "s" : ""}</div>
         </div>
         <button onClick={() => {
-            if ((PRO_ENABLED || isGardenTestUser) && !isPro && !isMark && locations.length >= 3) {
+            if (!isPro && !isMark && locations.length >= 3) {
               setShowLocationPaywall(true);
               return;
             }
@@ -6330,10 +6305,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                       <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 6 }}>No crops yet</div>
                     )}
                     <button ref={areaIdx === 0 ? tourRefs.tourRef_suggestCrops : null} onClick={async () => {
-                        // PRO_ENABLED off and not a preview/test user — open freely (pre-launch)
-                        const proActive = PRO_ENABLED || isGardenTestUser;
-                        if (!proActive) { setSuggestArea(area); return; }
-                        // Check server-side limit
+                        // Always check server-side boost limit — paywalls permanently active
                         try {
                           const status = await apiFetch("/features/boost-status");
                           setBoostStatus(status);
@@ -7812,7 +7784,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onDone={() => { setCropPlantCheck(null); load(); }}
         />
       )}
-      {/* Crops / Feed toggle — only shown when nav is redesigned (Mark or PRO_ENABLED) */}
+      {/* Crops / Feeds toggle — shown when navEnabled (always true) */}
       {navEnabled && (
         <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
           {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
@@ -9989,7 +9961,7 @@ function HarvestSummaryCard({ crop }) {
 
 // ── Profile Screen ────────────────────────────────────────────────────────────
 // Redesigned: identity header, harvest summary prominent, notifications as
-// chevron row, account section at bottom, Pro card gated behind PRO_ENABLED.
+// Profile screen — chevron rows, account section, Pro subscription card.
 
 // ── Simple Toast ─────────────────────────────────────────────────────────────
 function useProfileToast() {
@@ -10514,7 +10486,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       </div>
 
       {/* ── 2. PRO CARD — gated, invisible to all except mark/test user ── */}
-      {PRO_ENABLED && <ProSubscriptionSection />}
+      {<ProSubscriptionSection />}
 
       {/* ── 3. HARVEST SUMMARY — hero card ── */}
       {harvestStats && (
@@ -10770,9 +10742,9 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
 
 // ── Pro Subscription Section ─────────────────────────────────────────────────
-// Shows in Profile when PRO_ENABLED=true.
+// Pro subscription section — always visible in Profile.
 // Free users see upgrade prompt. Pro users see their plan status + manage link.
-// Invisible to all users until PRO_ENABLED=true (only mark + test user see it).
+// Pro subscription section — visible to all users in Profile.
 
 function ProSubscriptionSection() {
   const { isPro, plan, loading, isTestUser } = useProStatus();
@@ -11372,7 +11344,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   // Check lifetime usage for free users
   const [usageCount, setUsageCount] = useState(null);
   useEffect(() => {
-    // Use isProForDiagnosis — plan-based check, ignores PRO_ENABLED flag.
+    // Use isProForDiagnosis — plan-based check. Pro users get unlimited diagnoses.
     // This ensures paid users are never blocked and free users always see accurate counts.
     if (isProForDiagnosis) return;
     apiFetch("/diagnoses/count").then(d => setUsageCount(d?.count || 0)).catch(() => {});
@@ -11384,9 +11356,10 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
   };
 
   const handlePhoto = async (base64) => {
-    // Gate: only active when PRO_ENABLED — no user sees a paywall until flag is flipped.
-    // Mark always bypasses. isProForDiagnosis is plan-based (ignores flag) for paid users.
-    if ((PRO_ENABLED || isDiagTestUser) && !isProForDiagnosis && usageCount >= 3) {
+    // Free users: paywall after 3 uses. Pro users: unlimited.
+    // Guard: if usageCount hasn't loaded yet, don't allow — server will enforce anyway.
+    if (!isProForDiagnosis && usageCount === null) return;
+    if (!isProForDiagnosis && usageCount >= 3) {
       setStep("paywall");
       return;
     }
@@ -11404,7 +11377,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         }),
       });
 
-      if ((PRO_ENABLED || isDiagTestUser) && data.upgrade_required) {
+      if (data.upgrade_required) {
         setStep("paywall");
         return;
       }
@@ -11418,7 +11391,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         if (diagCount === 2) maybePromptForReview();
       } catch(e) {}
     } catch (e) {
-      if ((PRO_ENABLED || isDiagTestUser) && (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks"))) {
+      if (e.message?.includes("upgrade_required") || e.message?.includes("free plant checks")) {
         setStep("paywall");
         return;
       }
@@ -11532,7 +11505,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 
 // ── Pro Paywall Component ─────────────────────────────────────────────────────
 // Shown as a bottom sheet when user hits a Pro feature limit.
-// Only renders when PRO_ENABLED=true — pass null/undefined to hide.
+// Paywall component — shown when free users hit their usage limit.
 // Usage: <ProPaywall trigger="diagnosis" onClose={() => setShowPaywall(false)} />
 
 // ── ProPaywallSheet ───────────────────────────────────────────────────────────
@@ -11561,9 +11534,9 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       }));
   }, []);
 
-  // All paywalls respect PRO_ENABLED — nothing shows until the flag is flipped.
+  // Feeds screen — always visible to all users.
   // Exception: preview/test users always see paywalls regardless of the flag.
-  if (!PRO_ENABLED && !isTestUser) return null;
+  // Feeds screen always visible — feed management is available to all users
   if (!trigger) return null;
 
   // ── Content by trigger ──────────────────────────────────────────────────────
@@ -13941,7 +13914,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
 
 // =============================================================================
 // PLAN SCREEN — holding page until visualiser + rotation are built
-// Only visible to Mark (or when PRO_ENABLED=true)
+// Only visible to Mark
 // =============================================================================
 // =============================================================================
 // PLAN SCREEN — Garden Visualiser (Konva — Premium 2.5D Redesign)
@@ -17757,7 +17730,7 @@ function PlanScreen({ tourRefs = {} }) {
             <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:C.stone,fontSize:12}}>▾</div>
           </div>
           <button ref={tourRefs.tourRef_newPlanBtn} onClick={() => {
-              if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+              if (!isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
             style={{flexShrink:0,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.forest}`,background:"#fff",color:C.forest,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
@@ -17945,7 +17918,7 @@ function PlanScreen({ tourRefs = {} }) {
         locPlans={locPlans}
         onViewPlan={planId => setSelectedPlanId(planId)}
         onCreatePlan={() => {
-          if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+          if (!isPro && !isMark) { setShowPlanPaywall(true); return; }
           setShowCreatePlan(true);
         }}
         onViewLive={() => setSelectedPlanId("live")}
@@ -17981,7 +17954,7 @@ function PlanScreen({ tourRefs = {} }) {
         assignments={assignments}
         selectedPlan={selectedPlan}
         onCreatePlan={() => {
-          if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+          if (!isPro && !isMark) { setShowPlanPaywall(true); return; }
           setShowCreatePlan(true);
         }}
         onViewPlan={planId => setSelectedPlanId(planId)}
@@ -18068,7 +18041,7 @@ function PlanScreen({ tourRefs = {} }) {
           isMark={isMark}
           onPlanNextSeason={() => {
               setDetailArea(null); setActiveBlock(null);
-              if ((PRO_ENABLED || isPlanTestUser) && !isPro && !isMark) { setShowPlanPaywall(true); return; }
+              if (!isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
           onClose={()=>{ setDetailArea(null); setActiveBlock(null); }}
