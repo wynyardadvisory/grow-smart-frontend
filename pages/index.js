@@ -3738,6 +3738,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const [recentHarvests,      setRecentHarvests]      = useState(null); // null = not loaded yet
   const [showShareGarden,    setShowShareGarden]    = useState(false);
   const [showPlantCheck,     setShowPlantCheck]     = useState(false);
+  const [whyNowTask,         setWhyNowTask]         = useState(null);
   const [plantCheckPrefill,  setPlantCheckPrefill]  = useState(null); // { crop } or null
   const plantCheckEnabled = usePlantCheckEnabled();
   const { isMark } = useProStatus();
@@ -4233,7 +4234,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 </div>
                 <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span ref={tourRefs.tourRef_whyNowPill}
-                    onClick={() => { /* Why now handled at task level */ }}
+                    onClick={() => { setWhyNowTask(focusItem); }}
                     style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 20, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                     💡 Why now?
                   </span>
@@ -4905,6 +4906,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           prefillCrop={plantCheckPrefill}
           onClose={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); }}
           onDone={() => { setShowPlantCheck(false); setPlantCheckPrefill(null); load(true); }}
+        />
+      )}
+      {whyNowTask && (
+        <WhyNowSheet
+          task={whyNowTask}
+          onClose={() => setWhyNowTask(null)}
+          onUpgradeRequired={() => setWhyNowTask(null)}
         />
       )}
     </div>
