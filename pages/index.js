@@ -18330,6 +18330,8 @@ function OnboardingScreen({ session, onComplete }) {
         return { name: c.name, crop_def_id: def?.id || null, stage };
       });
 
+      const storedUtms = getStoredUTMs();
+
       await apiFetch("/onboarding/complete", {
         method: "POST",
         body: JSON.stringify({
@@ -18337,10 +18339,28 @@ function OnboardingScreen({ session, onComplete }) {
           postcode: postcode.trim().toUpperCase(),
           crops: cropsPayload,
           area_type: areaType,
-          ...getStoredUTMs(),
+          ...storedUtms,
           signup_source_self_reported: selfSource || null,
         }),
       });
+
+      // claimed_source / claimed_campaign — Measurement Architecture doc,
+      // Section 4.2. Deliberately a PostHog-only mirror of the same
+      // getStoredUTMs() data already sent to /onboarding/complete above,
+      // not a separate Supabase write: there is no clean "first session
+      // only" hook in this codebase distinct from activation (see doc
+      // Section 13.2 decision, 2026-06-20) so claimed_* fires at the same
+      // point as the existing signup_source/signup_campaign fields rather
+      // than true account_created. Kept as person properties here so
+      // PostHog-side funnel queries can use claimed_* without joining out
+      // to Supabase; Supabase's signup_source/signup_campaign remain the
+      // system of record for the same value.
+      if (typeof window !== "undefined" && window.posthog?.people?.set) {
+        window.posthog.people.set({
+          claimed_source: storedUtms.signup_source || "direct",
+          claimed_campaign: storedUtms.signup_campaign || null,
+        });
+      }
 
       clearInterval(interval);
       // Small deliberate pause so loading feels intentional
