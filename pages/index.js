@@ -18365,6 +18365,14 @@ function OnboardingScreen({ session, onComplete }) {
       clearInterval(interval);
       // Small deliberate pause so loading feels intentional
       await new Promise(r => setTimeout(r, 600));
+      if (typeof window !== "undefined" && window.posthog) {
+        window.posthog.capture("onboarding_completed", {
+          signup_source: storedUtms.signup_source || "direct",
+          signup_campaign: storedUtms.signup_campaign || null,
+          crops_count: cropsPayload.length,
+          area_type: areaType,
+        });
+      }
       onComplete();
     } catch (e) {
       clearInterval(interval);
