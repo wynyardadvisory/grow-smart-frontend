@@ -10,6 +10,10 @@ export default function App({ Component, pageProps }) {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
       defaults: "2026-01-30",
+      // Cross-domain tracking: stitches sessions from vercro.com → app.vercro.com
+      // so the acquisition funnel connects landing page views to signups.
+      cross_subdomain_cookie: true,
+      cookie_domain: ".vercro.com",
       loaded: (ph) => {
         if (process.env.NODE_ENV === "development") ph.debug();
       },
