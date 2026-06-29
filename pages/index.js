@@ -18273,7 +18273,7 @@ const AREA_TYPES = [
 
 function OnboardingScreen({ session, onComplete }) {
   const [step,          setStep]         = useState(0);
-  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading
+  // step 0 = identity, 1 = crops, 2 = stage, 3 = area, 4 = source, 5 = loading, 6 = push opt-in
   // Pre-populate name from Apple/Google identity if available
   const [name,          setName]         = useState(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "");
   const [postcode,      setPostcode]     = useState("");
@@ -18373,7 +18373,7 @@ function OnboardingScreen({ session, onComplete }) {
           area_type: areaType,
         });
       }
-      onComplete();
+      setStep(6); // Show push opt-in before entering the app
     } catch (e) {
       clearInterval(interval);
       setError(e.message || "Something went wrong. Please try again.");
@@ -18388,6 +18388,48 @@ function OnboardingScreen({ session, onComplete }) {
         <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
         <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 12, textAlign: "center" }}>Building your garden plan...</div>
         <div style={{ fontSize: 15, color: C.stone, textAlign: "center", minHeight: 24 }}>{loadingMsg}</div>
+      </div>
+    );
+  }
+
+  // ── Push opt-in screen (step 6) ─────────────────────────────────────────────
+  // Shown immediately after the garden plan is built — highest-intent moment
+  // in the new user journey. Skipped silently on iOS native (Capacitor handles
+  // push permissions separately via PushNotifications.requestPermissions).
+  // Also skipped if push is already granted or not supported in this browser.
+  if (step === 6) {
+    const pushSupported = typeof window !== "undefined" && "Notification" in window;
+    const alreadyGranted = pushSupported && Notification.permission === "granted";
+    // Skip straight to app if push not supported or already set up
+    if (!pushSupported || alreadyGranted) {
+      onComplete();
+      return null;
+    }
+    return (
+      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif", maxWidth: 440, margin: "0 auto" }}>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>🔔</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 8, textAlign: "center" }}>
+          Your garden plan is ready
+        </div>
+        <div style={{ fontSize: 15, color: C.stone, textAlign: "center", lineHeight: 1.6, marginBottom: 32, maxWidth: 320 }}>
+          Turn on notifications so Vercro can remind you what to do — frost alerts, feeding reminders, harvest windows — exactly when they matter.
+        </div>
+        <div style={{ width: "100%", maxWidth: 360 }}>
+          <NotificationPermissionCard
+            onEnabled={() => {
+              if (typeof window !== "undefined" && window.posthog) {
+                window.posthog.capture("push_opt_in_accepted", { source: "onboarding" });
+              }
+              onComplete();
+            }}
+            onDismiss={() => {
+              if (typeof window !== "undefined" && window.posthog) {
+                window.posthog.capture("push_opt_in_dismissed", { source: "onboarding" });
+              }
+              onComplete();
+            }}
+          />
+        </div>
       </div>
     );
   }
