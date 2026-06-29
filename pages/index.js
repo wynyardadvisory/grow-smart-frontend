@@ -11577,6 +11577,15 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       }));
   }, []);
 
+  // Track paywall views in PostHog so we can measure how many users hit each limit
+  // and what the paywall → upgrade conversion rate is per trigger type.
+  useEffect(() => {
+    if (!trigger) return;
+    if (typeof window !== "undefined" && window.posthog) {
+      window.posthog.capture("paywall_shown", { trigger, mode });
+    }
+  }, [trigger, mode]);
+
   // Feeds screen — always visible to all users.
   // Exception: preview/test users always see paywalls regardless of the flag.
   // Feeds screen always visible — feed management is available to all users
@@ -11645,6 +11654,10 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
   // On web, use Stripe with server-resolved pricing.
   const handleUpgrade = async () => {
     setLoading(true);
+    // Track upgrade tap so we can measure paywall → checkout conversion per trigger
+    if (typeof window !== "undefined" && window.posthog) {
+      window.posthog.capture("paywall_upgrade_tapped", { trigger, mode, interval });
+    }
     try {
       if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
