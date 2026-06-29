@@ -18678,7 +18678,34 @@ export default function GrowSmart() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+
+      // Fire user_signed_up for new Google OAuth users.
+      // Supabase fires SIGNED_IN both for new signups and returning logins,
+      // so we gate on created_at being within the last 60 seconds to catch
+      // only genuine new accounts. This fires regardless of whether the user
+      // goes through OnboardingScreen (which has its own onboarding_completed
+      // event) — covering the case where OAuth redirect skips onboarding.
+      if (event === "SIGNED_IN" && s?.user) {
+        const createdAt = s.user.created_at ? new Date(s.user.created_at).getTime() : 0;
+        const isNewUser = Date.now() - createdAt < 60000; // within last 60 seconds
+        if (isNewUser && typeof window !== "undefined" && window.posthog) {
+          const storedUtms = getStoredUTMs();
+          window.posthog.identify(s.user.id, { email: s.user.email });
+          window.posthog.capture("user_signed_up", {
+            method:          s.user.app_metadata?.provider || "unknown",
+            signup_source:   storedUtms.signup_source   || "direct",
+            signup_medium:   storedUtms.signup_medium   || null,
+            signup_campaign: storedUtms.signup_campaign || null,
+          });
+        }
+        // Always identify returning users so PostHog links anonymous → known
+        if (!isNewUser && s?.user?.id && typeof window !== "undefined" && window.posthog) {
+          window.posthog.identify(s.user.id, { email: s.user.email });
+        }
+      }
+    });
 
     // Capture UTM params on first visit — stored for attribution at signup
     captureUTMs();
