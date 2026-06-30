@@ -8603,6 +8603,12 @@ function CropSearchInput({ cropDefs, value, onChange }) {
 function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [cropDefs,  setCropDefs]  = useState([]);
   const [varieties, setVarieties] = useState([]);
+  // Holds a variety name from a packet scan until the varieties list for the
+  // newly-selected crop has loaded — the crop_def_id change effect below wipes
+  // variety/variety_id as soon as the crop changes, so we can't set the variety
+  // in the same tick as the scan result. Once varieties finishes loading, the
+  // matching effect further down consumes this and clears it.
+  const [pendingScannedVariety, setPendingScannedVariety] = useState(null);
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
@@ -8650,6 +8656,37 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       .then(setVarieties).catch(() => setVarieties([]));
     setForm(f => ({ ...f, variety_id: "", variety: "" }));
   }, [form.crop_def_id]);
+
+  // Resolves a packet-scanned variety name once the varieties list for the
+  // scanned crop has loaded. Tries to match the scanned name against a known
+  // variety (case-insensitive); if found, selects it via variety_id exactly
+  // like a manual dropdown pick would. If no match, falls back to "Other —
+  // type my own" with the scanned name pre-filled, so the user never has to
+  // re-type a name Vercro already read off the packet.
+  useEffect(() => {
+    if (!pendingScannedVariety) return;
+    // Crop wasn't recognised either — no varieties list will ever load for
+    // "__other__", so go straight to the free-text variety field.
+    if (form.crop_def_id === "__other__") {
+      set("variety_id", "__other__");
+      set("variety", pendingScannedVariety);
+      setPendingScannedVariety(null);
+      return;
+    }
+    if (!form.crop_def_id) return;
+    // Wait for varieties to actually be populated for this crop before matching —
+    // an empty array here could mean "still loading" or "genuinely no varieties".
+    // apiFetch resolving (setVarieties running) is what unblocks this either way.
+    const match = varieties.find(v => v.name.trim().toLowerCase() === pendingScannedVariety.trim().toLowerCase());
+    if (match) {
+      set("variety_id", match.id);
+      set("variety", match.name);
+    } else {
+      set("variety_id", "__other__");
+      set("variety", pendingScannedVariety);
+    }
+    setPendingScannedVariety(null);
+  }, [varieties, pendingScannedVariety, form.crop_def_id]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
   const isOtherCrop    = form.crop_def_id === "__other__";
@@ -8953,7 +8990,11 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             if (r.found) {
               if (r.crop_def_id) set("crop_def_id", r.crop_def_id);
               else { set("crop_def_id", "__other__"); set("crop_other", r.name); }
-              if (r.variety) set("variety", r.variety);
+              // Don't set variety directly here — the crop_def_id change effect
+              // wipes variety/variety_id as soon as it fires, and varieties for
+              // the new crop haven't loaded yet. Stash it; the matching effect
+              // resolves it once the varieties list is in.
+              if (r.variety) setPendingScannedVariety(r.variety);
               if (r.barcode) set("barcode", r.barcode);
             }
             // Not found — user fills in manually, Claude will enrich as usual
