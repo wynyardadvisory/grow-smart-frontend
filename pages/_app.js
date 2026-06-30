@@ -16,6 +16,15 @@ export default function App({ Component, pageProps }) {
       cookie_domain: ".vercro.com",
       loaded: (ph) => {
         if (process.env.NODE_ENV === "development") ph.debug();
+        // CRITICAL: posthog-js does not attach itself to window by default.
+        // Every window.posthog.capture(...) call in index.js — user_signed_up,
+        // paywall_shown, paywall_upgrade_tapped, push_opt_in_accepted,
+        // push_opt_in_dismissed — silently no-ops without this line, since each
+        // call is guarded by `typeof window !== "undefined" && window.posthog`.
+        // No error is thrown; the event simply never fires. Confirmed missing
+        // and fixed in session 60 after all five new events showed zero data
+        // in PostHog despite being correctly deployed.
+        window.posthog = ph;
       },
     });
 
