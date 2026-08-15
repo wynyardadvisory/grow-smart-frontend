@@ -7481,6 +7481,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   const [pendingDormant, setPendingDormant] = useState(null); // crop being marked dormant
   const [pendingFail,    setPendingFail]    = useState(null); // crop being marked failed
   const [failReason,     setFailReason]     = useState(null); // selected failure reason
+  const [pendingNoHarvest, setPendingNoHarvest] = useState(null); // perennial recording a barren season
+  const [noHarvestReason,  setNoHarvestReason]  = useState(null); // selected no-harvest reason
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
   const [filterStatus,  setFilterStatus]  = useState("");    // "" | "growing" | "planned" | "sown_indoors" | "harvested"
   const [filterArea,    setFilterArea]    = useState("");    // "" | area id
@@ -7691,6 +7693,66 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             window.dispatchEvent(new CustomEvent("vercroHarvestLogged", { detail: { crop_instance_id: cropInstanceId, isFinal } }));
           }}
         />
+      )}
+
+      {/* ── No harvest this year sheet ────────────────────────────────────── */}
+      {pendingNoHarvest && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) { setPendingNoHarvest(null); setNoHarvestReason(null); } }}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+              No harvest from {pendingNoHarvest.name} this year?
+            </div>
+            <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 20 }}>
+              This closes the season without recording a harvest. Your {pendingNoHarvest.name} stays in the garden and keeps its care tasks — plenty of plants have an off year.
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Any idea why? (optional)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
+              {[
+                { key: "did_not_fruit",    label: "Didn't fruit" },
+                { key: "frost_or_weather", label: "❄️ Frost or weather" },
+                { key: "pests_or_disease", label: "🐛 Pests or disease" },
+                { key: "poor_growth",      label: "Poor growth" },
+                { key: "plant_too_young",  label: "🌱 Too young yet" },
+                { key: "not_sure",         label: "Not sure" },
+              ].map(({ key, label }) => (
+                <button key={key}
+                  onClick={() => setNoHarvestReason(noHarvestReason === key ? null : key)}
+                  style={{
+                    padding: "10px 12px", borderRadius: 10,
+                    border: `2px solid ${noHarvestReason === key ? C.forest : C.border}`,
+                    background: noHarvestReason === key ? "#f0f7f4" : "#fff",
+                    color: noHarvestReason === key ? C.forest : "#1a1a1a",
+                    fontSize: 13, fontWeight: noHarvestReason === key ? 700 : 500,
+                    cursor: "pointer", textAlign: "left",
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await apiFetch(`/crops/${pendingNoHarvest.id}/no-harvest`, {
+                    method: "POST",
+                    body: JSON.stringify({ reason: noHarvestReason || null }),
+                  });
+                  setPendingNoHarvest(null);
+                  setNoHarvestReason(null);
+                  load();
+                } catch(e) { alert(e.message); }
+              }}
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              Record no harvest
+            </button>
+            <button
+              onClick={() => { setPendingNoHarvest(null); setNoHarvestReason(null); }}
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── Mark dormant confirmation sheet ───────────────────────────────── */}
@@ -8366,6 +8428,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                               <div style={{ height: 1, background: C.border }} />
                               {crop.crop_def?.is_perennial && crop.status !== "dormant" && (
                                 <>
+                                  <button
+                                    onClick={() => { setCropMenuOpen(null); setNoHarvestReason(null); setPendingNoHarvest(crop); }}
+                                    style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
+                                    🌾 No harvest this year
+                                  </button>
+                                  <div style={{ height: 1, background: C.border }} />
                                   <button
                                     onClick={() => { setCropMenuOpen(null); setPendingDormant(crop); }}
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
