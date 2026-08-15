@@ -1951,7 +1951,9 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               </button>
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 20, textAlign: "center" }}>
-              {isFinal ? "Crop will be marked as done after saving." : "Crop stays active — you can log more harvests later."}
+              {isFinal
+                ? "Closes this season's harvests. Perennials stay in your garden and keep their care tasks."
+                : "Crop stays active — you can log more harvests later."}
             </div>
 
             {/* Yield score */}
