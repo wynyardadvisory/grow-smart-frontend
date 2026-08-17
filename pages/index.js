@@ -684,6 +684,27 @@ const C = {
                          // decide whether this token survives at all.
 };
 
+// ── Scored-value text scales (slice 3C-ii) ───────────────────────────────────
+// Several helpers returned one colour that was used as text, border and fill at
+// once, so the value had to be light enough to read as a tint and dark enough to
+// read as text — which is impossible. C.leaf measured 2.63:1 as text on a card,
+// C.amber 2.25. These are the text counterparts; the helpers keep their original
+// values for every border and fill, so no tint, stripe, dot or progress bar moves.
+//
+// One triple serves four helpers: scoreColor's good/mid/poor and timingColor's
+// peak/early/late resolve to the same three colours, so they share a scale rather
+// than each getting its own.
+const SCORE_TEXT = { good: "#4B7743", mid: "#876628", poor: "#AE4F4F" };
+
+// The Profile harvest hero puts these same scores on a dark tile (~#3A666F), where
+// the fix runs the other way: the text has to get LIGHTER, not darker. Every other
+// contrast fix in this work darkens; this is the one place that does not.
+const SCORE_TEXT_ON_DARK = { good: "#C8E1C4", mid: "#EED7AB", poor: "#F0D4D4" };
+
+// Watch-out urgency labels. urgColour keeps its own values for the row tint and
+// the left border — only the label text moves.
+const URG_TEXT = { high: "#C03F32", medium: "#A35918", low: "#636D6E" };
+
 // ── API helper ────────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -1873,10 +1894,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
   const [isFinal,      setIsFinal]      = useState(true); // true = final harvest, false = partial
 
+  // Text-only helper (2 uses) — the returned value is never a border or fill, so
+  // it can simply move to the readable scale.
   const trafficColor = (val) => {
-    if (val <= 3) return C.red;
-    if (val <= 6) return C.amber;
-    return C.leaf;
+    if (val <= 3) return SCORE_TEXT.poor;
+    if (val <= 6) return SCORE_TEXT.mid;
+    return SCORE_TEXT.good;
   };
 
   const handlePhoto = (e) => {
@@ -2917,7 +2940,7 @@ What's on your list this month?
 // ── Garden Status Card ───────────────────────────────────────────────────────
 // ── Today Harvest Card — 3 states ────────────────────────────────────────────
 function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLogHarvest, onViewAll }) {
-  const scoreColor = (v) => v >= 7 ? C.leaf : v >= 4 ? C.amber : C.red;
+  const scoreText = (v) => v >= 7 ? SCORE_TEXT.good : v >= 4 ? SCORE_TEXT.mid : SCORE_TEXT.poor;
 
   // Crops ready to harvest right now
   const today = todayISO();
@@ -2970,13 +2993,13 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
           <div style={{ display: "flex", gap: 10 }}>
             {lastEntry.yield_score && (
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(lastEntry.yield_score) }}>{lastEntry.yield_score}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: scoreText(lastEntry.yield_score) }}>{lastEntry.yield_score}</div>
                 <div style={{ fontSize: 9, color: C.stone }}>Yield</div>
               </div>
             )}
             {lastEntry.quality && (
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(lastEntry.quality) }}>{lastEntry.quality}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: scoreText(lastEntry.quality) }}>{lastEntry.quality}</div>
                 <div style={{ fontSize: 9, color: C.stone }}>Quality</div>
               </div>
             )}
@@ -4563,6 +4586,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {watchOuts.map(group => {
               const t = group[0]; // representative task for shared fields
               const urgColour = t.urgency === "high" ? "#e74c3c" : t.urgency === "medium" ? "#e67e22" : "#7f8c8d";
+              // Border and tint keep urgColour; only the label needed to be readable.
+              const urgText   = t.urgency === "high" ? URG_TEXT.high : t.urgency === "medium" ? URG_TEXT.medium : URG_TEXT.low;
               const urgBg     = t.urgency === "high" ? "#fff5f5" : t.urgency === "medium" ? "#fff8f0" : "#f8f8f8";
               const isPest    = t.task_type?.includes("pest") || t.task_type?.includes("inspect") || t.task_type === "protect";
               const cropNames = [...new Set(group.map(x => x.crop?.name).filter(Boolean))];
@@ -4578,7 +4603,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                         <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>
                           {cropNames.length > 0 ? cropNames.join(", ") : "Watch out"}
                         </div>
-                        <span style={{ ...T.eyebrow, fontSize: 10, color: urgColour, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>
+                        <span style={{ ...T.eyebrow, fontSize: 10, color: urgText, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>
                           {t.urgency === "high" ? "Act now" : t.urgency === "medium" ? "Inspect" : "Watch"}
                         </span>
                       </div>
@@ -5505,6 +5530,11 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
   const timingColor = timing === "early" ? "#D9A441"   // amber — early
                     : timing === "late"  ? "#C65A5A"   // red — past peak
                     : "#6FAF63";                        // green — peak
+  // Border, dot and tint keep timingColor. Only the pill label moves — the three
+  // states map onto the same scale as scoreColor (early=mid, late=poor, peak=good).
+  const timingText  = timing === "early" ? SCORE_TEXT.mid
+                    : timing === "late"  ? SCORE_TEXT.poor
+                    : SCORE_TEXT.good;
   const timingLabel = timing === "early" ? "Early in window"
                     : timing === "late"  ? "Past peak"
                     : "Peak time";
@@ -5584,7 +5614,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
             <div style={{ display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
               {/* Timing pill */}
               {!completed && (
-                <span style={{ ...T.bodyStrong, background: timingBg, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: timingColor, border: `1px solid ${timingColor}44` }}>
+                <span style={{ ...T.bodyStrong, background: timingBg, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: timingText, border: `1px solid ${timingColor}44` }}>
                   {timingLabel}
                 </span>
               )}
@@ -10084,7 +10114,7 @@ function TimeAwayScreen({ onClose }) {
 // ── Harvest Summary Card — grouped by crop with expandable individual records ──
 function HarvestSummaryCard({ crop }) {
   const [expanded, setExpanded] = useState(false);
-  const scoreColor = (v) => v >= 7 ? C.leaf : v >= 4 ? C.amber : C.red;
+  const scoreText = (v) => v >= 7 ? SCORE_TEXT.good : v >= 4 ? SCORE_TEXT.mid : SCORE_TEXT.poor;
 
   const totalQty = crop.total_quantity_g;
   const qtyDisplay = totalQty ? (totalQty >= 1000 ? (totalQty / 1000).toFixed(1) + "kg" : totalQty + "g") : null;
@@ -10106,13 +10136,13 @@ function HarvestSummaryCard({ crop }) {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {crop.avg_yield_score && (
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: scoreColor(crop.avg_yield_score) }}>{crop.avg_yield_score}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: scoreText(crop.avg_yield_score) }}>{crop.avg_yield_score}</div>
               <div style={{ fontSize: 9, color: C.stone }}>Yield</div>
             </div>
           )}
           {crop.avg_quality_score && (
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: scoreColor(crop.avg_quality_score) }}>{crop.avg_quality_score}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: scoreText(crop.avg_quality_score) }}>{crop.avg_quality_score}</div>
               <div style={{ fontSize: 9, color: C.stone }}>Quality</div>
             </div>
           )}
@@ -10144,8 +10174,8 @@ function HarvestSummaryCard({ crop }) {
               {e.notes && <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontStyle: "italic" }}>{e.notes}</div>}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              {e.yield_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreColor(e.yield_score) }}>{e.yield_score}</div><div style={{ fontSize: 9, color: C.stone }}>Yield</div></div>}
-              {e.quality && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreColor(e.quality) }}>{e.quality}</div><div style={{ fontSize: 9, color: C.stone }}>Quality</div></div>}
+              {e.yield_score && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreText(e.yield_score) }}>{e.yield_score}</div><div style={{ fontSize: 9, color: C.stone }}>Yield</div></div>}
+              {e.quality && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreText(e.quality) }}>{e.quality}</div><div style={{ fontSize: 9, color: C.stone }}>Quality</div></div>}
             </div>
           </div>
           {e.photo_url && <img src={e.photo_url} alt="harvest" style={{ width: "100%", borderRadius: 6, marginTop: 8, maxHeight: 140, objectFit: "cover" }} />}
@@ -10629,7 +10659,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
     return { total, avgYield, avgQual, best };
   })();
 
-  const scoreColor = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;
+  const scoreColor    = v => v >= 8 ? C.leaf : v >= 5 ? C.amber : C.red;              // bar fill on the dark hero
+  const scoreTextDark = v => v >= 8 ? SCORE_TEXT_ON_DARK.good : v >= 5 ? SCORE_TEXT_ON_DARK.mid : SCORE_TEXT_ON_DARK.poor;
 
   if (loading) return <Spinner />;
   if (showNotifScreen) return <NotificationsScreen onBack={() => setShowNotifScreen(false)} />;
@@ -10717,8 +10748,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
             {[
               { val: harvestStats.total, label: "Harvests", color: "#fff" },
-              { val: harvestStats.avgYield || "—", label: "Avg Yield", color: harvestStats.avgYield ? scoreColor(harvestStats.avgYield) : "#fff" },
-              { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreColor(harvestStats.avgQual)  : "#fff" },
+              { val: harvestStats.avgYield || "—", label: "Avg Yield", color: harvestStats.avgYield ? scoreTextDark(harvestStats.avgYield) : "#fff" },
+              { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreTextDark(harvestStats.avgQual)  : "#fff" },
             ].map(({ val, label, color }) => (
               <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
                 <div style={{ ...T.bodyStrong, fontSize: 22, color }}>{val}</div>
@@ -16620,17 +16651,20 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   const canSeeBreakdown = isPro || isMark;
   const [expanded, setExpanded] = useState(false);
 
+  // Text-only helper (2 uses).
   const confidenceColor = level =>
-    level === "High" ? C.leaf : level === "Medium" ? C.amber : C.stone;
+    level === "High" ? SCORE_TEXT.good : level === "Medium" ? SCORE_TEXT.mid : C.stone;
 
   const scoreColor = s =>
-    s >= 75 ? C.leaf : s >= 50 ? C.amber : C.red;
+    s >= 75 ? C.leaf : s >= 50 ? C.amber : C.red;                                    // bar fill
+  const scoreText  = s =>
+    s >= 75 ? SCORE_TEXT.good : s >= 50 ? SCORE_TEXT.mid : SCORE_TEXT.poor;
 
   const BarRow = ({ label, val, suffix = "%" }) => (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
         <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor(val) }}>{val}{suffix}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: scoreText(val) }}>{val}{suffix}</span>
       </div>
       <div style={{ height: 5, background: C.border, borderRadius: 99 }}>
         <div style={{ height: "100%", width: `${val}%`, background: scoreColor(val), borderRadius: 99, transition: "width 0.5s ease" }} />
@@ -16791,7 +16825,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
 
         {/* Score + confidence */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-          <div style={{ ...T.displayLg, fontSize: 38, color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
+          <div style={{ ...T.displayLg, fontSize: 38, color: scoreText(score), lineHeight: 1 }}>{score}%</div>
           <div style={{ textAlign: "right", paddingTop: 4 }}>
             <div style={{ ...T.bodyStrong, fontSize: 11, color: confidenceColor(confidence_level), marginBottom: 2 }}>
               {confidenceLabel}
