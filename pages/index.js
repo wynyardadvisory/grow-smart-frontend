@@ -115,7 +115,7 @@ const TOUR_STEPS = {
     { ref: "tourRef_timeAway",       title: "Time away ✈️",    body: "Going away? Set a blocked period and Vercro pauses your tasks and reschedules them for when you return. Your streak is protected too." },
     { ref: "tourRef_harvestLog",     title: "Harvest log 🌾",  body: "A full record of everything you've harvested, by crop and year. Tap to expand and browse your growing history." },
     { ref: "tourRef_notifications",  title: "Notifications 🔔", body: "Control your daily task reminders, weather alerts, and how Vercro communicates with you." },
-  ],
+  ]
 };
 
 // ── Tour state hook ───────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
   // Fallback copy for Today tab steps that need tasks to exist
   const NO_TASK_FALLBACK = {
     tourRef_todayFocus: { title: "Today's focus", body: "When you have tasks due, your most important one appears here — chosen by Vercro based on urgency, crop stage and your local conditions." },
-    tourRef_whyNowPill: { title: "Why now? 💡",   body: "Each task card has a Why Now button that explains exactly why Vercro is recommending it today. Free users get 3 uses — Pro users get unlimited." },
+    tourRef_whyNowPill: { title: "Why now? 💡",   body: "Each task card has a Why Now button that explains exactly why Vercro is recommending it today. Free users get 3 uses — Pro users get unlimited." }
   };
 
   React.useEffect(() => {
@@ -269,7 +269,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
   if (showCompletion) {
     return (
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-        <div style={{ background: "#fff", borderRadius: 20, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+        <div style={{ background: "#fff", borderRadius: R.overlay, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
           <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 8 }}>
             You know the {tabLabel} tab
@@ -287,20 +287,20 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
           {!allDoneOnComplete && nextLabel && (
             <button
               onClick={() => { posthog()?.capture?.("tour_completion_next_cta", { from_tab: tab, to_tab: next }); onComplete(next); }}
-              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "13px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Take the {nextLabel} tour
             </button>
           )}
           {allDoneOnComplete && (
             <button
               onClick={() => { posthog()?.capture?.("tour_all_complete"); onComplete(null); }}
-              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "13px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Great, thanks!
             </button>
           )}
           <button
             onClick={() => onComplete(null)}
-            style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
+            style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "13px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
             Maybe later
           </button>
         </div>
@@ -355,17 +355,17 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
         left: ttLeft,
         width: TOOLTIP_W,
         background: "#fff",
-        borderRadius: 14,
+        borderRadius: R.sm,
         padding: "16px 18px",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
+        boxShadow: S.overlay,
         zIndex: 1200,
-        transition: "top 0.2s ease, left 0.2s ease",
+        transition: "top 0.2s ease, left 0.2s ease"
       }}>
         {/* Step counter */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
           <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, flex: 1 }}>
             {displayTitle}
-            {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.attentionText, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
+            {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.attentionText, background: C.amber + "18", borderRadius: R.full, padding: "2px 7px" }}>Pro</span>}
           </div>
           <div style={{ fontSize: 11, color: C.stone, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>{step + 1} of {steps.length}</div>
         </div>
@@ -373,12 +373,12 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {step > 0 && (
             <button onClick={handleBack}
-              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
+              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 14px", fontSize: 13, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
               Back
             </button>
           )}
           <button onClick={handleNext}
-            style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer" }}>
+            style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "9px 14px", fontSize: 13, cursor: "pointer" }}>
             {step + 1 >= steps.length ? "Done" : "Next"}
           </button>
           <button onClick={handleSkip}
@@ -402,14 +402,14 @@ function TourPill({ tab, onStart }) {
       style={{
         background: "none",
         border: `1px solid ${C.forest}`,
-        borderRadius: 20,
+        borderRadius: R.full,
         padding: "5px 14px",
         fontSize: 12,
         fontWeight: 600,
         color: C.forest,
         cursor: "pointer",
         fontFamily: F.body,
-        flexShrink: 0,
+        flexShrink: 0
       }}>
       Guide
     </button>
@@ -425,9 +425,9 @@ function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={e => { if (e.target === e.currentTarget) { posthog()?.capture?.("tour_prompt_dismissed"); onDismiss(); } }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+          <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd" }} />
         </div>
         <div style={{ ...T.displayLg, fontSize: 22, color: C.ink, marginBottom: 10 }}>
           Want a quick tour?
@@ -437,12 +437,12 @@ function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
         </div>
         <button
           onClick={() => { posthog()?.capture?.("tour_prompt_accepted"); onStartTour(); }}
-          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
           Start tour
         </button>
         <button
           onClick={() => { posthog()?.capture?.("tour_prompt_dismissed"); onDismiss(); }}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
           Maybe later
         </button>
       </div>
@@ -521,7 +521,7 @@ function getStoredUTMs() {
     return {
       signup_source:   localStorage.getItem("vercro_utm_source")   || "direct",
       signup_medium:   localStorage.getItem("vercro_utm_medium")   || null,
-      signup_campaign: localStorage.getItem("vercro_utm_campaign") || null,
+      signup_campaign: localStorage.getItem("vercro_utm_campaign") || null
     };
   } catch(e) {
     return { signup_source: "direct", signup_medium: null, signup_campaign: null };
@@ -538,8 +538,8 @@ const supabase = createClient(
       storageKey: "vercro-auth",
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
+      detectSessionInUrl: true
+    }
   }
 );
 
@@ -705,6 +705,32 @@ const SCORE_TEXT_ON_DARK = { good: "#C8E1C4", mid: "#EED7AB", poor: "#F0D4D4" };
 // the left border — only the label text moves.
 const URG_TEXT = { high: "#C03F32", medium: "#A35918", low: "#636D6E" };
 
+// ── Shape (slice 4A) ─────────────────────────────────────────────────────────
+// The app had 783 radius declarations across 23 values — nine different radii
+// visible in a single Today viewport. vercro.com uses `rounded-sm` (2px) on every
+// button and icon tile; the large radii on the site exist only on the marketing
+// phone frame, which has no in-app equivalent.
+const R = {
+  sm:      2,                  // controls, icon tiles, cards, containers
+  full:    999,                // only where round IS the meaning: pills, dots,
+                               // avatars, progress tracks, toggle knobs, handles
+  sheet:   "14px 14px 0 0",    // bottom sheets — a sheet needs a visible top curve
+                               // to read as rising over the page, so not 2px
+  overlay: 14,                 // centred modal dialogs. Siblings of sheets rather
+                               // than content cards; at 2px a floating dialog reads
+                               // as an untreated rectangle.
+};
+
+// ── Elevation (slice 4A) ─────────────────────────────────────────────────────
+// 45 shadows across 16 values, of which 27 sat on ordinary content rows. Content
+// surfaces now carry none — they separate by hairline and fill, as on the website.
+// Elevation is reserved for things that genuinely float.
+const S = {
+  raised:  "0 4px 16px rgba(0,0,0,0.10)",   // dropdowns, popovers, search results
+  overlay: "0 8px 24px rgba(0,0,0,0.18)",   // FABs, toasts, banners, tour spotlight
+  sheet:   "0 -4px 24px rgba(0,0,0,0.12)",  // bottom sheets — shadow points upward
+};
+
 // ── API helper ────────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -714,8 +740,8 @@ async function apiFetch(path, options = {}) {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
+      ...options.headers
+    }
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -830,10 +856,10 @@ function varietyName(v) {
 }
 const inputStyle = {
   width: "100%", padding: "12px 14px",
-  border: `1px solid ${C.border}`, borderRadius: 10,
+  border: `1px solid ${C.border}`, borderRadius: R.sm,
   fontSize: 14, background: C.cardBg, color: "#222",
   outline: "none", boxSizing: "border-box",
-  appearance: "none", fontFamily: "inherit",
+  appearance: "none", fontFamily: "inherit"
 };
 
 const labelStyle = {
@@ -847,7 +873,7 @@ const labelStyle = {
 function SectionLabel({ children }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, marginTop: 8 }}>
-      <div style={{ height: 2, width: 14, background: C.accent, borderRadius: 99 }} />
+      <div style={{ height: 2, width: 14, background: C.accent, borderRadius: R.full}} />
       <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone }}>{children}</div>
     </div>
   );
@@ -868,7 +894,7 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", minHeight: "60vh", padding: "40px 24px",
+      justifyContent: "center", minHeight: "60vh", padding: "40px 24px"
     }}>
       <div style={{ fontSize: 48, marginBottom: 20, lineHeight: 1 }}>🌱</div>
       <div style={{ ...T.displayLg, fontSize: 20, color: C.forest, marginBottom: 6 }}>
@@ -882,7 +908,7 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
 }
 
 function ErrorMsg({ msg }) {
-  return <div style={{ background: "#fdf0f0", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 16px", color: C.dangerText, fontSize: 13, marginBottom: 16 }}>{msg}</div>;
+  return <div style={{ background: "#fdf0f0", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "12px 16px", color: C.dangerText, fontSize: 13, marginBottom: 16 }}>{msg}</div>;
 }
 
 // ── Auth screen ───────────────────────────────────────────────────────────────
@@ -917,7 +943,7 @@ function AuthScreen({ onAuth }) {
     setLoading(true); setError(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://app.vercro.com",
+        redirectTo: "https://app.vercro.com"
       });
       if (error) throw error;
       setSent(true);
@@ -980,14 +1006,14 @@ function AuthScreen({ onAuth }) {
       if (window.Capacitor?.isNative) {
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true },
+          options: { redirectTo: "com.vercro.app://auth/callback", skipBrowserRedirect: true }
         });
         if (error) throw error;
         if (data?.url && window.vercroStartOAuth) window.vercroStartOAuth(data.url);
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: "https://app.vercro.com" },
+          options: { redirectTo: "https://app.vercro.com" }
         });
         if (error) throw error;
       }
@@ -1009,7 +1035,7 @@ function AuthScreen({ onAuth }) {
         await SocialLogin.initialize({ apple: {} });
         const result = await SocialLogin.login({
           provider: "apple",
-          options: { scopes: ["email", "name"] },
+          options: { scopes: ["email", "name"] }
         });
         // idToken may be at result.result.idToken or result.result.accessToken.token
         const idToken = result?.result?.idToken || result?.result?.identityToken;
@@ -1018,14 +1044,14 @@ function AuthScreen({ onAuth }) {
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
           token: idToken,
-          nonce: nonce,
+          nonce: nonce
         });
         if (error) throw error;
         if (data?.session) onAuth(data.session);
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "apple",
-          options: { redirectTo: "https://app.vercro.com" },
+          options: { redirectTo: "https://app.vercro.com" }
         });
         if (error) throw error;
       }
@@ -1059,7 +1085,7 @@ function AuthScreen({ onAuth }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Google */}
         <button onClick={handleGoogle} disabled={loading}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600, cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", color: C.ink }}>
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 14, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.ink }}>
           <svg width="18" height="18" viewBox="0 0 18 18" style={{ flexShrink: 0 }}>
             <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
             <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/>
@@ -1070,7 +1096,7 @@ function AuthScreen({ onAuth }) {
         </button>
         {/* Apple */}
         <button onClick={handleApple} disabled={loading}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#000", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600, cursor: "pointer", color: "#fff" }}>
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#000", border: "none", borderRadius: R.sm, padding: 14, fontSize: 15, fontWeight: 600, cursor: "pointer", color: "#fff" }}>
           <svg width="18" height="18" viewBox="0 0 814 1000" style={{ flexShrink: 0 }} fill="white">
             <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 135.4-317.3 269-317.3 70.2 0 128.8 45.7 172.1 45.7 41.5 0 106.6-48.3 185.2-48.3zM657.3 19.8c32.6-38.7 56.3-92.7 56.3-146.7 0-7.4-.6-14.9-1.9-21.1-53.4 2-116.8 35.5-155.5 80.3-29.9 33.9-59.1 87.2-59.1 141.9 0 8.1 1.3 16.2 1.9 18.8 3.2.6 8.4 1.3 13.6 1.3 47.8 0 107.6-31.9 144.7-74.5z"/>
           </svg>
@@ -1084,7 +1110,7 @@ function AuthScreen({ onAuth }) {
         </div>
         <div><label style={labelStyle}>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
         <div><label style={labelStyle}>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
-        <button onClick={handle} disabled={loading || !email || !password} style={{ ...T.control, background: (!email || !password) ? C.border : C.forest, color: (!email || !password) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, cursor: "pointer" }}>
+        <button onClick={handle} disabled={loading || !email || !password} style={{ ...T.control, background: (!email || !password) ? C.border : C.forest, color: (!email || !password) ? C.stone : "#fff", border: "none", borderRadius: R.sm, padding: 14, fontSize: 15, cursor: "pointer" }}>
           {loading ? "…" : isSignUp ? "Create account" : "Sign in"}
         </button>
         <button onClick={() => setIsSignUp(!isSignUp)} style={{ background: "none", border: "none", color: C.forest, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
@@ -1125,7 +1151,7 @@ function ProfilePhotoGreeting({ photoUrl, onUploaded }) {
   };
 
   return (
-    <div onClick={() => inputRef.current?.click()} style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid rgba(255,255,255,0.4)", cursor: "pointer", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div onClick={() => inputRef.current?.click()} style={{ width: 44, height: 44, borderRadius: R.full, overflow: "hidden", flexShrink: 0, border: "2px solid rgba(255,255,255,0.4)", cursor: "pointer", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {url
         ? <img src={url} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         : <span style={{ fontSize: 20, opacity: 0.7 }}>👤</span>
@@ -1160,7 +1186,7 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
       const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1]; // 70% quality
       const result = await apiFetch(endpoint, {
         method: "POST",
-        body: JSON.stringify({ base64, mime_type: "image/jpeg" }),
+        body: JSON.stringify({ base64, mime_type: "image/jpeg" })
       });
       onUploaded(result.photo_url);
     } catch (err) { console.error("Photo upload failed:", err); }
@@ -1169,7 +1195,7 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
 
   return (
     <div onClick={() => !uploading && inputRef.current?.click()}
-      style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+      style={{ width: size, height: size, borderRadius: R.full, overflow: "hidden", flexShrink: 0,
                background: photoUrl ? "transparent" : "#e8efe9",
                border: `2px solid ${photoUrl ? C.sage : C.border}`,
                display: "flex", alignItems: "center", justifyContent: "center",
@@ -1180,7 +1206,7 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
       }
       {!uploading && (
         <div style={{ position: "absolute", bottom: 0, right: 0, width: size * 0.32, height: size * 0.32,
-                      background: C.forest, borderRadius: "50%", display: "flex", alignItems: "center",
+                      background: C.forest, borderRadius: R.full, display: "flex", alignItems: "center",
                       justifyContent: "center", fontSize: size * 0.15, color: "#fff" }}>+</div>
       )}
       <input ref={inputRef} type="file" accept="image/*"
@@ -1200,15 +1226,15 @@ const BENEFIT_TAG_STYLE = {
   fontWeight: 600,
   color: C.forest,
   background: "#e8f5ee",
-  borderRadius: 20,
+  borderRadius: R.full,
   padding: "2px 7px",
   marginRight: 4,
-  marginBottom: 4,
+  marginBottom: 4
 };
 
 const CONFIDENCE_BADGE = {
   high:   { label: "Best fit",        bg: "#e8f5ee", color: C.forest },
-  medium: { label: "Good option",     bg: "#fdf8ec", color: "#b45309" },
+  medium: { label: "Good option",     bg: "#fdf8ec", color: "#b45309" }
 };
 
 function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
@@ -1223,9 +1249,9 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
       background: bgColor,
       border: `1px solid ${borderColor}`,
       borderLeft: `3px solid ${accentColor}`,
-      borderRadius: 12,
+      borderRadius: R.sm,
       padding: "14px 16px",
-      marginBottom: 10,
+      marginBottom: 10
     }}>
       {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -1240,11 +1266,11 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0, marginLeft: 8 }}>
           {isPrimary && (
-            <span style={{ ...T.eyebrow, fontSize: 9, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: 20, padding: "2px 7px" }}>
+            <span style={{ ...T.eyebrow, fontSize: 9, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: R.full, padding: "2px 7px" }}>
               {isCompanionType ? (s.type === "companion" ? "Companion" : "Beneficial") : "Top pick"}
             </span>
           )}
-          <span style={{ ...T.eyebrow, fontSize: 9, color: conf.color, background: conf.bg, borderRadius: 20, padding: "2px 7px" }}>
+          <span style={{ ...T.eyebrow, fontSize: 9, color: conf.color, background: conf.bg, borderRadius: R.full, padding: "2px 7px" }}>
             {conf.label}
           </span>
         </div>
@@ -1255,7 +1281,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
 
       {/* Companion note — highlighted */}
       {s.companion_note && (
-        <div style={{ fontSize: 12, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: 8, padding: "6px 10px", marginBottom: 8, lineHeight: 1.4 }}>
+        <div style={{ fontSize: 12, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: R.sm, padding: "6px 10px", marginBottom: 8, lineHeight: 1.4 }}>
           🌿 {s.companion_note}
         </div>
       )}
@@ -1288,7 +1314,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
           background: accentColor,
           color: "#fff",
           border: "none",
-          borderRadius: 8,
+          borderRadius: R.sm,
           padding: "10px",
           fontSize: 13,
           cursor: "pointer",
@@ -1350,7 +1376,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
     onClose({ prefill: {
       name:         s.crop,
       variety:      s.variety,
-      is_companion: s.type === "companion" || s.type === "beneficial",
+      is_companion: s.type === "companion" || s.type === "beneficial"
     }});
   };
 
@@ -1358,7 +1384,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "88vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "88vh", overflowY: "auto" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
@@ -1387,7 +1413,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
         {state === "error" && (
           <div style={{ textAlign: "center", padding: "32px 20px" }}>
             <div style={{ fontSize: 13, color: C.dangerText, marginBottom: 12 }}>Something went wrong. Try again?</div>
-            <button onClick={generate} style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer" }}>
+            <button onClick={generate} style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "10px 20px", cursor: "pointer" }}>
               Try again
             </button>
           </div>
@@ -1401,13 +1427,13 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
               <div style={{
                 background: "#f0f7f4",
                 border: `1px solid #c4ddd2`,
-                borderRadius: 10,
+                borderRadius: R.sm,
                 padding: "10px 14px",
                 marginTop: 12,
                 marginBottom: 18,
                 fontSize: 13,
                 color: C.ink,
-                lineHeight: 1.45,
+                lineHeight: 1.45
               }}>
                 💡 {summary}
               </div>
@@ -1452,13 +1478,13 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
               <div style={{
                 background: "#f5f9f7",
                 border: `1px solid ${C.border}`,
-                borderRadius: 12,
+                borderRadius: R.sm,
                 padding: "12px 16px",
                 marginTop: 16,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: 12,
+                gap: 12
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>
@@ -1473,14 +1499,14 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
                   style={{
                     background: "none",
                     border: `1px solid ${C.forest}`,
-                    borderRadius: 8,
+                    borderRadius: R.sm,
                     padding: "7px 12px",
                     fontSize: 12,
                     fontWeight: 600,
                     color: C.forest,
                     cursor: "pointer",
                     whiteSpace: "nowrap",
-                    flexShrink: 0,
+                    flexShrink: 0
                   }}>
                   See what's included →
                 </button>
@@ -1528,7 +1554,7 @@ const CROP_EMOJI = {
   radish: "🫚", turnip: "🟣", swede: "🟤",
   beetroot: "🔴", beet: "🔴",
   herb: "🌿", basil: "🌿", parsley: "🌿", mint: "🌿", thyme: "🌿",
-  rosemary: "🌿", chive: "🌿", chives: "🌿", coriander: "🌿",
+  rosemary: "🌿", chive: "🌿", chives: "🌿", coriander: "🌿"
 };
 
 function getCropEmoji(name) {
@@ -1763,7 +1789,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div style={{ ...T.displayMd, fontSize: 18, color: C.ink }}>Share your harvest 🌱</div>
@@ -1777,14 +1803,14 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
             { id: "season", label: "📊 Season summary" },
           ].map(m => (
             <button key={m.id} onClick={() => setMode(m.id)}
-              style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === m.id ? C.forest : C.border}`, background: mode === m.id ? "#f0f5f3" : "transparent", color: mode === m.id ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
+              style={{ ...T.control, flex: 1, padding: "10px", borderRadius: R.sm, border: `2px solid ${mode === m.id ? C.forest : C.border}`, background: mode === m.id ? "#f0f5f3" : "transparent", color: mode === m.id ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
               {m.label}
             </button>
           ))}
         </div>
 
         {/* Preview */}
-        <div style={{ background: `linear-gradient(135deg, ${C.forest}, ${C.surfaceDark})`, borderRadius: 14, padding: "24px 20px", marginBottom: 20, color: "#fff", textAlign: "center" }}>
+        <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "24px 20px", marginBottom: 20, color: "#fff", textAlign: "center" }}>
           {mode === "single" ? (
             <>
               <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.crop)}</div>
@@ -1810,7 +1836,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         </div>
 
         <button onClick={generateCard} disabled={generating}
-          style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: generating ? 0.7 : 1 }}>
+          style={{ ...T.control, width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: generating ? 0.7 : 1 }}>
           {generating ? "Generating…" : "⬇ Save image to share"}
         </button>
 
@@ -1843,15 +1869,15 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
   const pct = Math.min(100, Math.max(0, Math.round(((now - journeyStart) / (end - journeyStart)) * 100)));
 
   return (
-    <div style={{ background: bgColor, border: `1px solid ${borderColor}44`, borderLeft: `3px solid ${borderColor}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.3s" }}>
+    <div style={{ background: bgColor, border: `1px solid ${borderColor}44`, borderLeft: `3px solid ${borderColor}`, borderRadius: R.sm, padding: "12px 14px", transition: "all 0.3s" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
           <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>{item.crop}</div>
         </div>
         {isReady
-          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
-          : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>{weeksLeft}w away</span>
+          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: "#e8f4e8", borderRadius: R.full, padding: "2px 8px" }}>Ready now</span>
+          : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: R.full, padding: "2px 8px" }}>{weeksLeft}w away</span>
         }
       </div>
       {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
@@ -1859,8 +1885,8 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
         🎯 Aim to harvest around {optimalStr}
       </div>
       <div style={{ marginBottom: 10 }}>
-        <div style={{ height: 5, background: C.border, borderRadius: 99, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 99, transition: "width 0.5s" }} />
+        <div style={{ height: 5, background: C.border, borderRadius: R.full, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: R.full, transition: "width 0.5s" }} />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
           <span style={{ fontSize: 10, color: C.stone }}>{new Date(item.window_start).toLocaleDateString("en-GB", { month: "short" })}</span>
@@ -1868,7 +1894,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
         </div>
       </div>
       <button onClick={() => !pending && onHarvest()}
-        style={{ ...T.bodyStrong, width: "100%", padding: "8px", borderRadius: 8, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
+        style={{ ...T.bodyStrong, width: "100%", padding: "8px", borderRadius: R.sm, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
         {pending ? "Logging…" : "🌾 Harvest Now"}
       </button>
     </div>
@@ -1919,7 +1945,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       const base64 = reader.result.split(",")[1];
       await apiFetch(`/harvest-log/${entryId}/photo`, {
         method: "POST",
-        body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type }),
+        body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type })
       });
     };
   };
@@ -1939,8 +1965,8 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
           quantity_value:   quantity ? parseFloat(quantity) : null,
           quantity_unit:    quantity ? unit : null,
           notes:            notes.trim() || null,
-          partial:          !isFinal,
-        }),
+          partial:          !isFinal
+        })
       });
       setSaved(entry.id);
       setSavedEntry({ ...entry, photo_url: photoPreview || null });
@@ -1975,7 +2001,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
     )}
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget && !saved) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
 
         {undone ? (
           <div style={{ textAlign: "center", padding: "20px 0", color: C.stone }}>
@@ -1996,27 +2022,27 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             )}
             {/* Share prompt — only for final harvests */}
             {isFinal && (
-              <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px", marginBottom: 16, textAlign: "left" }}>
+              <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "14px", marginBottom: 16, textAlign: "left" }}>
                 <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink, marginBottom: 4 }}>Share your harvest? 🌱</div>
                 <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Save a card to share with your allotment group or on social media.</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setShowShare(true)}
-                    style={{ ...T.control, flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 12, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 2, padding: "10px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 12, cursor: "pointer" }}>
                     Share harvest card
                   </button>
                   <button onClick={onClose}
-                    style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                    style={{ flex: 1, padding: "10px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                     Skip
                   </button>
                 </div>
               </div>
             )}
             {isFinal ? (
-              <button onClick={undo} style={{ width: "100%", padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+              <button onClick={undo} style={{ width: "100%", padding: "10px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                 Undo harvest
               </button>
             ) : (
-              <button onClick={onClose} style={{ ...T.control, width: "100%", padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
+              <button onClick={onClose} style={{ ...T.control, width: "100%", padding: "12px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
                 Done
               </button>
             )}
@@ -2027,15 +2053,15 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
 
             {/* Final vs Partial toggle */}
-            <div style={{ background: "#f5f5f0", borderRadius: 12, padding: 4, display: "flex", marginBottom: 20, gap: 4 }}>
+            <div style={{ background: "#f5f5f0", borderRadius: R.sm, padding: 4, display: "flex", marginBottom: 20, gap: 4 }}>
               <button
                 onClick={() => setIsFinal(true)}
-                style={{ flex: 1, padding: "10px 8px", borderRadius: 9, border: "none", background: isFinal ? "#fff" : "transparent", color: isFinal ? C.ink : C.stone, fontWeight: isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+                style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: isFinal ? "#fff" : "transparent", color: isFinal ? C.ink : C.stone, fontWeight: isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
                 🧺 Final harvest
               </button>
               <button
                 onClick={() => setIsFinal(false)}
-                style={{ flex: 1, padding: "10px 8px", borderRadius: 9, border: "none", background: !isFinal ? "#fff" : "transparent", color: !isFinal ? C.ink : C.stone, fontWeight: !isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: !isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+                style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: !isFinal ? "#fff" : "transparent", color: !isFinal ? C.ink : C.stone, fontWeight: !isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: !isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
                 🔄 More to come
               </button>
             </div>
@@ -2100,12 +2126,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               <label style={labelStyle}>Photo (optional)</label>
               {photoPreview ? (
                 <div style={{ position: "relative" }}>
-                  <img src={photoPreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 160, objectFit: "cover" }} />
+                  <img src={photoPreview} alt="preview" style={{ width: "100%", borderRadius: R.sm, maxHeight: 160, objectFit: "cover" }} />
                   <button onClick={() => { setPhoto(null); setPhotoPreview(null); }}
-                    style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.5)", border: "none", borderRadius: "50%", color: "#fff", width: 24, height: 24, cursor: "pointer", fontSize: 14 }}>×</button>
+                    style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.5)", border: "none", borderRadius: R.full, color: "#fff", width: 24, height: 24, cursor: "pointer", fontSize: 14 }}>×</button>
                 </div>
               ) : (
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: 10, padding: "14px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "14px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
                   📷 Add a photo
                   <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                 </label>
@@ -2113,14 +2139,14 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             </div>
 
             {saveError && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: C.dangerText }}>
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: C.dangerText }}>
                 {saveError}
               </div>
             )}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
+              <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
               <button onClick={save} disabled={saving}
-                style={{ ...T.control, flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+                style={{ ...T.control, flex: 2, padding: "12px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Saving…" : "Save Harvest"}
               </button>
             </div>
@@ -2168,7 +2194,7 @@ function BadgeCelebrationSheet({ unlocks, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:2000, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-      <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", padding:"32px 24px 48px", width:"100%", maxWidth:440, textAlign:"center" }}>
+      <div style={{ background:"#fff", borderRadius:R.sheet, padding:"32px 24px 48px", width:"100%", maxWidth:440, textAlign:"center" }}>
         {/* Sparkle animation */}
         <div style={{ fontSize:72, marginBottom:8, animation:"badgePop 0.4s ease-out" }}>{u.badge?.icon_key || "🏆"}</div>
         <div style={{ ...T.eyebrow, fontSize:13, color:C.forest, marginBottom:8 }}>
@@ -2181,7 +2207,7 @@ function BadgeCelebrationSheet({ unlocks, onClose }) {
         )}
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <button onClick={handleNext}
-            style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:12, padding:"14px", fontSize:15, cursor:"pointer" }}>
+            style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:R.sm, padding:"14px", fontSize:15, cursor:"pointer" }}>
             {idx < unlocks.length - 1 ? "Next →" : "Continue"}
           </button>
         </div>
@@ -2212,7 +2238,7 @@ function StreakCard({ streak, longestStreak, onViewBadges }) {
   const flameSize = streak >= 7 ? 22 : 18;
 
   return (
-    <button onClick={onViewBadges} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: streak >= 7 ? "linear-gradient(135deg, #fff8f0 0%, #fff3e0 100%)" : C.offwhite, border: `1px solid ${streak >= 7 ? "#ffe0b2" : C.border}`, borderRadius: 12, padding: "11px 14px", marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
+    <button onClick={onViewBadges} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: streak >= 7 ? "linear-gradient(135deg, #fff8f0 0%, #fff3e0 100%)" : C.offwhite, border: `1px solid ${streak >= 7 ? "#ffe0b2" : C.border}`, borderRadius: R.sm, padding: "11px 14px", marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: flameSize, lineHeight: 1 }}>🔥</span>
         <div>
@@ -2237,7 +2263,7 @@ function BadgeCard({ badge }) {
   const locked = !badge.is_completed && badge.current_progress === 0;
 
   return (
-    <div style={{ background: locked ? "#f8f8f8" : C.cardBg, border:`1px solid ${locked ? "#e8e8e8" : C.border}`, borderRadius:12, padding:"14px", opacity: locked ? 0.7 : 1 }}>
+    <div style={{ background: locked ? "#f8f8f8" : C.cardBg, border:`1px solid ${locked ? "#e8e8e8" : C.border}`, borderRadius:R.sm, padding:"14px", opacity: locked ? 0.7 : 1 }}>
       <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom: badge.is_completed ? 4 : 10 }}>
         <span style={{ fontSize:28, filter: locked ? "grayscale(1)" : "none" }}>{badge.icon_key}</span>
         <div style={{ flex:1 }}>
@@ -2252,8 +2278,8 @@ function BadgeCard({ badge }) {
         </div>
       ) : (
         <>
-          <div style={{ height:5, background:"#e8e8e8", borderRadius:99, overflow:"hidden", marginBottom:4 }}>
-            <div style={{ height:"100%", width:pct+"%", background: pct > 0 ? C.forest : "#ccc", borderRadius:99, transition:"width 0.5s" }} />
+          <div style={{ height:5, background:"#e8e8e8", borderRadius:R.full, overflow:"hidden", marginBottom:4 }}>
+            <div style={{ height:"100%", width:pct+"%", background: pct > 0 ? C.forest : "#ccc", borderRadius:R.full, transition:"width 0.5s" }} />
           </div>
           <div style={{ fontSize:11, color:C.stone, textAlign:"right" }}>{badge.current_progress} / {badge.threshold_value}</div>
         </>
@@ -2302,7 +2328,7 @@ function BadgesPage() {
       <div style={{ display:"flex", gap:8, marginBottom:20 }}>
         {SECTIONS.map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
-            style={{ ...T.control, flex:1, padding:"9px", borderRadius:10, border:`2px solid ${activeSection === s.id ? C.forest : C.border}`, background: activeSection === s.id ? "#f0f5f3" : "transparent", color: activeSection === s.id ? C.forest : C.stone, fontSize:13, cursor:"pointer" }}>
+            style={{ ...T.control, flex:1, padding:"9px", borderRadius:R.sm, border:`2px solid ${activeSection === s.id ? C.forest : C.border}`, background: activeSection === s.id ? "#f0f5f3" : "transparent", color: activeSection === s.id ? C.forest : C.stone, fontSize:13, cursor:"pointer" }}>
             {s.label}
           </button>
         ))}
@@ -2313,7 +2339,7 @@ function BadgesPage() {
         <div>
           {/* Monthly challenge */}
           {monthly && (
-            <div style={{ background:C.cardBg, border:`2px solid ${C.forest}`, borderRadius:12, padding:"16px", marginBottom:16 }}>
+            <div style={{ background:C.cardBg, border:`2px solid ${C.forest}`, borderRadius:R.sm, padding:"16px", marginBottom:16 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontSize:24 }}>{monthly.icon_key}</span>
@@ -2328,8 +2354,8 @@ function BadgesPage() {
               </div>
               <div style={{ fontSize:13, color:C.stone, marginBottom:10 }}>{monthly.description}</div>
               {!monthly.is_completed && (
-                <div style={{ height:8, background:C.border, borderRadius:99, overflow:"hidden" }}>
-                  <div style={{ height:"100%", width: Math.min(100, Math.round(monthly.progress / monthly.threshold * 100)) + "%", background:C.forest, borderRadius:99, transition:"width 0.5s" }} />
+                <div style={{ height:8, background:C.border, borderRadius:R.full, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width: Math.min(100, Math.round(monthly.progress / monthly.threshold * 100)) + "%", background:C.forest, borderRadius:R.full, transition:"width 0.5s" }} />
                 </div>
               )}
             </div>
@@ -2338,7 +2364,7 @@ function BadgesPage() {
           {/* Active milestones */}
           <div style={{ ...T.eyebrow, fontSize:13, color:C.stone, marginBottom:10 }}>In Progress</div>
           {active.length === 0 ? (
-            <div style={{ background:C.offwhite, borderRadius:12, padding:"20px", textAlign:"center" }}>
+            <div style={{ background:C.offwhite, borderRadius:R.sm, padding:"20px", textAlign:"center" }}>
               <div style={{ fontSize:13, color:C.stone }}>No badges in progress yet.</div>
               <div style={{ fontSize:12, color:C.stone, marginTop:4 }}>Complete tasks, add crops and log harvests to get started.</div>
             </div>
@@ -2374,7 +2400,7 @@ function BadgesPage() {
       {activeSection === "earned" && (
         <div>
           {earned.length === 0 ? (
-            <div style={{ background:C.offwhite, borderRadius:12, padding:"32px 20px", textAlign:"center" }}>
+            <div style={{ background:C.offwhite, borderRadius:R.sm, padding:"32px 20px", textAlign:"center" }}>
               <div style={{ fontSize:32, marginBottom:12 }}>🌱</div>
               <div style={{ ...T.bodyStrong, fontSize:15, color:C.ink, marginBottom:6 }}>Start growing your collection</div>
               <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Complete tasks, add crops, log sowing and harvests to unlock your first badges.</div>
@@ -2825,7 +2851,7 @@ What's on your list this month?
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "92vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "92vh", overflowY: "auto" }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
@@ -2839,7 +2865,7 @@ What's on your list this month?
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {[["recent", "Recent"], ["month", "This month"]].map(([val, label]) => (
             <button key={val} onClick={() => handleModeChange(val)}
-              style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === val ? C.forest : C.border}`, background: mode === val ? "#f0f5f3" : "transparent", color: mode === val ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
+              style={{ ...T.control, flex: 1, padding: "10px", borderRadius: R.sm, border: `2px solid ${mode === val ? C.forest : C.border}`, background: mode === val ? "#f0f5f3" : "transparent", color: mode === val ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
               {label}
             </button>
           ))}
@@ -2848,9 +2874,9 @@ What's on your list this month?
         {loading ? <div style={{ textAlign: "center", padding: "32px 0" }}><Spinner /></div> : data && (
           <>
             {/* Card preview — actual canvas render, scaled down */}
-            <div style={{ marginBottom: 16, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}` }}>
+            <div style={{ marginBottom: 16, borderRadius: R.sm, overflow: "hidden", border: `1px solid ${C.border}` }}>
               <canvas ref={previewRef} width={1080} height={1350}
-                style={{ width: "100%", display: "block", borderRadius: 14 }} />
+                style={{ width: "100%", display: "block", borderRadius: R.sm}} />
             </div>
 
 
@@ -2868,7 +2894,7 @@ What's on your list this month?
                   </div>
                   {tasks.map((t, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <div style={{ ...T.bodyStrong, width: 24, height: 24, borderRadius: "50%", background: C.leaf, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", flexShrink: 0 }}>✓</div>
+                      <div style={{ ...T.bodyStrong, width: 24, height: 24, borderRadius: R.full, background: C.leaf, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", flexShrink: 0 }}>✓</div>
                       <input
                         value={taskLabels[i] || ""}
                         onChange={e => {
@@ -2897,14 +2923,14 @@ What's on your list this month?
               <label style={labelStyle}>Add a photo (optional)</label>
               {photo ? (
                 <div style={{ display: "flex", gap: 8 }}>
-                  <img src={photo} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} />
+                  <img src={photo} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: R.sm}} />
                   <button onClick={() => setPhoto(null)}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, color: C.stone, fontSize: 13, cursor: "pointer" }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, color: C.stone, fontSize: 13, cursor: "pointer" }}>
                     Remove photo
                   </button>
                 </div>
               ) : (
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: 10, padding: "12px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "12px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
                   📷 Add a garden photo
                   <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                 </label>
@@ -2917,14 +2943,14 @@ What's on your list this month?
               <textarea value={caption} onChange={e => setCaption(e.target.value)}
                 style={{ ...inputStyle, height: 100, resize: "vertical", fontSize: 13 }} />
               <button onClick={() => { navigator.clipboard.writeText(caption); setCaptionCopied(true); setTimeout(() => setCaptionCopied(false), 2000); }}
-                style={{ marginTop: 6, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 14px", fontSize: 12, color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                style={{ marginTop: 6, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 14px", fontSize: 12, color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                 {captionCopied ? "✓ Copied!" : "Copy caption"}
               </button>
             </div>
 
             {/* Actions */}
             <button onClick={generateCard} disabled={generating}
-              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
+              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
               {generating ? "Generating…" : "⬆ Share my garden"}
             </button>
             <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
@@ -2956,7 +2982,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   // State 1 — crops ready right now → show CTA
   if (readyNow.length > 0) {
     return (
-      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.surfaceDark} 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
+      <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
         <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Ready to harvest</div>
         <div style={{ ...T.displayMd, fontSize: 18, marginBottom: 4 }}>
           🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
@@ -2965,7 +2991,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
           {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
         </div>
         <button onClick={() => onLogHarvest(readyNow[0])}
-          style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
+          style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: R.sm, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
           🌾 Log harvest
         </button>
       </div>
@@ -2976,7 +3002,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   if (lastHarvest && lastEntry) {
     const totalHarvests = recentHarvests.reduce((sum, c) => sum + c.harvest_count, 0);
     return (
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 4 }}>Latest harvest</div>
@@ -3006,7 +3032,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
           </div>
         </div>
         <button onClick={onViewAll}
-          style={{ fontSize: 12, fontWeight: 600, color: C.forest, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}>
+          style={{ fontSize: 12, fontWeight: 600, color: C.forest, background: "none", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "6px 14px", cursor: "pointer" }}>
           View all harvests →
         </button>
       </div>
@@ -3016,7 +3042,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   // State 3 — nothing yet
   if (recentHarvests !== null && recentHarvests.length === 0) {
     return (
-      <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
+      <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20 }}>
         <div style={{ ...T.displayMd, fontSize: 16, color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
         <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
       </div>
@@ -3043,7 +3069,7 @@ function GardenStatusCard({ data }) {
     : null;
 
   return (
-    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 12 }}>
       <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 12 }}>Garden Status</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {/* Crops growing */}
@@ -3101,7 +3127,7 @@ function ComingUpSoonCard({ data }) {
   };
 
   return (
-    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 18 }}>⏳</span>
         <span style={{ ...T.eyebrow, fontSize: 12, color: C.stone }}>Coming Up Soon</span>
@@ -3162,11 +3188,11 @@ function NotificationDashboardPrompt({ onTabChange }) {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
       });
       await apiFetch("/notifications/register-token", {
         method: "POST",
-        body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
+        body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" })
       });
       await apiFetch("/notifications/preferences", {
         method: "PUT",
@@ -3180,8 +3206,8 @@ function NotificationDashboardPrompt({ onTabChange }) {
           weekly_summary_enabled: true,
           milestones_enabled: true,
           morning_time_local: "07:00",
-          evening_time_local: "18:00",
-        }),
+          evening_time_local: "18:00"
+        })
       });
       setState("enabled");
     } catch(e) { console.error("[Push]", e); }
@@ -3192,7 +3218,7 @@ function NotificationDashboardPrompt({ onTabChange }) {
 
   if (state === "prompt") {
     return (
-      <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
         <div style={{ flex: 1 }}>
           <div style={{ ...T.bodyStrong, fontSize: 14, color: C.forest }}>Get garden reminders</div>
@@ -3200,7 +3226,7 @@ function NotificationDashboardPrompt({ onTabChange }) {
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <button onClick={enable}
-            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
+            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
             Turn on
           </button>
           <button onClick={() => setDismissed(true)}
@@ -3216,7 +3242,7 @@ function NotificationDashboardPrompt({ onTabChange }) {
   return (
     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
       <button onClick={() => onTabChange("profile")}
-        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.full, padding: "6px 14px", fontSize: 12, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
         <span>🔔</span> Notifications off · Turn on
       </button>
     </div>
@@ -3243,20 +3269,20 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
     <div onClick={onOpen} style={{
       background: "#fff",
       border: `1px solid #D4E8CE`,
-      borderRadius: 14,
+      borderRadius: R.sm,
       padding: "14px 16px",
       marginBottom: 16,
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
-      gap: 14,
+      gap: 14
     }}>
       {/* Icon */}
       <div style={{
-        width: 44, height: 44, borderRadius: 12,
+        width: 44, height: 44, borderRadius: R.sm,
         background: isExpired ? "#f5f5f5" : C.forest,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 22, flexShrink: 0,
+        fontSize: 22, flexShrink: 0
       }}>
         {isExpired ? "🔒" : "📷"}
       </div>
@@ -3275,7 +3301,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
             fontSize: 11,
             color: isExpired ? C.dangerText : C.forest,
             background: isExpired ? C.red + "12" : C.forest + "12",
-            borderRadius: 20,
+            borderRadius: R.full,
             padding: "2px 8px"
           }}>
             {meta}
@@ -3287,7 +3313,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
         ...T.bodyStrong,
         flexShrink: 0,
         padding: "8px 14px",
-        borderRadius: 10,
+        borderRadius: R.sm,
         background: isExpired ? "#f5f5f5" : C.forest,
         color: isExpired ? C.stone : "#fff",
         fontSize: 12,
@@ -3309,7 +3335,7 @@ const ACTIVITY_CONFIG = {
   manual_other:          { icon: "📋", label: "Activity" },
   harvest_logged:        { icon: "🧺", label: "Harvested" },
   photo_added:           { icon: "📷", label: "Photo added" },
-  observation_added:     { icon: "👁", label: "Observation" },
+  observation_added:     { icon: "👁", label: "Observation" }
 };
 
 // Shorten long task_completed titles — keep just the action verb phrase
@@ -3347,7 +3373,7 @@ function collapseObservations(items) {
       title:       `Observations — ${cluster.length} plants checked`,
       subtitle:    [locationName, displayCrops].filter(Boolean).join(" · "),
       occurred_at: item.occurred_at,
-      _cluster:    cluster,
+      _cluster:    cluster
     });
     i += cluster.length;
   }
@@ -3397,15 +3423,15 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.4)" }} onClick={onClose}>
-      <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 40px", boxShadow: "0 -4px 24px rgba(0,0,0,0.15)", maxHeight: "80vh", overflowY: "auto" }}
+      <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: R.sheet, padding: "20px 20px 40px", boxShadow: S.sheet, maxHeight: "80vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()}>
 
         {/* Handle */}
-        <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
+        <div style={{ width: 36, height: 4, background: C.border, borderRadius: R.sm, margin: "0 auto 20px" }} />
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: R.full, background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
             {cfg.icon}
           </div>
           <div style={{ flex: 1 }}>
@@ -3429,7 +3455,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
 
         {/* Photo */}
         {item.photo_url && (
-          <img src={item.photo_url} alt="" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 240, objectFit: "cover" }} />
+          <img src={item.photo_url} alt="" style={{ width: "100%", borderRadius: R.sm, marginBottom: 16, maxHeight: 240, objectFit: "cover" }} />
         )}
 
         {/* Note */}
@@ -3443,22 +3469,22 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
                   onChange={e => setNote(e.target.value)}
                   placeholder="Add a note…"
                   rows={3}
-                  style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: F.body, resize: "none", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 12px", fontSize: 13, fontFamily: F.body, resize: "none", outline: "none", boxSizing: "border-box" }}
                 />
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                   <button onClick={handleSave} disabled={saving}
-                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "10px", fontSize: 13, cursor: "pointer" }}>
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => { setEditing(false); setNote(item.note || ""); }}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: F.body, color: C.stone }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: F.body, color: C.stone }}>
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
               <div onClick={() => setEditing(true)}
-                style={{ fontSize: 13, color: note ? C.ink : C.stone, fontFamily: F.body, lineHeight: 1.5, padding: "10px 12px", background: C.offwhite, borderRadius: 10, cursor: "pointer", fontStyle: note ? "normal" : "italic" }}>
+                style={{ fontSize: 13, color: note ? C.ink : C.stone, fontFamily: F.body, lineHeight: 1.5, padding: "10px 12px", background: C.offwhite, borderRadius: R.sm, cursor: "pointer", fontStyle: note ? "normal" : "italic" }}>
                 {note || "Tap to add a note…"}
               </div>
             )}
@@ -3475,21 +3501,21 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
           <div style={{ marginTop: 8 }}>
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)}
-                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, color: C.dangerText, cursor: "pointer", fontFamily: F.body }}>
+                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px", fontSize: 13, color: C.dangerText, cursor: "pointer", fontFamily: F.body }}>
                 Delete activity
               </button>
             ) : (
-              <div style={{ background: "#fff5f5", border: "1px solid #fcc", borderRadius: 10, padding: 14 }}>
+              <div style={{ background: "#fff5f5", border: "1px solid #fcc", borderRadius: R.sm, padding: 14 }}>
                 <div style={{ fontSize: 13, color: C.ink, fontFamily: F.body, marginBottom: 12, textAlign: "center" }}>
                   Delete this activity? This cannot be undone.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={handleDelete} disabled={deleting}
-                    style={{ ...T.control, flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: R.sm, padding: "10px", fontSize: 13, cursor: "pointer" }}>
                     {deleting ? "Deleting…" : "Yes, delete"}
                   </button>
                   <button onClick={() => setConfirmDelete(false)}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: F.body, color: C.stone }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: F.body, color: C.stone }}>
                     Cancel
                   </button>
                 </div>
@@ -3624,12 +3650,12 @@ function GardenLog({ onLogActivity }) {
                 style={{
                   background:  isWarning ? "#fffbf0" : isPrimary ? "#f0f7f4" : "#fafaf8",
                   border:      `1px solid ${isWarning ? "#f0c040" : isPrimary ? `${C.forest}30` : C.border}`,
-                  borderRadius: 10,
+                  borderRadius: R.sm,
                   padding:     isPrimary ? "10px 14px" : "8px 14px",
                   display:     "flex",
                   alignItems:  "center",
                   gap:         10,
-                  cursor:      isTappable ? "pointer" : "default",
+                  cursor:      isTappable ? "pointer" : "default"
                 }}>
                 <span style={{ fontSize: isPrimary ? 16 : 14 }}>{icon}</span>
                 <span style={{ fontSize: isPrimary ? 13 : 12, color: isWarning ? C.attentionText : C.ink, fontFamily: F.body, fontWeight: isPrimary ? 600 : 500, flex: 1 }}>
@@ -3653,7 +3679,7 @@ function GardenLog({ onLogActivity }) {
           {filter === "all" ? "Your garden activity" : activeFilterLabel}
         </div>
         <button onClick={() => setShowFilters(true)}
-          style={{ background: filter !== "all" ? C.forest : "none", border: `1px solid ${filter !== "all" ? C.forest : C.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: filter !== "all" ? "#fff" : C.stone }}>
+          style={{ background: filter !== "all" ? C.forest : "none", border: `1px solid ${filter !== "all" ? C.forest : C.border}`, borderRadius: R.sm, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: filter !== "all" ? "#fff" : C.stone }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
             <line x1="1" y1="3" x2="13" y2="3" />
             <line x1="3" y1="7" x2="11" y2="7" />
@@ -3668,9 +3694,9 @@ function GardenLog({ onLogActivity }) {
       {/* Filter bottom sheet */}
       {showFilters && (
         <div style={{ position: "fixed", inset: 0, zIndex: 200 }} onClick={() => setShowFilters(false)}>
-          <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 40px", boxShadow: "0 -4px 24px rgba(0,0,0,0.12)" }}
+          <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: R.sheet, padding: "20px 20px 40px", boxShadow: S.sheet }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
+            <div style={{ width: 36, height: 4, background: C.border, borderRadius: R.sm, margin: "0 auto 20px" }} />
             <div style={{ ...T.bodyStrong, fontSize: 14, marginBottom: 16, color: C.ink }}>Filter activity</div>
             {FILTERS.map(f => (
               <button key={f.id} onClick={() => handleFilterChange(f.id)}
@@ -3697,12 +3723,12 @@ function GardenLog({ onLogActivity }) {
           </div>
           {filter === "all" ? (
             <button onClick={onLogActivity}
-              style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, cursor: "pointer" }}>
+              style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "11px 24px", fontSize: 14, cursor: "pointer" }}>
               Log activity
             </button>
           ) : (
             <button onClick={() => handleFilterChange("all")}
-              style={{ background: "none", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F.body }}>
+              style={{ background: "none", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F.body }}>
               Clear filter
             </button>
           )}
@@ -3728,9 +3754,9 @@ function GardenLog({ onLogActivity }) {
                     onClick={isCluster
                       ? () => setExpandedClusters(p => ({ ...p, [item.id]: !p[item.id] }))
                       : () => setSelectedItem(item)}
-                    style={{ background: "#fff", borderRadius: 10, padding: "9px 12px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                    style={{ background: "#fff", borderRadius: R.sm, padding: "9px 12px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                     {/* Icon */}
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: R.full, background: C.offwhite, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
                       {cfg.icon}
                     </div>
                     {/* Content */}
@@ -3760,7 +3786,7 @@ function GardenLog({ onLogActivity }) {
                         {formatTime(item.occurred_at)}
                       </div>
                       {item.photo_url && (
-                        <img src={item.photo_url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} />
+                        <img src={item.photo_url} alt="" style={{ width: 36, height: 36, borderRadius: R.sm, objectFit: "cover" }} />
                       )}
                       {isCluster && (
                         <span style={{ fontSize: 10, color: C.stone }}>
@@ -3773,7 +3799,7 @@ function GardenLog({ onLogActivity }) {
                   {isCluster && isExpanded && (
                     <div style={{ marginTop: 3, marginLeft: 16, display: "flex", flexDirection: "column", gap: 3 }}>
                       {item._cluster.map(child => (
-                        <div key={child.id} style={{ background: C.offwhite, borderRadius: 8, padding: "7px 10px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+                        <div key={child.id} style={{ background: C.offwhite, borderRadius: R.sm, padding: "7px 10px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ fontSize: 12, fontFamily: F.body, color: C.ink, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {child.crop_name || child.title}
                           </div>
@@ -3794,7 +3820,7 @@ function GardenLog({ onLogActivity }) {
       {/* Load more */}
       {hasMore && (
         <button onClick={() => load(nextCursor)} disabled={loadingMore}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: F.body, marginTop: 4 }}>
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: F.body, marginTop: 4 }}>
           {loadingMore ? "Loading…" : "Load more"}
         </button>
       )}
@@ -4000,7 +4026,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         setTimeout(() => {
           setSessionCompleteData({
             nextTask,
-            completedCount: sessionCompletedCountRef.current,
+            completedCount: sessionCompletedCountRef.current
           });
           setShowSessionComplete(true);
         }, 600);
@@ -4102,7 +4128,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     try {
       await apiFetch(`/crops/${cropId}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity }),
+        body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity })
       });
       load(); // refresh dashboard after observation
     } catch(e) { console.error("[Observe]", e); }
@@ -4212,8 +4238,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     <div>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div ref={tourRefs.tourRef_todayHeader} style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.surfaceDark} 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+      <div ref={tourRefs.tourRef_todayHeader} style={{ background: C.surfaceDark, color: "#fff", borderRadius: R.sm, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: R.full, background: "rgba(255,255,255,0.06)" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
             <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.6, marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
@@ -4225,7 +4251,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{data.weather.temp_c}°C</span>
                 <span style={{ fontSize: 12, opacity: 0.8, textTransform: "capitalize" }}>{data.weather.condition}</span>
                 {data.frost_risk !== "low" && (
-                  <span style={{ fontSize: 11, background: data.frost_risk === "high" ? "#e74c3c" : "#f39c12", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>
+                  <span style={{ fontSize: 11, background: data.frost_risk === "high" ? "#e74c3c" : "#f39c12", borderRadius: R.full, padding: "1px 8px", fontWeight: 700 }}>
                     {data.frost_risk === "high" ? "❄️ Frost" : "❄️ Near frost"}
                   </span>
                 )}
@@ -4239,10 +4265,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       </div>
 
       {/* ── SEGMENTED CONTROL — Today / Log ───────────────────────────────── */}
-      <div ref={tourRefs.tourRef_todayLogToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
+      <div ref={tourRefs.tourRef_todayLogToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
         {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
           <button key={id} onClick={() => onDashboardViewChange(id)}
-            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: F.body, boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: R.sm, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: F.body, boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
             {label}
           </button>
         ))}
@@ -4258,7 +4284,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
       {showFirstRun && (
-        <div style={{ background: C.surfaceDark, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
+        <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ ...T.displayMd, fontSize: 17, color: "#fff", marginBottom: 6 }}>
             Here's your garden plan for today 👇
           </div>
@@ -4267,11 +4293,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} }}
-              style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, cursor: "pointer" }}>
+              style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: R.sm, padding: "9px 18px", fontSize: 13, cursor: "pointer" }}>
               Got it
             </button>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} onTabChange("add"); }}
-              style={{ background: "transparent", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 8, padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              style={{ background: "transparent", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: R.sm, padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               Add another crop
             </button>
           </div>
@@ -4308,7 +4334,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
 
         {focusItem ? (
-          <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: 14, padding: "16px 18px" }}>
+          <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: R.sm, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
               <div style={{ flex: 1 }}>
@@ -4318,18 +4344,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => completeTask(focusItem)}
-                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "10px", fontSize: 13, cursor: "pointer" }}>
                     ✓ Mark done
                   </button>
                   <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
                     Later
                   </button>
                 </div>
                 <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span ref={tourRefs.tourRef_whyNowPill}
                     onClick={() => { setWhyNowTask(focusItem); }}
-                    style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 20, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                    style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.full, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                     💡 Why now?
                   </span>
                 </div>
@@ -4343,7 +4369,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             </div>
           </div>
         ) : (
-          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 28 }}>🌿</span>
             <div>
               <div style={{ ...T.displayMd, fontSize: 15, color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
@@ -4364,7 +4390,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               crop: t.crop,
               isSuccession,
               displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
-              tasks: [],
+              tasks: []
             };
             alsoGrouped[key].tasks.push(t);
           }
@@ -4374,12 +4400,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {alsoGroups.map((group, gi) => (
-                  <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
+                  <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
                       <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || group.crop?.name || "General"}</span>
                       {group.isSuccession && (
-                        <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                        <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: R.full, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
                       )}
                     </div>
                     {group.tasks.map((t, ti) => (
@@ -4394,7 +4420,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                             </button>
                           )}
                           <button onClick={() => completeTask(t)}
-                            style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                            style={{ width: 28, height: 28, borderRadius: R.full, border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
                             ✓
                           </button>
                         </div>
@@ -4435,7 +4461,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               crop: t.crop,
               isSuccession,
               displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
-              tasks: [],
+              tasks: []
             };
             grouped[key].tasks.push(t);
           }
@@ -4446,7 +4472,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           return (
             <div style={{ marginTop: 12 }}>
               <button onClick={() => setShowAllToday(p => !p)}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
                 <span style={{ ...T.eyebrow, fontSize: 12 }}>
                   See all ({totalCount})
                 </span>
@@ -4456,12 +4482,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                             {showAllToday && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
                   {cropGroups.map((group, gi) => (
-                    <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
+                    <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                         <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
                         <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || group.crop?.name || "General"}</span>
                         {group.isSuccession && (
-                          <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                          <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: R.full, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
                         )}
                       </div>
                       {group.tasks.map((t, ti) => (
@@ -4476,7 +4502,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                               </button>
                             )}
                             <button onClick={() => completeTask(t)}
-                              style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                              style={{ width: 28, height: 28, borderRadius: R.full, border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
                               ✓
                             </button>
                           </div>
@@ -4494,7 +4520,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         {recentlyDone.length > 0 && (
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             {recentlyDone.map(t => (
-              <div key={t.id} style={{ background: "#f5faf5", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
+              <div key={t.id} style={{ background: "#f5faf5", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
                 <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
                 <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
                 {undoQueue[t.id] && (
@@ -4520,7 +4546,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         });
         if (upcomingCount < 5 || hasActivePeriod || timeAwayDismissed) return null;
         return (
-          <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
             <span style={{ fontSize: 20, flexShrink: 0 }}>🗓️</span>
             <div style={{ flex: 1 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink, marginBottom: 2 }}>Busy week ahead</div>
@@ -4529,7 +4555,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               </div>
               <button
                 onClick={() => onTabChange("profile", { openTimeAway: true })}
-                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer", marginRight: 8 }}>
+                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "7px 14px", fontSize: 12, cursor: "pointer", marginRight: 8 }}>
                 Plan time away →
               </button>
               <button
@@ -4545,7 +4571,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* Persistent entry point — always visible, clears once user has added a blocked period */}
       {!timeAwayDismissed && blockedPeriods.length === 0 && (
         <div
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 12, background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer" }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 12, background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, cursor: "pointer" }}
           onClick={() => onTabChange("profile", { openTimeAway: true })}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>✈️</span>
@@ -4593,7 +4619,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               const cropNames = [...new Set(group.map(x => x.crop?.name).filter(Boolean))];
               const groupKey  = t.rule_id || t.id;
               return (
-                <div key={groupKey} style={{ background: urgBg, border: `1px solid ${urgColour}33`, borderLeft: `3px solid ${urgColour}`, borderRadius: 12, padding: "12px 14px" }}>
+                <div key={groupKey} style={{ background: urgBg, border: `1px solid ${urgColour}33`, borderLeft: `3px solid ${urgColour}`, borderRadius: R.sm, padding: "12px 14px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     <span style={{ fontSize: 20, flexShrink: 0 }}>
                       {t.task_type === "protect" ? "🛡️" : t.task_type?.includes("pest") ? "🐛" : t.task_type?.includes("disease") ? "🔬" : "⚠️"}
@@ -4603,7 +4629,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                         <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>
                           {cropNames.length > 0 ? cropNames.join(", ") : "Watch out"}
                         </div>
-                        <span style={{ ...T.eyebrow, fontSize: 10, color: urgText, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>
+                        <span style={{ ...T.eyebrow, fontSize: 10, color: urgText, background: urgColour + "22", borderRadius: R.full, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>
                           {t.urgency === "high" ? "Act now" : t.urgency === "medium" ? "Inspect" : "Watch"}
                         </span>
                       </div>
@@ -4616,24 +4642,24 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                         <button onClick={async () => {
                           await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild") : Promise.resolve()));
                           group.forEach(x => completeTask(x));
-                        }} style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontSize: 12, cursor: "pointer" }}>
+                        }} style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px", fontSize: 12, cursor: "pointer" }}>
                           🐛 Found it
                         </button>
                         <button onClick={async () => {
                           await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy") : Promise.resolve()));
                           group.forEach(x => completeTask(x));
-                        }} style={{ ...T.control, flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "8px", color: C.forest, fontSize: 12, cursor: "pointer" }}>
+                        }} style={{ ...T.control, flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "8px", color: C.forest, fontSize: 12, cursor: "pointer" }}>
                           ✓ All clear
                         </button>
                       </>
                     ) : (
                       <>
                         <button onClick={() => group.forEach(x => completeTask(x))}
-                          style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontSize: 12, cursor: "pointer" }}>
+                          style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px", fontSize: 12, cursor: "pointer" }}>
                           ✓ Done
                         </button>
                         <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); }}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
                           Dismiss
                         </button>
                       </>
@@ -4652,7 +4678,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Coming up next</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {comingUpByCrop.slice(0, 5).map(({ name, emoji, tasks }) => (
-              <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
+              <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{emoji}</span>
                   <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{name}</span>
@@ -4701,7 +4727,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
       {(data.missing_data || []).length > 0 && (
-        <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+        <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 10 }}>Make your plan more accurate</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(data.missing_data || []).slice(0, 3).map(item => (
@@ -4712,7 +4738,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   <div style={{ fontSize: 12, color: C.stone }}>Add {item.missing.join(" and ")} for more accurate tasks</div>
                 </div>
                 <button onClick={() => { if (onTabChange) onTabChange("crops", { editCropId: item.id, editCropField: item.missing[0]?.includes("variety") ? "variety" : "sow_date" }); }}
-                  style={{ ...T.control, fontSize: 12, color: C.attentionText, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  style={{ ...T.control, fontSize: 12, color: C.attentionText, background: "none", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "4px 10px", cursor: "pointer" }}>
                   Add details →
                 </button>
               </div>
@@ -4722,7 +4748,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       )}
 
       {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 12 }}>Garden progress</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
@@ -4731,7 +4757,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
             { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
           ].map(({ label, value, emoji, highlight }) => (
-            <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
+            <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: R.sm, padding: "10px 12px" }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
               <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.attentionText : C.forest, lineHeight: 1 }}>{value}</div>
               <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
@@ -4748,13 +4774,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
       <button onClick={() => setShowShareGarden(true)}
-        style={{ ...T.control, width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
+        style={{ ...T.control, width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
         🌱 Share my garden
       </button>
 
       {/* Invite a friend button */}
       <button onClick={() => setShowReferral(true)}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.stone, fontWeight: 600, fontSize: 13 }}>
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.stone, fontWeight: 600, fontSize: 13 }}>
         👋 Invite a gardening friend — it's free
       </button>
 
@@ -4763,7 +4789,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {showSessionComplete && sessionCompleteData && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={() => setShowSessionComplete(false)}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 44px", width: "100%", maxWidth: 480 }}
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 44px", width: "100%", maxWidth: 480 }}
             onClick={e => e.stopPropagation()}>
 
             {/* Header */}
@@ -4781,7 +4807,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
             {/* Tomorrow hook */}
             {sessionCompleteData.nextTask ? (
-              <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px", marginBottom: 20 }}>
+              <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px", marginBottom: 20 }}>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
                   ⭐ Coming up next
                 </div>
@@ -4795,7 +4821,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 </div>
               </div>
             ) : (
-              <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px", marginBottom: 20 }}>
+              <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px", marginBottom: 20 }}>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
                   ⭐ Tomorrow
                 </div>
@@ -4811,7 +4837,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {/* CTAs */}
             <button
               onClick={() => { setShowSessionComplete(false); sessionCompletedCountRef.current = 0; }}
-              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Done
             </button>
             <button
@@ -4826,7 +4852,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {showShareNudge && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={() => setShowShareNudge(false)}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 480 }}
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 40px", width: "100%", maxWidth: 480 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>🎉</div>
@@ -4836,7 +4862,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               </div>
             </div>
             <button onClick={() => { setShowShareNudge(false); setShowShareGarden(true); }}
-              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               🌱 Share my garden
             </button>
             <button onClick={() => setShowShareNudge(false)}
@@ -4851,7 +4877,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {showReferral && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={() => setShowReferral(false)}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480 }}
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>👋</div>
@@ -4861,12 +4887,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               </div>
             </div>
 
-            <div style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1, fontSize: 13, color: C.forest, fontWeight: 600, wordBreak: "break-all" }}>
                 https://vercro.com
               </div>
               <button onClick={() => { navigator.clipboard.writeText("https://vercro.com"); }}
-                style={{ ...T.control, flexShrink: 0, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
+                style={{ ...T.control, flexShrink: 0, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
                 Copy
               </button>
             </div>
@@ -4878,18 +4904,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 navigator.clipboard.writeText("https://vercro.com");
               }
             }}
-              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               📤 Share link
             </button>
 
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
               <a href={`https://wa.me/?text=${encodeURIComponent("I've been using Vercro to keep on top of my garden — it tells you exactly what to do each day. Free to use: https://vercro.com")}`}
                 target="_blank" rel="noreferrer"
-                style={{ ...T.control, flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: 12, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
+                style={{ ...T.control, flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: R.sm, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
                 💬 WhatsApp
               </a>
               <a href={`mailto:?subject=You'd love this gardening app&body=${encodeURIComponent("Hey! I've been using Vercro to keep on top of my garden — it tells you exactly what tasks to do each day based on your crops and the weather. Completely free: https://vercro.com")}`}
-                style={{ ...T.control, flex: 1, background: C.offwhite, color: C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
+                style={{ ...T.control, flex: 1, background: C.offwhite, color: C.forest, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
                 ✉️ Email
               </a>
             </div>
@@ -4906,7 +4932,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {strugglingCrop && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
           onClick={e => { if (e.target === e.currentTarget) setStrugglingCrop(null); }}>
-          <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
             <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🌿</div>
             <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 8, textAlign: "center" }}>
               Is your {strugglingCrop.name} struggling?
@@ -4914,7 +4940,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
               We'll adjust your care plan to focus on getting it back to health — reducing pressure and adding targeted checks.
             </div>
-            <div style={{ background: C.offwhite, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+            <div style={{ background: C.offwhite, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink, marginBottom: 8 }}>What we'll do:</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {["Pause non-essential tasks for this crop", "Add a daily health check prompt", "Flag it for your attention", "Resume normal care once it recovers"].map((item, i) => (
@@ -4928,11 +4954,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <button onClick={async () => {
               await logObservation(strugglingCrop.id, "other", "plant_struggling");
               setStrugglingCrop(null);
-            }} style={{ ...T.control, width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 16, cursor: "pointer", marginBottom: 10 }}>
+            }} style={{ ...T.control, width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 16, cursor: "pointer", marginBottom: 10 }}>
               Yes, it&apos;s struggling
             </button>
             <button onClick={() => setStrugglingCrop(null)}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -4958,7 +4984,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* Standalone log activity button — always visible at bottom of Today */}
       <div ref={tourRefs.tourRef_logActivityBtn} style={{ padding: "12px 0 4px" }}>
         <button onClick={() => setShowLogActivity(true)}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <span style={{ fontSize: 16 }}>📋</span> Log activity
         </button>
       </div>
@@ -5058,7 +5084,7 @@ const STAGE_QUESTIONS = {
   vegetative: { emoji: "🟢", q: "Are your plants growing strongly now?" },
   flowering:  { emoji: "🌼", q: "Are your plants flowering yet?" },
   fruiting:   { emoji: "🍅", q: "Has fruit started to set?" },
-  harvesting: { emoji: "🔵", q: "Is this crop ready to start harvesting?" },
+  harvesting: { emoji: "🔵", q: "Is this crop ready to start harvesting?" }
 };
 
 function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavigateCrop, sectionLabel }) {
@@ -5077,7 +5103,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
     .map(crop => ({
       type:        "lifecycle",
       crop,
-      nextStage:   predictNextStage(crop),
+      nextStage:   predictNextStage(crop)
     }));
 
   // Build perennial lifecycle prompts from tasks with lifecycle_check meta
@@ -5134,13 +5160,13 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
         body: JSON.stringify({
           observation_type: "growth",
           symptom_code:     symptomCode,
-          notes:            confirmed ? `Stage ${nextStage} confirmed by user` : `Stage ${nextStage} not yet reached`,
-        }),
+          notes:            confirmed ? `Stage ${nextStage} confirmed by user` : `Stage ${nextStage} not yet reached`
+        })
       });
       // Also update the stage via confirm-stage
       const result = await apiFetch(`/crops/${crop.id}/confirm-stage`, {
         method: "POST",
-        body: JSON.stringify({ stage: nextStage, confirmed }),
+        body: JSON.stringify({ stage: nextStage, confirmed })
       });
       if (onDismiss) onDismiss(result?.crop);
     } catch (e) {
@@ -5160,7 +5186,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
     try {
       await apiFetch(`/crops/${crop.id}`, {
         method: "PUT",
-        body: JSON.stringify({ establishment_method: method }),
+        body: JSON.stringify({ establishment_method: method })
       });
       if (onDismiss) onDismiss();
     } catch (e) {
@@ -5180,7 +5206,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌱</span>
           <span style={{ ...T.bodyStrong, fontSize: 14, color: C.forest }}>Crop checks</span>
-          <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
+          <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
       </div>
@@ -5192,7 +5218,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
               const q = STAGE_QUESTIONS[nextStage];
               const isActioning = actioning === crop.id;
               return (
-                <div key={crop.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+                <div key={crop.id} style={{ background: "#fff", borderRadius: R.sm, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{q?.emoji || "🌱"}</span>
                     <div>
@@ -5203,11 +5229,11 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ fontSize: 13, color: C.stone, marginBottom: 12, lineHeight: 1.4 }}>{q?.q || `Has this crop reached the ${nextStage} stage?`}</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => handleLifecycle(crop, nextStage, true)} disabled={isActioning}
-                      style={{ ...T.control, flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 2, padding: "9px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       {isActioning ? "Saving…" : "Yes ✓"}
                     </button>
                     <button onClick={() => handleLifecycle(crop, nextStage, false)} disabled={isActioning}
-                      style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       Not yet
                     </button>
                   </div>
@@ -5219,7 +5245,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
               const { crop } = prompt;
               const isActioning = actioning === crop.id;
               return (
-                <div key={crop.id + "_sowmethod"} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+                <div key={crop.id + "_sowmethod"} style={{ background: "#fff", borderRadius: R.sm, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
                     <div>
@@ -5232,11 +5258,11 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => handleSowMethod(crop, "indoors")} disabled={isActioning}
-                      style={{ ...T.control, flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: C.ink, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: C.offwhite, color: C.ink, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       🪟 Indoors
                     </button>
                     <button onClick={() => handleSowMethod(crop, "direct_sow")} disabled={isActioning}
-                      style={{ ...T.control, flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: C.ink, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: C.offwhite, color: C.ink, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       🌱 Outdoors
                     </button>
                   </div>
@@ -5248,7 +5274,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
             if (prompt.type === "perennial_lifecycle") {
               const { crop, task } = prompt;
               return (
-                <div key={crop.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+                <div key={crop.id} style={{ background: "#fff", borderRadius: R.sm, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
                     <div>
@@ -5262,11 +5288,11 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                       setDismissed(prev => new Set([...prev, crop.id + "_perennial"]));
                       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
                       if (onDismiss) onDismiss();
-                    }} style={{ ...T.control, flex: 1, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
+                    }} style={{ ...T.control, flex: 1, padding: "9px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
                       ✓ Done
                     </button>
                     <button onClick={() => setDismissed(prev => new Set([...prev, crop.id + "_perennial"]))}
-                      style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                      style={{ flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                       Later
                     </button>
                   </div>
@@ -5279,7 +5305,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
             const missingVariety = item.missing.some(m => m.includes("variety"));
             const missingSowDate = item.missing.some(m => m.includes("sow"));
             return (
-              <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
+              <div key={item.id} style={{ background: "#fff", borderRadius: R.sm, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{missingVariety ? "🌿" : "📅"}</span>
                   <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>{item.name}</div>
@@ -5290,12 +5316,12 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                 <div style={{ display: "flex", gap: 8 }}>
                   {onNavigateCrop && (
                     <button onClick={() => { handleMissingDismiss(item.id); onNavigateCrop(item.id, missingVariety ? "variety" : "sow_date"); }}
-                      style={{ ...T.control, flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
+                      style={{ ...T.control, flex: 2, padding: "9px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
                       {missingVariety ? "Add variety →" : "Add sow date →"}
                     </button>
                   )}
                   <button onClick={() => handleMissingDismiss(item.id)}
-                    style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    style={{ flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                     Later
                   </button>
                 </div>
@@ -5316,7 +5342,7 @@ function TipsInner({ tips }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {visible.map((tip, i) => (
-        <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: C.offwhite, borderRadius: 10, alignItems: "flex-start" }}>
+        <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: C.offwhite, borderRadius: R.sm, alignItems: "flex-start" }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>{tip.emoji || "🌱"}</span>
           <div>
             <div style={{ ...T.bodyStrong, fontSize: 13, color: "#222", marginBottom: 2 }}>{tip.title}</div>
@@ -5326,7 +5352,7 @@ function TipsInner({ tips }) {
       ))}
       {tips.length > 1 && (
         <button onClick={() => setShowAll(v => !v)}
-          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px", fontSize: 12, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "7px", fontSize: 12, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
           {showAll ? "▲ Show less" : `+ ${tips.length - 1} more tip${tips.length - 1 !== 1 ? "s" : ""}`}
         </button>
       )}
@@ -5360,7 +5386,7 @@ function TipsSection() {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>💡</span>
           <span style={{ ...T.bodyStrong, fontSize: 14, color: "#222" }}>Garden tips</span>
-          <span style={{ fontSize: 11, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>This week</span>
+          <span style={{ fontSize: 11, color: C.stone, background: C.offwhite, borderRadius: R.full, padding: "2px 8px" }}>This week</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
       </div>
@@ -5390,11 +5416,11 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: "12px 12px 0 0", padding: "12px 16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sheet, padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌾</span>
           <span style={{ ...T.bodyStrong, fontSize: 14, color: "#222" }}>Harvest forecast</span>
-          <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px" }}>
@@ -5405,7 +5431,7 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
         </div>
         {items.length > INITIAL_SHOW && (
           <button onClick={() => setShowAll(v => !v)}
-            style={{ width: "100%", marginTop: 10, padding: "8px", borderRadius: 8, border: `1px solid ${C.border}`, background: "none", color: C.forest, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            style={{ width: "100%", marginTop: 10, padding: "8px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.forest, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
             {showAll ? "▲ Show less" : `+ ${items.length - INITIAL_SHOW} more`}
           </button>
         )}
@@ -5466,9 +5492,9 @@ function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
 
       {/* Sheet */}
-      <div {...swipe} style={{ position: "relative", background: "#fff", borderRadius: "18px 18px 0 0", padding: "20px 20px 36px", maxHeight: "70vh", overflowY: "auto" }}>
+      <div {...swipe} style={{ position: "relative", background: "#fff", borderRadius: R.sheet, padding: "20px 20px 36px", maxHeight: "70vh", overflowY: "auto" }}>
         {/* Drag handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: "#e0e0e0", margin: "0 auto 16px" }} />
+        <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#e0e0e0", margin: "0 auto 16px" }} />
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -5477,7 +5503,7 @@ function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
         </div>
 
         {/* Task label */}
-        <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, padding: "8px 10px", background: C.offwhite, borderRadius: 8, lineHeight: 1.4 }}>
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, padding: "8px 10px", background: C.offwhite, borderRadius: R.sm, lineHeight: 1.4 }}>
           {task?.action}
         </div>
 
@@ -5485,7 +5511,7 @@ function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
         {state === "loading" && (
           <div>
             {[80, 95, 65].map((w, i) => (
-              <div key={i} style={{ height: 13, borderRadius: 6, background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)", backgroundSize: "200% 100%", animation: "whyShimmer 1.4s infinite", width: `${w}%`, marginBottom: 10 }} />
+              <div key={i} style={{ height: 13, borderRadius: R.sm, background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)", backgroundSize: "200% 100%", animation: "whyShimmer 1.4s infinite", width: `${w}%`, marginBottom: 10 }} />
             ))}
             <style>{`@keyframes whyShimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }`}</style>
           </div>
@@ -5584,15 +5610,15 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
           background: completed ? "#f0f4f2" : C.cardBg,
           border: `1px solid ${completed ? C.border : timingColor + "55"}`,
           borderLeft: `3px solid ${completed ? C.sage : timingColor}`,
-          borderRadius: 12,
+          borderRadius: R.sm,
           padding: "13px 14px",
           opacity: animating ? 0 : completed ? 0.55 : 1,
           transform: animating ? "translateX(30px)" : "translateX(0)",
-          transition: "opacity 0.35s ease, transform 0.35s ease",
+          transition: "opacity 0.35s ease, transform 0.35s ease"
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Timing dot */}
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: timingColor, flexShrink: 0, marginTop: 2 }} />
+          <div style={{ width: 8, height: 8, borderRadius: R.full, background: timingColor, flexShrink: 0, marginTop: 2 }} />
 
           <div style={{ flex: 1, minWidth: 0 }} onClick={() => !completed && setExpanded(e => !e)} role="button">
             <div style={{ ...T.bodyStrong, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none" }}>
@@ -5614,40 +5640,40 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
             <div style={{ display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
               {/* Timing pill */}
               {!completed && (
-                <span style={{ ...T.bodyStrong, background: timingBg, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: timingText, border: `1px solid ${timingColor}44` }}>
+                <span style={{ ...T.bodyStrong, background: timingBg, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: timingText, border: `1px solid ${timingColor}44` }}>
                   {timingLabel}
                 </span>
               )}
               {/* Window pill */}
               {windowLabel && !completed && (
-                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.stone }}>
+                <span style={{ background: C.offwhite, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.stone }}>
                   📅 {windowLabel}
                 </span>
               )}
               {/* Area pill */}
               {task.area?.name && (
-                <span style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest }}>
+                <span style={{ background: C.offwhite, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.forest }}>
                   {task.area.name}
                 </span>
               )}
               {isEstimated && (
-                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.attentionText }}>
+                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.attentionText }}>
                   ~estimated
                 </span>
               )}
               {/* Time away adjustment badge */}
               {task.adjustment_type === "moved_earlier" && !completed && (
-                <span style={{ background: "#e8f5ee", border: "1px solid #86c9a0", borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, fontWeight: 600 }}>
+                <span style={{ background: "#e8f5ee", border: "1px solid #86c9a0", borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.forest, fontWeight: 600 }}>
                   ⬆ Moved earlier
                 </span>
               )}
               {task.adjustment_type === "moved_later" && !completed && (
-                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.attentionText, fontWeight: 600 }}>
+                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.attentionText, fontWeight: 600 }}>
                   ⬇ Moved later
                 </span>
               )}
               {task.adjustment_type === "at_risk" && !completed && (
-                <span style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.dangerText, fontWeight: 600 }}>
+                <span style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.dangerText, fontWeight: 600 }}>
                   ⚠ At risk
                 </span>
               )}
@@ -5656,20 +5682,20 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
                 <span
                   ref={whyNowRef}
                   onClick={e => { e.stopPropagation(); setShowWhyNow(true); }}
-                  style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                  style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                   💡 Why now?
                 </span>
               )}
               {/* Expand why (static meta.why — legacy) */}
               {whyText && !completed && (
                 <span onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
-                  style={{ background: C.offwhite, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                  style={{ background: C.offwhite, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                   {expanded ? "▲ less" : "▼ why?"}
                 </span>
               )}
               {showUndo && onUndo && (
                 <button onClick={e => { e.stopPropagation(); onUndo(task); }}
-                  style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, fontSize: 10, padding: "2px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                  style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.full, fontSize: 10, padding: "2px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                   Undo
                 </button>
               )}
@@ -5677,14 +5703,14 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
 
             {/* Expanded why text */}
             {expanded && whyText && (
-              <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0f7f4", borderRadius: 8, fontSize: 12, color: C.forest, lineHeight: 1.5, borderLeft: `2px solid ${C.sage}` }}>
+              <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0f7f4", borderRadius: R.sm, fontSize: 12, color: C.forest, lineHeight: 1.5, borderLeft: `2px solid ${C.sage}` }}>
                 💡 {whyText}
               </div>
             )}
           </div>
 
           {/* Complete button */}
-          <div onClick={isUpcoming ? undefined : handleComplete} style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${isUpcoming ? C.border : animating || completed ? C.leaf : C.border}`, background: isUpcoming ? C.offwhite : animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s", cursor: isUpcoming ? "default" : completed ? "default" : "pointer" }}>
+          <div onClick={isUpcoming ? undefined : handleComplete} style={{ width: 26, height: 26, borderRadius: R.full, border: `2px solid ${isUpcoming ? C.border : animating || completed ? C.leaf : C.border}`, background: isUpcoming ? C.offwhite : animating || completed ? C.leaf : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s", cursor: isUpcoming ? "default" : completed ? "default" : "pointer" }}>
             {(animating || completed) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
           </div>
         </div>
@@ -5717,7 +5743,7 @@ function SortableAreaCard({ id, multiArea, children }) {
     opacity: isDragging ? 0.5 : 1,
     filter: isDragging ? "drop-shadow(0 8px 16px rgba(0,0,0,0.18))" : undefined,
     position: "relative",
-    zIndex: isDragging ? 10 : undefined,
+    zIndex: isDragging ? 10 : undefined
   };
   const handleProps = multiArea ? { ...attributes, ...listeners } : {};
   return (
@@ -5786,7 +5812,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
     try {
       await apiFetch(`/locations/${locId}/area-order`, {
         method: "PUT",
-        body: JSON.stringify({ area_ids: reordered.map(a => a.id) }),
+        body: JSON.stringify({ area_ids: reordered.map(a => a.id) })
       });
     } catch {
       setAreaOrderOverrides(prev => ({ ...prev, [locId]: currentAreas }));
@@ -5840,7 +5866,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
     try {
       await apiFetch(`/areas/${areaId}`, {
         method: "PUT",
-        body: JSON.stringify(editAreaForm),
+        body: JSON.stringify(editAreaForm)
       });
       setEditingArea(null);
       await load();
@@ -5853,7 +5879,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
     try {
       await apiFetch(`/locations/${locId}`, {
         method: "PUT",
-        body: JSON.stringify(editLocationForm),
+        body: JSON.stringify(editLocationForm)
       });
       setEditingLocation(null);
       await load();
@@ -5894,7 +5920,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
             setShowAddLocation(!showAddLocation);
             setShowAddArea(false);
           }}
-          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
+          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
           + Location
         </button>
       </div>
@@ -5903,7 +5929,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
       {deleteLocationTarget && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
           onClick={e => { if (e.target === e.currentTarget) setDeleteLocationTarget(null); }}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 480, margin: "0 auto" }}>
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 44px", width: "100%", maxWidth: 480, margin: "0 auto" }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 14 }}>⚠️</div>
             <div style={{ ...T.displayLg, fontSize: 19, color: C.ink, textAlign: "center", marginBottom: 6 }}>
               Delete "{deleteLocationTarget.name}"?
@@ -5911,7 +5937,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
             <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6 }}>
               This will permanently delete this location and everything inside it.
             </div>
-            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "12px 14px", margin: "14px 0" }}>
+            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "12px 14px", margin: "14px 0" }}>
               {[
                 { icon: "🪣", text: `${deleteLocationTarget.areas?.length || 0} growing area${(deleteLocationTarget.areas?.length || 0) !== 1 ? "s" : ""} will be deleted` },
                 { icon: "🌱", text: "All crops in this location and their tasks will be deleted" },
@@ -5935,11 +5961,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                   } catch(e) { alert("Failed to delete location: " + e.message); }
                   setDeletingLocation(false);
                 }}
-                style={{ ...T.control, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, cursor: "pointer" }}>
+                style={{ ...T.control, background: C.red, color: "#fff", border: "none", borderRadius: R.sm, padding: 14, fontSize: 14, cursor: "pointer" }}>
                 {deletingLocation ? "Deleting…" : "Yes, delete this location"}
               </button>
               <button onClick={() => setDeleteLocationTarget(null)}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, fontSize: 14, color: "#666", cursor: "pointer" }}>
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 14, fontSize: 14, color: "#666", cursor: "pointer" }}>
                 Cancel — keep it
               </button>
             </div>
@@ -5949,7 +5975,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
 
       {/* Add location form */}
       {showAddLocation && (
-        <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
+        <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "16px", marginBottom: 16 }}>
           <div style={{ ...T.bodyStrong, fontSize: 14, marginBottom: 12 }}>New location</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div><label style={labelStyle}>Name</label>
@@ -5967,11 +5993,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveLocation} disabled={saving || !newLocation.name}
-                style={{ ...T.control, flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: R.sm, padding: 12, cursor: "pointer" }}>
                 {saving ? "Saving…" : "Save location"}
               </button>
               <button onClick={() => setShowAddLocation(false)}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -6002,7 +6028,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               ...l,
               growing_areas: (l.growing_areas || []).map(a =>
                 a.id === updatedArea.id ? { ...a, ...updatedArea } : a
-              ),
+              )
             })));
             setSoilSheetArea(prev => prev ? { ...prev, ...updatedArea } : null);
           }}
@@ -6046,7 +6072,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
       )}
 
       {dragSaveError && (
-        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#fff", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, zIndex: 999, whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#fff", borderRadius: R.sm, padding: "10px 18px", fontSize: 13, fontWeight: 600, zIndex: 999, whiteSpace: "nowrap" }}>
           Couldn't save order — please try again
         </div>
       )}
@@ -6073,11 +6099,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               {!collapsedLocs[loc.id] && (
                 <>
                   <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-                    style={{ ...T.control, height: 30, background: "none", border: `1px solid ${C.forest}`, color: C.forest, borderRadius: 8, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    style={{ ...T.control, height: 30, background: "none", border: `1px solid ${C.forest}`, color: C.forest, borderRadius: R.sm, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                     + Add area
                   </button>
                   <button onClick={e => { e.stopPropagation(); setLogScope({ type: "location", id: loc.id, name: loc.name }); }}
-                    style={{ height: 30, background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: 8, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    style={{ height: 30, background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: R.sm, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                     Log
                   </button>
                 </>
@@ -6086,13 +6112,13 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               <div style={{ position: "relative" }}>
                 <button
                   onClick={e => { e.stopPropagation(); setLocMenuOpen(locMenuOpen === loc.id ? null : loc.id); }}
-                  style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+                  style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
                   ⋯
                 </button>
                 {locMenuOpen === loc.id && (
                   <>
                     <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={e => { e.stopPropagation(); setLocMenuOpen(null); }} />
-                    <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 91, minWidth: 140, overflow: "hidden" }}>
+                    <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 140, overflow: "hidden" }}>
                       <button
                         onClick={e => { e.stopPropagation(); setLocMenuOpen(null); setEditingLocation(loc.id); setEditLocationForm({ name: loc.name || "", postcode: loc.postcode || "", width_m: loc.width_m ?? "", length_m: loc.length_m ?? "" }); }}
                         style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
@@ -6113,7 +6139,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
 
           {/* Edit location inline form */}
           {editingLocation === loc.id && (
-            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "14px", marginBottom: 10 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>Edit location</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
@@ -6131,11 +6157,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => saveEditLocation(loc.id)} disabled={saving || !editLocationForm.name}
-                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontSize: 13, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: 10, fontSize: 13, cursor: "pointer" }}>
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => setEditingLocation(null)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                     Cancel
                   </button>
                 </div>
@@ -6147,7 +6173,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
 
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
-            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "14px", marginBottom: 10 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>New growing area</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
@@ -6177,11 +6203,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={saveArea} disabled={saving || !newArea.name}
-                    style={{ ...T.control, flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: R.sm, padding: 12, cursor: "pointer" }}>
                     {saving ? "Saving…" : "Save area"}
                   </button>
                   <button onClick={() => setShowAddArea(false)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                     Cancel
                   </button>
                 </div>
@@ -6205,19 +6231,19 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     const areaCrops = cropsByArea[area.id] || [];
                     return (
                       <SortableAreaCard key={area.id} id={area.id} multiArea={multiArea}>{handleProps => (
-                      <div ref={areaIdx === 0 ? tourRefs.tourRef_gardenArea : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+                      <div ref={areaIdx === 0 ? tourRefs.tourRef_gardenArea : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10 }}>
 
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
-                  <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+                  <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteArea(area.id)} disabled={saving}
-                        style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 12, cursor: "pointer" }}>
+                        style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px 0", fontSize: 12, cursor: "pointer" }}>
                         {saving ? "Removing…" : "Yes, remove"}
                       </button>
                       <button onClick={() => setConfirmArea(null)}
-                        style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                        style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
                         Cancel
                       </button>
                     </div>
@@ -6259,11 +6285,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => saveEditArea(area.id)} disabled={saving || !editAreaForm.name}
-                        style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontSize: 13, cursor: "pointer" }}>
+                        style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: 10, fontSize: 13, cursor: "pointer" }}>
                         {saving ? "Saving…" : "Save"}
                       </button>
                       <button onClick={() => setEditingArea(null)}
-                        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                         Cancel
                       </button>
                     </div>
@@ -6276,8 +6302,8 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                           <div {...handleProps} style={{ display: "flex", flexDirection: "column", gap: 3, padding: "4px 6px", cursor: "grab", flexShrink: 0, touchAction: "none", alignSelf: "center" }}>
                             {[0,1,2].map(i => (
                               <div key={i} style={{ display: "flex", gap: 3 }}>
-                                <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#ccc" }} />
-                                <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#ccc" }} />
+                                <div style={{ width: 3, height: 3, borderRadius: R.full, background: "#ccc" }} />
+                                <div style={{ width: 3, height: 3, borderRadius: R.full, background: "#ccc" }} />
                               </div>
                             ))}
                           </div>
@@ -6338,29 +6364,29 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                       {/* Right: crop count + Add (row 1), Log + overflow (row 2) */}
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <span style={{ background: C.offwhite, borderRadius: 20, padding: "2px 8px", fontSize: 10, color: C.stone, fontWeight: 600, whiteSpace: "nowrap" }}>
+                          <span style={{ background: C.offwhite, borderRadius: R.full, padding: "2px 8px", fontSize: 10, color: C.stone, fontWeight: 600, whiteSpace: "nowrap" }}>
                             {areaCrops.length} crop{areaCrops.length !== 1 ? "s" : ""}
                           </span>
                           <button onClick={() => onNavigateAdd({ area_id: area.id })}
-                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                             + Add
                           </button>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <button onClick={() => setLogScope({ type: "area", id: area.id, name: area.name })}
-                            style={{ height: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            style={{ height: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
                             Log
                           </button>
                         <div ref={areaIdx === 0 ? tourRefs.tourRef_areaMenu : null} style={{ position: "relative" }}>
                           <button
                             onClick={() => setAreaMenuOpen(areaMenuOpen === area.id ? null : area.id)}
-                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                             ⋯
                           </button>
                           {areaMenuOpen === area.id && (
                             <>
                               <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setAreaMenuOpen(null)} />
-                              <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 91, minWidth: 120, overflow: "hidden" }}>
+                              <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 120, overflow: "hidden" }}>
                                 <button
                                   onClick={() => { setAreaMenuOpen(null); setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type, width_m: area.width_m ?? "", length_m: area.length_m ?? "", soil_ph: area.soil_ph ?? "", soil_temperature_c: area.soil_temperature_c ?? "" }); }}
                                   style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
@@ -6403,7 +6429,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                           const statusIcon = isPlanned ? "🗓 " : isIndoors ? "🪟 " : "";
                           return (
                             <span key={c.id} onClick={() => setTimelineCrop(c)}
-                              style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: 20, padding: "3px 9px", fontSize: 11, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
+                              style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: R.full, padding: "3px 9px", fontSize: 11, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
                               {statusIcon}{c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
                             </span>
                           );
@@ -6428,7 +6454,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                           setSuggestArea(area);
                         }
                       }}
-                      style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
+                      style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
                       🌱 Boost this area
                     </button>
                   </>
@@ -6484,7 +6510,7 @@ function CropGrowthDiary({ crop, onClose }) {
       const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
       await apiFetch(`/crops/${crop.id}/photos`, {
         method: "POST",
-        body: JSON.stringify({ base64, caption: caption.trim() || null }),
+        body: JSON.stringify({ base64, caption: caption.trim() || null })
       });
       setCaption("");
       await loadPhotos();
@@ -6506,15 +6532,15 @@ function CropGrowthDiary({ crop, onClose }) {
     {lightbox && (
       <div onClick={() => setLightbox(null)}
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <img src={lightbox} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 8, objectFit: "contain" }} />
+        <img src={lightbox} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: R.sm, objectFit: "contain" }} />
         <button onClick={() => setLightbox(null)}
-          style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", fontSize: 24, width: 40, height: 40, borderRadius: "50%", cursor: "pointer" }}>×</button>
+          style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", fontSize: 24, width: 40, height: 40, borderRadius: R.full, cursor: "pointer" }}>×</button>
       </div>
     )}
 
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -6533,12 +6559,12 @@ function CropGrowthDiary({ crop, onClose }) {
             placeholder="Add a caption (optional)" style={{ ...inputStyle, marginBottom: 8 }} />
           <div style={{ display: "flex", gap: 8 }}>
             <label htmlFor="crop-diary-photo-camera"
-              style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
+              style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: R.sm, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
               {uploading ? "Uploading…" : "📷 Camera"}
             </label>
             <input id="crop-diary-photo-camera" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
             <label htmlFor="crop-diary-photo-library"
-              style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
+              style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
               🖼️ Library
             </label>
             <input id="crop-diary-photo-library" type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
@@ -6556,9 +6582,9 @@ function CropGrowthDiary({ crop, onClose }) {
             {photos.map(p => (
               <div key={p.id} style={{ position: "relative" }}>
                 <img src={p.photo_url} alt={p.caption || ""} onClick={() => setLightbox(p.photo_url)}
-                  style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, cursor: "pointer", display: "block" }} />
+                  style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: R.sm, cursor: "pointer", display: "block" }} />
                 <button onClick={() => deletePhoto(p.id)}
-                  style={{ position: "absolute", top: 5, right: 5, background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: 22, height: 22, borderRadius: "50%", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                  style={{ position: "absolute", top: 5, right: 5, background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", width: 22, height: 22, borderRadius: R.full, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                 {p.caption && (
                   <div style={{ fontSize: 11, color: C.stone, marginTop: 4, lineHeight: 1.3 }}>{p.caption}</div>
                 )}
@@ -6610,7 +6636,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     vegetative: ["Pot on to final container if needed", "Begin fortnightly balanced feed", "Ensure good light and airflow"],
     flowering:  ["Tap stems gently to aid pollination", "Switch to high potash feed", "Remove lower leaves for airflow"],
     fruiting:   ["Feed weekly with high potash", "Water consistently to avoid blossom end rot", "Check regularly for pests and blight"],
-    harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"],
+    harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"]
   };
 
   const calcOffsetFromHarvestDate = (targetDateStr) => {
@@ -6636,7 +6662,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
       }
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey, timeline_offset_days: timelineOffsetDays }),
+        body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey, timeline_offset_days: timelineOffsetDays })
       });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
@@ -6654,7 +6680,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
       const timelineOffsetDays = calcOffsetFromHarvestDate(dateInput);
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: timelineOffsetDays }),
+        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: timelineOffsetDays })
       });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
@@ -6672,7 +6698,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     try {
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: days }),
+        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: days })
       });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
@@ -6688,7 +6714,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     try {
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: 0 }),
+        body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: 0 })
       });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
@@ -6722,18 +6748,18 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
 
-        <div style={{ background: C.surfaceDark, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
+        <div style={{ background: C.surfaceDark, padding: "16px 18px 18px", position: "relative", borderRadius: R.sheet}}>
           <button onClick={onClose}
-            style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: R.full, width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
             x
           </button>
           <div style={{ ...T.eyebrow, fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 5 }}>
             {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.leaf, flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: R.full, background: C.leaf, flexShrink: 0 }} />
             <div style={{ ...T.displayLg, fontSize: 19, color: "#fff" }}>
               {STAGES.find(s => s.key === currentStageKey)?.label || "Growing"} now
             </div>
@@ -6752,17 +6778,17 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
         {!loading && confirmed && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>checkmark</div>
+            <div style={{ width: 56, height: 56, borderRadius: R.full, background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>checkmark</div>
             <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 8 }}>Timeline updated</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
             {harvestNode?.formatted_date && (
-              <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
+              <div style={{ background: "#EAF3DE", borderRadius: R.sm, padding: "12px 16px", marginBottom: 24 }}>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.positiveText, marginBottom: 4 }}>Harvest now expected</div>
                 <div style={{ ...T.displayMd, fontSize: 18, color: C.positiveText }}>{harvestNode.formatted_date}</div>
               </div>
             )}
             <button onClick={onClose}
-              style={{ ...T.control, width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", cursor: "pointer" }}>
+              style={{ ...T.control, width: "100%", background: C.forest, border: "none", borderRadius: R.sm, padding: 14, fontSize: 14, color: "#fff", cursor: "pointer" }}>
               Done
             </button>
           </div>
@@ -6778,9 +6804,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   <span style={{ fontSize: 10, color: C.stone }}>{sowDate ? new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Sow date unknown"}</span>
                   <span style={{ fontSize: 10, color: C.stone }}>{harvestNode?.formatted_date || "Harvest"}</span>
                 </div>
-                <div style={{ position: "relative", height: 8, background: C.offwhite, borderRadius: 99, border: "1px solid " + C.border }}>
-                  <div style={{ position: "absolute", left: 0, width: progressPct + "%", height: "100%", background: C.forest, borderRadius: 99 }} />
-                  <div style={{ position: "absolute", left: progressPct + "%", top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, background: C.forest, border: "3px solid #fff", borderRadius: "50%", boxShadow: "0 0 0 2px " + C.forest }} />
+                <div style={{ position: "relative", height: 8, background: C.offwhite, borderRadius: R.full, border: "1px solid " + C.border }}>
+                  <div style={{ position: "absolute", left: 0, width: progressPct + "%", height: "100%", background: C.forest, borderRadius: R.full}} />
+                  <div style={{ position: "absolute", left: progressPct + "%", top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, background: C.forest, border: "3px solid #fff", borderRadius: R.full, boxShadow: "0 0 0 2px " + C.forest }} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
                   <span style={{ fontSize: 10, color: C.stone }}>Sown</span>
@@ -6802,7 +6828,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                         if (tab.key === "date" && timeline?.harvest_date_iso) setDateInput(timeline.harvest_date_iso);
                         if (tab.key === "days") setDaysInput(String(currentOffset));
                       }}
-                        style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "1px solid " + (adjustMode === tab.key ? C.forest : C.border), background: adjustMode === tab.key ? C.forest : "transparent", color: adjustMode === tab.key ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        style={{ flex: 1, padding: "7px 0", borderRadius: R.sm, border: "1px solid " + (adjustMode === tab.key ? C.forest : C.border), background: adjustMode === tab.key ? C.forest : "transparent", color: adjustMode === tab.key ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                         {tab.label}
                       </button>
                     ))}
@@ -6812,7 +6838,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                     <div>
                       <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>Tap the stage your plant is actually at:</div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Running behind? Move it back. Further ahead? Move it forward.</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: "1px solid " + C.border, borderRadius: R.sm, overflow: "hidden", marginBottom: 14 }}>
                         {STAGES.map((s, i) => {
                           const idx = STAGES.findIndex(st => st.key === currentStageKey);
                           const isCurr = i === idx;
@@ -6832,11 +6858,11 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
-                          style={{ ...T.bodyStrong, flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: selected ? "pointer" : "default" }}>
+                          style={{ ...T.bodyStrong, flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: R.sm, padding: 12, fontSize: 13, color: "#fff", cursor: selected ? "pointer" : "default" }}>
                           {saving ? "Saving..." : "Confirm stage"}
                         </button>
                         <button onClick={() => { setAdjusting(false); setSelected(null); }}
-                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
+                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: R.sm, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -6850,7 +6876,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       <input type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
                         style={{ ...inputStyle, marginBottom: 12 }} />
                       {dateInput && (
-                        <div style={{ background: "#EAF3DE", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.positiveText }}>
+                        <div style={{ background: "#EAF3DE", borderRadius: R.sm, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.positiveText }}>
                           {(() => {
                             const newOffset = calcOffsetFromHarvestDate(dateInput);
                             if (newOffset === 0) return "No change from original schedule";
@@ -6861,11 +6887,11 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       )}
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmHarvestDate} disabled={!dateInput || saving}
-                          style={{ ...T.control, flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: dateInput ? "pointer" : "default" }}>
+                          style={{ ...T.control, flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: R.sm, padding: 12, fontSize: 13, color: "#fff", cursor: dateInput ? "pointer" : "default" }}>
                           {saving ? "Saving..." : "Update harvest date"}
                         </button>
                         <button onClick={() => setAdjusting(false)}
-                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
+                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: R.sm, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -6878,22 +6904,22 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Positive = behind schedule. Negative = ahead.</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                         <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) - 7))}
-                          style={{ ...T.control, width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", color: C.forest, flexShrink: 0 }}>-</button>
+                          style={{ ...T.control, width: 40, height: 40, borderRadius: R.sm, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", color: C.forest, flexShrink: 0 }}>-</button>
                         <input type="number" value={daysInput} onChange={e => setDaysInput(e.target.value)}
                           style={{ ...inputStyle, textAlign: "center", flex: 1 }} inputMode="numeric" />
                         <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) + 7))}
-                          style={{ ...T.control, width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", color: C.forest, flexShrink: 0 }}>+</button>
+                          style={{ ...T.control, width: 40, height: 40, borderRadius: R.sm, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", color: C.forest, flexShrink: 0 }}>+</button>
                       </div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, textAlign: "center" }}>
                         {parseInt(daysInput, 10) === 0 ? "No adjustment" : parseInt(daysInput, 10) > 0 ? daysInput + " days behind — harvest later" : Math.abs(parseInt(daysInput, 10)) + " days ahead — harvest sooner"}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmDaysOffset} disabled={saving}
-                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: "pointer" }}>
+                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: R.sm, padding: 12, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                           {saving ? "Saving..." : "Apply adjustment"}
                         </button>
                         <button onClick={() => setAdjusting(false)}
-                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
+                          style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: R.sm, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -6902,14 +6928,14 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
                   {currentOffset !== 0 && (
                     <button onClick={resetOffset} disabled={saving}
-                      style={{ width: "100%", marginTop: 10, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
+                      style={{ width: "100%", marginTop: 10, background: "none", border: "1px solid " + C.border, borderRadius: R.sm, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
                       Reset to original schedule
                     </button>
                   )}
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", border: "1px solid " + C.border, borderRadius: R.sm, overflow: "hidden", marginBottom: 14 }}>
                     {STAGES.map((s, i) => {
                       const idx = STAGES.findIndex(st => st.key === currentStageKey);
                       const isCurr = i === idx;
@@ -6925,11 +6951,11 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   </div>
 
                   {actions.length > 0 && (
-                    <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
+                    <div style={{ background: "#EAF3DE", borderRadius: R.sm, padding: "13px 14px", marginBottom: 12 }}>
                       <div style={{ ...T.eyebrow, fontSize: 10, color: C.positiveText, marginBottom: 8 }}>What to do right now</div>
                       {actions.map((a, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < actions.length - 1 ? 6 : 0 }}>
-                          <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
+                          <div style={{ width: 5, height: 5, borderRadius: R.full, background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
                           <div style={{ fontSize: 12, color: C.positiveText, lineHeight: 1.4 }}>{a}</div>
                         </div>
                       ))}
@@ -6937,12 +6963,12 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   )}
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                    <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ background: C.offwhite, borderRadius: R.sm, padding: "10px 12px" }}>
                       <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 3 }}>Next milestone</div>
                       <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>{STAGES[stageIdx + 1]?.label || "Harvest"}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>{harvestNode?.formatted_date ? "By " + harvestNode.formatted_date : "Coming up"}</div>
                     </div>
-                    <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ background: C.offwhite, borderRadius: R.sm, padding: "10px 12px" }}>
                       <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 3 }}>Growing for</div>
                       <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>{daysSown !== null ? daysSown + " days" : "—"}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>{sowDate ? "since " + new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "add a sow date"}</div>
@@ -6950,12 +6976,12 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   </div>
 
                   {journeyNodes.length > 0 && (
-                    <div style={{ border: "1px solid " + C.border, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+                    <div style={{ border: "1px solid " + C.border, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12 }}>
                       <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 10 }}>Your journey so far</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                         {journeyNodes.map((n, i) => (
                           <div key={n.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "current" ? C.leaf : C.forest, flexShrink: 0 }} />
+                            <div style={{ width: 7, height: 7, borderRadius: R.full, background: n.status === "current" ? C.leaf : C.forest, flexShrink: 0 }} />
                             <div style={{ fontSize: 12, color: C.stone }}>
                               {n.label}
                               {n.formatted_date && <span style={{ color: C.ink, fontWeight: 600, marginLeft: 6 }}>{n.formatted_date}</span>}
@@ -6965,7 +6991,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                         ))}
                         {harvestNode && (
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", border: "1.5px solid " + C.border, flexShrink: 0 }} />
+                            <div style={{ width: 7, height: 7, borderRadius: R.full, border: "1.5px solid " + C.border, flexShrink: 0 }} />
                             <div style={{ fontSize: 12, color: C.stone }}>Harvest expected<span style={{ color: C.stone, fontWeight: 600, marginLeft: 6 }}>{harvestNode.formatted_date}</span></div>
                           </div>
                         )}
@@ -6977,16 +7003,16 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                     <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 8 }}>Is this timeline right for your plant?</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => confirmStage(currentStageKey)} disabled={saving}
-                        style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: "pointer" }}>
+                        style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: R.sm, padding: 12, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                         {saving ? "Saving..." : "Yes — looks right"}
                       </button>
                       <button onClick={() => openAdjustMode("stage")}
-                        style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
+                        style={{ flex: 1, background: "none", border: "1px solid " + C.border, borderRadius: R.sm, padding: 12, fontSize: 13, color: C.ink, cursor: "pointer" }}>
                         No — adjust
                       </button>
                     </div>
                     <button onClick={() => setShowLogAction(true)}
-                      style={{ width: "100%", marginTop: 10, background: "none", border: "1px solid " + C.border, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "center" }}>
+                      style={{ width: "100%", marginTop: 10, background: "none", border: "1px solid " + C.border, borderRadius: R.sm, padding: "10px 12px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "center" }}>
                       + Log something you did
                     </button>
                   </div>
@@ -7168,8 +7194,8 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
             action_type:  type,
             notes:        notes || null,
             custom_label: customLabel || null,
-            performed_at: performedAt,
-          }),
+            performed_at: performedAt
+          })
         });
       } else if (scopeType === "crop") {
         // Multiple crops via activity/log
@@ -7180,8 +7206,8 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
             scope_type:    "crop",
             scope_ids:     scopeIds,
             notes:         notes || null,
-            performed_at:  performedAt,
-          }),
+            performed_at:  performedAt
+          })
         });
       } else {
         result = await apiFetch("/activity/log", {
@@ -7192,8 +7218,8 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
             scope_ids:     scopeIds,
             notes:         notes || null,
             custom_label:  customLabel || null,
-            performed_at:  performedAt,
-          }),
+            performed_at:  performedAt
+          })
         });
       }
       setHint(result?.next_action_hint || null);
@@ -7218,14 +7244,14 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
 
   const actionDef = ACTIONS.find(a => a.type === actionType) || {};
 
-  const btnBase = { border: "none", borderRadius: 12, padding: "13px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 };
-  const cardBase = { background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left" };
+  const btnBase = { border: "none", borderRadius: R.sm, padding: "13px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 };
+  const cardBase = { background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left" };
   const cardSelected = { ...cardBase, background: C.forest + "14", border: `1.5px solid ${C.forest}` };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, width: "100%", maxWidth: 480, margin: "0 auto", padding: "20px 20px 36px", maxHeight: "90vh", overflowY: "auto" }}>
 
         {/* ── DONE ── */}
         {step === "done" && (
@@ -7254,7 +7280,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
                     background: dateChoice === val ? C.forest : C.offwhite,
                     color: dateChoice === val ? "#fff" : C.stone,
                     border: `1px solid ${dateChoice === val ? C.forest : C.border}`,
-                    borderRadius: 8, cursor: "pointer" }}>
+                    borderRadius: R.sm, cursor: "pointer" }}>
                   {lbl}
                 </button>
               ))}
@@ -7281,7 +7307,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
 
             {/* Other — thin row */}
             <button onClick={() => handleActionPick("other")} disabled={saving}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>📝</span> Other — record something else
             </button>
           </>
@@ -7475,8 +7501,8 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
           status:         "planned",
           sown_date:      sowDate || null,
           notes:          notes   || null,
-          lifecycle_mode: crop.lifecycle_mode || "seasonal",
-        }),
+          lifecycle_mode: crop.lifecycle_mode || "seasonal"
+        })
       });
       onSaved();
     } catch (e) { setError(e.message); setSaving(false); }
@@ -7485,10 +7511,10 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}
         {...swipe}>
         {/* Handle */}
-        <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
+        <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: R.full, margin: "0 auto 20px" }} />
 
         <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 4 }}>
           Duplicate crop
@@ -7497,14 +7523,14 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
           Adding <strong>{cropName}</strong> to a new area — starts as planned with today's date.
         </div>
 
-        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: C.dangerText, fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "10px 14px", marginBottom: 14, color: C.dangerText, fontSize: 13 }}>{error}</div>}
 
         {/* Area selector */}
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Growing area</label>
           <div style={{ position: "relative" }}>
             <select value={areaId} onChange={e => setAreaId(e.target.value)}
-              style={{ width: "100%", padding: "11px 36px 11px 14px", borderRadius: 10, border: `1px solid ${areaId ? C.forest : C.border}`, background: "#fff", fontSize: 14, color: areaId ? C.ink : C.stone, appearance: "none", cursor: "pointer", outline: "none" }}>
+              style={{ width: "100%", padding: "11px 36px 11px 14px", borderRadius: R.sm, border: `1px solid ${areaId ? C.forest : C.border}`, background: "#fff", fontSize: 14, color: areaId ? C.ink : C.stone, appearance: "none", cursor: "pointer", outline: "none" }}>
               <option value="">Choose an area…</option>
               {areas.map(a => (
                 <option key={a.id} value={a.id}>{a.name}</option>
@@ -7529,11 +7555,11 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
         </div>
 
         <button onClick={handleSave} disabled={saving || !areaId}
-          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: (saving || !areaId) ? "default" : "pointer", opacity: (saving || !areaId) ? 0.6 : 1, marginBottom: 10 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: (saving || !areaId) ? "default" : "pointer", opacity: (saving || !areaId) ? 0.6 : 1, marginBottom: 10 }}>
           {saving ? "Adding…" : `Add ${cropName} to this area`}
         </button>
         <button onClick={onClose}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
           Cancel
         </button>
       </div>
@@ -7627,7 +7653,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       notes:       crop.notes || "",
       status:      crop.status || "growing",
       grown_from:     crop.grown_from || "",
-      lifecycle_mode: crop.lifecycle_mode || "seasonal",
+      lifecycle_mode: crop.lifecycle_mode || "seasonal"
     });
     if (crop.crop_def_id) {
       try {
@@ -7652,8 +7678,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           variety:       isOther ? (editForm.variety || null) : (editVarieties.find(v => v.id === editForm.variety_id)?.name || editForm.variety || null),
           status:        editForm.status        || "growing",
           grown_from:    editForm.grown_from    || null,
-          lifecycle_mode: editForm.lifecycle_mode || "seasonal",
-        }),
+          lifecycle_mode: editForm.lifecycle_mode || "seasonal"
+        })
       });
       setEditing(null);
       await load();
@@ -7692,8 +7718,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         method: "POST",
         body: JSON.stringify({
           target_sowings: Number(convertForm.target_sowings) || 3,
-          interval_days:  Number(convertForm.interval_days)  || 14,
-        }),
+          interval_days:  Number(convertForm.interval_days)  || 14
+        })
       });
       setConvertingCrop(null);
       setConvertForm({ target_sowings: 3, interval_days: 14 });
@@ -7707,7 +7733,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
     try {
       await apiFetch(`/succession-groups/${groupId}/sowings`, {
         method: "POST",
-        body: JSON.stringify(newSowingForm),
+        body: JSON.stringify(newSowingForm)
       });
       setAddingSowingFor(null);
       setNewSowingForm({ sown_date: "", status: "growing" });
@@ -7805,8 +7831,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       {pendingNoHarvest && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) { setPendingNoHarvest(null); setNoHarvestReason(null); } }}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd", margin: "0 auto 20px" }} />
             <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 8 }}>
               No harvest from {pendingNoHarvest.name} this year?
             </div>
@@ -7826,12 +7852,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 <button key={key}
                   onClick={() => setNoHarvestReason(noHarvestReason === key ? null : key)}
                   style={{
-                    padding: "10px 12px", borderRadius: 10,
+                    padding: "10px 12px", borderRadius: R.sm,
                     border: `2px solid ${noHarvestReason === key ? C.forest : C.border}`,
                     background: noHarvestReason === key ? "#f0f7f4" : "#fff",
                     color: noHarvestReason === key ? C.forest : C.ink,
                     fontSize: 13, fontWeight: noHarvestReason === key ? 700 : 500,
-                    cursor: "pointer", textAlign: "left",
+                    cursor: "pointer", textAlign: "left"
                   }}>
                   {label}
                 </button>
@@ -7842,19 +7868,19 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 try {
                   await apiFetch(`/crops/${pendingNoHarvest.id}/no-harvest`, {
                     method: "POST",
-                    body: JSON.stringify({ reason: noHarvestReason || null }),
+                    body: JSON.stringify({ reason: noHarvestReason || null })
                   });
                   setPendingNoHarvest(null);
                   setNoHarvestReason(null);
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Record no harvest
             </button>
             <button
               onClick={() => { setPendingNoHarvest(null); setNoHarvestReason(null); }}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -7865,8 +7891,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       {pendingDormant && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) setPendingDormant(null); }}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd", margin: "0 auto 20px" }} />
             <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 10 }}>
               Mark {pendingDormant.name} as dormant?
             </div>
@@ -7881,12 +7907,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ ...T.control, width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               💤 Mark dormant
             </button>
             <button
               onClick={() => setPendingDormant(null)}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -7897,8 +7923,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       {pendingFail && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) { setPendingFail(null); setFailReason(null); } }}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd", margin: "0 auto 20px" }} />
             <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 8 }}>
               What happened to {pendingFail.name}?
             </div>
@@ -7915,10 +7941,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 <button key={key}
                   onClick={() => setFailReason(key)}
                   style={{
-                    padding: "10px 12px", borderRadius: 10, border: `2px solid ${failReason === key ? C.red : C.border}`,
+                    padding: "10px 12px", borderRadius: R.sm, border: `2px solid ${failReason === key ? C.red : C.border}`,
                     background: failReason === key ? "#fff5f5" : "#fff",
                     color: failReason === key ? C.dangerText : C.ink,
-                    fontSize: 13, fontWeight: failReason === key ? 700 : 500, cursor: "pointer", textAlign: "left",
+                    fontSize: 13, fontWeight: failReason === key ? 700 : 500, cursor: "pointer", textAlign: "left"
                   }}>
                   {label}
                 </button>
@@ -7934,12 +7960,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ ...T.displayMd, width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", marginBottom: 10 }}>
+              style={{ ...T.displayMd, width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", marginBottom: 10 }}>
               Mark as failed
             </button>
             <button
               onClick={() => { setPendingFail(null); setFailReason(null); }}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -7964,10 +7990,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       )}
       {/* Crops / Feeds toggle — shown when navEnabled (always true) */}
       {navEnabled && (
-        <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
+        <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
           {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
             <button key={id} onClick={() => setCropTab(id)}
-              style={{ ...T.control, flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontSize: 13, cursor: "pointer", transition: "all 0.15s" }}>
+              style={{ ...T.control, flex: 1, padding: "9px 0", borderRadius: R.sm, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontSize: 13, cursor: "pointer", transition: "all 0.15s" }}>
               {label}
             </button>
           ))}
@@ -7989,25 +8015,25 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button ref={tourRefs.tourRef_addCropBtn} onClick={() => onAddCrop()}
-              style={{ ...T.control, background: C.forest, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ ...T.control, background: C.forest, border: "none", borderRadius: R.sm, padding: "8px 14px", fontSize: 12, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               + Add Crop
             </button>
             <button ref={tourRefs.tourRef_filterSortBtn} onClick={() => setShowFilters(v => !v)}
-              style={{ ...T.control, background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ ...T.control, background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: R.sm, padding: "8px 14px", fontSize: 12, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
         </div>
         {/* Filter/sort dropdown */}
         {showFilters && (
-          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px", display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Status filter */}
             <div>
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Status</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["dormant", "💤 Dormant"], ["harvested", "Harvested"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterStatus(val)}
-                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterStatus === val ? C.forest : C.border}`, background: filterStatus === val ? C.forest : "transparent", color: filterStatus === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterStatus === val ? C.forest : C.border}`, background: filterStatus === val ? C.forest : "transparent", color: filterStatus === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {label}
                   </button>
                 ))}
@@ -8019,7 +8045,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ display: "flex", gap: 6 }}>
                 {[["", "All"], ["veg", "🥦 Veg"], ["fruit", "🍅 Fruit"], ["herb", "🌿 Herb"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterType(val)}
-                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterType === val ? C.forest : C.border}`, background: filterType === val ? C.forest : "transparent", color: filterType === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterType === val ? C.forest : C.border}`, background: filterType === val ? C.forest : "transparent", color: filterType === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {label}
                   </button>
                 ))}
@@ -8031,12 +8057,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Location</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button onClick={() => { setFilterLocation(""); setFilterArea(""); }}
-                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterLocation === "" ? C.forest : C.border}`, background: filterLocation === "" ? C.forest : "transparent", color: filterLocation === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterLocation === "" ? C.forest : C.border}`, background: filterLocation === "" ? C.forest : "transparent", color: filterLocation === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     All
                   </button>
                   {uniqueLocations.map(loc => (
                     <button key={loc.id} onClick={() => { setFilterLocation(loc.id); setFilterArea(""); }}
-                      style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterLocation === loc.id ? C.forest : C.border}`, background: filterLocation === loc.id ? C.forest : "transparent", color: filterLocation === loc.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterLocation === loc.id ? C.forest : C.border}`, background: filterLocation === loc.id ? C.forest : "transparent", color: filterLocation === loc.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       {loc.name}
                     </button>
                   ))}
@@ -8048,12 +8074,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Area</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button onClick={() => setFilterArea("")}
-                  style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === "" ? C.forest : C.border}`, background: filterArea === "" ? C.forest : "transparent", color: filterArea === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterArea === "" ? C.forest : C.border}`, background: filterArea === "" ? C.forest : "transparent", color: filterArea === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   All
                 </button>
                 {areas.filter(a => !filterLocation || a.location_id === filterLocation).map(a => (
                   <button key={a.id} onClick={() => setFilterArea(a.id)}
-                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === a.id ? C.forest : C.border}`, background: filterArea === a.id ? C.forest : "transparent", color: filterArea === a.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterArea === a.id ? C.forest : C.border}`, background: filterArea === a.id ? C.forest : "transparent", color: filterArea === a.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {a.name}
                   </button>
                 ))}
@@ -8065,7 +8091,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ display: "flex", gap: 6 }}>
                 {[["recent", "Recently added"], ["alpha", "A–Z"], ["pct", "% grown"]].map(([val, label]) => (
                   <button key={val} onClick={() => setSortBy(val)}
-                    style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${sortBy === val ? C.forest : C.border}`, background: sortBy === val ? C.forest : "transparent", color: sortBy === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${sortBy === val ? C.forest : C.border}`, background: sortBy === val ? C.forest : "transparent", color: sortBy === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {label}
                   </button>
                 ))}
@@ -8074,7 +8100,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             {/* Clear */}
             {activeFilterCount > 0 && (
               <button onClick={() => { setFilterStatus(""); setFilterArea(""); setFilterType(""); setFilterLocation(""); }}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
+                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
                 Clear filters
               </button>
             )}
@@ -8110,21 +8136,21 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         const latestHarvest = harvests[harvests.length - 1];
 
         return (
-          <div key={group.id} style={{ background: C.cardBg, border: `1px solid ${C.forest}44`, borderRadius: 12, marginBottom: 12, overflow: "hidden" }}>
+          <div key={group.id} style={{ background: C.cardBg, border: `1px solid ${C.forest}44`, borderRadius: R.sm, marginBottom: 12, overflow: "hidden" }}>
 
             {/* Confirm delete group */}
             {confirmDeleteGroup === group.id && (
-              <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", margin: "12px 14px 0" }}>
+              <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "12px 14px", margin: "12px 14px 0" }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 10 }}>
                   Remove all {group.crop_name} sowings? This will remove {sowings.length} sowing{sowings.length !== 1 ? "s" : ""} and their tasks.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => deleteGroup(group.id)} disabled={saving}
-                    style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: R.sm, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
                     {saving ? "Removing…" : "Yes, remove all"}
                   </button>
                   <button onClick={() => setConfirmDeleteGroup(null)}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
                     Cancel
                   </button>
                 </div>
@@ -8139,7 +8165,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>
                     {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
                   </div>
-                  <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>
+                  <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>
                     Succession
                   </span>
                   <span style={{ fontSize: 11, color: C.stone }}>{isExpanded ? "▼" : "▶"}</span>
@@ -8157,7 +8183,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
               </div>
               <button onClick={() => setConfirmDeleteGroup(group.id)}
-                style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 8px", fontSize: 11, color: C.dangerText, cursor: "pointer", flexShrink: 0 }}>
+                style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: R.sm, padding: "4px 8px", fontSize: 11, color: C.dangerText, cursor: "pointer", flexShrink: 0 }}>
                 ✕
               </button>
             </div>
@@ -8192,7 +8218,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   }
 
                   return (
-                    <div key={sowing.id} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+                    <div key={sowing.id} style={{ background: C.offwhite, borderRadius: R.sm, padding: "10px 12px", marginBottom: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <div>
                           <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>
@@ -8204,7 +8230,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                             )}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "1px 7px" }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: R.full, padding: "1px 7px" }}>
                               {STAGE_LABEL[stageKey] || stageKey}
                             </span>
                             {harvestStr && <span style={{ fontSize: 11, color: C.stone }}>harvest ~{harvestStr}</span>}
@@ -8212,11 +8238,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                         </div>
                         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                           <button onClick={() => setTimelineCrop(sowing)}
-                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}44`, borderRadius: 20, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}44`, borderRadius: R.full, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                             Timeline
                           </button>
                           <button onClick={() => setConfirm(confirm === sowing.id ? null : sowing.id)}
-                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             ⋯
                           </button>
                         </div>
@@ -8227,22 +8253,22 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                             <span style={{ fontSize: 10, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
                           </div>
-                          <div style={{ height: 5, background: C.border, borderRadius: 99, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99 }} />
+                          <div style={{ height: 5, background: C.border, borderRadius: R.full, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: R.full}} />
                           </div>
                         </div>
                       )}
                       {/* Confirm delete this sowing */}
                       {confirm === sowing.id && (
-                        <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px" }}>
+                        <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "10px 12px" }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: C.dangerText, marginBottom: 8 }}>Remove Sow {sowing.succession_index}?</div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => deleteCrop(sowing.id)} disabled={saving}
-                              style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "7px 0", fontSize: 12, cursor: "pointer" }}>
+                              style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: R.sm, padding: "7px 0", fontSize: 12, cursor: "pointer" }}>
                               {saving ? "Removing…" : "Yes, remove"}
                             </button>
                             <button onClick={() => setConfirm(null)}
-                              style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                              style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "7px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
                               Cancel
                             </button>
                           </div>
@@ -8257,13 +8283,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   const idx = sowings.length + i + 1;
                   const isNext = i === 0;
                   return (
-                    <div key={`placeholder-${idx}`} style={{ background: "transparent", border: `1px dashed ${C.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div key={`placeholder-${idx}`} style={{ background: "transparent", border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "10px 12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ fontSize: 13, color: C.stone }}>
                         Sow {idx} <span style={{ fontSize: 11 }}>— not yet added</span>
                       </div>
                       {isNext && canAddMore && (
                         <button onClick={() => { setAddingSowingFor(group.id); setNewSowingForm({ sown_date: "", status: "growing" }); }}
-                          style={{ ...T.control, background: C.forest, border: "none", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
+                          style={{ ...T.control, background: C.forest, border: "none", color: "#fff", borderRadius: R.sm, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
                           + Add Sow {idx}
                         </button>
                       )}
@@ -8273,7 +8299,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
 
                 {/* Add next sowing form */}
                 {addingSowingFor === group.id && (
-                  <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", marginTop: 4 }}>
+                  <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px 14px", marginTop: 4 }}>
                     <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>Add Sow {nextIdx}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div>
@@ -8291,11 +8317,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => addNextSowing(group.id)} disabled={saving}
-                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontSize: 13, color: "#fff", cursor: "pointer" }}>
+                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: R.sm, padding: 10, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                           {saving ? "Saving…" : `Save Sow ${nextIdx}`}
                         </button>
                         <button onClick={() => setAddingSowingFor(null)}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -8306,7 +8332,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 {/* Add beyond target */}
                 {!canAddMore && !addingSowingFor && (
                   <button onClick={() => { setAddingSowingFor(group.id); setNewSowingForm({ sown_date: "", status: "growing" }); }}
-                    style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 12, color: C.stone, cursor: "pointer", marginTop: 4 }}>
+                    style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "10px", fontSize: 12, color: C.stone, cursor: "pointer", marginTop: 4 }}>
                     + Add another sowing
                   </button>
                 )}
@@ -8317,19 +8343,19 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       })}
 
       {visibleCrops.map((crop, cropIdx) => (
-        <div key={crop.id} ref={cropIdx === 0 ? tourRefs.tourRef_firstCropCard : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+        <div key={crop.id} ref={cropIdx === 0 ? tourRefs.tourRef_firstCropCard : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 12 }}>
 
           {/* Confirm delete overlay */}
           {confirm === crop.id && (
-            <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+            <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 10 }}>Remove {crop.name}? This cannot be undone.</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => deleteCrop(crop.id)} disabled={saving}
-                  style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
+                  style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: R.sm, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
                   {saving ? "Removing…" : "Yes, remove"}
                 </button>
                 <button onClick={() => setConfirm(null)}
-                  style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
+                  style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
                   Cancel
                 </button>
               </div>
@@ -8418,11 +8444,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
-                  style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, cursor: "pointer" }}>
+                  style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: 12, cursor: "pointer" }}>
                   {saving ? "Saving…" : "Save changes"}
                 </button>
                 <button onClick={() => setEditing(null)}
-                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 16px", color: C.stone, cursor: "pointer" }}>
+                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 16px", color: C.stone, cursor: "pointer" }}>
                   Cancel
                 </button>
               </div>
@@ -8431,11 +8457,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 <div style={{ marginTop: 10 }}>
                   {convertingCrop !== crop.id ? (
                     <button onClick={() => { setConvertingCrop(crop.id); setConvertForm({ target_sowings: 3, interval_days: 14 }); }}
-                      style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer", textAlign: "left" }}>
+                      style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer", textAlign: "left" }}>
                       🔁 Convert to succession sowing
                     </button>
                   ) : (
-                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", background: "#f0f5f3" }}>
+                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px 14px", background: "#f0f5f3" }}>
                       <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
@@ -8454,11 +8480,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => convertToSuccession(crop.id)} disabled={saving}
-                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontSize: 13, color: "#fff", cursor: "pointer" }}>
+                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: R.sm, padding: 10, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                           {saving ? "Converting…" : "Convert"}
                         </button>
                         <button onClick={() => setConvertingCrop(null)}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -8476,22 +8502,22 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   <div onClick={() => setDiary(crop)} style={{ cursor: "pointer", flexShrink: 0, position: "relative" }}>
                     {cropPhotos[crop.id] ? (
                       <img src={cropPhotos[crop.id]} alt={crop.name}
-                        style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover", display: "block" }} />
+                        style={{ width: 48, height: 48, borderRadius: R.sm, objectFit: "cover", display: "block" }} />
                     ) : (
-                      <div style={{ width: 48, height: 48, borderRadius: 10, background: C.offwhite, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: R.sm, background: C.offwhite, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
                         {getCropEmoji(crop.name)}
                       </div>
                     )}
                     {crop.missed_task_note && (
                       <div title={crop.missed_task_note}
-                        style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: C.red, border: "2px solid #fff", flexShrink: 0 }} />
+                        style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: R.full, background: C.red, border: "2px solid #fff", flexShrink: 0 }} />
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>{crop.name}</div>
                       {crop.status === "dormant" && (
-                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "1px 7px" }}>💤 Dormant</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.full, padding: "1px 7px" }}>💤 Dormant</span>
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
@@ -8501,20 +8527,20 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       {plantCheckEnabled && (
                         <button onClick={() => setCropPlantCheck(crop)}
-                          style={{ ...T.control, height: 30, background: C.forest, border: "none", borderRadius: 8, padding: "0 12px", fontSize: 11, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>
+                          style={{ ...T.control, height: 30, background: C.forest, border: "none", borderRadius: R.sm, padding: "0 12px", fontSize: 11, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>
                           🔍 Check
                         </button>
                       )}
                       <div ref={cropIdx === 0 ? tourRefs.tourRef_cropMenu : null} style={{ position: "relative" }}>
                         <button
                           onClick={() => setCropMenuOpen(cropMenuOpen === crop.id ? null : crop.id)}
-                          style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                          style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                           ⋯
                         </button>
                         {cropMenuOpen === crop.id && (
                           <>
                             <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setCropMenuOpen(null)} />
-                            <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 91, minWidth: 130, overflow: "hidden" }}>
+                            <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 130, overflow: "hidden" }}>
                               <button
                                 onClick={() => { setCropMenuOpen(null); setDiary(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
@@ -8582,7 +8608,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                     </div>
                     <button onClick={() => setTimelineCrop(crop)}
-                      style={{ height: 26, background: "none", border: `1px solid ${C.forest}44`, borderRadius: 20, padding: "0 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      style={{ height: 26, background: "none", border: `1px solid ${C.forest}44`, borderRadius: R.full, padding: "0 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                       Timeline
                     </button>
                   </div>
@@ -8639,13 +8665,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 return (
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: R.full, padding: "2px 8px" }}>
                         {(() => { const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" }; return STAGE_LABEL[stageKey] || stageKey; })()}
                       </span>
                       <span style={{ fontSize: 11, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
                     </div>
-                    <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99, transition: "width 0.5s ease" }} />
+                    <div style={{ height: 6, background: C.border, borderRadius: R.full, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: R.full, transition: "width 0.5s ease" }} />
                     </div>
                   </div>
                 );
@@ -8661,18 +8687,18 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
                 {(crop.status === "planned" || crop.status === "sown_indoors" || !crop.crop_def_id || crop.lifecycle_mode === "established" || crop.lifecycle_mode === "overwintered") && (
                   <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
-                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>🗓 Planned</span>}
-                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🪟 Indoors</span>}
-                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🔍 Being identified…</span>}
-                    {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.forest }}>🌳 Established</span>}
-                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.infoText }}>❄️ Overwintered</span>}
+                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>🗓 Planned</span>}
+                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🪟 Indoors</span>}
+                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🔍 Being identified…</span>}
+                    {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.forest }}>🌳 Established</span>}
+                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>❄️ Overwintered</span>}
                   </div>
                 )}
               </div>
 
               {/* Missed task note */}
               {crop.missed_task_note && (
-                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: R.sm, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: C.dangerText, marginBottom: 2 }}>⚠ Missed task</div>
                     <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
@@ -8680,7 +8706,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   <button onClick={async () => {
                     await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
                     await load();
-                  }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
+                  }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
                     Clear
                   </button>
                 </div>
@@ -8747,7 +8773,7 @@ function CropSearchInput({ cropDefs, value, onChange }) {
           style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
       )}
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", marginTop: 2 }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 200, overflow: "hidden", marginTop: 2 }}>
           {filtered.map(def => (
             <div key={def.id} onMouseDown={() => handleSelect(def)}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.ink, borderBottom: `1px solid ${C.border}` }}
@@ -8790,7 +8816,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const [areas,     setAreas]     = useState([]);
   const [form, setForm] = useState({
     crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "",
-    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal",
+    status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal"
   });
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
@@ -8820,7 +8846,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             variety:     prefill.variety || "",
             variety_id:  prefill.variety ? "__other__" : "",
             area_id:     prefill.area_id || "",
-            is_companion: prefill.is_companion || false,
+            is_companion: prefill.is_companion || false
           }));
           if (onPrefillConsumed) onPrefillConsumed();
         }
@@ -8898,7 +8924,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       try {
         const profile = await apiFetch("/crops/preview", {
           method: "POST",
-          body: JSON.stringify({ name: cropName, variety: form.variety || null }),
+          body: JSON.stringify({ name: cropName, variety: form.variety || null })
         });
         setCropProfile(profile);
         setStep("previewing");
@@ -8927,7 +8953,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         feeding_notes:    def.feeding_notes    || null,
         companion_plants: def.companion_plants || null,
         common_issues:    def.common_issues    || null,
-        sow_method:       def.sow_method       || null,
+        sow_method:       def.sow_method       || null
       });
       setStep("previewing");
     }
@@ -8957,8 +8983,8 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             target_sowings:  Number(succForm.target_sowings) || 3,
             interval_days:   Number(succForm.interval_days)  || null,
             first_sown_date: succForm.first_sown_date || null,
-            first_status:    succForm.first_sown_date ? "growing" : "planned",
-          }),
+            first_status:    succForm.first_sown_date ? "growing" : "planned"
+          })
         });
         try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
         setStep("done");
@@ -8998,8 +9024,8 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           is_companion:     form.is_companion || false,
           preview_profile:  cropProfile || null,
           barcode:          form.barcode || null,
-          lifecycle_mode:   form.lifecycle_mode || "seasonal",
-        }),
+          lifecycle_mode:   form.lifecycle_mode || "seasonal"
+        })
       });
 
       if (result.enriching) setEnriching(true);
@@ -9030,7 +9056,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
         <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
-          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontSize: 14, cursor: "pointer" }}>
+          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "12px 28px", fontSize: 14, cursor: "pointer" }}>
           Add Another Crop
         </button>
       </div>
@@ -9056,7 +9082,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
           <button onClick={() => setStep("form")}
-            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 13, color: C.stone, cursor: "pointer" }}>
+            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 12px", fontSize: 13, color: C.stone, cursor: "pointer" }}>
             ← Back
           </button>
           <div style={{ ...T.displayMd, fontSize: 18, color: C.ink }}>Confirm crop</div>
@@ -9065,7 +9091,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         {error && <ErrorMsg msg={error} />}
 
         {/* Crop profile card */}
-        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "20px", marginBottom: 16 }}>
+        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "20px", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <div style={{ fontSize: 40 }}>{getCropEmoji(cropProfile.name)}</div>
             <div>
@@ -9086,25 +9112,25 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {cropProfile.sow_window && (
-              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
                 <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Sow window</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{cropProfile.sow_window}</div>
               </div>
             )}
             {cropProfile.harvest_window && (
-              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
                 <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Harvest</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{cropProfile.harvest_window}</div>
               </div>
             )}
             {cropProfile.spacing_cm && (
-              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
                 <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Spacing</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{cropProfile.spacing_cm}cm</div>
               </div>
             )}
             {cropProfile.days_to_maturity && (
-              <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
                 <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Matures in</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{cropProfile.days_to_maturity}</div>
               </div>
@@ -9112,19 +9138,19 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           </div>
 
           {cropProfile.feeding_notes && (
-            <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ marginTop: 10, background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
               <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Feeding</div>
               <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>{cropProfile.feeding_notes}</div>
             </div>
           )}
           {cropProfile.companion_plants && (
-            <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ marginTop: 10, background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
               <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Companion plants</div>
               <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>{cropProfile.companion_plants}</div>
             </div>
           )}
           {cropProfile.common_issues && (
-            <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ marginTop: 10, background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
               <div style={{ ...T.eyebrow, fontSize: 10, color: C.attentionText, marginBottom: 2 }}>Watch out for</div>
               <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>{cropProfile.common_issues}</div>
             </div>
@@ -9132,7 +9158,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         </div>
 
         {/* Planting summary */}
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
           <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>Your planting details</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ fontSize: 13, color: C.ink }}>📍 {area?.name || "Unknown area"}</div>
@@ -9144,11 +9170,11 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={() => setStep("form")}
-            style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+            style={{ flex: 1, padding: "13px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
             Edit details
           </button>
           <button onClick={handleSave} disabled={saving}
-            style={{ ...T.control, flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+            style={{ ...T.control, flex: 2, padding: "13px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
             {saving ? "Adding…" : "Add to my garden 🌱"}
           </button>
         </div>
@@ -9198,7 +9224,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <label style={{ ...labelStyle, marginBottom: 0 }}>What are you growing?</label>
             <button type="button" onClick={() => setShowScanner(true)}
-              style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
               📷 Scan packet
             </button>
           </div>
@@ -9249,7 +9275,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {STATUS_OPTIONS.map(opt => (
               <div key={opt.value} onClick={() => set("status", opt.value)}
-                style={{ border: `2px solid ${form.status === opt.value ? C.forest : C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", background: form.status === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
+                style={{ border: `2px solid ${form.status === opt.value ? C.forest : C.border}`, borderRadius: R.sm, padding: "10px 14px", cursor: "pointer", background: form.status === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
                 <div style={{ ...T.bodyStrong, fontSize: 13, color: form.status === opt.value ? C.forest : C.ink }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
               </div>
@@ -9291,7 +9317,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
               { value: "overwintered", label: "Overwintered",        hint: "Started last season and still growing now" },
             ].map(opt => (
               <div key={opt.value} onClick={() => set("lifecycle_mode", opt.value)}
-                style={{ border: "2px solid " + (form.lifecycle_mode === opt.value ? C.forest : C.border), borderRadius: 10, padding: "9px 12px", cursor: "pointer", background: form.lifecycle_mode === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
+                style={{ border: "2px solid " + (form.lifecycle_mode === opt.value ? C.forest : C.border), borderRadius: R.sm, padding: "9px 12px", cursor: "pointer", background: form.lifecycle_mode === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
                 <div style={{ ...T.bodyStrong, fontSize: 13, color: form.lifecycle_mode === opt.value ? C.forest : C.ink }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
               </div>
@@ -9301,15 +9327,15 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
         {/* Succession sowing toggle */}
         {form.area_id && (
-          <div style={{ border: `1px solid ${successionMode ? C.forest : C.border}`, borderRadius: 12, padding: "12px 14px", background: successionMode ? "#f0f5f3" : "transparent" }}>
+          <div style={{ border: `1px solid ${successionMode ? C.forest : C.border}`, borderRadius: R.sm, padding: "12px 14px", background: successionMode ? "#f0f5f3" : "transparent" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
               onClick={() => setSuccessionMode(v => !v)}>
               <div>
                 <div style={{ ...T.bodyStrong, fontSize: 13, color: successionMode ? C.forest : C.ink }}>🔁 Succession sowing</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>Sow in batches for a continuous harvest — carrots, salads, beetroot</div>
               </div>
-              <div style={{ width: 36, height: 20, borderRadius: 10, background: successionMode ? C.forest : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
-                <div style={{ position: "absolute", top: 2, left: successionMode ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+              <div style={{ width: 36, height: 20, borderRadius: R.sm, background: successionMode ? C.forest : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
+                <div style={{ position: "absolute", top: 2, left: successionMode ? 18 : 2, width: 16, height: 16, borderRadius: R.full, background: "#fff", transition: "left 0.2s" }} />
               </div>
             </div>
             {successionMode && (
@@ -9343,7 +9369,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         )}
 
         <button onClick={successionMode ? handleSave : handleReview} disabled={!canSave || saving}
-          style={{ ...T.control, background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, cursor: (!canSave || saving) ? "not-allowed" : "pointer", transition: "background 0.2s" }}>
+          style={{ ...T.control, background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: R.sm, padding: 14, fontSize: 15, cursor: (!canSave || saving) ? "not-allowed" : "pointer", transition: "background 0.2s" }}>
           {saving ? "Saving…" : successionMode ? "Create succession →" : "Review & Add →"}
         </button>
       </div>
@@ -9363,21 +9389,21 @@ const FAQ_DATA = [
     items: [
       {
         q: "What is Vercro and how does it work?",
-        a: "Vercro is an AI garden planner built for UK home growers and allotment holders. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season.",
+        a: "Vercro is an AI garden planner built for UK home growers and allotment holders. Add your crops, tell us where you're growing them and when you sowed them, and Vercro builds a personalised task schedule covering sowing, feeding, watering, harvesting and more. It also factors in your local weather and frost risk to keep tasks accurate throughout the season."
       },
       {
         q: "How do I add my first crop?",
-        a: "Tap the Add tab at the bottom of the screen. Select your crop, choose a variety if you know it, pick your growing area and tell us what stage it's at. Vercro generates a task schedule automatically. You can also tap 'Scan packet' to identify a crop from a photo of the seed packet.",
+        a: "Tap the Add tab at the bottom of the screen. Select your crop, choose a variety if you know it, pick your growing area and tell us what stage it's at. Vercro generates a task schedule automatically. You can also tap 'Scan packet' to identify a crop from a photo of the seed packet."
       },
       {
         q: "Why do I need to add a postcode?",
-        a: "Your postcode or zip code pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate.",
+        a: "Your postcode or zip code pulls live local weather and frost alerts for your area. Without it Vercro can't warn you about frost risk or adjust task timing based on your climate."
       },
       {
         q: "What's the difference between a location and a growing area?",
-        a: "A location is where you garden — for example your back garden or your allotment plot. A growing area is a specific space within that location — for example Raised bed 1, Greenhouse or Container pots. You can have multiple locations, each with multiple growing areas.",
+        a: "A location is where you garden — for example your back garden or your allotment plot. A growing area is a specific space within that location — for example Raised bed 1, Greenhouse or Container pots. You can have multiple locations, each with multiple growing areas."
       },
-    ],
+    ]
   },
   {
     section: "Crops & Tasks",
@@ -9385,33 +9411,33 @@ const FAQ_DATA = [
     items: [
       {
         q: "Why aren't I seeing any tasks yet?",
-        a: "Tasks are generated based on your crops, sow dates and location. If you've just added a crop, tasks can take a few moments to appear. Check the Quick crop check section on your Today screen — it may be asking for a sow date or other information that's needed to generate tasks.",
+        a: "Tasks are generated based on your crops, sow dates and location. If you've just added a crop, tasks can take a few moments to appear. Check the Quick crop check section on your Today screen — it may be asking for a sow date or other information that's needed to generate tasks."
       },
       {
         q: "How do I edit or delete a crop?",
-        a: "Go to the Crops tab and swipe left on the crop card. This reveals an Edit button and a Delete button. Tap Edit to update the variety, status, sow date, area or notes. Tap Delete to remove it — you'll be asked to confirm first.",
+        a: "Go to the Crops tab and swipe left on the crop card. This reveals an Edit button and a Delete button. Tap Edit to update the variety, status, sow date, area or notes. Tap Delete to remove it — you'll be asked to confirm first."
       },
       {
         q: "What does each crop status mean?",
-        a: "🗓 Planned — you intend to grow this but haven't started yet\n🪟 Sowing indoors — seeds started on a windowsill, greenhouse or cold frame\n🌱 Sowing outdoors — direct sown outside in the final position\n🪴 Transplanted — moved outside from indoors or a greenhouse\n✅ Growing — established and growing\n🧺 Harvested — the crop has been harvested",
+        a: "🗓 Planned — you intend to grow this but haven't started yet\n🪟 Sowing indoors — seeds started on a windowsill, greenhouse or cold frame\n🌱 Sowing outdoors — direct sown outside in the final position\n🪴 Transplanted — moved outside from indoors or a greenhouse\n✅ Growing — established and growing\n🧺 Harvested — the crop has been harvested"
       },
       {
         q: "What if my crop isn't in the list?",
-        a: "Select 'Other' at the bottom of the crop list and type the name. Vercro will identify it and build a growing profile automatically, including sow windows, spacing, feeding guidance and harvest timing. This usually takes about 30 seconds.",
+        a: "Select 'Other' at the bottom of the crop list and type the name. Vercro will identify it and build a growing profile automatically, including sow windows, spacing, feeding guidance and harvest timing. This usually takes about 30 seconds."
       },
       {
         q: "Why does my crop say 'Being identified'?",
-        a: "When you add a crop not in our database, Vercro uses AI to research it and build a profile. This normally completes within a minute. Once done, tasks will start appearing for it.",
+        a: "When you add a crop not in our database, Vercro uses AI to research it and build a profile. This normally completes within a minute. Once done, tasks will start appearing for it."
       },
       {
         q: "What does the % grown bar mean?",
-        a: "For crops with a sow date, the bar shows how far through the crop's typical growing period you are — based on days since sowing divided by days to maturity. For perennial plants like fruit trees, it shows seasonal progress toward their harvest window. Planned crops that haven't been sown yet show 0%.",
+        a: "For crops with a sow date, the bar shows how far through the crop's typical growing period you are — based on days since sowing divided by days to maturity. For perennial plants like fruit trees, it shows seasonal progress toward their harvest window. Planned crops that haven't been sown yet show 0%."
       },
       {
         q: "What does the harvest estimate mean and how accurate is it?",
-        a: "The harvest estimate is calculated from your sow date, the variety's typical days to maturity and your growing conditions. It gives an approximate date for when your crop should be ready. The more information you add — sow date, variety, updates via the Quick crop check — the more accurate it becomes. If you tap 'Not yet' on a lifecycle prompt, the estimate adjusts to reflect the delay.",
+        a: "The harvest estimate is calculated from your sow date, the variety's typical days to maturity and your growing conditions. It gives an approximate date for when your crop should be ready. The more information you add — sow date, variety, updates via the Quick crop check — the more accurate it becomes. If you tap 'Not yet' on a lifecycle prompt, the estimate adjusts to reflect the delay."
       },
-    ],
+    ]
   },
   {
     section: "Garden Setup",
@@ -9419,17 +9445,17 @@ const FAQ_DATA = [
     items: [
       {
         q: "Can I have more than one garden location?",
-        a: "Yes. Go to the Garden tab and tap + Location. Each location can have its own growing areas and its own postcode for localised weather.",
+        a: "Yes. Go to the Garden tab and tap + Location. Each location can have its own growing areas and its own postcode for localised weather."
       },
       {
         q: "What types of growing area should I add?",
-        a: "Add whatever matches how you actually grow — raised bed, open ground, greenhouse, polytunnel or container/pots. Getting this right matters: greenhouse and polytunnel crops get earlier planting dates and no frost warnings, while containers get more frequent watering reminders.",
+        a: "Add whatever matches how you actually grow — raised bed, open ground, greenhouse, polytunnel or container/pots. Getting this right matters: greenhouse and polytunnel crops get earlier planting dates and no frost warnings, while containers get more frequent watering reminders."
       },
       {
         q: "Does it matter if I'm in a greenhouse vs open ground?",
-        a: "Yes — significantly. Greenhouse and polytunnel growing extends your season at both ends. Vercro uses your area type to adjust sowing windows, frost alerts and task timing accordingly.",
+        a: "Yes — significantly. Greenhouse and polytunnel growing extends your season at both ends. Vercro uses your area type to adjust sowing windows, frost alerts and task timing accordingly."
       },
-    ],
+    ]
   },
   {
     section: "Weather & Alerts",
@@ -9437,13 +9463,13 @@ const FAQ_DATA = [
     items: [
       {
         q: "How does Vercro use my location?",
-        a: "Vercro uses your postcode to pull live weather data including temperature, conditions and frost risk. This appears on your Today screen and is used to adjust task timing — for example delaying outdoor sowing tasks if frost is forecast.",
+        a: "Vercro uses your postcode to pull live weather data including temperature, conditions and frost risk. This appears on your Today screen and is used to adjust task timing — for example delaying outdoor sowing tasks if frost is forecast."
       },
       {
         q: "What are frost alerts and when do I get them?",
-        a: "Frost alerts appear on your Today screen when the temperature at your location is forecast to drop close to or below zero. They show as a traffic light indicator — green for no risk, amber for near frost, red for frost risk. If you have frost-sensitive crops outdoors, this is your warning to protect them.",
+        a: "Frost alerts appear on your Today screen when the temperature at your location is forecast to drop close to or below zero. They show as a traffic light indicator — green for no risk, amber for near frost, red for frost risk. If you have frost-sensitive crops outdoors, this is your warning to protect them."
       },
-    ],
+    ]
   },
   {
     section: "Feeds",
@@ -9451,13 +9477,13 @@ const FAQ_DATA = [
     items: [
       {
         q: "What are feeds and why should I add them?",
-        a: "Feeds are the fertilisers and plant foods you use in your garden. When you register what you own, Vercro personalises your feeding tasks to match — including the right dilution rates, application frequency and which crops each feed suits.",
+        a: "Feeds are the fertilisers and plant foods you use in your garden. When you register what you own, Vercro personalises your feeding tasks to match — including the right dilution rates, application frequency and which crops each feed suits."
       },
       {
         q: "What if my feed brand isn't listed?",
-        a: "Select Other as the brand and type the name. Vercro will look it up and fill in the details automatically, including NPK values, dilution rates and feeding frequency. This usually takes about a minute.",
+        a: "Select Other as the brand and type the name. Vercro will look it up and fill in the details automatically, including NPK values, dilution rates and feeding frequency. This usually takes about a minute."
       },
-    ],
+    ]
   },
   {
     section: "Account",
@@ -9465,21 +9491,21 @@ const FAQ_DATA = [
     items: [
       {
         q: "How do I change my name or postcode?",
-        a: "Scroll up in the Profile tab to Your Details, update your name or postcode and tap Save Changes.",
+        a: "Scroll up in the Profile tab to Your Details, update your name or postcode and tap Save Changes."
       },
       {
         q: "How do I change my password?",
-        a: "In the Profile tab, scroll to Change Password, enter your new password twice and tap Update Password.",
+        a: "In the Profile tab, scroll to Change Password, enter your new password twice and tap Update Password."
       },
       {
         q: "How do I delete my account?",
-        a: "To request account deletion, email us at hello@vercro.com. We'll remove your account and all associated data within 7 days.",
+        a: "To request account deletion, email us at hello@vercro.com. We'll remove your account and all associated data within 7 days."
       },
       {
         q: "Is my data private?",
-        a: "Yes. Your garden data, crop information and location are only used to power your personal Vercro experience. We do not sell your data or share it with third parties. Aggregated and anonymised growing data may be used in future to improve crop timing predictions for all users.",
+        a: "Yes. Your garden data, crop information and location are only used to power your personal Vercro experience. We do not sell your data or share it with third parties. Aggregated and anonymised growing data may be used in future to improve crop timing predictions for all users."
       },
-    ],
+    ]
   },
 ];
 
@@ -9493,7 +9519,7 @@ function FAQSection() {
         Help & FAQ
       </div>
       {FAQ_DATA.map((section, si) => (
-        <div key={si} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+        <div key={si} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, marginBottom: 8, overflow: "hidden" }}>
           {/* Section header */}
           <button onClick={() => { setOpenSection(openSection === si ? null : si); setOpenItem(null); }}
             style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -9546,7 +9572,7 @@ async function registerPushSubscription(publicKey) {
     if (existing) return existing;
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
     return sub;
   } catch(e) {
@@ -9583,7 +9609,7 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
       // Save token
       await apiFetch("/notifications/register-token", {
         method: "POST",
-        body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" }),
+        body: JSON.stringify({ subscription: sub.toJSON(), platform: "web" })
       });
       await apiFetch("/notifications/preferences", {
         method: "PUT",
@@ -9591,8 +9617,8 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
           push_enabled: true, due_today_enabled: true, coming_up_enabled: true,
           weather_alerts_enabled: true, pest_alerts_enabled: true,
           crop_checks_enabled: true, weekly_summary_enabled: true, milestones_enabled: true,
-          morning_time_local: "07:00", evening_time_local: "18:00",
-        }),
+          morning_time_local: "07:00", evening_time_local: "18:00"
+        })
       });
       onEnabled();
     } catch(e) {
@@ -9602,7 +9628,7 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
   };
 
   return (
-    <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "18px 18px", marginBottom: 16 }}>
+    <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "18px 18px", marginBottom: 16 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
         <span style={{ fontSize: 28, flexShrink: 0 }}>🔔</span>
         <div>
@@ -9614,11 +9640,11 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={enable} disabled={loading}
-          style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: 14, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+          style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "11px", fontSize: 14, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
           {loading ? "Setting up…" : "Turn on notifications"}
         </button>
         <button onClick={onDismiss}
-          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
+          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "11px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
           Not now
         </button>
       </div>
@@ -9673,7 +9699,7 @@ function NotificationSettingsSection() {
       )}
 
       {/* Main push toggle */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>Push notifications</div>
@@ -9687,15 +9713,15 @@ function NotificationSettingsSection() {
             } else {
               toggle("push_enabled");
             }
-          }} style={{ width: 44, height: 24, borderRadius: 12, background: prefs?.push_enabled ? C.forest : C.border, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-            <div style={{ position: "absolute", top: 2, left: prefs?.push_enabled ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+          }} style={{ width: 44, height: 24, borderRadius: R.sm, background: prefs?.push_enabled ? C.forest : C.border, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+            <div style={{ position: "absolute", top: 2, left: prefs?.push_enabled ? 22 : 2, width: 20, height: 20, borderRadius: R.full, background: "#fff", transition: "left 0.2s"}} />
           </div>
         </div>
       </div>
 
       {/* Detailed settings — only show if push enabled */}
       {prefs?.push_enabled && (
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden" }}>
           {[
             { key: "due_today_enabled",      label: "Garden tasks due today",       desc: "Feeding, sowing, harvesting and care tasks" },
             { key: "coming_up_enabled",       label: "Coming up soon",              desc: "Reminders a few days before key tasks" },
@@ -9711,8 +9737,8 @@ function NotificationSettingsSection() {
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{desc}</div>
               </div>
               <div onClick={() => toggle(key)}
-                style={{ width: 36, height: 20, borderRadius: 10, background: prefs?.[key] ? C.forest : C.border, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-                <div style={{ position: "absolute", top: 2, left: prefs?.[key] ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                style={{ width: 36, height: 20, borderRadius: R.sm, background: prefs?.[key] ? C.forest : C.border, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                <div style={{ position: "absolute", top: 2, left: prefs?.[key] ? 18 : 2, width: 16, height: 16, borderRadius: R.full, background: "#fff", transition: "left 0.2s"}} />
               </div>
             </div>
           ))}
@@ -9761,13 +9787,13 @@ function TimeAwayTodayBanner({ blockedPeriods, onTabChange }) {
       style={{
         background: isActive ? "#fff8ed" : "#f0f7f4",
         border: `1px solid ${isActive ? "#f59e0b" : "#86c9a0"}`,
-        borderRadius: 12,
+        borderRadius: R.sm,
         padding: "12px 14px",
         marginBottom: 12,
         cursor: "pointer",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center",
+        alignItems: "center"
       }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 20 }}>{isActive ? "✈️" : "🗓️"}</span>
@@ -9816,7 +9842,7 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
 
   return (
     <>
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px", marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: activePeriods.length > 0 ? 12 : 0 }}>
           <div>
             <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>Time away</div>
@@ -9827,14 +9853,14 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
             </div>
           </div>
           <button onClick={() => setShowScreen(true)}
-            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
+            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
             {activePeriods.length > 0 ? "Manage" : "+ Add"}
           </button>
         </div>
         {activePeriods.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {activePeriods.slice(0, 2).map(p => (
-              <div key={p.id} style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
+              <div key={p.id} style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "8px 12px", fontSize: 12 }}>
                 <span style={{ ...T.bodyStrong, color: C.ink }}>{p.label || "Time away"}</span>
                 <span style={{ color: C.stone, marginLeft: 6 }}>
                   {new Date(p.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} –{" "}
@@ -9882,7 +9908,7 @@ function TimeAwayScreen({ onClose }) {
     try {
       const result = await apiFetch("/blocked-periods", {
         method: "POST",
-        body: JSON.stringify({ start_date: form.start_date, end_date: form.end_date, label: form.label || null }),
+        body: JSON.stringify({ start_date: form.start_date, end_date: form.end_date, label: form.label || null })
       });
       setSummary(result.summary);
       if (result.blockedPeriod?.id) {
@@ -9915,8 +9941,8 @@ function TimeAwayScreen({ onClose }) {
       <div style={{ background: C.surfaceDark }}>
         <div style={{ maxWidth: 440, margin: "0 auto", padding: "28px 20px 26px", position: "relative", overflow: "hidden" }}>
           {/* Decorative circles */}
-          <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.055)", top: -50, right: -50 }} />
-          <div style={{ position: "absolute", width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.04)", bottom: -24, left: 16 }} />
+          <div style={{ position: "absolute", width: 180, height: 180, borderRadius: R.full, background: "rgba(255,255,255,0.055)", top: -50, right: -50 }} />
+          <div style={{ position: "absolute", width: 90, height: 90, borderRadius: R.full, background: "rgba(255,255,255,0.04)", bottom: -24, left: 16 }} />
 
           {/* Back button */}
           <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.55)", fontSize: 12, padding: 0, marginBottom: 20, position: "relative" }}>
@@ -9939,7 +9965,7 @@ function TimeAwayScreen({ onClose }) {
 
         {/* Summary strip after add */}
         {summary && (
-          <div style={{ background: "#f0f7f4", border: "1px solid #c4ddd2", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ background: "#f0f7f4", border: "1px solid #c4ddd2", borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
             <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink, marginBottom: 10 }}>✓ Your plan has been updated</div>
 
             {summary.total === 0 && (
@@ -9985,7 +10011,7 @@ function TimeAwayScreen({ onClose }) {
             )}
 
             {adjustments?.at_risk?.length > 0 && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 12px" }}>
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "10px 12px" }}>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.dangerText, marginBottom: 6 }}>
                   ⚠ {adjustments.at_risk.length} task{adjustments.at_risk.length !== 1 ? "s" : ""} may need attention
                 </div>
@@ -10009,9 +10035,9 @@ function TimeAwayScreen({ onClose }) {
 
             {!adjustments && summary.total > 0 && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {summary.movedEarlier > 0 && <span style={{ fontSize: 12, color: C.forest, background: "#e8f5ee", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬆ {summary.movedEarlier} moved earlier</span>}
-                {summary.movedLater   > 0 && <span style={{ fontSize: 12, color: C.attentionText, background: "#fff8ed", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬇ {summary.movedLater} moved later</span>}
-                {summary.atRisk       > 0 && <span style={{ fontSize: 12, color: C.dangerText, background: "#fff0f0", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⚠ {summary.atRisk} at risk</span>}
+                {summary.movedEarlier > 0 && <span style={{ fontSize: 12, color: C.forest, background: "#e8f5ee", borderRadius: R.full, padding: "3px 10px", fontWeight: 600 }}>⬆ {summary.movedEarlier} moved earlier</span>}
+                {summary.movedLater   > 0 && <span style={{ fontSize: 12, color: C.attentionText, background: "#fff8ed", borderRadius: R.full, padding: "3px 10px", fontWeight: 600 }}>⬇ {summary.movedLater} moved later</span>}
+                {summary.atRisk       > 0 && <span style={{ fontSize: 12, color: C.dangerText, background: "#fff0f0", borderRadius: R.full, padding: "3px 10px", fontWeight: 600 }}>⚠ {summary.atRisk} at risk</span>}
               </div>
             )}
           </div>
@@ -10022,8 +10048,8 @@ function TimeAwayScreen({ onClose }) {
           <>
             {/* Empty state — card style from Option B */}
             {periods.length === 0 && !showAdd && (
-              <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#f7faf8", border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginBottom: 16 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 10, background: "#E8F4EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#f7faf8", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 16, marginBottom: 16 }}>
+                <div style={{ width: 46, height: 46, borderRadius: R.sm, background: "#E8F4EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
                   🏖️
                 </div>
                 <div>
@@ -10035,7 +10061,7 @@ function TimeAwayScreen({ onClose }) {
 
             {/* Existing periods */}
             {periods.map(p => (
-              <div key={p.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div key={p.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>{p.label || "Time away"}</div>
                   <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>
@@ -10044,7 +10070,7 @@ function TimeAwayScreen({ onClose }) {
                   </div>
                 </div>
                 <button onClick={() => remove(p.id)} disabled={deleting === p.id}
-                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
+                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "5px 10px", fontSize: 12, color: C.stone, cursor: "pointer" }}>
                   {deleting === p.id ? "..." : "Remove"}
                 </button>
               </div>
@@ -10054,11 +10080,11 @@ function TimeAwayScreen({ onClose }) {
 
         {/* Add form */}
         {showAdd ? (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginTop: 4 }}>
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 16, marginTop: 4 }}>
             <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 14 }}>Add time away</div>
 
             {error && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.dangerText, marginBottom: 12 }}>{error}</div>
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "8px 12px", fontSize: 12, color: C.dangerText, marginBottom: 12 }}>{error}</div>
             )}
 
             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
@@ -10066,13 +10092,13 @@ function TimeAwayScreen({ onClose }) {
                 <label style={{ fontSize: 11, fontWeight: 600, color: C.stone, display: "block", marginBottom: 4 }}>FROM</label>
                 <input type="date" value={form.start_date}
                   onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                  style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 13, boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "9px 10px", borderRadius: R.sm, border: `1px solid ${C.border}`, fontSize: 13, boxSizing: "border-box" }} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: C.stone, display: "block", marginBottom: 4 }}>TO</label>
                 <input type="date" value={form.end_date}
                   onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-                  style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 13, boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "9px 10px", borderRadius: R.sm, border: `1px solid ${C.border}`, fontSize: 13, boxSizing: "border-box" }} />
               </div>
             </div>
 
@@ -10081,7 +10107,7 @@ function TimeAwayScreen({ onClose }) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {LABEL_OPTIONS.map(opt => (
                   <button key={opt} onClick={() => setForm(f => ({ ...f, label: f.label === opt ? "" : opt }))}
-                    style={{ background: form.label === opt ? C.forest : C.offwhite, color: form.label === opt ? "#fff" : C.stone, border: `1px solid ${form.label === opt ? C.forest : C.border}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ background: form.label === opt ? C.forest : C.offwhite, color: form.label === opt ? "#fff" : C.stone, border: `1px solid ${form.label === opt ? C.forest : C.border}`, borderRadius: R.full, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {opt}
                   </button>
                 ))}
@@ -10090,18 +10116,18 @@ function TimeAwayScreen({ onClose }) {
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setShowAdd(false); setError(null); }}
-                style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px", fontWeight: 600, fontSize: 13, cursor: "pointer", color: C.stone }}>
+                style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "11px", fontWeight: 600, fontSize: 13, cursor: "pointer", color: C.stone }}>
                 Cancel
               </button>
               <button onClick={save} disabled={saving}
-                style={{ ...T.control, flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: 13, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "11px", fontSize: 13, cursor: "pointer" }}>
                 {saving ? "Adjusting plan..." : "Adjust my plan"}
               </button>
             </div>
           </div>
         ) : (
           <button onClick={() => { setShowAdd(true); setSummary(null); setAdjustments(null); }}
-            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 14, cursor: "pointer", marginTop: periods.length === 0 ? 0 : 8 }}>
+            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 14, cursor: "pointer", marginTop: periods.length === 0 ? 0 : 8 }}>
             + Add time away
           </button>
         )}
@@ -10159,7 +10185,7 @@ function HarvestSummaryCard({ crop }) {
 
       {/* Individual harvest entries */}
       {(expanded || crop.harvest_count === 1) && crop.entries.map((e, i) => (
-        <div key={e.id} style={{ background: "#f9f9f7", borderRadius: 8, padding: "10px 12px", marginTop: 6 }}>
+        <div key={e.id} style={{ background: "#f9f9f7", borderRadius: R.sm, padding: "10px 12px", marginTop: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontSize: 11, color: C.stone }}>
@@ -10178,7 +10204,7 @@ function HarvestSummaryCard({ crop }) {
               {e.quality && <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: scoreText(e.quality) }}>{e.quality}</div><div style={{ fontSize: 9, color: C.stone }}>Quality</div></div>}
             </div>
           </div>
-          {e.photo_url && <img src={e.photo_url} alt="harvest" style={{ width: "100%", borderRadius: 6, marginTop: 8, maxHeight: 140, objectFit: "cover" }} />}
+          {e.photo_url && <img src={e.photo_url} alt="harvest" style={{ width: "100%", borderRadius: R.sm, marginTop: 8, maxHeight: 140, objectFit: "cover" }} />}
         </div>
       ))}
     </div>
@@ -10206,9 +10232,9 @@ function ProfileToast({ toast }) {
     <div style={{
       position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)",
       zIndex: 2000, background: toast.type === "error" ? "#dc2626" : C.forest,
-      color: "#fff", borderRadius: 12, padding: "10px 20px",
-      fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-      whiteSpace: "nowrap", pointerEvents: "none",
+      color: "#fff", borderRadius: R.sm, padding: "10px 20px",
+      fontSize: 13, fontWeight: 600, boxShadow: S.overlay,
+      whiteSpace: "nowrap", pointerEvents: "none"
     }}>
       {toast.type === "success" ? "✓ " : "⚠ "}{toast.msg}
     </div>
@@ -10241,21 +10267,21 @@ function EditProfileModal({ current, onSave, onClose }) {
     setSaving(true);
     onSave({
       name:     name.trim(),
-      postcode: postcode.trim().toUpperCase().replace(/\s/g, ""),
+      postcode: postcode.trim().toUpperCase().replace(/\s/g, "")
     });
   };
 
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
-      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      display: "flex", alignItems: "flex-end", justifyContent: "center"
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px",
-        width: "100%", maxWidth: 480, boxSizing: "border-box",
+        background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px",
+        width: "100%", maxWidth: 480, boxSizing: "border-box"
       }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+          <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd" }} />
         </div>
         <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 20 }}>
           Edit Profile
@@ -10294,7 +10320,7 @@ function EditProfileModal({ current, onSave, onClose }) {
               background: C.forest,
               color: "#fff",
               border: "none",
-              borderRadius: 12,
+              borderRadius: R.sm,
               padding: "14px",
               fontSize: 15,
               cursor: saving ? "default" : "pointer",
@@ -10305,8 +10331,8 @@ function EditProfileModal({ current, onSave, onClose }) {
           </button>
           <button onClick={onClose}
             style={{
-              background: "none", border: `1px solid ${C.border}`, borderRadius: 12,
-              padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone,
+              background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm,
+              padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone
             }}>
             Cancel
           </button>
@@ -10346,28 +10372,28 @@ function ChangePasswordModal({ onClose, onSaved }) {
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
-      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      display: "flex", alignItems: "flex-end", justifyContent: "center"
     }} onClick={e => { if (e.target === e.currentTarget && !saving) onClose(); }}>
       <div style={{
-        background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px",
-        width: "100%", maxWidth: 480, boxSizing: "border-box",
+        background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px",
+        width: "100%", maxWidth: 480, boxSizing: "border-box"
       }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+          <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd" }} />
         </div>
         <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 20 }}>
           Change Password
         </div>
 
         {saved ? (
-          <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "16px", textAlign: "center" }}>
+          <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: R.sm, padding: "16px", textAlign: "center" }}>
             <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
             <div style={{ ...T.bodyStrong, color: C.positiveText, fontSize: 14 }}>Password updated</div>
           </div>
         ) : (
           <>
             {error && (
-              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: C.dangerText, fontSize: 13 }}>
+              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "10px 14px", marginBottom: 14, color: C.dangerText, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -10390,7 +10416,7 @@ function ChangePasswordModal({ onClose, onSaved }) {
                   background: C.forest,
                   color: "#fff",
                   border: "none",
-                  borderRadius: 12,
+                  borderRadius: R.sm,
                   padding: "14px",
                   fontSize: 15,
                   cursor: saving ? "default" : "pointer",
@@ -10400,8 +10426,8 @@ function ChangePasswordModal({ onClose, onSaved }) {
               </button>
               <button onClick={onClose} disabled={saving}
                 style={{
-                  background: "none", border: `1px solid ${C.border}`, borderRadius: 12,
-                  padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone,
+                  background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm,
+                  padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone
                 }}>
                 Cancel
               </button>
@@ -10442,7 +10468,7 @@ function NotificationsScreen({ onBack }) {
     <div style={{
       padding: "14px 16px",
       borderBottom: last ? "none" : `1px solid ${C.border}`,
-      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12
     }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 14, color: C.ink }}>{label}</div>
@@ -10450,13 +10476,13 @@ function NotificationsScreen({ onBack }) {
       </div>
       <div onClick={onToggle}
         style={{
-          width: 44, height: 26, borderRadius: 13, flexShrink: 0, cursor: "pointer",
-          background: value ? C.forest : "#ccc", position: "relative", transition: "background 0.2s",
+          width: 44, height: 26, borderRadius: R.sm, flexShrink: 0, cursor: "pointer",
+          background: value ? C.forest : "#ccc", position: "relative", transition: "background 0.2s"
         }}>
         <div style={{
           position: "absolute", top: 3, left: value ? 21 : 3,
-          width: 20, height: 20, borderRadius: "50%", background: "#fff",
-          transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          width: 20, height: 20, borderRadius: R.full, background: "#fff",
+          transition: "left 0.2s"
         }} />
       </div>
     </div>
@@ -10467,7 +10493,7 @@ function NotificationsScreen({ onBack }) {
       <div style={{
         background: "#fff", borderBottom: `1px solid ${C.border}`,
         padding: "16px 20px", display: "flex", alignItems: "center", gap: 14,
-        position: "sticky", top: 0, zIndex: 10,
+        position: "sticky", top: 0, zIndex: 10
       }}>
         <button onClick={onBack}
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: C.forest, padding: 0, lineHeight: 1 }}>
@@ -10488,7 +10514,7 @@ function NotificationsScreen({ onBack }) {
               />
             )}
 
-            <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+            <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
               <ToggleRow
                 label="Push notifications"
                 desc={prefs.push_enabled ? "Enabled — manage below" : "Enable to get garden reminders"}
@@ -10504,25 +10530,25 @@ function NotificationsScreen({ onBack }) {
             {prefs.push_enabled && (
               <>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Tasks</div>
-                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
                   <ToggleRow label="Garden tasks due today" desc="Feeding, sowing, harvesting and care tasks" value={prefs.due_today_enabled} onToggle={() => toggle("due_today_enabled")} />
                   <ToggleRow label="Coming up soon" desc="Reminders a few days before key tasks" value={prefs.coming_up_enabled} onToggle={() => toggle("coming_up_enabled")} last />
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Alerts</div>
-                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
                   <ToggleRow label="Frost and weather alerts" desc="Time-sensitive alerts for frost and heat" value={prefs.weather_alerts_enabled} onToggle={() => toggle("weather_alerts_enabled")} />
                   <ToggleRow label="Pest and disease watch" desc="When conditions increase pest risk" value={prefs.pest_alerts_enabled} onToggle={() => toggle("pest_alerts_enabled")} last />
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Insights</div>
-                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
                   <ToggleRow label="Quick crop checks" desc="Flowering, fruit set and condition prompts" value={prefs.crop_checks_enabled} onToggle={() => toggle("crop_checks_enabled")} />
                   <ToggleRow label="Weekly garden summary" desc="Sunday evening roundup of the week ahead" value={prefs.weekly_summary_enabled} onToggle={() => toggle("weekly_summary_enabled")} last />
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Achievements</div>
-                <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
                   <ToggleRow label="Milestones and badges" desc="Harvest milestones and badge unlocks" value={prefs.milestones_enabled} onToggle={() => toggle("milestones_enabled")} last />
                 </div>
 
@@ -10677,10 +10703,9 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
   const chevronRow = (icon, label, sub, onClick) => (
     <button onClick={onClick}
       style={{
-        width: "100%", background: "#fff", border: "none", borderRadius: 14,
+        width: "100%", background: "#fff", border: "none", borderRadius: R.sm,
         padding: "14px 16px", display: "flex", justifyContent: "space-between",
-        alignItems: "center", cursor: "pointer", marginBottom: 2,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        alignItems: "center", cursor: "pointer", marginBottom: 2
       }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{icon}</span>
@@ -10701,10 +10726,9 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         ref={tourRefs.tourRef_profileDetails}
         onClick={() => setShowEditModal(true)}
         style={{
-          background: "#fff", borderRadius: 16, padding: "20px 16px",
+          background: "#fff", borderRadius: R.sm, padding: "20px 16px",
           marginBottom: 20, cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 16,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+          display: "flex", alignItems: "center", gap: 16
         }}>
         <div onClick={e => e.stopPropagation()}>
           <PhotoCircle
@@ -10723,7 +10747,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </div>
         <div style={{
           fontSize: 13, color: C.forest, fontWeight: 600,
-          background: "#f0f7f4", borderRadius: 8, padding: "6px 12px", flexShrink: 0,
+          background: "#f0f7f4", borderRadius: R.sm, padding: "6px 12px", flexShrink: 0
         }}>
           Edit
         </div>
@@ -10735,11 +10759,11 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {/* ── 3. HARVEST SUMMARY — hero card ── */}
       {harvestStats && (
         <div style={{
-          background: `linear-gradient(135deg, ${C.forest} 0%, ${C.surfaceDark} 100%)`,
-          borderRadius: 16, padding: "20px", marginBottom: 20,
-          color: "#fff", position: "relative", overflow: "hidden",
+          background: C.surfaceDark,
+          borderRadius: R.sm, padding: "20px", marginBottom: 20,
+          color: "#fff", position: "relative", overflow: "hidden"
         }}>
-          <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: "50%", background: C.accent, opacity: 0.1 }} />
+          <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: R.full, background: C.accent, opacity: 0.1 }} />
           <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 4 }}>
             {new Date().getFullYear()} Season
           </div>
@@ -10751,7 +10775,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
               { val: harvestStats.avgYield || "—", label: "Avg Yield", color: harvestStats.avgYield ? scoreTextDark(harvestStats.avgYield) : "#fff" },
               { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreTextDark(harvestStats.avgQual)  : "#fff" },
             ].map(({ val, label, color }) => (
-              <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+              <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: R.sm, padding: "12px 10px", textAlign: "center" }}>
                 <div style={{ ...T.bodyStrong, fontSize: 22, color }}>{val}</div>
                 <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{label}</div>
               </div>
@@ -10759,7 +10783,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           </div>
 
           {harvestStats.best && (
-            <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: R.sm, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 28 }}>{getCropEmoji(harvestStats.best.crop_name)}</div>
               <div>
                 <div style={{ ...T.eyebrow, fontSize: 10, opacity: 0.65, marginBottom: 2 }}>Best performing crop</div>
@@ -10779,8 +10803,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                     <span style={{ fontSize: 11, opacity: 0.75 }}>{r.label}</span>
                     <span style={{ ...T.bodyStrong, fontSize: 11 }}>{r.val}/10</span>
                   </div>
-                  <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: 99 }}>
-                    <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: 99, transition: "width 0.6s ease" }} />
+                  <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: R.full}}>
+                    <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: R.full, transition: "width 0.6s ease" }} />
                   </div>
                 </div>
               ))}
@@ -10790,7 +10814,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       )}
 
       {/* ── 4. HARVEST LOG ── */}
-      <div ref={tourRefs.tourRef_harvestLog} style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div ref={tourRefs.tourRef_harvestLog} style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
         <button onClick={() => setLogOpen(o => !o)}
           style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -10804,7 +10828,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             <div style={{ display: "flex", gap: 8, marginBottom: 14, paddingTop: 14 }}>
               {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => (
                 <button key={y} onClick={() => setLogYear(y)}
-                  style={{ padding: "6px 16px", borderRadius: 20, border: `1px solid ${logYear === y ? C.forest : C.border}`, background: logYear === y ? C.forest : "none", color: logYear === y ? "#fff" : C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                  style={{ padding: "6px 16px", borderRadius: R.full, border: `1px solid ${logYear === y ? C.forest : C.border}`, background: logYear === y ? C.forest : "none", color: logYear === y ? "#fff" : C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                   {y}
                 </button>
               ))}
@@ -10822,13 +10846,13 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 5. GARDEN SECTION ── */}
       <div style={sectionLabel}>Garden</div>
-      <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
         {chevronRow("🏆", "Challenges & Badges", "Track progress and unlock garden rewards", () => onTabChange("badges"))}
       </div>
 
       {/* ── 6. NOTIFICATIONS ROW ── */}
       <div style={sectionLabel}>Notifications</div>
-      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
         {chevronRow("🔔", "Notifications", "Daily tasks, weather alerts and reminders", () => setShowNotifScreen(true))}
       </div>
 
@@ -10839,7 +10863,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 8. PREFERENCES ── */}
       <div style={sectionLabel}>Measurements & Communications</div>
-      <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
 
         {/* Measurements */}
         <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
@@ -10848,7 +10872,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           <div style={{ display: "flex", gap: 8 }}>
             {[{ value: "metric", label: "Metres" }, { value: "imperial", label: "Feet & inches" }].map(opt => (
               <button key={opt.value} onClick={() => saveMeasurementUnit(opt.value)}
-                style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                style={{ flex: 1, padding: "9px 0", borderRadius: R.sm, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {opt.label}
               </button>
             ))}
@@ -10863,15 +10887,15 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           </div>
           <button
             onClick={() => !emailPrefLoading && saveEmailPreference(!marketingEmails)}
-            style={{ width: 44, height: 26, borderRadius: 13, border: "none", cursor: emailPrefLoading ? "default" : "pointer", background: marketingEmails ? C.forest : "#ccc", position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1 }}>
-            <span style={{ position: "absolute", top: 3, left: marketingEmails ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+            style={{ width: 44, height: 26, borderRadius: R.sm, border: "none", cursor: emailPrefLoading ? "default" : "pointer", background: marketingEmails ? C.forest : "#ccc", position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1 }}>
+            <span style={{ position: "absolute", top: 3, left: marketingEmails ? 21 : 3, width: 20, height: 20, borderRadius: R.full, background: "#fff", transition: "left 0.2s"}} />
           </button>
         </div>
       </div>
 
       {/* ── 9. ACCOUNT ── */}
       <div style={sectionLabel}>Account</div>
-      <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
         <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>Signed in as</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{session?.user?.email}</div>
@@ -10888,7 +10912,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 11. SIGN OUT ── */}
       <button onClick={() => supabase.auth.signOut()}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8, marginTop: 8 }}>
+        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8, marginTop: 8 }}>
         Sign Out
       </button>
 
@@ -10899,7 +10923,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </div>
         <button
           onClick={() => { setShowDeleteModal(true); setDeleteStep(1); setDeleteError(null); }}
-          style={{ width: "100%", background: "none", border: "1px solid #fca5a5", borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.dangerText }}>
+          style={{ width: "100%", background: "none", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.dangerText }}>
           Delete account
         </button>
         <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
@@ -10930,7 +10954,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {showDeleteModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget && !deleting) { setShowDeleteModal(false); setDeleteStep(1); } }}>
-          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             {deleteStep === 1 ? (
               <>
                 <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 12 }}>Delete your account?</div>
@@ -10946,11 +10970,11 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                   We may retain anonymised activity data to help improve Vercro. This action cannot be undone.
                 </div>
                 <button onClick={() => setDeleteStep(2)}
-                  style={{ ...T.control, width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+                  style={{ ...T.control, width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
                   Continue
                 </button>
                 <button onClick={() => setShowDeleteModal(false)}
-                  style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+                  style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
                   Cancel
                 </button>
               </>
@@ -10961,16 +10985,16 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                   Your account will be permanently deleted and you will be signed out immediately. There is no way to recover your data after this point.
                 </div>
                 {deleteError && (
-                  <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: C.dangerText, fontSize: 13 }}>
+                  <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "10px 14px", marginBottom: 12, color: C.dangerText, fontSize: 13 }}>
                     {deleteError}
                   </div>
                 )}
                 <button onClick={handleDeleteAccount} disabled={deleting}
-                  style={{ ...T.control, width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: deleting ? "default" : "pointer", opacity: deleting ? 0.6 : 1, marginBottom: 10 }}>
+                  style={{ ...T.control, width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: deleting ? "default" : "pointer", opacity: deleting ? 0.6 : 1, marginBottom: 10 }}>
                   {deleting ? "Deleting…" : "Yes, permanently delete my account"}
                 </button>
                 <button onClick={() => { setDeleteStep(1); setDeleteError(null); }} disabled={deleting}
-                  style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+                  style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
                   Go back
                 </button>
               </>
@@ -11035,7 +11059,7 @@ function ProSubscriptionSection() {
         // Web — Stripe with server-resolved price for this user's tier
         const data = await apiFetch("/subscription/create-checkout", {
           method: "POST",
-          body: JSON.stringify({ interval }),
+          body: JSON.stringify({ interval })
         });
         if (data?.url) window.location.href = data.url;
       }
@@ -11079,8 +11103,8 @@ function ProSubscriptionSection() {
       {isPro ? (
         /* ── Pro active state ── */
         <div style={{
-          background: `linear-gradient(135deg, ${C.surfaceDark} 0%, ${C.forest} 100%)`,
-          borderRadius: 16, padding: "18px 20px", color: "#fff",
+          background: C.surfaceDark,
+          borderRadius: R.sm, padding: "18px 20px", color: "#fff"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <div style={{ fontSize: 22 }}>🌱</div>
@@ -11097,8 +11121,8 @@ function ProSubscriptionSection() {
             disabled={manageLoading}
             style={{
               background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)",
-              borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600,
-              color: "#fff", cursor: "pointer", width: "100%",
+              borderRadius: R.sm, padding: "10px 16px", fontSize: 13, fontWeight: 600,
+              color: "#fff", cursor: "pointer", width: "100%"
             }}>
             {manageLoading ? "Loading…" : "Manage subscription"}
           </button>
@@ -11106,8 +11130,7 @@ function ProSubscriptionSection() {
       ) : (
         /* ── Free user upgrade prompt ── */
         <div style={{
-          background: "#fff", borderRadius: 16, padding: "20px 18px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+          background: "#fff", borderRadius: R.sm, padding: "20px 18px"
         }}>
           <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 6, lineHeight: 1.3 }}>
             Unlock Vercro Pro
@@ -11126,21 +11149,21 @@ function ProSubscriptionSection() {
           </div>
 
           {/* Pricing — dynamic per user tier */}
-          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+          <div style={{ background: "#f5f9f7", borderRadius: R.sm, padding: "14px 16px", marginBottom: 6 }}>
             {/* Monthly */}
             <button onClick={() => setInterval_("monthly")}
-              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent", border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent", borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}>
+              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent", border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent", borderRadius: R.sm, padding: "10px 12px", cursor: "pointer" }}>
               <div style={{ fontSize: 13, color: C.stone }}>Monthly</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{pricing?.display?.monthly || "…"} / month</div>
             </button>
             {/* Annual */}
             <button onClick={() => setInterval_("annual")}
-              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: interval === "annual" ? "#fff" : "transparent", border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent", borderRadius: 8, padding: "10px 12px", cursor: "pointer" }}>
+              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: interval === "annual" ? "#fff" : "transparent", border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent", borderRadius: R.sm, padding: "10px 12px", cursor: "pointer" }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing?.display?.annual || "…"} / year</div>
                 {pricing?.display?.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: R.sm, padding: "3px 8px", flexShrink: 0 }}>
                 {pricing?.display?.badge || "Best value"}
               </div>
             </button>
@@ -11153,7 +11176,7 @@ function ProSubscriptionSection() {
           <button
             onClick={() => handleUpgrade(interval)}
             disabled={checkoutLoading || !pricing}
-            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
+            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
             {checkoutLoading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
           </button>
         </div>
@@ -11198,12 +11221,12 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
+      <div style={{ background: "#fff", borderRadius: R.sheet, width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
         onClick={e => e.stopPropagation()} {...swipe}>
 
         {/* Handle */}
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+          <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd" }} />
         </div>
 
         <div style={{ padding: "8px 20px 12px" }}>
@@ -11226,7 +11249,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
           ) : (
             filtered.map(crop => (
               <button key={crop.id} onClick={() => onSelect(crop)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
                 <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
                 <div>
                   <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>{crop.name}</div>
@@ -11273,11 +11296,11 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 710, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
+      <div style={{ background: "#fff", borderRadius: R.sheet, width: "100%", maxWidth: 480, padding: "20px 24px 48px" }}
         onClick={e => e.stopPropagation()} {...swipe}>
 
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
+          <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd" }} />
         </div>
 
         <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
@@ -11285,14 +11308,14 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
 
         {/* Camera */}
         <button onClick={() => cameraRef.current?.click()}
-          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           📷 Take a photo
         </button>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
 
         {/* Library */}
         <button onClick={() => fileRef.current?.click()}
-          style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: R.sm, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           🖼️ Choose from library
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
@@ -11322,7 +11345,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
     try {
       await apiFetch(`/crops/${crop.id}/photos`, {
         method: "POST",
-        body: JSON.stringify({ base64: photo, caption: null }),
+        body: JSON.stringify({ base64: photo, caption: null })
       });
       setSavedToDiary(true);
     } catch(e) {
@@ -11334,19 +11357,19 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
   const severityColor = {
     low:    "#7FB069",
     medium: "#D9A441",
-    high:   "#C65A5A",
+    high:   "#C65A5A"
   }[result.severity] || C.stone;
 
   const severityBg = {
     low:    "#f0f9eb",
     medium: "#fdf6e3",
-    high:   "#fdf0f0",
+    high:   "#fdf0f0"
   }[result.severity] || "#f5f5f5";
 
   const readinessEmoji = {
     ready:     "✅",
     soon:      "🟡",
-    not_ready: "⏳",
+    not_ready: "⏳"
   }[result.harvest_readiness] || "";
 
   const handleConfirmUpdate = async () => {
@@ -11367,7 +11390,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
       {/* Header */}
       <div style={{ background: C.surfaceDark, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: R.sm, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
           <div>
             <div style={{ ...T.displayMd, fontSize: 17 }}>Plant Check</div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
@@ -11378,7 +11401,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
       <div style={{ padding: "20px 20px 100px" }}>
 
         {/* Overall summary */}
-        <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: 16, padding: "18px", marginBottom: 16 }}>
+        <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: R.sm, padding: "18px", marginBottom: 16 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>
             {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
           </div>
@@ -11391,7 +11414,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             {result.reasoning_summary}
           </div>
           {result.severity && !result.looks_healthy && (
-            <div style={{ ...T.eyebrow, display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12 }}>
+            <div style={{ ...T.eyebrow, display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: R.full, padding: "3px 12px", fontSize: 12 }}>
               {result.severity} severity
             </div>
           )}
@@ -11399,7 +11422,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Harvest readiness */}
         {result.harvest_readiness && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Harvest readiness</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
@@ -11417,7 +11440,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Stage detection */}
         {result.stage_detected && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Growth stage detected</div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -11425,7 +11448,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
                 {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
               </div>
               {!result.stage_matches_record && result.stage_detected && (
-                <span style={{ fontSize: 11, background: "#fff3cd", color: C.attentionText, borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
+                <span style={{ fontSize: 11, background: "#fff3cd", color: C.attentionText, borderRadius: R.sm, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
               )}
             </div>
           </div>
@@ -11433,7 +11456,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Yield impact — Pro only */}
         {result.yield_impact_pct !== null && result.yield_impact_pct !== undefined && (
-          <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+          <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Estimated yield impact</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ ...T.displayLg, fontSize: 22, color: result.yield_impact_pct < 0 ? C.dangerText : C.positiveText }}>
@@ -11448,7 +11471,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Problem description */}
         {result.problem_description && !result.looks_healthy && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>What we can see</div>
             <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.6 }}>{result.problem_description}</div>
           </div>
@@ -11456,11 +11479,11 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Treatment steps */}
         {result.treatment_steps?.length > 0 && (
-          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+          <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>What to do now</div>
             {result.treatment_steps.map((step, i) => (
               <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < result.treatment_steps.length - 1 ? 10 : 0 }}>
-                <div style={{ ...T.bodyStrong, width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                <div style={{ ...T.bodyStrong, width: 22, height: 22, borderRadius: R.full, background: C.forest, color: "#fff", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
                 <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.5, flex: 1 }}>{step}</div>
               </div>
             ))}
@@ -11469,7 +11492,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Prevention tips */}
         {result.prevention_tips?.length > 0 && (
-          <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+          <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Prevention</div>
             {result.prevention_tips.map((tip, i) => (
               <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
@@ -11482,17 +11505,17 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
 
         {/* Confirm update prompt */}
         {result.requires_confirmation && !updated && (
-          <div style={{ background: "#f0f7ff", border: "1px solid #b3d4f5", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
+          <div style={{ background: "#f0f7ff", border: "1px solid #b3d4f5", borderRadius: R.sm, padding: "16px", marginBottom: 14 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#1a3a5c", marginBottom: 12, lineHeight: 1.5 }}>
               {result.confirmation_prompt || `Update ${crop.name} record with detected stage?`}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleConfirmUpdate} disabled={updating}
-                style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 14, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "10px", fontSize: 14, cursor: "pointer" }}>
                 {updating ? "Updating…" : "Yes, update record"}
               </button>
               <button onClick={() => setUpdated(true)}
-                style={{ flex: 1, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                style={{ flex: 1, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
                 No thanks
               </button>
             </div>
@@ -11503,7 +11526,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         )}
 
         {updated && (
-          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: C.forest, fontWeight: 600 }}>
+          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: C.forest, fontWeight: 600 }}>
             ✓ Crop record updated
           </div>
         )}
@@ -11523,13 +11546,13 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
               <div style={{
                 background: "#f5f9f7",
                 border: `1px solid ${C.border}`,
-                borderRadius: 12,
+                borderRadius: R.sm,
                 padding: "12px 16px",
                 marginBottom: 16,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: 12,
+                gap: 12
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>{nudgeText}</div>
@@ -11546,14 +11569,14 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
                   style={{
                     background: "none",
                     border: `1px solid ${C.forest}`,
-                    borderRadius: 8,
+                    borderRadius: R.sm,
                     padding: "7px 12px",
                     fontSize: 12,
                     fontWeight: 600,
                     color: C.forest,
                     cursor: "pointer",
                     whiteSpace: "nowrap",
-                    flexShrink: 0,
+                    flexShrink: 0
                   }}>
                   See what's included →
                 </button>
@@ -11575,13 +11598,13 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {photo && (
           <div style={{ marginBottom: 14 }}>
             {savedToDiary ? (
-              <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, color: C.forest, fontWeight: 600 }}>
+              <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "12px 16px", fontSize: 14, color: C.forest, fontWeight: 600 }}>
                 ✓ Photo saved to growth diary
               </div>
             ) : (
               <>
                 <button onClick={handleSaveToDiary} disabled={savingDiary}
-                  style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 14, padding: "12px", fontSize: 14, cursor: "pointer" }}>
+                  style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px", fontSize: 14, cursor: "pointer" }}>
                   {savingDiary ? "Saving…" : "📷 Save photo to growth diary"}
                 </button>
                 {diaryError && (
@@ -11593,7 +11616,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         )}
 
         <button onClick={onDone}
-          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, cursor: "pointer" }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer" }}>
           Done
         </button>
       </div>
@@ -11652,8 +11675,8 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         method: "POST",
         body: JSON.stringify({
           crop_instance_id: crop.id,
-          image: base64,
-        }),
+          image: base64
+        })
       });
 
       if (data.upgrade_required) {
@@ -11690,7 +11713,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         vegetative: "vegetative_confirmed",
         flowering:  "flowering_confirmed",
         fruiting:   "fruit_set_confirmed",
-        harvesting: "harvest_started",
+        harvesting: "harvest_started"
       }[diagResult.stage_detected] || null;
     }
     if (diagResult.harvest_readiness === "ready") {
@@ -11699,7 +11722,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
     }
     await apiFetch(`/crops/${crop.id}/observe`, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload)
     });
   };
 
@@ -11719,7 +11742,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
     return (
       <>
         {error && (
-          <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 800, background: C.red, color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, maxWidth: "90vw", textAlign: "center" }}>
+          <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 800, background: C.red, color: "#fff", padding: "10px 16px", borderRadius: R.sm, fontSize: 13, maxWidth: "90vw", textAlign: "center" }}>
             {error}
           </div>
         )}
@@ -11739,7 +11762,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
         </div>
         <div style={{ marginTop: 32, display: "flex", gap: 6 }}>
           {[0, 1, 2].map(i => (
-            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: C.forest, opacity: 0.3, animation: `bounce 1.2s ${i * 0.2}s infinite` }} />
+            <div key={i} style={{ width: 8, height: 8, borderRadius: R.full, background: C.forest, opacity: 0.3, animation: `bounce 1.2s ${i * 0.2}s infinite` }} />
           ))}
         </div>
         <style>{`
@@ -11809,7 +11832,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       .then(d => setPricing(d))
       .catch(() => setPricing({
         tier: "early_supporter",
-        display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" },
+        display: { monthly: "£4.99", annual: "£49", label: "Early supporter offer", badge: "Best value" }
       }));
   }, []);
 
@@ -11833,19 +11856,19 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       headline: "Know exactly what's going on in your plants — before it's too late",
       subtext:  "From spotting problems early to knowing when to harvest — and what to grow next.",
       nudgeText: "Want to keep checking plants like this?",
-      nudgeSubtext: "Unlimited Plant Check is included with Vercro Pro.",
+      nudgeSubtext: "Unlimited Plant Check is included with Vercro Pro."
     },
     boost_area: {
       headline: "Make every bed in your garden more productive",
       subtext:  "From spotting problems early to knowing when to harvest — and what to grow next.",
       nudgeText: "Want to keep improving this bed?",
-      nudgeSubtext: "Unlimited suggestions are included with Vercro Pro.",
+      nudgeSubtext: "Unlimited suggestions are included with Vercro Pro."
     },
     plan: {
       headline: "Know what to grow next — before it becomes a problem",
       subtext:  "From spotting problems early to knowing when to harvest — and what to grow next.",
       nudgeText: null,
-      nudgeSubtext: null,
+      nudgeSubtext: null
     },
     location: {
       headline: "Growing in more than one space?",
@@ -11858,14 +11881,14 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       headline: "Grow more from your garden — with less guesswork",
       subtext:  "Plan ahead, catch problems early, and make better use of every bed with Vercro Pro.",
       nudgeText: null,
-      nudgeSubtext: null,
+      nudgeSubtext: null
     },
     why_now: {
       headline: "Understand exactly why every task matters — and when",
       subtext:  "Get unlimited AI explanations for every task, tailored to your crops, growth stage, and current conditions.",
       nudgeText: "Want to keep getting personalised explanations?",
-      nudgeSubtext: "Unlimited Why now? is included with Vercro Pro.",
-    },
+      nudgeSubtext: "Unlimited Why now? is included with Vercro Pro."
+    }
   };
 
   const content = CONTENT[trigger] || CONTENT.upgrade;
@@ -11921,7 +11944,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         // Web — Stripe with server-resolved price for this user's tier
         const data = await apiFetch("/subscription/create-checkout", {
           method: "POST",
-          body: JSON.stringify({ interval }),
+          body: JSON.stringify({ interval })
         });
         if (data?.url) window.location.href = data.url;
       }
@@ -11937,13 +11960,13 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       <div style={{
         background: "#f5f9f7",
         border: `1px solid ${C.border}`,
-        borderRadius: 12,
+        borderRadius: R.sm,
         padding: "12px 16px",
         marginTop: 12,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: 12,
+        gap: 12
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>
@@ -11958,14 +11981,14 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           style={{
             background: "none",
             border: `1px solid ${C.forest}`,
-            borderRadius: 8,
+            borderRadius: R.sm,
             padding: "7px 12px",
             fontSize: 12,
             fontWeight: 600,
             color: C.forest,
             cursor: "pointer",
             whiteSpace: "nowrap",
-            flexShrink: 0,
+            flexShrink: 0
           }}>
           See what's included →
         </button>
@@ -11980,12 +12003,12 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
       onClick={onClose}
     >
       <div
-        style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 44px", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}
+        style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 44px", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()}
         {...swipe}
       >
         {/* Handle */}
-        <div style={{ width: 36, height: 4, background: "#E0E0E0", borderRadius: 2, margin: "0 auto 24px" }} />
+        <div style={{ width: 36, height: 4, background: "#E0E0E0", borderRadius: R.sm, margin: "0 auto 24px" }} />
 
         {/* Headline */}
         <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, lineHeight: 1.3, marginBottom: 8, textAlign: "center" }}>
@@ -12017,7 +12040,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
           <div style={{ marginBottom: 20 }}>
             {LOCATION_BENEFITS.map((b, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.forest, flexShrink: 0, marginTop: 1 }} />
+                <div style={{ width: 6, height: 6, borderRadius: R.full, background: C.forest, flexShrink: 0, marginTop: 1 }} />
                 <div style={{ fontSize: 14, color: C.ink }}>{b}</div>
               </div>
             ))}
@@ -12026,7 +12049,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
 
         {/* Pricing block — dynamic per user tier */}
         {pricing ? (
-          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "14px 16px", marginBottom: 6 }}>
+          <div style={{ background: "#f5f9f7", borderRadius: R.sm, padding: "14px 16px", marginBottom: 6 }}>
             {/* Monthly option */}
             <button
               onClick={() => setInterval_("monthly")}
@@ -12034,7 +12057,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
                 width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
                 marginBottom: 8, background: interval === "monthly" ? "#fff" : "transparent",
                 border: interval === "monthly" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
-                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                borderRadius: R.sm, padding: "10px 12px", cursor: "pointer"
               }}>
               <div style={{ fontSize: 13, color: C.stone, textAlign: "left" }}>Monthly</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{pricing.display.monthly} / month</div>
@@ -12046,19 +12069,19 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
                 width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
                 background: interval === "annual" ? "#fff" : "transparent",
                 border: interval === "annual" ? `1.5px solid ${C.forest}` : "1.5px solid transparent",
-                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                borderRadius: R.sm, padding: "10px 12px", cursor: "pointer"
               }}>
               <div style={{ textAlign: "left" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{pricing.display.annual} / year</div>
                 {pricing.display.label && <div style={{ fontSize: 11, color: C.forest, marginTop: 1 }}>{pricing.display.label}</div>}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.forest, borderRadius: R.sm, padding: "3px 8px", flexShrink: 0 }}>
                 {pricing.display.badge}
               </div>
             </button>
           </div>
         ) : (
-          <div style={{ background: "#f5f9f7", borderRadius: 12, padding: "20px", marginBottom: 6, textAlign: "center" }}>
+          <div style={{ background: "#f5f9f7", borderRadius: R.sm, padding: "20px", marginBottom: 6, textAlign: "center" }}>
             <div style={{ fontSize: 12, color: C.stone }}>Loading pricing…</div>
           </div>
         )}
@@ -12074,7 +12097,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         <button
           onClick={handleUpgrade}
           disabled={loading || !pricing}
-          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
           {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
         </button>
 
@@ -12182,8 +12205,8 @@ function FeedsScreen() {
             application_method:    matchedCatalog.application_method,
             notes:                 matchedCatalog.notes,
             pre_enriched:          true,
-            barcode:               scannedBarcode || null,
-          }),
+            barcode:               scannedBarcode || null
+          })
         });
       } else {
         // Unknown product — send for enrichment
@@ -12192,8 +12215,8 @@ function FeedsScreen() {
           body: JSON.stringify({
             brand:        finalBrand || null,
             product_name: finalProduct,
-            form:         isLiquid ? "liquid" : "granular",
-          }),
+            form:         isLiquid ? "liquid" : "granular"
+          })
         });
       }
 
@@ -12219,7 +12242,7 @@ function FeedsScreen() {
     const map = {
       high_potash: "High Potash", balanced: "Balanced", high_nitrogen: "High Nitrogen",
       low_nitrogen: "Low Nitrogen", specialist_tomato: "Tomato Feed", specialist_rose: "Rose Feed",
-      seaweed: "Seaweed", organic_general: "Organic General",
+      seaweed: "Seaweed", organic_general: "Organic General"
     };
     return map[ft] || ft || "Unknown";
   };
@@ -12254,15 +12277,15 @@ function FeedsScreen() {
       )}
 
       {/* Add feed form */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>Add a Feed</div>
           <button onClick={() => setShowFeedScanner(true)}
-            style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             📷 Scan product
           </button>
         </div>
-        {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: C.positiveText, fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
+        {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: R.sm, padding: "10px 14px", marginBottom: 12, color: C.positiveText, fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -12288,7 +12311,7 @@ function FeedsScreen() {
               <div style={{ display: "flex", gap: 10 }}>
                 {[{ label: "Yes — liquid", val: true }, { label: "No — granular / powder", val: false }].map(opt => (
                   <button key={String(opt.val)} onClick={() => { setIsLiquid(opt.val); setProduct(""); setOtherProduct(""); }}
-                    style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${isLiquid === opt.val ? C.forest : C.border}`, background: isLiquid === opt.val ? C.forest : C.cardBg, color: isLiquid === opt.val ? "#fff" : C.ink, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    style={{ flex: 1, padding: "10px", borderRadius: R.sm, border: `1px solid ${isLiquid === opt.val ? C.forest : C.border}`, background: isLiquid === opt.val ? C.forest : C.cardBg, color: isLiquid === opt.val ? "#fff" : C.ink, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                     {opt.label}
                   </button>
                 ))}
@@ -12321,26 +12344,26 @@ function FeedsScreen() {
 
           {/* Preview for known products */}
           {matchedCatalog && (
-            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "12px 14px" }}>
               <div style={{ ...T.bodyStrong, fontSize: 12, color: C.forest, marginBottom: 6 }}>✓ Product identified</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                <span style={{ fontSize: 11, background: "#e8f0fe", color: C.infoText, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(matchedCatalog.feed_type)}</span>
-                <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.form}</span>
-                {matchedCatalog.npk && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>NPK {matchedCatalog.npk}</span>}
-                {matchedCatalog.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.dilution_ml_per_litre}ml/L</span>}
-                {matchedCatalog.frequency_days && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>Every {matchedCatalog.frequency_days} days</span>}
+                <span style={{ fontSize: 11, background: "#e8f0fe", color: C.infoText, borderRadius: R.sm, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(matchedCatalog.feed_type)}</span>
+                <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>{matchedCatalog.form}</span>
+                {matchedCatalog.npk && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>NPK {matchedCatalog.npk}</span>}
+                {matchedCatalog.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>{matchedCatalog.dilution_ml_per_litre}ml/L</span>}
+                {matchedCatalog.frequency_days && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>Every {matchedCatalog.frequency_days} days</span>}
               </div>
               {matchedCatalog.notes && <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>{matchedCatalog.notes}</div>}
             </div>
           )}
           {product === "Other" && otherProduct.trim() && (
-            <div style={{ background: "#fdf8ec", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "10px 14px", fontSize: 12, color: C.stone }}>
+            <div style={{ background: "#fdf8ec", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "10px 14px", fontSize: 12, color: C.stone }}>
               🔍 We'll look this one up and fill in the details automatically
             </div>
           )}
 
           <button onClick={addFeed} disabled={saving || !canAdd}
-            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1 }}>
+            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "12px", fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1 }}>
             {saving ? "Adding…" : "Add Feed"}
           </button>
         </div>
@@ -12353,7 +12376,7 @@ function FeedsScreen() {
         </div>
       ) : (
         feeds.map(feed => (
-          <div key={feed.id} style={{ background: feed.out_of_stock ? "#f5f5f3" : C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, opacity: feed.out_of_stock ? 0.72 : 1, transition: "opacity 0.2s, background 0.2s" }}>
+          <div key={feed.id} style={{ background: feed.out_of_stock ? "#f5f5f3" : C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10, opacity: feed.out_of_stock ? 0.72 : 1, transition: "opacity 0.2s, background 0.2s" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>
@@ -12361,11 +12384,11 @@ function FeedsScreen() {
                 </div>
                 {feed.enriched ? (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    <span style={{ fontSize: 11, background: "#e8f0fe", color: C.infoText, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(feed.feed_type)}</span>
-                    {feed.form && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{feed.form}</span>}
-                    {feed.npk && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>NPK {feed.npk}</span>}
-                    {feed.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{feed.dilution_ml_per_litre}ml/L</span>}
-                    {feed.frequency_days && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>Every {feed.frequency_days} days</span>}
+                    <span style={{ fontSize: 11, background: "#e8f0fe", color: C.infoText, borderRadius: R.sm, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(feed.feed_type)}</span>
+                    {feed.form && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>{feed.form}</span>}
+                    {feed.npk && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>NPK {feed.npk}</span>}
+                    {feed.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>{feed.dilution_ml_per_litre}ml/L</span>}
+                    {feed.frequency_days && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: R.sm, padding: "2px 8px" }}>Every {feed.frequency_days} days</span>}
                   </div>
                 ) : (
                   <div style={{ fontSize: 12, color: C.stone, marginTop: 4, fontStyle: "italic" }}>Identifying feed data… 🔍</div>
@@ -12387,14 +12410,14 @@ function FeedsScreen() {
                       }
                     }}
                     style={{
-                      width: 36, height: 20, borderRadius: 10, cursor: "pointer",
+                      width: 36, height: 20, borderRadius: R.sm, cursor: "pointer",
                       background: feed.out_of_stock ? C.stone : C.forest,
-                      position: "relative", transition: "background 0.2s", flexShrink: 0,
+                      position: "relative", transition: "background 0.2s", flexShrink: 0
                     }}>
                     <div style={{
                       position: "absolute", top: 2, left: feed.out_of_stock ? 18 : 2,
-                      width: 16, height: 16, borderRadius: "50%", background: "#fff",
-                      transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      width: 16, height: 16, borderRadius: R.full, background: "#fff",
+                      transition: "left 0.2s"
                     }} />
                   </div>
                 </div>
@@ -12451,7 +12474,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
 
       const data = await apiFetch("/barcode/scan-image", {
         method: "POST",
-        body: JSON.stringify({ image: base64, mode }),
+        body: JSON.stringify({ image: base64, mode })
       });
 
       setResult(data);
@@ -12481,7 +12504,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 48px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
@@ -12496,7 +12519,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {/* Idle — show scan button */}
         {status === "idle" && (
           <>
-            <label htmlFor="barcode-photo-input" style={{ display: "block", background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
+            <label htmlFor="barcode-photo-input" style={{ display: "block", background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: R.sm, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
               <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>
                 Take a photo of the front of the packet
@@ -12512,11 +12535,11 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
               style={{ display: "none" }}
             />
             <label htmlFor="barcode-photo-input"
-              style={{ ...T.control, display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
+              style={{ ...T.control, display: "block", width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
               Take photo of packet
             </label>
             <button onClick={() => setShowManual(true)}
-              style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              style={{ width: "100%", padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               Enter barcode number manually
             </button>
           </>
@@ -12525,7 +12548,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {/* Scanning / loading */}
         {status === "scanning" && (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
-            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 200, objectFit: "cover" }} />}
+            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: R.sm, marginBottom: 16, maxHeight: 200, objectFit: "cover" }} />}
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
             <div style={{ ...T.displayMd, fontSize: 16, marginBottom: 4 }}>Identifying product…</div>
             <div style={{ fontSize: 13, color: C.stone }}>Searching product databases</div>
@@ -12535,7 +12558,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {/* Found */}
         {status === "found" && result?.found && (
           <>
-            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
+            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: R.sm, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <div style={{ fontSize: 36 }}>{getCropEmoji(result.name || "")}</div>
               <div>
@@ -12554,14 +12577,14 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
                 result.npk        && { label: "NPK",          val: result.npk },
                 result.form       && { label: "Form",         val: result.form },
               ].filter(Boolean).map(r => (
-                <div key={r.label} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
+                <div key={r.label} style={{ background: C.offwhite, borderRadius: R.sm, padding: "10px 12px" }}>
                   <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone }}>{r.label}</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginTop: 2 }}>{r.val}</div>
                 </div>
               ))}
             </div>
             <button onClick={() => { onResult(result); }}
-              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer" }}>
+              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer" }}>
               Add {result.name} →
             </button>
           </>
@@ -12570,7 +12593,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {/* Not found */}
         {status === "found" && !result?.found && (
           <>
-            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
+            {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: R.sm, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
               <div style={{ ...T.displayMd, fontSize: 16, color: C.ink, marginBottom: 6 }}>We don't recognise this one yet</div>
@@ -12578,11 +12601,11 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { onResult({ found: false }); }}
-                style={{ ...T.control, flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 2, padding: "13px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
                 Continue →
               </button>
               <button onClick={() => { setStatus("idle"); setPreview(null); setResult(null); }}
-                style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                style={{ flex: 1, padding: "13px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
                 Retry
               </button>
             </div>
@@ -12597,17 +12620,17 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>Try again or enter the barcode manually.</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setStatus("idle"); setPreview(null); }}
-                style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Try again</button>
+                style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Try again</button>
               <button onClick={() => setShowManual(true)}
-                style={{ ...T.control, flex: 1, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", cursor: "pointer" }}>Manual entry</button>
+                style={{ ...T.control, flex: 1, padding: "12px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", cursor: "pointer" }}>Manual entry</button>
             </div>
           </div>
         )}
 
         {/* Manual entry overlay */}
         {showManual && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 24, borderRadius: "16px 16px 0 0" }}>
-            <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 24, borderRadius: R.sheet}}>
+            <div style={{ background: "#fff", borderRadius: R.overlay, padding: 24, width: "100%" }}>
               <div style={{ ...T.displayMd, fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
               <input value={manualCode} onChange={e => setManualCode(e.target.value)}
                 placeholder="e.g. 5000174002017" autoFocus
@@ -12615,9 +12638,9 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
                 onKeyDown={e => e.key === "Enter" && handleManual()} />
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setShowManual(false)}
-                  style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                  style={{ flex: 1, padding: "11px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                 <button onClick={handleManual}
-                  style={{ ...T.control, flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", cursor: "pointer" }}>Look up</button>
+                  style={{ ...T.control, flex: 2, padding: "11px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", cursor: "pointer" }}>Look up</button>
               </div>
             </div>
           </div>
@@ -12658,7 +12681,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
     try {
       await apiFetch("/feedback", {
         method: "POST",
-        body: JSON.stringify({ category, message, rating: isNative ? null : (rating || null) }),
+        body: JSON.stringify({ category, message, rating: isNative ? null : (rating || null) })
       });
       // Guard: don't prompt for review in the same session the user filed feedback
       try { sessionStorage.setItem("vercro_negative_feedback", "1"); } catch(e) {}
@@ -12671,7 +12694,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "flex-end" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }}>
 
         {done ? (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
@@ -12704,7 +12727,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
                 <div style={{ display: "flex", gap: 10 }}>
                   {[1,2,3,4,5].map(n => (
                     <button key={n} onClick={() => setRating(rating === n ? 0 : n)}
-                      style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${rating >= n ? C.amber : C.border}`, background: rating >= n ? "#fff8ed" : "transparent", fontSize: 20, cursor: "pointer", transition: "all 0.15s" }}>
+                      style={{ flex: 1, padding: "10px 0", borderRadius: R.sm, border: `1px solid ${rating >= n ? C.amber : C.border}`, background: rating >= n ? "#fff8ed" : "transparent", fontSize: 20, cursor: "pointer", transition: "all 0.15s" }}>
                       {rating >= n ? "⭐" : "☆"}
                     </button>
                   ))}
@@ -12720,7 +12743,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {categories.map(c => (
                   <div key={c.id} onClick={() => setCategory(category === c.id ? "" : c.id)}
-                    style={{ border: `2px solid ${category === c.id ? C.forest : C.border}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", background: category === c.id ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
+                    style={{ border: `2px solid ${category === c.id ? C.forest : C.border}`, borderRadius: R.sm, padding: "10px 12px", cursor: "pointer", background: category === c.id ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
                     <div style={{ ...T.bodyStrong, fontSize: 13, color: category === c.id ? C.forest : C.ink }}>{c.label}</div>
                     <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{c.hint}</div>
                   </div>
@@ -12742,7 +12765,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
             </div>
 
             <button onClick={submit} disabled={!canSubmit || saving}
-              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontSize: 15, cursor: canSubmit ? "pointer" : "default", transition: "background 0.2s" }}>
+              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontSize: 15, cursor: canSubmit ? "pointer" : "default", transition: "background 0.2s" }}>
               {saving ? "Sending…" : "Send feedback"}
             </button>
           </>
@@ -12811,7 +12834,7 @@ function AdminFeedbackList() {
               user_email:  f.user_email || null,
               user_name:   f.profiles?.name || null,
               rating:      f.rating || null,
-              created_at:  f.created_at,
+              created_at:  f.created_at
             }));
           return [...prev, ...newTasks];
         });
@@ -12835,7 +12858,7 @@ function AdminFeedbackList() {
       effort:      null,
       user_email:  null,
       user_name:   null,
-      created_at:  new Date().toISOString(),
+      created_at:  new Date().toISOString()
     };
     saveTasks([...tasks, task]);
     setManualInput("");
@@ -12894,8 +12917,8 @@ Use the exact task IDs provided.`;
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+          messages: [{ role: "user", content: prompt }]
+        })
       });
       const data = await response.json();
       const text = data.content?.map(c => c.text || "").join("") || "";
@@ -12917,13 +12940,13 @@ Use the exact task IDs provided.`;
     feature: "💡 Feature",
     general: "💬 General",
     praise:  "🌟 Praise",
-    manual:  "📝 Task",
+    manual:  "📝 Task"
   };
 
   const EFFORT_STYLE = {
     low:    { bg: "#E8F5E9", color: "#2E7D32" },
     medium: { bg: "#FFF8E1", color: "#F57F17" },
-    high:   { bg: "#FCE4EC", color: "#C62828" },
+    high:   { bg: "#FCE4EC", color: "#C62828" }
   };
 
   const openGmailReply = (task, isDone = false) => {
@@ -12951,7 +12974,7 @@ Use the exact task IDs provided.`;
   return (
     <div>
       {/* Context block */}
-      <div style={{ background: "#F0F7FF", border: "1px solid #B3D4F5", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+      <div style={{ background: "#F0F7FF", border: "1px solid #B3D4F5", borderRadius: R.sm, padding: "12px 14px", marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editContext ? 8 : 4 }}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: "#1a3a5c" }}>Current priorities / context</div>
           <button onClick={() => { setEditContext(!editContext); setContextDraft(context); }}
@@ -12963,9 +12986,9 @@ Use the exact task IDs provided.`;
           <>
             <textarea value={contextDraft} onChange={e => setContextDraft(e.target.value)}
               placeholder="e.g. iOS build 16 in review. Web launched 15 Apr. Priority is fixing bugs before marketing push. Android tiered pricing next."
-              style={{ width: "100%", minHeight: 80, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "8px 10px", resize: "vertical", fontFamily: F.body, boxSizing: "border-box" }} />
+              style={{ width: "100%", minHeight: 80, fontSize: 12, borderRadius: R.sm, border: `1px solid ${C.border}`, padding: "8px 10px", resize: "vertical", fontFamily: F.body, boxSizing: "border-box" }} />
             <button onClick={saveContext}
-              style={{ ...T.control, marginTop: 8, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
+              style={{ ...T.control, marginTop: 8, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, fontSize: 12, cursor: "pointer" }}>
               Save
             </button>
           </>
@@ -12977,11 +13000,11 @@ Use the exact task IDs provided.`;
       </div>
 
       {/* Add manual task */}
-      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 16 }}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Add task</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <select value={manualType} onChange={e => setManualType(e.target.value)}
-            style={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "6px 8px", background: "#fff" }}>
+            style={{ fontSize: 12, borderRadius: R.sm, border: `1px solid ${C.border}`, padding: "6px 8px", background: "#fff" }}>
             <option value="bug">🐛 Bug</option>
             <option value="feature">💡 Feature</option>
             <option value="manual">📝 Task</option>
@@ -12989,9 +13012,9 @@ Use the exact task IDs provided.`;
           <input value={manualInput} onChange={e => setManualInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addManualTask()}
             placeholder="Describe the task…"
-            style={{ flex: 1, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "6px 10px" }} />
+            style={{ flex: 1, fontSize: 12, borderRadius: R.sm, border: `1px solid ${C.border}`, padding: "6px 10px" }} />
           <button onClick={addManualTask}
-            style={{ ...T.control, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
+            style={{ ...T.control, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, fontSize: 12, cursor: "pointer" }}>
             Add
           </button>
         </div>
@@ -13004,7 +13027,7 @@ Use the exact task IDs provided.`;
           {doneTasks.length > 0 && <span style={{ marginLeft: 8 }}>· {doneTasks.length} done</span>}
         </div>
         <button onClick={rerank} disabled={ranking || activeTasks.length === 0}
-          style={{ ...T.control, padding: "7px 14px", background: ranking ? C.border : C.forest, color: ranking ? C.stone : "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: ranking ? "default" : "pointer" }}>
+          style={{ ...T.control, padding: "7px 14px", background: ranking ? C.border : C.forest, color: ranking ? C.stone : "#fff", border: "none", borderRadius: R.sm, fontSize: 12, cursor: ranking ? "default" : "pointer" }}>
           {ranking ? "Ranking…" : "⚡ Re-rank with AI"}
         </button>
       </div>
@@ -13015,17 +13038,17 @@ Use the exact task IDs provided.`;
         <div style={{ textAlign: "center", padding: "32px 0", color: C.stone, fontSize: 13 }}>No active tasks — add one above or wait for user feedback.</div>
       )}
       {activeTasks.map((task, idx) => (
-        <div key={task.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+        <div key={task.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ ...T.bodyStrong, fontSize: 11, color: C.forest }}>{TYPE_LABEL[task.type] || task.type}</span>
               {task.priority !== null && (
-                <span style={{ ...T.bodyStrong, fontSize: 11, background: "#E8F0FE", color: "#1a3a8f", borderRadius: 6, padding: "2px 7px" }}>
+                <span style={{ ...T.bodyStrong, fontSize: 11, background: "#E8F0FE", color: "#1a3a8f", borderRadius: R.sm, padding: "2px 7px" }}>
                   #{task.priority}
                 </span>
               )}
               {task.effort && (
-                <span style={{ fontSize: 11, background: EFFORT_STYLE[task.effort]?.bg, color: EFFORT_STYLE[task.effort]?.color, borderRadius: 6, padding: "2px 7px", fontWeight: 600 }}>
+                <span style={{ fontSize: 11, background: EFFORT_STYLE[task.effort]?.bg, color: EFFORT_STYLE[task.effort]?.color, borderRadius: R.sm, padding: "2px 7px", fontWeight: 600 }}>
                   {task.effort} effort
                 </span>
               )}
@@ -13045,17 +13068,17 @@ Use the exact task IDs provided.`;
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => markDone(task)}
-              style={{ fontSize: 11, fontWeight: 600, background: "#D1FAE5", color: C.positiveText, border: "1px solid #6EE7B7", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+              style={{ fontSize: 11, fontWeight: 600, background: "#D1FAE5", color: C.positiveText, border: "1px solid #6EE7B7", borderRadius: R.sm, padding: "5px 10px", cursor: "pointer" }}>
               ✓ Mark done
             </button>
             {task.user_email && (
               <button onClick={() => openGmailReply(task, false)}
-                style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+                style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "5px 10px", cursor: "pointer" }}>
                 ✉️ Reply in Gmail
               </button>
             )}
             <button onClick={() => deleteTask(task.id)}
-              style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+              style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "5px 10px", cursor: "pointer" }}>
               Delete
             </button>
           </div>
@@ -13070,7 +13093,7 @@ Use the exact task IDs provided.`;
             {showDone ? "▲ Hide" : "▼ Show"} {doneTasks.length} completed task{doneTasks.length !== 1 ? "s" : ""}
           </button>
           {showDone && doneTasks.map(task => (
-            <div key={task.id} style={{ background: "#FAFAFA", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, opacity: 0.6 }}>
+            <div key={task.id} style={{ background: "#FAFAFA", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 8, opacity: 0.6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <span style={{ ...T.bodyStrong, fontSize: 11, color: C.stone }}>{TYPE_LABEL[task.type] || task.type}</span>
                 <span style={{ fontSize: 11, color: C.stone }}>{new Date(task.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
@@ -13078,11 +13101,11 @@ Use the exact task IDs provided.`;
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: 8 }}>{task.title}</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveTasks(tasks.map(t => t.id === task.id ? { ...t, status: "active" } : t))}
-                  style={{ fontSize: 11, color: C.forest, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  style={{ fontSize: 11, color: C.forest, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "4px 10px", cursor: "pointer" }}>
                   Reopen
                 </button>
                 <button onClick={() => deleteTask(task.id)}
-                  style={{ fontSize: 11, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  style={{ fontSize: 11, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "4px 10px", cursor: "pointer" }}>
                   Delete
                 </button>
               </div>
@@ -13094,18 +13117,18 @@ Use the exact task IDs provided.`;
       {/* Done prompt modal — shown when marking feedback task as done */}
       {donePrompt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", maxWidth: 380, width: "100%" }}>
+          <div style={{ background: "#fff", borderRadius: R.sm, padding: "24px 20px", maxWidth: 380, width: "100%" }}>
             <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 8 }}>Mark as done</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
               This came from {donePrompt.user_name || "a user"}{donePrompt.user_email ? ` (${donePrompt.user_email})` : ""}. Would you like to send them a thank-you reply letting them know their feedback has been acted on?
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={() => { openGmailReply(donePrompt, true); confirmDone(donePrompt); }}
-                style={{ ...T.control, padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, cursor: "pointer" }}>
+                style={{ ...T.control, padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, fontSize: 14, cursor: "pointer" }}>
                 ✉️ Send reply + mark done
               </button>
               <button onClick={() => confirmDone(donePrompt)}
-                style={{ padding: "12px", background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: 10, fontSize: 13, cursor: "pointer" }}>
+                style={{ padding: "12px", background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 13, cursor: "pointer" }}>
                 Mark done without replying
               </button>
               <button onClick={() => setDonePrompt(null)}
@@ -13125,7 +13148,7 @@ function MetricSection({ title, children }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>{title}</div>
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden" }}>
         {children}
       </div>
     </div>
@@ -13150,23 +13173,23 @@ function MetricCard({ label, value, sub, status, suggestion }) {
   const col  = status === "green" ? "#3B6D11" : status === "amber" ? "#92600A" : status === "red" ? "#8B1A1A" : C.stone;
   const badge = status === "green" ? "✓ on target" : status === "amber" ? "↗ below target" : status === "red" ? "⚠ needs action" : null;
   return (
-    <div style={{ background: C.offwhite, borderRadius: 12, padding: "12px 14px" }}>
+    <div style={{ background: C.offwhite, borderRadius: R.sm, padding: "12px 14px" }}>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>{label}</div>
       <div style={{ ...T.bodyStrong, fontSize: 22, color: C.ink, lineHeight: 1, marginBottom: 3 }}>{value ?? "—"}</div>
       {sub && <div style={{ fontSize: 11, color: C.stone, marginBottom: 6 }}>{sub}</div>}
       {badge && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, background: bg, color: col, borderRadius: 99, padding: "2px 8px", display: "inline-block" }}>{badge}</span>
+          <span style={{ fontSize: 10, background: bg, color: col, borderRadius: R.full, padding: "2px 8px", display: "inline-block" }}>{badge}</span>
           {suggestion && status !== "green" && (
             <button onClick={() => setOpen(o => !o)}
-              style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: 99, padding: "2px 8px", cursor: "pointer" }}>
+              style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: R.full, padding: "2px 8px", cursor: "pointer" }}>
               {open ? "hide" : "⚙ fix"}
             </button>
           )}
         </div>
       )}
       {open && suggestion && (
-        <div style={{ marginTop: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: C.ink, lineHeight: 1.6 }}>
+        <div style={{ marginTop: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 12px", fontSize: 12, color: C.ink, lineHeight: 1.6 }}>
           <div style={{ ...T.bodyStrong, marginBottom: 6, color: C.forest }}>{suggestion.title}</div>
           <div style={{ color: C.stone, marginBottom: 6 }}>{suggestion.body}</div>
           <ul style={{ margin: 0, paddingLeft: 16, color: C.stone }}>
@@ -13192,17 +13215,17 @@ function MetricRowWithFix({ label, val, sub, status, suggestion }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{val ?? "—"}</div>
-          {badge && <span style={{ fontSize: 10, background: bg, color: col, borderRadius: 99, padding: "2px 7px" }}>{badge}</span>}
+          {badge && <span style={{ fontSize: 10, background: bg, color: col, borderRadius: R.full, padding: "2px 7px" }}>{badge}</span>}
           {suggestion && status !== "green" && (
             <button onClick={() => setOpen(o => !o)}
-              style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: 99, padding: "2px 8px", cursor: "pointer" }}>
+              style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: R.full, padding: "2px 8px", cursor: "pointer" }}>
               {open ? "hide" : "⚙ fix"}
             </button>
           )}
         </div>
       </div>
       {open && suggestion && (
-        <div style={{ margin: "0 14px 10px", background: C.offwhite, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: C.ink, lineHeight: 1.6, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ margin: "0 14px 10px", background: C.offwhite, borderRadius: R.sm, padding: "10px 12px", fontSize: 12, color: C.ink, lineHeight: 1.6, borderBottom: `1px solid ${C.border}` }}>
           <div style={{ ...T.bodyStrong, marginBottom: 5, color: C.forest }}>{suggestion.title}</div>
           <div style={{ color: C.stone, marginBottom: 6 }}>{suggestion.body}</div>
           <ul style={{ margin: 0, paddingLeft: 16, color: C.stone }}>
@@ -13223,7 +13246,7 @@ const SUGGESTIONS = {
       "Pre-populate with 3 quick-add crop buttons (Tomatoes, Courgettes, Potatoes)",
       "Send the unactivated nudge email sooner — try 2 hours instead of 24",
       "Show a progress indicator: \"Step 1 of 2 — add your first crop to get your plan\"",
-    ],
+    ]
   },
   week4retention: {
     title: "Improve month 1 retention",
@@ -13233,7 +13256,7 @@ const SUGGESTIONS = {
       "Add a streak mechanic — users with a 7-day streak are significantly more likely to stay",
       "Ensure morning push is firing reliably for day 14-28 users with tasks due",
       "The day 30 lapsed email tone shift (\"Your carrots need you\") is correct — verify it's sending",
-    ],
+    ]
   },
   waitlist: {
     title: "Improve waitlist conversion",
@@ -13243,7 +13266,7 @@ const SUGGESTIONS = {
       "Check if Hotmail/Outlook recipients are converting — those had delivery delays",
       "Day 7 nudge email should feel more urgent — growing season framing is working, lean into it",
       "Add a deadline feel to day 14 final email — \"last nudge from me\" is good but could be stronger",
-    ],
+    ]
   },
   dau_wau: {
     title: "Improve daily stickiness",
@@ -13253,7 +13276,7 @@ const SUGGESTIONS = {
       "The engagement_nudge fallback fires when no tasks exist — check it's reaching users",
       "Today's focus hero card needs to always show something — if empty state shows, users don't open",
       "Consider a daily \"garden check-in\" streak visible on the dashboard",
-    ],
+    ]
   },
   taskcompletion: {
     title: "Improve task completion",
@@ -13263,7 +13286,7 @@ const SUGGESTIONS = {
       "Check if duplicate tasks per crop are diluting completion (dedup logic)",
       "The expandable \"See all\" list keeps the main view clean — good, keep it collapsed by default",
       "Consider a \"nice job\" moment when all today's tasks are done",
-    ],
+    ]
   },
   pushenabled: {
     title: "Improve push opt-in rate",
@@ -13273,7 +13296,7 @@ const SUGGESTIONS = {
       "Add context before the browser dialog: \"Get a 7am nudge when something needs doing\"",
       "For users who declined, re-prompt after 7 days via an in-app banner",
       "Show a sample notification in the prompt to reduce uncertainty",
-    ],
+    ]
   },
   organic: {
     title: "Grow organic share",
@@ -13283,7 +13306,7 @@ const SUGGESTIONS = {
       "The share card Instagram moment at 5 tasks is your best organic acquisition — track shares",
       "Consider a small incentive for referrals once you have more users",
       "SEO on vercro.com for \"UK gardening app\" terms is a medium-term play",
-    ],
+    ]
   },
   week1retention: {
     title: "Improve week 1 retention",
@@ -13293,8 +13316,8 @@ const SUGGESTIONS = {
       "Ensure the rule engine generates at least 3-5 tasks in first 7 days for new users",
       "The \"also today\" and \"see all\" task sections help — make sure first-week users have visible tasks",
       "Consider a welcome badge for completing first 5 tasks",
-    ],
-  },
+    ]
+  }
 };
 
 // ── Admin Tools ──────────────────────────────────────────────────────────────
@@ -13318,11 +13341,11 @@ function InviteWaitlistButton() {
   return (
     <>
       <button onClick={run} disabled={running}
-        style={{ ...T.control, background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
+        style={{ ...T.control, background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: R.sm, padding: "10px 20px", fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
         {running ? "Sending…" : "Send Invite Emails"}
       </button>
       {status && (
-        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: status.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${status.ok ? "#b8ddb8" : "#f4b8b8"}`, fontSize: 13 }}>
+        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: R.sm, background: status.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${status.ok ? "#b8ddb8" : "#f4b8b8"}`, fontSize: 13 }}>
           {status.ok
             ? `✅ Sent to ${status.sent} of ${status.total} waitlist users`
             : `❌ Error: ${status.error}`}
@@ -13352,7 +13375,7 @@ function AdminTools() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Invite waitlist */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "18px" }}>
         <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>📬 Invite Waitlist Users</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Emails everyone on the waitlist telling them access is now open. Each user is only emailed once. Also updates their status to accepted.
@@ -13360,17 +13383,17 @@ function AdminTools() {
         <InviteWaitlistButton />
       </div>
 
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "18px" }}>
         <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>🏆 Backfill Badges</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Calculates badge progress for all existing users from their real data — tasks completed, crops added, harvests logged etc. Run this once after deploying badges. Safe to re-run.
         </div>
         <button onClick={runBackfill} disabled={running}
-          style={{ ...T.control, background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
+          style={{ ...T.control, background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: R.sm, padding: "10px 20px", fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
           {running ? "Running…" : "Run Badge Backfill"}
         </button>
         {backfillStatus && (
-          <div style={{ marginTop: 14, padding: "12px", borderRadius: 8, background: backfillStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${backfillStatus.ok ? "#b8ddb8" : "#f4b8b8"}` }}>
+          <div style={{ marginTop: 14, padding: "12px", borderRadius: R.sm, background: backfillStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${backfillStatus.ok ? "#b8ddb8" : "#f4b8b8"}` }}>
             {backfillStatus.ok ? (
               <>
                 <div style={{ ...T.bodyStrong, color: C.forest, fontSize: 13, marginBottom: 8 }}>✅ Backfill complete — {backfillStatus.count} users processed</div>
@@ -13438,7 +13461,7 @@ function FunnelTab({ data }) {
           { label: "Activated with no crops (post-fix)", value: health_check.no_crops_post_fix, ok: noCropsOk },
           { label: "Activated with no tasks (post-fix)",  value: health_check.no_tasks_post_fix, ok: noTasksOk },
         ].map(({ label, value, ok }) => (
-          <div key={label} style={{ flex: 1, background: ok ? "#EAF5EE" : "#FFF0F0", border: `1px solid ${ok ? "#B8DEC7" : "#F5C6C6"}`, borderRadius: 12, padding: "12px 14px" }}>
+          <div key={label} style={{ flex: 1, background: ok ? "#EAF5EE" : "#FFF0F0", border: `1px solid ${ok ? "#B8DEC7" : "#F5C6C6"}`, borderRadius: R.sm, padding: "12px 14px" }}>
             <div style={{ fontSize: 11, color: ok ? C.forest : "#8B1A1A", fontWeight: 600, marginBottom: 4 }}>{label}</div>
             <div style={{ fontSize: 28, fontWeight: 900, color: ok ? C.forest : "#8B1A1A" }}>{value}</div>
             <div style={{ fontSize: 11, color: ok ? C.forest : "#8B1A1A" }}>{ok ? "✓ Target: 0" : "⚠ Target: 0"}</div>
@@ -13447,7 +13470,7 @@ function FunnelTab({ data }) {
       </div>
 
       {/* ── Activation funnel ── */}
-      <div style={{ background: C.cardBg, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+      <div style={{ background: C.cardBg, borderRadius: R.sm, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
         <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 14 }}>Activation funnel</div>
         {[
           { label: "Signed up",      value: funnel.signed_up,       pct: 100 },
@@ -13461,15 +13484,15 @@ function FunnelTab({ data }) {
               <span style={{ fontSize: 13, color: C.forest }}>{label}</span>
               <span style={{ ...T.bodyStrong, fontSize: 13, color: C.forest }}>{(value||0).toLocaleString()} <span style={{ fontWeight: 400, color: C.stone }}>({pct}%)</span></span>
             </div>
-            <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${pct}%`, background: C.forest, borderRadius: 4 }} />
+            <div style={{ height: 8, background: "#E8F0EC", borderRadius: R.sm, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: C.forest, borderRadius: R.sm}} />
             </div>
           </div>
         ))}
       </div>
 
       {/* ── Behaviour → retention ── */}
-      <div style={{ background: C.cardBg, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+      <div style={{ background: C.cardBg, borderRadius: R.sm, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
         <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 12 }}>Behaviour → retention</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -13491,7 +13514,7 @@ function FunnelTab({ data }) {
       </div>
 
       {/* ── Push vs no-push ── */}
-      <div style={{ background: C.cardBg, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
+      <div style={{ background: C.cardBg, borderRadius: R.sm, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
         <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 12 }}>Push notifications — D7 retention</div>
         {[
           { label: "With push",    ...push_retention.push },
@@ -13503,8 +13526,8 @@ function FunnelTab({ data }) {
               <span style={{ ...T.bodyStrong, fontSize: 13, color: rateColor(rate) }}>{rate !== null ? `${rate}%` : "—"}</span>
             </div>
             {rate !== null && (
-              <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${rate}%`, background: rate >= 30 ? C.forest : "#92600A", borderRadius: 4 }} />
+              <div style={{ height: 8, background: "#E8F0EC", borderRadius: R.sm, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${rate}%`, background: rate >= 30 ? C.forest : "#92600A", borderRadius: R.sm}} />
               </div>
             )}
           </div>
@@ -13512,11 +13535,11 @@ function FunnelTab({ data }) {
       </div>
 
       {/* ── 14-day cohort table ── */}
-      <div style={{ background: C.cardBg, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 8 }}>
+      <div style={{ background: C.cardBg, borderRadius: R.sm, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 8 }}>
         <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 8 }}>14-day cohort table</div>
 
         {/* Bug fix banner */}
-        <div style={{ background: "#FFFBE6", border: "1px solid #F5C842", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: C.attentionText, lineHeight: 1.5 }}>
+        <div style={{ background: "#FFFBE6", border: "1px solid #F5C842", borderRadius: R.sm, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: C.attentionText, lineHeight: 1.5 }}>
           ⚠️ Bug fix deployed 24 Mar 2026 — cohorts before this date had broken onboarding. Use post-fix cohorts as your real product baseline.
         </div>
 
@@ -13590,7 +13613,7 @@ function ViewerAdminScreen() {
       {loading && <div style={{ color: C.stone, fontSize: 14 }}>Loading…</div>}
       {error   && <div style={{ color: "#8B1A1A", fontSize: 14 }}>Error: {error}</div>}
       {data && (
-        <div style={{ background: C.cardBg, borderRadius: 16, border: `1px solid ${C.sage}`, padding: "32px 24px", textAlign: "center" }}>
+        <div style={{ background: C.cardBg, borderRadius: R.sm, border: `1px solid ${C.sage}`, padding: "32px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 13, color: C.stone, marginBottom: 8 }}>Total signups</div>
           <div style={{ fontSize: 56, fontWeight: 900, color: C.forest, lineHeight: 1 }}>{data.totalSignups.toLocaleString()}</div>
           <div style={{ fontSize: 13, color: C.stone, marginTop: 8 }}>registered users</div>
@@ -13624,7 +13647,7 @@ function DemoAdminScreen() {
       <div style={{ ...T.displayLg, fontSize: 22, marginBottom: 4, color: C.ink }}>Demo tools</div>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>Reset this account back to the demo state</div>
 
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px" }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "20px" }}>
         <div style={{ ...T.displayMd, fontSize: 16, color: C.ink, marginBottom: 6 }}>Marketing reset</div>
         <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 16 }}>
           Wipes all crops, tasks and harvest logs and restores the demo garden to its default state. Use this before handing the phone to someone new.
@@ -13632,21 +13655,21 @@ function DemoAdminScreen() {
 
         {!confirm ? (
           <button onClick={() => setConfirm(true)}
-            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: 14, fontSize: 14, cursor: "pointer" }}>
             Reset demo garden
           </button>
         ) : (
           <div>
-            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: C.attentionText, lineHeight: 1.5 }}>
+            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: C.attentionText, lineHeight: 1.5 }}>
               ⚠️ This will wipe all current data and restore the demo garden. Are you sure?
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={runReset} disabled={resetting}
-                style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 12, fontSize: 14, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: R.sm, padding: 12, fontSize: 14, cursor: "pointer" }}>
                 {resetting ? "Resetting…" : "Yes, reset now"}
               </button>
               <button onClick={() => setConfirm(false)}
-                style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, color: "#666", cursor: "pointer" }}>
+                style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 12, fontSize: 14, color: "#666", cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -13654,12 +13677,12 @@ function DemoAdminScreen() {
         )}
 
         {result?.ok && (
-          <div style={{ marginTop: 14, background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.forest }}>
+          <div style={{ marginTop: 14, background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "12px 14px", fontSize: 13, color: C.forest }}>
             ✓ Demo garden reset — {result.crops} crops and {result.tasks} tasks restored
           </div>
         )}
         {result?.ok === false && (
-          <div style={{ marginTop: 14, background: "#fff0f0", border: "1px solid #f5c6c6", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.dangerText }}>
+          <div style={{ marginTop: 14, background: "#fff0f0", border: "1px solid #f5c6c6", borderRadius: R.sm, padding: "12px 14px", fontSize: 13, color: C.dangerText }}>
             ✗ Reset failed: {result.error}
           </div>
         )}
@@ -13741,7 +13764,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
           { id: "tools",    label: "🔧 Tools" },
         ].map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
-            style={{ ...T.control, padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+            style={{ ...T.control, padding: "8px 14px", borderRadius: R.full, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
             {t.label}
           </button>
         ))}
@@ -13768,7 +13791,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
         return (
           <div>
             {/* Hero strip */}
-            <div style={{ background: `linear-gradient(135deg, ${C.forest}, ${C.surfaceDark})`, borderRadius: 14, padding: "18px 20px", marginBottom: 16, color: "#fff" }}>
+            <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "18px 20px", marginBottom: 16, color: "#fff" }}>
               <div style={{ ...T.eyebrow, fontSize: 10, opacity: 0.6, marginBottom: 12 }}>Founder dashboard · live data</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 {[
@@ -13799,7 +13822,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 { id: "comms",      label: "Comms" },
               ].map(t => (
                 <button key={t.id} onClick={() => setMetricTab(t.id)}
-                  style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${metricTab === t.id ? C.forest : C.border}`, background: metricTab === t.id ? C.forest : "transparent", color: metricTab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  style={{ padding: "6px 14px", borderRadius: R.full, border: `1px solid ${metricTab === t.id ? C.forest : C.border}`, background: metricTab === t.id ? C.forest : "transparent", color: metricTab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                   {t.label}
                 </button>
               ))}
@@ -13825,7 +13848,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Flags needing attention</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   {[
                     { condition: actRate < 60,  label: `Activation ${actRate}% — users dropping off before first crop`, sug: SUGGESTIONS.activation, severity: actRate < 40 ? "red" : "amber" },
                     { condition: w4Ret && w4Ret < 15, label: `Week 4 retention ${w4Ret}% — habit not forming by day 28`, sug: SUGGESTIONS.week4retention, severity: "red" },
@@ -13844,7 +13867,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Investor snapshot</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="MAU" val={mau} sub="monthly active users (30 days)" />
                   <MetricRow label="MAU growth" val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} sub="week on week" highlight={metrics.wowGrowth > 0} />
                   <MetricRow label="DAU / MAU ratio" val={metrics.wauMauRatio || "—"} sub="stickiness · target 0.15+" highlight={parseFloat(metrics.wauMauRatio) >= 0.15} />
@@ -13858,7 +13881,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {metricTab === "growth" && (
               <div>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Acquisition</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Total signups" val={metrics.totalSignups} sub="everyone who registered" />
                   <MetricRow label="New this week" val={metrics.newSignupsWeek} />
                   <MetricRow label="Week-on-week growth" val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} highlight={metrics.wowGrowth > 0} />
@@ -13867,7 +13890,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Retention curve</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   {[
                     { label: "Week 1 retention", val: w1Ret ? `${w1Ret}%` : "—", pct: w1Ret, target: 30, sug: SUGGESTIONS.week1retention },
                     { label: "Week 4 retention", val: w4Ret ? `${w4Ret}%` : "—", pct: w4Ret, target: 15, sug: SUGGESTIONS.week4retention },
@@ -13880,15 +13903,15 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                           <span style={{ fontSize: 10, color: C.stone }}>target {r.target}%</span>
                         </div>
                       </div>
-                      <div style={{ height: 6, background: C.offwhite, borderRadius: 99, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${Math.min(100, r.pct || 0)}%`, background: (r.pct || 0) >= r.target ? C.forest : (r.pct || 0) >= r.target * 0.7 ? C.amber : C.red, borderRadius: 99 }} />
+                      <div style={{ height: 6, background: C.offwhite, borderRadius: R.full, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, r.pct || 0)}%`, background: (r.pct || 0) >= r.target ? C.forest : (r.pct || 0) >= r.target * 0.7 ? C.amber : C.red, borderRadius: R.full}} />
                       </div>
                     </div>
                   ))}
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Engagement</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="Weekly active users (WAU)" val={metrics.wau} />
                   <MetricRow label="Daily active users (DAU)" val={metrics.dau} />
                   <MetricRowWithFix label="DAU / WAU ratio" val={metrics.dauWauRatio || "—"} sub="target 0.25+"
@@ -13901,7 +13924,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {metricTab === "usage" && (
               <div>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Engagement</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Activated users" val={metrics.totalActivated} sub="completed onboarding" />
                   <MetricRowWithFix label="Activation rate" val={`${actRate}%`} sub="signup → first crop · target 60%"
                     status={status(actRate, 60, 40)} suggestion={actRate < 60 ? SUGGESTIONS.activation : null} />
@@ -13913,7 +13936,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Garden data</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Gardens created" val={metrics.totalLocations} />
                   <MetricRow label="Growing areas" val={metrics.totalAreas} />
                   <MetricRow label="Crop instances" val={metrics.totalCrops} />
@@ -13925,7 +13948,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Dataset</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="Crop varieties tracked" val={metrics.totalVarieties} />
                   <MetricRow label="Yield data points" val={metrics.yieldDataPoints} />
                 </div>
@@ -13942,7 +13965,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, lineHeight: 1.5 }}>
                   Did users do anything intentional in each window after their signup date? Binary per user. Day 1 excluded (onboarding noise).
                 </div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 55px", padding: "10px 14px", borderBottom: `1px solid ${C.border}`, background: C.offwhite }}>
                     {["Window", "Cohort", "Retained", "Rate"].map(h => (
                       <div key={h} style={{ ...T.eyebrow, fontSize: 10, color: C.stone, textAlign: h === "Window" ? "left" : "right" }}>{h}</div>
@@ -13972,7 +13995,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     );
                   })}
                 </div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 14px", marginBottom: 12 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 14px", marginBottom: 12 }}>
                   {[
                     { label: "D7",  rate: metrics.d7Retention,  raw: metrics.d7RetentionRaw },
                     { label: "D14", rate: metrics.d14Retention, raw: metrics.d14RetentionRaw },
@@ -13990,8 +14013,8 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                             {r != null ? `${r}%` : "—"}{thin ? " (small sample)" : ""}
                           </span>
                         </div>
-                        <div style={{ height: 8, background: C.border, borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${Math.min(r || 0, 100)}%`, background: colour, borderRadius: 4 }} />
+                        <div style={{ height: 8, background: C.border, borderRadius: R.sm, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${Math.min(r || 0, 100)}%`, background: colour, borderRadius: R.sm}} />
                         </div>
                       </div>
                     );
@@ -14004,7 +14027,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {metricTab === "comms" && (
               <div>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Push notifications</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRowWithFix label="Push opt-in rate" val={metrics.pushOptIn ? `${metrics.pushOptIn}%` : "—"} sub="of activated users · target 60%"
                     status={metrics.pushOptIn ? status(metrics.pushOptIn, 60, 40) : null}
                     suggestion={SUGGESTIONS.pushenabled} />
@@ -14031,7 +14054,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   const evening = metrics.pushCronLog7d.filter(r => r.window === "evening");
                   const avg = (rows, key) => rows.length ? Math.round(rows.reduce((s, r) => s + (r[key] || 0), 0) / rows.length) : 0;
                   return (
-                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                    <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                       <div style={{ padding: "10px 16px", borderBottom: `1px solid ${C.border}` }}>
                         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Morning push — 7d avg per run</div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
@@ -14069,7 +14092,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 })()}
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Email sequences</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Waitlist invites sent" val={metrics.emailWaitlistInvites || "—"} />
                   <MetricRow label="Feedback day 3 sent" val={metrics.emailFeedbackDay3 || "—"} />
                   <MetricRow label="Feedback day 7 sent" val={metrics.emailFeedbackDay7 || "—"} />
@@ -14079,7 +14102,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Email performance (30 days)</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Delivered" val={metrics.emailDelivered30d ?? "—"} />
                   <MetricRow label="Opened" val={metrics.emailOpened30d ?? "—"} />
                   <MetricRow label="Open rate" val={metrics.emailOpenRate30d != null ? `${metrics.emailOpenRate30d}%` : "—"} sub="opened / delivered"
@@ -14106,7 +14129,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 </div>
 
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Feedback</div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="Total submissions" val={metrics.totalFeedback || "—"} />
                   <MetricRow label="Average rating" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} highlight={metrics.avgRating >= 4} />
                 </div>
@@ -14132,7 +14155,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             <>
               <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{crops.length} crop{crops.length !== 1 ? "s" : ""} awaiting review</div>
               {crops.map(crop => (
-                <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 12 }}>
+                <div key={crop.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <div style={{ fontSize: 28 }}>{getCropEmoji(crop.name)}</div>
                     <div>
@@ -14150,7 +14173,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                       { label: "Sow method",   val: crop.sow_method || null },
                       { label: "Crop type",    val: crop.crop_type || null },
                     ].filter(r => r.val).map(r => (
-                      <div key={r.label} style={{ background: C.offwhite, borderRadius: 8, padding: "8px 10px" }}>
+                      <div key={r.label} style={{ background: C.offwhite, borderRadius: R.sm, padding: "8px 10px" }}>
                         <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone }}>{r.label}</div>
                         <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, marginTop: 1 }}>{r.val}</div>
                       </div>
@@ -14163,11 +14186,11 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => approve(crop.id)} disabled={acting === crop.id}
-                      style={{ ...T.control, flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 2, padding: "10px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
                       ✓ Approve
                     </button>
                     <button onClick={() => reject(crop.id)} disabled={acting === crop.id}
-                      style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.red}`, background: "transparent", color: C.dangerText, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "10px", borderRadius: R.sm, border: `1px solid ${C.red}`, background: "transparent", color: C.dangerText, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
                       ✕ Reject
                     </button>
                   </div>
@@ -14183,7 +14206,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
         <>
           <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{users.length} user{users.length !== 1 ? "s" : ""} signed up</div>
           {users.map(u => (
-            <div key={u.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+            <div key={u.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10 }}>
               <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink, marginBottom: 2 }}>{u.name || "No name set"}</div>
               <div style={{ fontSize: 12, color: C.stone }}>{u.email}</div>
               <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
@@ -14227,7 +14250,7 @@ const K = {
   // Pots
   pot:"#B06845", potL:"#C8845A", potD:"#8A4E32",
   // Greenhouse
-  gh:"#D5DBDA", ghS:"#AAB5B2",
+  gh:"#D5DBDA", ghS:"#AAB5B2"
 };
 
 // ── Seeded jitter for consistent crop variation ────────────────────────────────
@@ -15330,9 +15353,9 @@ function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, o
       style={{ display:"flex", alignItems:"flex-start", gap:12, paddingTop:10, paddingBottom:10, cursor:onTap?"pointer":"default" }}>
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:16, flexShrink:0, marginTop:3 }}>
         <div style={{
-          width:10, height:10, borderRadius:"50%",
+          width:10, height:10, borderRadius:R.full,
           background: isNext ? C.forest : isEmpty ? "#ddd" : C.sage,
-          border: isNext ? `2px solid ${C.forest}` : "2px solid transparent",
+          border: isNext ? `2px solid ${C.forest}` : "2px solid transparent"
         }} />
       </div>
       <div style={{ flex:1, minWidth:0 }}>
@@ -15358,9 +15381,9 @@ function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, o
   );
 
   return (
-    <div style={{ margin:"14px 0", background:"#F7FAF7", border:`1px solid #D4E8CE`, borderRadius:12, padding:"4px 14px", position:"relative" }}>
+    <div style={{ margin:"14px 0", background:"#F7FAF7", border:`1px solid #D4E8CE`, borderRadius:R.sm, padding:"4px 14px", position:"relative" }}>
       {/* Vertical connecting line between dots */}
-      <div style={{ position:"absolute", left:21, top:18, bottom:18, width:2, background:"#D4E8CE", borderRadius:1 }} />
+      <div style={{ position:"absolute", left:21, top:18, bottom:18, width:2, background:"#D4E8CE", borderRadius:R.sm}} />
 
       {hasLast && (
         <Row
@@ -15434,7 +15457,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
     try {
       const updated = await apiFetch(`/areas/${area.id}/soil-reading`, {
         method: "POST",
-        body: JSON.stringify({ type, value, source }),
+        body: JSON.stringify({ type, value, source })
       });
       onUpdated(updated);
       setActiveInput(null);
@@ -15468,7 +15491,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
             )}
           </div>
           <button onClick={() => { setActiveInput(isOpen ? null : type); setInputVal(""); setError(null); }}
-            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", flexShrink: 0, marginLeft: 12 }}>
+            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "4px 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", flexShrink: 0, marginLeft: 12 }}>
             {isOpen ? "Cancel" : "Update"}
           </button>
         </div>
@@ -15483,7 +15506,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
               <button key={opt.val}
                 onClick={() => logReading("moisture", opt.val, "manual")}
                 disabled={saving === "moisture"}
-                style={{ ...T.control, flex: 1, padding: "8px 4px", borderRadius: 8, border: `1px solid ${opt.color}`, background: "transparent", color: opt.color, fontSize: 13, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 1, padding: "8px 4px", borderRadius: R.sm, border: `1px solid ${opt.color}`, background: "transparent", color: opt.color, fontSize: 13, cursor: "pointer" }}>
                 {saving === "moisture" ? "…" : opt.label}
               </button>
             ))}
@@ -15498,11 +15521,11 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
                 type="number" inputMode="decimal" value={inputVal}
                 onChange={e => setInputVal(e.target.value)}
                 placeholder="e.g. 12"
-                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 14 }}
+                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 12px", fontSize: 14 }}
               />
               <button onClick={() => logReading("temperature", inputVal, "manual")}
                 disabled={!inputVal || saving === "temperature"}
-                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
+                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
                 {saving === "temperature" ? "…" : "Save"}
               </button>
             </div>
@@ -15517,11 +15540,11 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
                 type="number" inputMode="decimal" step="0.1" value={inputVal}
                 onChange={e => setInputVal(e.target.value)}
                 placeholder="e.g. 6.5"
-                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 14 }}
+                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 12px", fontSize: 14 }}
               />
               <button onClick={() => logReading("ph", inputVal, "manual")}
                 disabled={!inputVal || saving === "ph"}
-                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
+                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
                 {saving === "ph" ? "…" : "Save"}
               </button>
             </div>
@@ -15537,9 +15560,9 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 950, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 20px 44px", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto" }}
+      <div style={{ background: "#fff", borderRadius: R.sheet, width: "100%", maxWidth: 480, padding: "20px 20px 44px", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()} {...swipe}>
-        <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
+        <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: R.full, margin: "0 auto 20px" }} />
         <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>
           Soil conditions
         </div>
@@ -15585,7 +15608,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
   const swipe = useSwipeToDismiss(onClose);
   const baseColor = {
     raised_bed: K.timber, open_ground: K.groundLight,
-    greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop,
+    greenhouse: K.ghFrame, container: K.pot, polytunnel: K.tunnelHoop
   }[area.type] || K.groundLight;
   const hasDimensions = area.width_m && area.length_m;
   const sqm = hasDimensions ? (area.width_m * area.length_m).toFixed(1) : null;
@@ -15596,12 +15619,12 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
   return (
     <div style={{ position:"fixed", inset:0, zIndex:900, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}
       onClick={onClose}>
-      <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", width:"100%", maxWidth:480, maxHeight:"82vh", display:"flex", flexDirection:"column" }}
+      <div style={{ background:"#fff", borderRadius:R.sheet, width:"100%", maxWidth:480, maxHeight:"82vh", display:"flex", flexDirection:"column" }}
         onClick={e=>e.stopPropagation()} {...swipe}>
         <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 0" }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:"#ddd" }} />
+          <div style={{ width:36, height:4, borderRadius:R.sm, background:"#ddd" }} />
         </div>
-        <div style={{ margin:"12px 16px 0", borderRadius:14, padding:"14px 16px",
+        <div style={{ margin:"12px 16px 0", borderRadius:R.sm, padding:"14px 16px",
           background:`linear-gradient(135deg, ${baseColor}dd, ${baseColor}99)` }}>
           <div style={{ ...T.displayMd, fontSize:18, color:"rgba(255,255,255,0.9)" }}>
             {area.name.replace(/^"|"$/g,"")}
@@ -15612,7 +15635,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
           </div>
         </div>
         {!hasDimensions && (
-          <div style={{ margin:"10px 16px 0", background:"#fff8e6", border:"1px solid #f0d080", borderRadius:10, padding:"8px 12px", fontSize:12, color:C.attentionText, fontWeight:600 }}>
+          <div style={{ margin:"10px 16px 0", background:"#fff8e6", border:"1px solid #f0d080", borderRadius:R.sm, padding:"8px 12px", fontSize:12, color:C.attentionText, fontWeight:600 }}>
             📐 Add dimensions in Garden tab for accurate scale
           </div>
         )}
@@ -15630,7 +15653,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
                 <div style={{ ...T.displayMd, fontSize:15, color:C.ink }}>{crop.name}</div>
                 {crop.variety && <div style={{ fontSize:12, color:C.stone }}>{typeof crop.variety==="object"?crop.variety.name:crop.variety}</div>}
               </div>
-              <div style={{ ...T.bodyStrong, fontSize:11, color:statusText[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
+              <div style={{ ...T.bodyStrong, fontSize:11, color:statusText[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:R.full, padding:"3px 10px", flexShrink:0 }}>
                 {statusLabel[crop.status]||crop.status||"Growing"}
               </div>
             </div>
@@ -15645,7 +15668,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
           />
 
           {lockedAssignment && (
-            <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:12 }}>
+            <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:R.sm}}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <span style={{ fontSize:13 }}>🔒</span>
                 <div style={{ ...T.eyebrow, fontSize:11, color:C.forest }}>
@@ -15659,11 +15682,11 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
             </div>
           )}
 
-          <div style={{ marginTop:20, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"14px 16px" }}>
+          <div style={{ marginTop:20, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:R.sm, padding:"14px 16px" }}>
             <div style={{ ...T.eyebrow, fontSize:11, color:C.stone, marginBottom:12 }}>Area insights</div>
             <div style={{ display:"flex", gap:8 }}>
               {[["📊","Yield"],["🔄","Rotation"],["📐","Space"]].map(([icon,label])=>(
-                <div key={label} style={{ flex:1, background:"#fff", border:"1px solid #E3E7E1", borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
+                <div key={label} style={{ flex:1, background:"#fff", border:"1px solid #E3E7E1", borderRadius:R.sm, padding:"10px 6px", textAlign:"center" }}>
                   <div style={{ fontSize:16, marginBottom:4, opacity:0.55 }}>{icon}</div>
                   <div style={{ fontSize:10, color:C.stone, marginBottom:4 }}>{label}</div>
                   <div style={{ fontSize:10, fontWeight:700, color:C.stone }}>🔒 Pro</div>
@@ -15688,7 +15711,7 @@ function PlanBadge({ status }) {
       display: "inline-block",
       fontSize: 9,
       padding: "2px 7px",
-      borderRadius: 20,
+      borderRadius: R.full,
       background: PLAN_STATUS_COLOUR[status] + "22",
       color: PLAN_STATUS_COLOUR[status],
       border: `1px solid ${PLAN_STATUS_COLOUR[status]}44`
@@ -15717,8 +15740,8 @@ function ScoreBar({ label, value, max = 10, colour = C.forest }) {
         <div style={{ ...T.eyebrow, fontSize:10, color:C.stone }}>{label}</div>
         <div style={{ fontSize:10, fontWeight:700, color:colour }}>{value}/{max}</div>
       </div>
-      <div style={{ height:4, borderRadius:99, background:"#E8EDE8", overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${(value/max)*100}%`, background:colour, borderRadius:99, transition:"width 0.4s" }} />
+      <div style={{ height:4, borderRadius:R.full, background:"#E8EDE8", overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${(value/max)*100}%`, background:colour, borderRadius:R.full, transition:"width 0.4s" }} />
       </div>
     </div>
   );
@@ -15732,16 +15755,16 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
 
   return (
     <div onClick={() => onSelect(index)}
-      style={{ borderRadius:16, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour+"08" : "#fff", padding:"16px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", marginBottom:10 }}>
+      style={{ borderRadius:R.sm, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour+"08" : "#fff", padding:"16px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ ...T.displayMd, fontSize:15, color:C.ink }}>{option.name}</div>
           {recommended && (
-            <div style={{ fontSize:10, fontWeight:700, color:"#fff", background:C.forest, borderRadius:99, padding:"2px 7px" }}>Recommended</div>
+            <div style={{ fontSize:10, fontWeight:700, color:"#fff", background:C.forest, borderRadius:R.full, padding:"2px 7px" }}>Recommended</div>
           )}
         </div>
-        <div style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour : "#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          {isSelected && <div style={{ width:8, height:8, borderRadius:"50%", background:"#fff" }} />}
+        <div style={{ width:20, height:20, borderRadius:R.full, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour : "#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          {isSelected && <div style={{ width:8, height:8, borderRadius:R.full, background:"#fff" }} />}
         </div>
       </div>
 
@@ -15751,7 +15774,7 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
 
       {/* Performance strip — show if new metrics exist, else fall back to score bars */}
       {m.harvest_kg != null ? (
-        <div style={{ display:"flex", background:"#f8faf8", borderRadius:10, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
+        <div style={{ display:"flex", background:"#f8faf8", borderRadius:R.sm, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
           {[
             { label:"Harvest",    value: `${m.harvest_kg}kg` },
             { label:"Shop Value", value: m.shop_value_gbp != null ? `£${Math.round(m.shop_value_gbp)}` : "—" },
@@ -15879,9 +15902,9 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
+      <div style={{ width:"100%", background:"#fff", borderRadius:R.sheet, padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
         {...swipe}>
-        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:R.full, margin:"0 auto 16px" }} />
         <div style={{ ...T.displayMd, fontSize:17, marginBottom:16 }}>Compare plans</div>
 
         {/* Plan selector buttons */}
@@ -15892,7 +15915,7 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
                 ...T.control,
                 flex:1,
                 padding:"10px 4px",
-                borderRadius:10,
+                borderRadius:R.sm,
                 border:"none",
                 cursor:"pointer",
                 background: i===selectedIdx ? C.forest : "#f0f4f0",
@@ -15994,18 +16017,18 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
     onApply({
       infrastructure_type:       selected,
       infrastructure_cost_label: result.cost?.cost_range_label || null,
-      roi_summary: { size, yield_gain_kg: result.gains?.harvest_kg_delta, value_gain_gbp: result.gains?.value_gbp_delta, payback_seasons: result.roi?.payback_seasons, confidence: result.roi?.confidence },
+      roi_summary: { size, yield_gain_kg: result.gains?.harvest_kg_delta, value_gain_gbp: result.gains?.value_gbp_delta, payback_seasons: result.roi?.payback_seasons, confidence: result.roi?.confidence }
     });
     setApplied(true);
   };
 
   if (!isPro) return (
-    <div style={{ marginTop:20, padding:"16px 14px", background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14 }}>
+    <div style={{ marginTop:20, padding:"16px 14px", background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:R.sm}}>
       <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink, marginBottom:4 }}>🏡 Improve your garden</div>
       <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:10 }}>
         See whether adding a greenhouse, raised bed or irrigation could increase harvest and value — with payback estimates.
       </div>
-      <div style={{ fontSize:11, color:C.stone, padding:"7px 10px", background:"#fff", borderRadius:8, border:"1px solid #E3E7E1", textAlign:"center" }}>🔒 Pro feature</div>
+      <div style={{ fontSize:11, color:C.stone, padding:"7px 10px", background:"#fff", borderRadius:R.sm, border:"1px solid #E3E7E1", textAlign:"center" }}>🔒 Pro feature</div>
     </div>
   );
 
@@ -16021,7 +16044,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
         {INFRA_TYPES.map(t => (
           <button key={t.id} onClick={() => handleSelect(t.id)}
-            style={{ padding:"10px 10px 8px", borderRadius:12, border:`1.5px solid ${selected===t.id?C.forest:C.border}`, background:selected===t.id?"#F0F5F3":"#fff", cursor:"pointer", textAlign:"left" }}>
+            style={{ padding:"10px 10px 8px", borderRadius:R.sm, border:`1.5px solid ${selected===t.id?C.forest:C.border}`, background:selected===t.id?"#F0F5F3":"#fff", cursor:"pointer", textAlign:"left" }}>
             <div style={{ fontSize:20, marginBottom:3 }}>{t.emoji}</div>
             <div style={{ ...T.bodyStrong, fontSize:12, color:C.ink, marginBottom:2 }}>{t.label}</div>
             <div style={{ fontSize:10, color:C.stone, lineHeight:1.4 }}>{t.benefit}</div>
@@ -16030,10 +16053,10 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
       </div>
 
       {loading && <div style={{ textAlign:"center", padding:"20px 0", color:C.stone, fontSize:13 }}>Modelling…</div>}
-      {err && <div style={{ fontSize:12, color:C.dangerText, padding:"8px 12px", background:"#fff0f0", borderRadius:8, marginBottom:10 }}>{err}</div>}
+      {err && <div style={{ fontSize:12, color:C.dangerText, padding:"8px 12px", background:"#fff0f0", borderRadius:R.sm, marginBottom:10 }}>{err}</div>}
 
       {result && !loading && (
-        <div style={{ background:"#F7F8F5", border:`1.5px solid ${C.forest}44`, borderRadius:14, overflow:"hidden", marginBottom:10 }}>
+        <div style={{ background:"#F7F8F5", border:`1.5px solid ${C.forest}44`, borderRadius:R.sm, overflow:"hidden", marginBottom:10 }}>
 
           {result.incompatible ? (
             <div style={{ padding:"14px", fontSize:12, color:C.stone, lineHeight:1.5 }}>
@@ -16047,7 +16070,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                 <div style={{ fontSize:11, color:C.stone, fontWeight:600 }}>Size:</div>
                 {["small","medium","large"].map(s => (
                   <button key={s} onClick={() => handleSizeChange(s)}
-                    style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${size===s?C.forest:C.border}`, background:size===s?C.forest:"#fff", color:size===s?"#fff":C.stone, fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                    style={{ padding:"4px 10px", borderRadius:R.full, border:`1px solid ${size===s?C.forest:C.border}`, background:size===s?C.forest:"#fff", color:size===s?"#fff":C.stone, fontSize:11, fontWeight:600, cursor:"pointer" }}>
                     {s.charAt(0).toUpperCase()+s.slice(1)}
                   </button>
                 ))}
@@ -16058,7 +16081,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                 <div style={{ padding:"8px 14px 0", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
                   <div style={{ fontSize:11, color:C.stone, fontWeight:600 }}>Areas:</div>
                   <button onClick={() => { setTargetIds([]); runModel(selected, size, [], customCost); }}
-                    style={{ padding:"3px 9px", borderRadius:20, border:`1px solid ${targetIds.length===0?C.forest:C.border}`, background:targetIds.length===0?C.forest:"#fff", color:targetIds.length===0?"#fff":C.stone, fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                    style={{ padding:"3px 9px", borderRadius:R.full, border:`1px solid ${targetIds.length===0?C.forest:C.border}`, background:targetIds.length===0?C.forest:"#fff", color:targetIds.length===0?"#fff":C.stone, fontSize:11, fontWeight:600, cursor:"pointer" }}>
                     All
                   </button>
                   {rotatableAreas.map(a => {
@@ -16069,7 +16092,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                         setTargetIds(next);
                         runModel(selected, size, next, customCost);
                       }}
-                        style={{ padding:"3px 9px", borderRadius:20, border:`1px solid ${isOn?C.forest:C.border}`, background:isOn?C.forest:"#fff", color:isOn?"#fff":C.stone, fontSize:11, fontWeight:600, cursor:"pointer", maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        style={{ padding:"3px 9px", borderRadius:R.full, border:`1px solid ${isOn?C.forest:C.border}`, background:isOn?C.forest:"#fff", color:isOn?"#fff":C.stone, fontSize:11, fontWeight:600, cursor:"pointer", maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                         {a.name?.replace(/^"|"$/g,"")}
                       </button>
                     );
@@ -16094,12 +16117,12 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
               {/* Effort + season pills */}
               <div style={{ padding:"0 14px 10px", display:"flex", gap:8, flexWrap:"wrap" }}>
                 {result.gains?.effort_change?.direction && (
-                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:8, padding:"5px 9px", border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:R.sm, padding:"5px 9px", border:`1px solid ${C.border}` }}>
                     {result.gains.effort_change.direction==="easier"?"✅":result.gains.effort_change.direction==="harder"?"⚠️":"⚖️"} {result.gains.effort_change.note}
                   </div>
                 )}
                 {result.gains?.season_extension?.label && (
-                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:8, padding:"5px 9px", border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.stone, background:"#fff", borderRadius:R.sm, padding:"5px 9px", border:`1px solid ${C.border}` }}>
                     📅 {result.gains.season_extension.label}
                   </div>
                 )}
@@ -16111,7 +16134,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                   <div style={{ fontSize:11, color:C.stone, fontWeight:600, marginBottom:4 }}>Crops you can now grow reliably:</div>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
                     {result.gains.crop_unlocks.map(crop => (
-                      <span key={crop} style={{ fontSize:11, padding:"3px 8px", background:"#fff", border:`1px solid ${C.border}`, borderRadius:20, color:C.ink }}>{crop}</span>
+                      <span key={crop} style={{ fontSize:11, padding:"3px 8px", background:"#fff", border:`1px solid ${C.border}`, borderRadius:R.full, color:C.ink }}>{crop}</span>
                     ))}
                   </div>
                 </div>
@@ -16155,7 +16178,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                     <input type="number" value={customCost} placeholder={String(result.cost?.assumed_gbp||"")}
                       onChange={e => setCustomCost(e.target.value)}
                       onBlur={() => { if (customCost) runModel(selected, size, targetIds, customCost); }}
-                      style={{ width:80, padding:"5px 8px", borderRadius:8, border:`1px solid ${C.border}`, fontSize:12, outline:"none" }} />
+                      style={{ width:80, padding:"5px 8px", borderRadius:R.sm, border:`1px solid ${C.border}`, fontSize:12, outline:"none" }} />
                   </div>
                 </div>
               </details>
@@ -16168,7 +16191,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                   </div>
                 ) : (
                   <button onClick={handleApply}
-                    style={{ ...T.control, width:"100%", padding:"12px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:13, cursor:"pointer" }}>
+                    style={{ ...T.control, width:"100%", padding:"12px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:13, cursor:"pointer" }}>
                     {planContext ? "Apply to this plan" : "Note this for my plan"}
                   </button>
                 )}
@@ -16201,7 +16224,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   useEffect(() => {
     apiFetch("/plans/generate", {
       method: "POST",
-      body: JSON.stringify({ location_id: locationId }),
+      body: JSON.stringify({ location_id: locationId })
     }).then(r => {
       setBaseline(r.baseline);
       setPlan(r.plan);
@@ -16220,8 +16243,8 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           location_id:   locationId,
           year_round:    yr,
           improve_count: ic,
-          preference:    pref,
-        }),
+          preference:    pref
+        })
       });
       setBaseline(r.baseline);
       setPlan(r.plan);
@@ -16236,7 +16259,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     try {
       const created = await apiFetch("/plans", {
         method: "POST",
-        body: JSON.stringify({ location_id: locationId, name: planName.trim() || planToSave.label || "My plan" }),
+        body: JSON.stringify({ location_id: locationId, name: planName.trim() || planToSave.label || "My plan" })
       });
       for (const a of planToSave.assignments) {
         await apiFetch(`/plans/${created.id}/assignments`, {
@@ -16244,8 +16267,8 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           body: JSON.stringify({
             area_id:            a.area_id,
             crop_definition_id: a.crop_definition_id || a.crop_def_id || null,
-            crop_name:          a.crop_name,
-          }),
+            crop_name:          a.crop_name
+          })
         });
       }
       onSave(created);
@@ -16255,9 +16278,9 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const Sheet = ({ children, onBack }) => (
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
+      <div style={{ width:"100%", background:"#fff", borderRadius:R.sheet, padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
         {...swipe}>
-        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:R.full, margin:"0 auto 16px" }} />
         {onBack && (
           <button onClick={onBack} style={{ background:"none", border:"none", color:C.stone, fontSize:20, cursor:"pointer", padding:0, marginBottom:8 }}>←</button>
         )}
@@ -16269,7 +16292,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── Generating spinner ──────────────────────────────────────────────────────
   if (step === "generating") return (
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#fff", borderRadius:20, padding:"36px 28px", textAlign:"center", maxWidth:280 }}>
+      <div style={{ background:"#fff", borderRadius:R.overlay, padding:"36px 28px", textAlign:"center", maxWidth:280 }}>
         <div style={{ fontSize:36, marginBottom:12 }}>🌱</div>
         <div style={{ ...T.displayMd, fontSize:17, marginBottom:8 }}>Working out your rotation…</div>
         <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Keeping your crops, just moving them to better beds</div>
@@ -16279,7 +16302,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
 
   if (step === "error") return (
     <Sheet onBack={onClose}>
-      <div style={{ fontSize:13, color:C.dangerText, padding:"12px 14px", background:"#FFF0F0", borderRadius:10 }}>
+      <div style={{ fontSize:13, color:C.dangerText, padding:"12px 14px", background:"#FFF0F0", borderRadius:R.sm}}>
         Couldn't generate plan: {err}
       </div>
     </Sheet>
@@ -16289,7 +16312,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   const MetricsStrip = ({ metrics, colour = C.forest }) => {
     if (!metrics) return null;
     return (
-      <div style={{ display:"flex", background:"#f8faf8", borderRadius:10, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
+      <div style={{ display:"flex", background:"#f8faf8", borderRadius:R.sm, marginBottom:12, overflow:"hidden", border:`1px solid ${C.border}` }}>
         {[
           { label:"Harvest",    value: metrics.harvest_kg     != null ? `${metrics.harvest_kg}kg`       : "—" },
           { label:"Shop Value", value: metrics.shop_value_gbp != null ? `£${metrics.shop_value_gbp}`    : "—" },
@@ -16328,12 +16351,12 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         value={planName}
         onChange={e => setPlanName(e.target.value)}
         placeholder="e.g. My rotated garden"
-        style={{ ...T.bodyStrong, width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, outline:"none" }}
+        style={{ ...T.bodyStrong, width:"100%", padding:"12px 14px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, outline:"none" }}
         autoFocus
       />
-      {err && <div style={{ fontSize:12, color:C.dangerText, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
+      {err && <div style={{ fontSize:12, color:C.dangerText, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:R.sm}}>{err}</div>}
       <button onClick={handleSave} disabled={saving || !planName.trim()}
-        style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:saving || !planName.trim() ? "not-allowed" : "pointer", opacity: saving || !planName.trim() ? 0.6 : 1 }}>
+        style={{ ...T.control, width:"100%", padding:"14px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:saving || !planName.trim() ? "not-allowed" : "pointer", opacity: saving || !planName.trim() ? 0.6 : 1 }}>
         {saving ? "Saving plan…" : "Save plan"}
       </button>
     </Sheet>
@@ -16349,7 +16372,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
       <MetricsStrip metrics={baseline?.metrics} />
       <AssignmentList assignments={baseline?.assignments} />
       {tip && (
-        <div style={{ marginTop:12, fontSize:12, color:C.stone, fontStyle:"italic", padding:"10px 12px", background:"#f5f8f5", borderRadius:10, borderLeft:`3px solid ${C.forest}` }}>
+        <div style={{ marginTop:12, fontSize:12, color:C.stone, fontStyle:"italic", padding:"10px 12px", background:"#f5f8f5", borderRadius:R.sm, borderLeft:`3px solid ${C.forest}` }}>
           💡 {tip}
         </div>
       )}
@@ -16357,11 +16380,11 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
       <div style={{ ...T.bodyStrong, fontSize:14, color:C.ink, marginBottom:4 }}>Want to improve this?</div>
       <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>We can make a few targeted changes to get more from your garden.</div>
       <button onClick={() => setStep("ask_year_round")}
-        style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer", marginBottom:10 }}>
+        style={{ ...T.control, width:"100%", padding:"14px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer", marginBottom:10 }}>
         Yes, improve it →
       </button>
       <button onClick={() => { const p = { ...baseline, label: "Your rotated garden" }; planToSaveRef.current = p; setPlan(p); setPlanName("My rotated garden"); setStep("name"); }}
-        style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:C.ink, fontSize:14, fontWeight:600, cursor:"pointer" }}>
+        style={{ width:"100%", padding:"13px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, background:"#fff", color:C.ink, fontSize:14, fontWeight:600, cursor:"pointer" }}>
         Use this plan as-is
       </button>
       {err && <div style={{ fontSize:12, color:C.dangerText, marginTop:8 }}>{err}</div>}
@@ -16388,7 +16411,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
             setStep("ask_improve");
           }
         }}
-          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <div>
             <div style={{ ...T.bodyStrong, fontSize:14, color:C.ink, marginBottom:2 }}>{opt.label}</div>
             <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
@@ -16419,7 +16442,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
             setStep("ask_preference");
           }
         }}
-          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <div>
             <div style={{ ...T.bodyStrong, fontSize:14, color:C.ink, marginBottom:2 }}>{opt.label}</div>
             <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
@@ -16443,7 +16466,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           setPreference(opt.value);
           fetchEnhanced(yearRound, improveCount, opt.value);
         }}
-          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
+          style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <span style={{ fontSize:24, flexShrink:0 }}>{opt.emoji}</span>
           <div>
             <div style={{ ...T.bodyStrong, fontSize:14, color:C.ink, marginBottom:2 }}>{opt.label}</div>
@@ -16472,7 +16495,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         {hasChanges && (
           <div style={{ marginBottom:14 }}>
             {(plan.improvements||[]).map((imp,i) => (
-              <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5f8f5", borderRadius:10, borderLeft:`3px solid ${C.forest}` }}>
+              <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5f8f5", borderRadius:R.sm, borderLeft:`3px solid ${C.forest}` }}>
                 <div style={{ flex:1 }}>
                   <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink }}>
                     {imp.area_name} → <span style={{ color:C.forest }}>{imp.to_crop}</span>
@@ -16484,7 +16507,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
               </div>
             ))}
             {(plan.gap_fills||[]).map((gf,i) => (
-              <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5fbf5", borderRadius:10, borderLeft:`3px solid #4a9a60` }}>
+              <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5fbf5", borderRadius:R.sm, borderLeft:`3px solid #4a9a60` }}>
                 <div style={{ flex:1 }}>
                   <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink }}>
                     {gf.area_name} + <span style={{ color:C.positiveText }}>{gf.crop_name}</span>
@@ -16498,7 +16521,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
 
         {/* No gap fills found message */}
         {yearRound && !hasChanges && (
-          <div style={{ marginBottom:14, padding:"10px 14px", background:"#f8f8f8", borderRadius:10, fontSize:12, color:C.stone, lineHeight:1.5 }}>
+          <div style={{ marginBottom:14, padding:"10px 14px", background:"#f8f8f8", borderRadius:R.sm, fontSize:12, color:C.stone, lineHeight:1.5 }}>
             We looked for crops to fill the gaps between your harvests and next year&apos;s sowing dates, but couldn&apos;t find anything that fits cleanly. Your beds are well used — there&apos;s not much empty time to fill.
           </div>
         )}
@@ -16508,7 +16531,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           <summary style={{ fontSize:12, color:C.stone, cursor:"pointer", listStyle:"none", display:"flex", gap:4, alignItems:"center" }}>
             <span>Compare with rotated baseline</span><span style={{ fontSize:9 }}>▼</span>
           </summary>
-          <div style={{ marginTop:10, padding:"12px 14px", background:"#f8f8f8", borderRadius:10 }}>
+          <div style={{ marginTop:10, padding:"12px 14px", background:"#f8f8f8", borderRadius:R.sm}}>
             <div style={{ fontSize:12, fontWeight:600, color:C.stone, marginBottom:8 }}>Baseline</div>
             <MetricsStrip metrics={baseline?.metrics} colour={C.stone} />
             <AssignmentList assignments={baseline?.assignments} />
@@ -16528,11 +16551,11 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         {err && <div style={{ fontSize:12, color:C.dangerText, marginBottom:8 }}>{err}</div>}
 
         <button onClick={() => setStep("ask_year_round")}
-          style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:C.ink, fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
+          style={{ width:"100%", padding:"12px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, background:"#fff", color:C.ink, fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
           ← Adjust options
         </button>
         <button onClick={() => { setPlanName(plan?.label || "My improved garden"); setStep("name"); }}
-          style={{ ...T.control, width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer" }}>
+          style={{ ...T.control, width:"100%", padding:"15px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer" }}>
           Use this plan →
         </button>
       </Sheet>
@@ -16587,14 +16610,14 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9100, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end" }}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
-      <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}
+      <div style={{ width:"100%", background:"#fff", borderRadius:R.sheet, padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}
         {...swipe}>
-        <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
+        <div style={{ width:36, height:4, background:"#ddd", borderRadius:R.full, margin:"0 auto 20px" }} />
         <div style={{ ...T.displayMd, fontSize:17, marginBottom:2 }}>Plan crop for {area.name}</div>
         <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>In: {plan.name}</div>
 
         {selectedDef && (
-          <div style={{ display:"flex", alignItems:"center", gap:10, background:"#F0F5F3", borderRadius:12, padding:"10px 14px", marginBottom:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, background:"#F0F5F3", borderRadius:R.sm, padding:"10px 14px", marginBottom:14 }}>
             <div style={{ fontSize:22 }}>{selectedDef.emoji || "🌱"}</div>
             <div style={{ flex:1 }}>
               <div style={{ ...T.bodyStrong, fontSize:14 }}>{selectedDef.name}</div>
@@ -16610,10 +16633,10 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
               value={query} onChange={e=>{ setQuery(e.target.value); setSelected(null); }}
               placeholder="Search crops…"
               autoFocus
-              style={{ width:"100%", boxSizing:"border-box", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${C.border}`, fontSize:14, outline:"none", marginBottom:8 }}
+              style={{ width:"100%", boxSizing:"border-box", padding:"12px 14px", borderRadius:R.sm, border:`1.5px solid ${C.border}`, fontSize:14, outline:"none", marginBottom:8 }}
             />
             {filtered.length > 0 && (
-              <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"hidden", marginBottom:12 }}>
+              <div style={{ borderRadius:R.sm, border:`1px solid ${C.border}`, overflow:"hidden", marginBottom:12 }}>
                 {filtered.map((c,i) => (
                   <button key={c.id} onClick={()=>{ setSelected(c.id); setQuery(c.name); }}
                     style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", border:"none", borderTop:i>0?`1px solid ${C.border}`:"none", background:"#fff", cursor:"pointer", textAlign:"left" }}>
@@ -16629,12 +16652,12 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
         <div style={{ display:"flex", gap:8 }}>
           {currentAssignment?.id && (
             <button onClick={handleRemove} disabled={removing}
-              style={{ ...T.control, flex:1, padding:"13px", borderRadius:14, border:`1.5px solid ${C.red}`, background:"#fff", color:C.dangerText, fontSize:14, cursor:"pointer" }}>
+              style={{ ...T.control, flex:1, padding:"13px", borderRadius:R.sm, border:`1.5px solid ${C.red}`, background:"#fff", color:C.dangerText, fontSize:14, cursor:"pointer" }}>
               {removing ? "Removing…" : "Remove"}
             </button>
           )}
           <button onClick={handleSave} disabled={saving || (!selected && !query.trim())}
-            style={{ ...T.control, flex:2, padding:"13px", borderRadius:14, border:"none", background:(selected||query.trim())?C.forest:"#ccc", color:"#fff", fontSize:14, cursor:(selected||query.trim())?"pointer":"default" }}>
+            style={{ ...T.control, flex:2, padding:"13px", borderRadius:R.sm, border:"none", background:(selected||query.trim())?C.forest:"#ccc", color:"#fff", fontSize:14, cursor:(selected||query.trim())?"pointer":"default" }}>
             {saving ? "Saving…" : currentAssignment?.id ? "Update" : "Assign crop"}
           </button>
         </div>
@@ -16666,8 +16689,8 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         <span style={{ fontSize: 12, color: C.stone }}>{label}</span>
         <span style={{ fontSize: 12, fontWeight: 700, color: scoreText(val) }}>{val}{suffix}</span>
       </div>
-      <div style={{ height: 5, background: C.border, borderRadius: 99 }}>
-        <div style={{ height: "100%", width: `${val}%`, background: scoreColor(val), borderRadius: 99, transition: "width 0.5s ease" }} />
+      <div style={{ height: 5, background: C.border, borderRadius: R.full}}>
+        <div style={{ height: "100%", width: `${val}%`, background: scoreColor(val), borderRadius: R.full, transition: "width 0.5s ease" }} />
       </div>
     </div>
   );
@@ -16682,7 +16705,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   // ── Live mode ──────────────────────────────────────────────────────────────
   if (!isPlanMode) {
     if (healthLoading) return (
-      <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 14}}>
         <div style={{ fontSize: 12, color: C.stone }}>Calculating garden health…</div>
       </div>
     );
@@ -16714,33 +16737,33 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         task_adherence: {
           strong: { min: 70, text: "You're keeping on top of key garden tasks" },
           medium: { min: 50, text: "You're making steady progress on garden jobs" },
-          hide:   40,
+          hide:   40
         },
         timing_adherence: {
           strong: { min: 70, text: "Your timing is lining up well with the season" },
           medium: { min: 45, text: "Your plan is broadly in step with the season" },
-          hide:   45,
+          hide:   45
         },
         observation_freshness: {
           strong: { min: 65, text: "You're keeping crop updates current" },
           medium: { min: 40, text: "You've added some recent crop updates" },
-          hide:   40,
+          hide:   40
         },
         crop_condition: {
           strong: { min: 70, text: "Your crops are showing healthy signals" },
           medium: { min: 45, text: "Some crops are showing encouraging signs" },
-          hide:   45,
+          hide:   45
         },
         weather_suitability: {
           strong: { min: 70, text: "Your garden is responding well to current conditions" },
           medium: { min: 50, text: "Your setup is reasonably aligned with current weather" },
-          hide:   50,
+          hide:   50
         },
         soil_data_quality: {
           strong: { min: 60, text: "You've added useful soil detail" },
           medium: { min: 35, text: "You've started building useful soil detail" },
-          hide:   35,
-        },
+          hide:   35
+        }
       };
       // Priority order: user-action-driven first
       const priority = ["task_adherence", "timing_adherence", "observation_freshness", "crop_condition", "soil_data_quality", "weather_suitability"];
@@ -16816,7 +16839,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
     const improvItems    = hasComponents ? getImprovementItems(components) : getFallbackImprovements();
 
     return (
-      <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 14}}>
         {/* Header */}
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Garden health</div>
 
@@ -16855,7 +16878,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
 
         {/* Needs attention soon — urgent only */}
         {urgentItems.length > 0 && (
-          <div style={{ marginBottom: 12, background: "#FFF8ED", borderRadius: 10, padding: "10px 12px" }}>
+          <div style={{ marginBottom: 12, background: "#FFF8ED", borderRadius: R.sm, padding: "10px 12px" }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 6 }}>Needs attention soon</div>
             {urgentItems.map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: C.attentionText, marginBottom: i < urgentItems.length - 1 ? 6 : 0 }}>
@@ -16905,7 +16928,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
             <LockRow label="Crop observation freshness" />
             <LockRow label="Soil data quality" />
             <button onClick={onUpgrade}
-              style={{ ...T.control, width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, cursor: "pointer" }}>
+              style={{ ...T.control, width: "100%", marginTop: 6, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, cursor: "pointer" }}>
               Unlock deeper garden insights
             </button>
           </div>
@@ -16920,14 +16943,14 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   const isCommitted = selectedPlan.status === "committed";
 
   if (planQualityLoading) return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+    <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 14}}>
       <div style={{ fontSize: 12, color: C.stone }}>Calculating plan quality…</div>
     </div>
   );
 
   // No plan quality data yet — show simple placeholder
   if (!planQuality) return (
-    <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: 14, padding: "16px 18px", marginTop: 14 }}>
+    <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: R.sm, padding: "16px 18px", marginTop: 14 }}>
       <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Plan quality</div>
       <div style={{ fontSize: 13, color: C.stone }}>
         {isCommitted ? "This plan is locked in for next season." : "Assign crops to areas to build out this plan."}
@@ -16939,7 +16962,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   const labelColor = label === "Strong" ? C.leaf : label === "Good" ? C.forest : label === "Balanced" ? C.amber : C.red;
 
   return (
-    <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: 14, padding: "16px 18px", marginTop: 14 }}>
+    <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: R.sm, padding: "16px 18px", marginTop: 14 }}>
       {/* Score + label */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <div>
@@ -17000,7 +17023,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
           <LockRow label="Space efficiency" />
           <LockRow label="Yield potential" />
           <button onClick={onUpgrade}
-            style={{ ...T.control, width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", marginTop: 6, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, cursor: "pointer" }}>
             Unlock deeper plan insights
           </button>
         </div>
@@ -17020,7 +17043,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
 
     if (committedPlan) {
       return (
-        <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 12}}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
             Coming next
           </div>
@@ -17031,7 +17054,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
             {committedPlan.name} is locked in. Prep and sowing tasks will be generated from it when your current season ends.
           </div>
           <button onClick={() => onViewPlan(committedPlan.id)}
-            style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", padding: "11px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
             View next plan
           </button>
         </div>
@@ -17041,7 +17064,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
     if (hasDrafts) {
       const firstDraft = locPlans.find(p => p.status === "draft");
       return (
-        <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 12}}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
             Coming next
           </div>
@@ -17052,7 +17075,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
             You have draft plans but none are locked in yet. Review and commit a plan to start generating next season's tasks.
           </div>
           <button onClick={() => onViewPlan(firstDraft.id)}
-            style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", padding: "11px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
             Review plans
           </button>
         </div>
@@ -17061,7 +17084,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
 
     // No plans at all
     return (
-      <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+      <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", marginTop: 12 }}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
           Coming next
         </div>
@@ -17072,7 +17095,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
           Create a rotation plan now to improve your garden year on year and get ahead of next season's sowing.
         </div>
         <button onClick={onCreatePlan}
-          style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
+          style={{ ...T.control, width: "100%", padding: "11px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
           Create a plan
         </button>
       </div>
@@ -17084,7 +17107,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
 
   if (selectedPlan.status === "committed") {
     return (
-      <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+      <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", marginTop: 12 }}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
           This is your locked next plan
         </div>
@@ -17092,7 +17115,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
           This plan will become active when your current season ends. Prep and sowing tasks will be generated from it automatically.
         </div>
         <button onClick={onViewLive}
-          style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "#fff", color: C.forest, fontSize: 13, cursor: "pointer" }}>
+          style={{ ...T.control, width: "100%", padding: "11px", borderRadius: R.sm, border: `1px solid ${C.forest}`, background: "#fff", color: C.forest, fontSize: 13, cursor: "pointer" }}>
           View live garden
         </button>
       </div>
@@ -17101,7 +17124,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
 
   // Draft plan
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+    <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 12}}>
       <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
         How this changes next season
       </div>
@@ -17112,7 +17135,7 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
         Lock in this plan and Vercro will use it to guide prep, sowing and planting tasks as your current season ends.
       </div>
       <button onClick={onCommit}
-        style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
+        style={{ ...T.control, width: "100%", padding: "11px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
         Use this plan
       </button>
     </div>
@@ -17139,7 +17162,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           icon: "⏰",
           title: "Stay on top of today's jobs",
           body: "A few tasks are overdue. Completing them now will improve your garden health score and reduce crop risk.",
-          cta: null,
+          cta: null
         });
       }
 
@@ -17149,7 +17172,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           icon: "👁",
           title: "Check on your crops",
           body: "A quick crop check helps Vercro guide you more accurately — just a minute or two is enough.",
-          cta: null,
+          cta: null
         });
       }
 
@@ -17159,7 +17182,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           icon: "🌍",
           title: "Add soil detail for better guidance",
           body: "Adding soil moisture, pH or temperature helps Vercro make more accurate recommendations for your garden.",
-          cta: null,
+          cta: null
         });
       }
     }
@@ -17172,7 +17195,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
         icon: "📋",
         title: "Plan your next season",
         body: "Create a rotation plan now to improve soil health, reduce disease risk and get ahead of next year's sowing.",
-        cta: { label: "Create a plan", action: onCreatePlan },
+        cta: { label: "Create a plan", action: onCreatePlan }
       });
     }
 
@@ -17182,7 +17205,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
         icon: "🔒",
         title: "Lock in your plan",
         body: "You have a draft plan — commit it so Vercro can start generating prep and sowing tasks for next season.",
-        cta: { label: "Review plan", action: () => onViewPlan(firstDraft.id) },
+        cta: { label: "Review plan", action: () => onViewPlan(firstDraft.id) }
       });
     }
 
@@ -17197,7 +17220,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           icon: "🔄",
           title: "Strengthen your rotation",
           body: "Some areas have the same crop family as last season. Moving them reduces disease risk and improves soil recovery.",
-          cta: null,
+          cta: null
         });
       }
 
@@ -17208,7 +17231,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           icon: "📐",
           title: "You still have space to use",
           body: "Assigning crops to all your areas will improve space use and strengthen this plan.",
-          cta: null,
+          cta: null
         });
       }
 
@@ -17218,7 +17241,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           icon: "✅",
           title: "This plan is ready to commit",
           body: `Plan quality is ${pq.label.toLowerCase()}. Commit it now so Vercro can start building your next season's task list.`,
-          cta: { label: "Commit plan", action: onCommit },
+          cta: { label: "Commit plan", action: onCommit }
         });
       }
     }
@@ -17236,8 +17259,8 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
       </div>
       {shown.map((r, i) => (
         <div key={i} style={{
-          background: "#fff", borderRadius: 14, padding: "14px 16px",
-          marginBottom: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+          background: "#fff", borderRadius: R.sm, padding: "14px 16px",
+          marginBottom: 8
         }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{r.icon}</span>
@@ -17246,7 +17269,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>{r.body}</div>
               {r.cta && (
                 <button onClick={r.cta.action}
-                  style={{ ...T.control, marginTop: 10, padding: "7px 14px", borderRadius: 8, border: "none", background: C.forest, color: "#fff", fontSize: 12, cursor: "pointer" }}>
+                  style={{ ...T.control, marginTop: 10, padding: "7px 14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 12, cursor: "pointer" }}>
                   {r.cta.label}
                 </button>
               )}
@@ -17278,14 +17301,14 @@ function CompareWithLiveCard({ areas, liveCrops, assignments, planQuality, onVie
   }).filter(r => r.changed); // only show areas where something changes
 
   if (!rows.length) return (
-    <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "14px 16px", marginTop: 12 }}>
+    <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "14px 16px", marginTop: 12 }}>
       <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 2 }}>No changes from live garden</div>
       <div style={{ fontSize: 12, color: C.stone }}>This plan has the same crop layout as your current garden.</div>
     </div>
   );
 
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+    <div style={{ background: "#fff", borderRadius: R.sm, padding: "16px 18px", marginTop: 12}}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>Changes from live garden</div>
         <button onClick={onViewLive}
@@ -17311,15 +17334,15 @@ function CompareWithLiveCard({ areas, liveCrops, assignments, planQuality, onVie
       {/* Plan quality delta summary */}
       {planQuality && (
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: 10, padding: "10px", textAlign: "center" }}>
+          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: R.sm, padding: "10px", textAlign: "center" }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>{planQuality.rotation_quality}%</div>
             <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>Rotation quality</div>
           </div>
-          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: 10, padding: "10px", textAlign: "center" }}>
+          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: R.sm, padding: "10px", textAlign: "center" }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>{planQuality.space_efficiency}%</div>
             <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>Space used</div>
           </div>
-          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: 10, padding: "10px", textAlign: "center" }}>
+          <div style={{ flex: 1, background: "#f5f9f7", borderRadius: R.sm, padding: "10px", textAlign: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.forest }}>{planQuality.yield_potential}</div>
             <div style={{ fontSize: 10, color: C.stone, marginTop: 2 }}>Yield potential</div>
           </div>
@@ -17344,9 +17367,9 @@ function SeasonTransitionBanner({ locPlans, onViewPlan }) {
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${C.surfaceDark} 0%, ${C.forest} 100%)`,
-      borderRadius: 14, padding: "14px 16px", marginTop: 12,
-      display: "flex", alignItems: "center", gap: 12,
+      background: C.surfaceDark,
+      borderRadius: R.sm, padding: "14px 16px", marginTop: 12,
+      display: "flex", alignItems: "center", gap: 12
     }}>
       <span style={{ fontSize: 22, flexShrink: 0 }}>🌱</span>
       <div style={{ flex: 1 }}>
@@ -17358,7 +17381,7 @@ function SeasonTransitionBanner({ locPlans, onViewPlan }) {
         </div>
       </div>
       <button onClick={() => onViewPlan(committedPlan.id)}
-        style={{ ...T.control, flexShrink: 0, padding: "7px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, cursor: "pointer" }}>
+        style={{ ...T.control, flexShrink: 0, padding: "7px 12px", borderRadius: R.sm, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, cursor: "pointer" }}>
         View
       </button>
     </div>
@@ -17378,18 +17401,18 @@ function CommitPlanModal({ plan, onConfirm, onClose }) {
   };
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9200, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 20px" }}>
-      <div style={{ width:"100%", maxWidth:380, background:"#fff", borderRadius:20, padding:"28px 22px 22px", boxSizing:"border-box" }}>
+      <div style={{ width:"100%", maxWidth:380, background:"#fff", borderRadius:R.overlay, padding:"28px 22px 22px", boxSizing:"border-box" }}>
         <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>🌱</div>
         <div style={{ ...T.displayMd, fontSize:18, textAlign:"center", marginBottom:10 }}>Commit this plan?</div>
         <div style={{ fontSize:14, color:C.stone, textAlign:"center", lineHeight:1.6, marginBottom:24 }}>
           Your current garden stays unchanged. Vercro will use <strong>{plan.name}</strong> to guide prep, sowing and planting tasks as areas become available.
         </div>
         <button onClick={handleCommit} disabled={committing}
-          style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer", marginBottom:10 }}>
+          style={{ ...T.control, width:"100%", padding:"14px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer", marginBottom:10 }}>
           {committing ? "Committing…" : "Commit plan"}
         </button>
         <button onClick={onClose}
-          style={{ width:"100%", padding:"12px", borderRadius:14, border:`1px solid ${C.border}`, background:"#fff", color:C.stone, fontSize:14, cursor:"pointer" }}>
+          style={{ width:"100%", padding:"12px", borderRadius:R.sm, border:`1px solid ${C.border}`, background:"#fff", color:C.stone, fontSize:14, cursor:"pointer" }}>
           Cancel
         </button>
       </div>
@@ -17767,7 +17790,7 @@ function PlanScreen({ tourRefs = {} }) {
       .then(([locs, areasData]) => {
         const locsWithAreas = (locs||[]).map(loc => ({
           ...loc,
-          growing_areas: (areasData||[]).filter(a => a.location_id === loc.id),
+          growing_areas: (areasData||[]).filter(a => a.location_id === loc.id)
         }));
         setLocations(locsWithAreas);
         if (locsWithAreas.length) {
@@ -17970,8 +17993,8 @@ function PlanScreen({ tourRefs = {} }) {
     <div style={{paddingBottom:16}}>
 
       {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${C.forest} 0%,${C.surfaceDark} 100%)`,borderRadius:16,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
+      <div style={{background:C.surfaceDark,borderRadius:R.sm,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:R.full,background:"rgba(255,255,255,0.05)"}}/>
         <div style={{position:"relative"}}>
           <div style={{ ...T.eyebrow, fontSize:10, color:"rgba(255,255,255,0.4)", marginBottom:3 }}>
             {isPlanMode ? "Garden Plan" : "Garden Visualiser"}
@@ -18003,7 +18026,7 @@ function PlanScreen({ tourRefs = {} }) {
                 setSelectedLoc(chosenId);
                 try { localStorage.setItem(PLAN_VIEW_CACHE, JSON.stringify({zoom, selectedLoc: chosenId})); } catch(e) {}
               }}
-              style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:C.ink,appearance:"none",cursor:"pointer",outline:"none"}}>
+              style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:R.sm,border:`1.5px solid ${C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:C.ink,appearance:"none",cursor:"pointer",outline:"none"}}>
               {locations.map((l, idx) => {
                 const isLocked = idx > 0 && !isPro && !isMark;
                 return (
@@ -18025,7 +18048,7 @@ function PlanScreen({ tourRefs = {} }) {
             <select
               value={selectedPlanId}
               onChange={e => setSelectedPlanId(e.target.value)}
-              style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:12,border:`1.5px solid ${isPlanMode?C.forest:C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:C.ink,appearance:"none",cursor:"pointer",outline:"none"}}>
+              style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:R.sm,border:`1.5px solid ${isPlanMode?C.forest:C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:C.ink,appearance:"none",cursor:"pointer",outline:"none"}}>
               <option value="live">📍 Current garden</option>
               {locPlans.length > 0 && <option disabled>──────────────────</option>}
               {locPlans.map(p => (
@@ -18040,7 +18063,7 @@ function PlanScreen({ tourRefs = {} }) {
               if (!isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
-            style={{ ...T.control, flexShrink:0, padding:"10px 14px", borderRadius:12, border:`1.5px solid ${C.forest}`, background:"#fff", color:C.forest, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>
+            style={{ ...T.control, flexShrink:0, padding:"10px 14px", borderRadius:R.sm, border:`1.5px solid ${C.forest}`, background:"#fff", color:C.forest, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>
             + New plan
           </button>
         </div>
@@ -18054,7 +18077,7 @@ function PlanScreen({ tourRefs = {} }) {
             </div>
             {selectedPlan.status==="draft" && (
               <button onClick={()=>setShowCommit(true)}
-                style={{ ...T.control, flexShrink:0, padding:"7px 14px", borderRadius:10, border:"none", background:C.forest, color:"#fff", fontSize:12, cursor:"pointer" }}>
+                style={{ ...T.control, flexShrink:0, padding:"7px 14px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:12, cursor:"pointer" }}>
                 Commit
               </button>
             )}
@@ -18072,17 +18095,17 @@ function PlanScreen({ tourRefs = {} }) {
                     setTimeout(()=>setPlanToast(null),1800);
                   } catch(e){} finally { setDeletingPlanId(null); setConfirmDeleteId(null); }
                 }} disabled={!!deletingPlanId}
-                  style={{ ...T.control, padding:"5px 10px", borderRadius:8, border:"none", background:C.red, color:"#fff", fontSize:11, cursor:"pointer" }}>
+                  style={{ ...T.control, padding:"5px 10px", borderRadius:R.sm, border:"none", background:C.red, color:"#fff", fontSize:11, cursor:"pointer" }}>
                   {deletingPlanId===selectedPlan.id?"…":"Yes, delete"}
                 </button>
                 <button onClick={()=>setConfirmDeleteId(null)}
-                  style={{padding:"5px 8px",borderRadius:8,border:`1px solid ${C.border}`,background:"#fff",color:C.stone,fontSize:11,cursor:"pointer"}}>
+                  style={{padding:"5px 8px",borderRadius:R.sm,border:`1px solid ${C.border}`,background:"#fff",color:C.stone,fontSize:11,cursor:"pointer"}}>
                   Cancel
                 </button>
               </div>
             ) : (
               <button onClick={()=>setConfirmDeleteId(selectedPlan.id)}
-                style={{flexShrink:0,padding:"7px 10px",borderRadius:10,border:`1px solid ${C.border}`,background:"#fff",color:C.stone,fontSize:13,cursor:"pointer"}}>
+                style={{flexShrink:0,padding:"7px 10px",borderRadius:R.sm,border:`1px solid ${C.border}`,background:"#fff",color:C.stone,fontSize:13,cursor:"pointer"}}>
                 🗑
               </button>
             )}
@@ -18097,17 +18120,17 @@ function PlanScreen({ tourRefs = {} }) {
             <>
               <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink, flex:1 }}>{activeAreaName}</div>
               <button onClick={()=>handleRotate(activeBlock)}
-                style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:10, padding:"8px 18px", fontSize:14, cursor:"pointer" }}>↻ Rotate</button>
+                style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:R.sm, padding:"8px 18px", fontSize:14, cursor:"pointer" }}>↻ Rotate</button>
               <button onClick={()=>setDetailArea(activeBlock)}
-                style={{background:"#fff",color:C.forest,border:`1.5px solid ${C.forest}`,borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Detail</button>
+                style={{background:"#fff",color:C.forest,border:`1.5px solid ${C.forest}`,borderRadius:R.sm,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Detail</button>
               <button onClick={()=>setActiveBlock(null)}
-                style={{background:"none",color:C.stone,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",fontSize:13,cursor:"pointer"}}>✕</button>
+                style={{background:"none",color:C.stone,border:`1px solid ${C.border}`,borderRadius:R.sm,padding:"8px 10px",fontSize:13,cursor:"pointer"}}>✕</button>
             </>
           ) : (
             <>
               <div style={{fontSize:11,color:C.stone,flex:1}}>Tap an area to select · drag to reposition</div>
               <button onClick={()=>{ try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc}));}catch(e){} setSavedToast(true); setTimeout(()=>setSavedToast(false),1500); }}
-                style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:10, padding:"7px 14px", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
+                style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:R.sm, padding:"7px 14px", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
                 🔒 Save view
               </button>
             </>
@@ -18150,7 +18173,7 @@ function PlanScreen({ tourRefs = {} }) {
                     // Show a tip sheet explaining how to add dimensions
                     setShowDimensionsTip(true);
                   }}
-                  style={{ ...T.control, padding:"9px 20px", borderRadius:10, border:"1px solid rgba(255,255,255,0.4)", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:13, cursor:"pointer" }}>
+                  style={{ ...T.control, padding:"9px 20px", borderRadius:R.sm, border:"1px solid rgba(255,255,255,0.4)", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:13, cursor:"pointer" }}>
                   Need help? →
                 </button>
               </div>
@@ -18162,15 +18185,15 @@ function PlanScreen({ tourRefs = {} }) {
           <div ref={el => { containerRef.current = el; if (tourRefs.tourRef_planCanvas) tourRefs.tourRef_planCanvas.current = el; }} style={{width:"100%",display:"flex",justifyContent:"center"}}>
           <div style={{width:stageW,borderRadius:18,overflow:"hidden",border:`1px solid ${isPlanMode?"rgba(47,93,80,0.3)":"rgba(0,0,0,0.1)"}`,boxShadow:"0 4px 24px rgba(0,0,0,0.14)",position:"relative"}}>
             {(savedToast||planToast) && (
-              <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:20,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
+              <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(47,93,80,0.92)",color:"#fff",borderRadius:R.full,padding:"5px 16px",fontSize:12,fontWeight:600,backdropFilter:"blur(8px)",whiteSpace:"nowrap",zIndex:100}}>
                 {planToast||"✓ Layout saved"}
               </div>
             )}
             {/* Floating zoom controls — top right of canvas */}
-            <div style={{position:"absolute",top:10,right:10,zIndex:50,display:"flex",gap:3,background:"rgba(0,0,0,0.35)",backdropFilter:"blur(8px)",borderRadius:10,padding:"3px 4px"}}>
+            <div style={{position:"absolute",top:10,right:10,zIndex:50,display:"flex",gap:3,background:"rgba(0,0,0,0.35)",backdropFilter:"blur(8px)",borderRadius:R.sm,padding:"3px 4px"}}>
               {[["+",z=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",z=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
                 <button key={label} onClick={()=>setZoom(z=>{ const nz=fn(z); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom:nz,selectedLoc}));}catch(e){} return nz; })}
-                  style={{ ...T.control, minWidth:label==="Fit"?28:24, height:24, borderRadius:7, border:"none", background:"rgba(255,255,255,0.18)", color:"#fff", fontSize:label==="Fit"?9:15, cursor:"pointer", padding:label==="Fit"?"0 6px":0, lineHeight:1 }}>
+                  style={{ ...T.control, minWidth:label==="Fit"?28:24, height:24, borderRadius:R.sm, border:"none", background:"rgba(255,255,255,0.18)", color:"#fff", fontSize:label==="Fit"?9:15, cursor:"pointer", padding:label==="Fit"?"0 6px":0, lineHeight:1 }}>
                   {label}
                 </button>
               ))}
@@ -18201,7 +18224,7 @@ function PlanScreen({ tourRefs = {} }) {
 
       {/* Scale bar */}
       <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:5,marginTop:5}}>
-        <div style={{width:Math.min(pxPerM,50),height:2,background:"rgba(0,0,0,0.2)",borderRadius:1}}/>
+        <div style={{width:Math.min(pxPerM,50),height:2,background:"rgba(0,0,0,0.2)",borderRadius:R.sm}}/>
         <div style={{ ...T.bodyStrong, fontSize:9, color:"rgba(0,0,0,0.35)" }}>1m</div>
       </div>
 
@@ -18277,7 +18300,7 @@ function PlanScreen({ tourRefs = {} }) {
             return (
               <div key={area.id}
                 onClick={selectedPlan?.status==="draft" ? ()=>setAssignArea(area) : undefined}
-                style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${assignment?C.forest+"44":C.border}`,background:assignment?"#F0F5F3":"#FAFAFA",marginBottom:8,cursor:selectedPlan?.status==="draft"?"pointer":"default"}}>
+                style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:R.sm,border:`1px solid ${assignment?C.forest+"44":C.border}`,background:assignment?"#F0F5F3":"#FAFAFA",marginBottom:8,cursor:selectedPlan?.status==="draft"?"pointer":"default"}}>
                 <div style={{fontSize:20,minWidth:24,textAlign:"center"}}>{assignment?.crop_definition?.emoji||(assignment?"🌱":"⬜")}</div>
                 <div style={{flex:1}}>
                   <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink }}>{area.name}</div>
@@ -18309,8 +18332,8 @@ function PlanScreen({ tourRefs = {} }) {
       {showDimensionsTip && (
         <div style={{position:"fixed",inset:0,zIndex:9200,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}
           onClick={e=>{ if(e.target===e.currentTarget) setShowDimensionsTip(false); }}>
-          <div style={{width:"100%",maxWidth:480,background:"#fff",borderRadius:"20px 20px 0 0",padding:"28px 24px 48px",boxSizing:"border-box"}}>
-            <div style={{width:36,height:4,background:"#ddd",borderRadius:99,margin:"0 auto 20px"}}/>
+          <div style={{width:"100%",maxWidth:480,background:"#fff",borderRadius:R.sheet,padding:"28px 24px 48px",boxSizing:"border-box"}}>
+            <div style={{width:36,height:4,background:"#ddd",borderRadius:R.full,margin:"0 auto 20px"}}/>
             <div style={{ ...T.displayLg, fontSize:20, color:C.ink, marginBottom:8 }}>
               How to set up your layout
             </div>
@@ -18325,13 +18348,13 @@ function PlanScreen({ tourRefs = {} }) {
                 {step:"4",text:"Come back to Plan and your layout will appear"},
               ].map(({step,text})=>(
                 <div key={step} style={{display:"flex",alignItems:"flex-start",gap:14}}>
-                  <div style={{ ...T.bodyStrong, width:28, height:28, borderRadius:"50%", background:C.forest, color:"#fff", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{step}</div>
+                  <div style={{ ...T.bodyStrong, width:28, height:28, borderRadius:R.full, background:C.forest, color:"#fff", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{step}</div>
                   <div style={{fontSize:14,color:C.ink,lineHeight:1.5,paddingTop:4}}>{text}</div>
                 </div>
               ))}
             </div>
             <button onClick={()=>setShowDimensionsTip(false)}
-              style={{ ...T.control, width:"100%", padding:"14px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer" }}>
+              style={{ ...T.control, width:"100%", padding:"14px", borderRadius:R.sm, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer" }}>
               Got it
             </button>
           </div>
@@ -18482,7 +18505,7 @@ const TAB_ICONS = {
       <path d="M4 6 Q11 2 18 6 L18 16 Q11 20 4 16 Z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
       <circle cx="11" cy="11" r="2.5" fill="currentColor"/>
     </svg>
-  ),
+  )
 };
 
 const TABS = [
@@ -18604,8 +18627,8 @@ function OnboardingScreen({ session, onComplete }) {
           crops: cropsPayload,
           area_type: areaType,
           ...storedUtms,
-          signup_source_self_reported: selfSource || null,
-        }),
+          signup_source_self_reported: selfSource || null
+        })
       });
 
       // claimed_source / claimed_campaign — Measurement Architecture doc,
@@ -18622,7 +18645,7 @@ function OnboardingScreen({ session, onComplete }) {
       if (typeof window !== "undefined" && window.posthog?.people?.set) {
         window.posthog.people.set({
           claimed_source: storedUtms.signup_source || "direct",
-          claimed_campaign: storedUtms.signup_campaign || null,
+          claimed_campaign: storedUtms.signup_campaign || null
         });
       }
 
@@ -18634,7 +18657,7 @@ function OnboardingScreen({ session, onComplete }) {
           signup_source: storedUtms.signup_source || "direct",
           signup_campaign: storedUtms.signup_campaign || null,
           crops_count: cropsPayload.length,
-          area_type: areaType,
+          area_type: areaType
         });
       }
       setStep(6); // Show push opt-in before entering the app
@@ -18728,7 +18751,7 @@ function OnboardingScreen({ session, onComplete }) {
         </div>
 
         {error && (
-          <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 10, padding: "10px 14px", marginTop: 12, fontSize: 13, color: C.dangerText }}>
+          <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: R.sm, padding: "10px 14px", marginTop: 12, fontSize: 13, color: C.dangerText }}>
             {error}
           </div>
         )}
@@ -18779,13 +18802,13 @@ function OnboardingScreen({ session, onComplete }) {
                     style={{
                       background: selected ? C.forest : "#fff",
                       border: `2px solid ${selected ? C.forest : C.border}`,
-                      borderRadius: 12,
+                      borderRadius: R.sm,
                       padding: "14px 12px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 10,
-                      transition: "all 0.15s",
+                      transition: "all 0.15s"
                     }}>
                     <span style={{ fontSize: 24 }}>{crop.emoji}</span>
                     <span style={{ ...T.displayMd, fontSize: 15, color: selected ? "#fff" : C.ink }}>
@@ -18810,11 +18833,11 @@ function OnboardingScreen({ session, onComplete }) {
                   style={{
                     background: stage === s.id ? C.forest : "#fff",
                     border: `2px solid ${stage === s.id ? C.forest : C.border}`,
-                    borderRadius: 12,
+                    borderRadius: R.sm,
                     padding: "16px 18px",
                     cursor: "pointer",
                     textAlign: "left",
-                    transition: "all 0.15s",
+                    transition: "all 0.15s"
                   }}>
                   <div style={{ ...T.displayMd, fontSize: 15, color: stage === s.id ? "#fff" : C.ink, marginBottom: 3 }}>
                     {s.label}
@@ -18834,7 +18857,7 @@ function OnboardingScreen({ session, onComplete }) {
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
               Pick where these crops will end up — this is their final growing spot. We'll tailor watering, frost alerts and task timings to match.
             </div>
-            <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, lineHeight: 1.5, background: C.offwhite, borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, lineHeight: 1.5, background: C.offwhite, borderRadius: R.sm, padding: "10px 12px" }}>
               💡 Starting seeds indoors first? Choose the final destination here — you can update individual crops to "Sowing indoors" in the crop editor once you're set up.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -18843,14 +18866,14 @@ function OnboardingScreen({ session, onComplete }) {
                   style={{
                     background: areaType === a.id ? C.forest : "#fff",
                     border: `2px solid ${areaType === a.id ? C.forest : C.border}`,
-                    borderRadius: 12,
+                    borderRadius: R.sm,
                     padding: "18px 14px",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     gap: 8,
-                    transition: "all 0.15s",
+                    transition: "all 0.15s"
                   }}>
                   <span style={{ fontSize: 28 }}>{a.emoji}</span>
                   <span style={{ ...T.bodyStrong, fontSize: 14, color: areaType === a.id ? "#fff" : C.ink, textAlign: "center" }}>
@@ -18871,7 +18894,7 @@ function OnboardingScreen({ session, onComplete }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {SOURCE_OPTIONS.map(s => (
                 <button key={s.id} onClick={() => setSelfSource(selfSource === s.id ? null : s.id)}
-                  style={{ ...T.control, background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, color: selfSource === s.id ? "#fff" : C.ink, transition: "all 0.15s" }}>
+                  style={{ ...T.control, background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: R.sm, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, color: selfSource === s.id ? "#fff" : C.ink, transition: "all 0.15s" }}>
                   {s.label}
                 </button>
               ))}
@@ -18891,7 +18914,7 @@ function OnboardingScreen({ session, onComplete }) {
             background: canAdvance() ? C.forest : C.border,
             color: canAdvance() ? "#fff" : C.stone,
             border: "none",
-            borderRadius: 12,
+            borderRadius: R.sm,
             fontSize: 16,
             cursor: canAdvance() ? "pointer" : "not-allowed",
             transition: "background 0.2s"
@@ -18913,7 +18936,7 @@ function OnboardingScreen({ session, onComplete }) {
 
 function IOSInstallBanner({ onDismiss }) {
   return (
-    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 408, background: "#1a2e28", borderRadius: 16, padding: "16px 18px", zIndex: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.25)", display: "flex", gap: 14, alignItems: "flex-start" }}>
+    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 408, background: "#1a2e28", borderRadius: R.sm, padding: "16px 18px", zIndex: 200, boxShadow: S.overlay, display: "flex", gap: 14, alignItems: "flex-start" }}>
       <div style={{ fontSize: 28, flexShrink: 0 }}>🌱</div>
       <div style={{ flex: 1 }}>
         <div style={{ ...T.bodyStrong, fontSize: 13, color: "#fff", marginBottom: 4 }}>Add Vercro to your home screen</div>
@@ -18967,7 +18990,7 @@ export default function GrowSmart() {
     tourRef_profileDetails:     React.useRef(null),
     tourRef_timeAway:           React.useRef(null),
     tourRef_harvestLog:         React.useRef(null),
-    tourRef_notifications:      React.useRef(null),
+    tourRef_notifications:      React.useRef(null)
   };
 
   const startTour = React.useCallback((tourTab) => {
@@ -19002,7 +19025,7 @@ export default function GrowSmart() {
             method:          s.user.app_metadata?.provider || "unknown",
             signup_source:   storedUtms.signup_source   || "direct",
             signup_medium:   storedUtms.signup_medium   || null,
-            signup_campaign: storedUtms.signup_campaign || null,
+            signup_campaign: storedUtms.signup_campaign || null
           });
         }
         // Always identify returning users so PostHog links anonymous → known
@@ -19050,7 +19073,7 @@ export default function GrowSmart() {
           : process.env.NEXT_PUBLIC_REVENUECAT_API_KEY; // ios (existing default, unchanged)
         Purchases.configure({
           apiKey: rcApiKey,
-          appUserID: s.user.id,
+          appUserID: s.user.id
         });
       });
     }
@@ -19180,7 +19203,7 @@ export default function GrowSmart() {
       {/* Floating + button — Log view only */}
       {tab === "dashboard" && dashboardView === "log" && !showIOSBanner && (
         <button onClick={() => setShowLogActivityGlobal(true)}
-          style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: R.full, background: C.forest, border: "none", boxShadow: S.overlay, cursor: "pointer", fontSize: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
           +
         </button>
       )}
@@ -19188,7 +19211,7 @@ export default function GrowSmart() {
       {/* Floating feedback button — hidden on Log view */}
       {!showFeedback && tab !== "admin" && !showIOSBanner && !(tab === "dashboard" && dashboardView === "log") && (
         <button onClick={() => setShowFeedback(true)}
-          style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: "50%", background: C.forest, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
+          style={{ position: "fixed", bottom: 90, right: "max(20px, calc(50% - 200px))", width: 48, height: 48, borderRadius: R.full, background: C.forest, border: "none", boxShadow: S.overlay, cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
           {window?.Capacitor?.isNative ? "💡" : "💬"}
@@ -19198,7 +19221,7 @@ export default function GrowSmart() {
 
       {/* Subscribed success toast — shown after Stripe redirect */}
       {subscribedToast && (
-        <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 1000, background: "#1E3D33", color: "#fff", padding: "12px 16px", borderRadius: 14, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", fontSize: 14, fontWeight: 600, maxWidth: "calc(100vw - 32px)", textAlign: "center" }}>
+        <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 1000, background: "#1E3D33", color: "#fff", padding: "12px 16px", borderRadius: R.sm, boxShadow: S.overlay, fontSize: 14, fontWeight: 600, maxWidth: "calc(100vw - 32px)", textAlign: "center" }}>
           Pro unlocked successfully 🌱
         </div>
       )}
