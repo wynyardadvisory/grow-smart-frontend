@@ -34,6 +34,19 @@ body {
   margin: 0;
 }
 
+/* Form controls do not inherit font-family: the UA stylesheet sets
+   `font: 400 13.333px Arial` on button, input, select and textarea, and that beats
+   inheritance from an ancestor. The app root declares its font on a <div>, so every
+   control without an explicit inline fontFamily fell back to Arial — measured live
+   on production at 187 of 198 controls (94%), across every screen. Inline styles
+   still win, so controls that deliberately carry a Newsreader token keep it. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 a {
   color: inherit;
   text-decoration: none;

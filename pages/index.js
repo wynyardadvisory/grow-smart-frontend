@@ -22,6 +22,10 @@ import { CSS } from "@dnd-kit/utilities";
 // inline, which resolved to whatever each platform picked (Times on iOS) rather than
 // to a Vercro face.
 import { F } from "@/lib/fonts";
+// Typography roles — see lib/typography.js. Spread a token to settle which face,
+// weight and tracking a piece of text uses; the call site keeps its own fontSize,
+// colour and spacing. Replaces 172 ad-hoc font signatures across this file.
+import { T } from "@/lib/typography";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -267,7 +271,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
         <div style={{ background: "#fff", borderRadius: 20, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
+          <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>
             You know the {tabLabel} tab
           </div>
           {!allDoneOnComplete && nextLabel && (
@@ -283,14 +287,14 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
           {!allDoneOnComplete && nextLabel && (
             <button
               onClick={() => { posthog()?.capture?.("tour_completion_next_cta", { from_tab: tab, to_tab: next }); onComplete(next); }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Take the {nextLabel} tour
             </button>
           )}
           {allDoneOnComplete && (
             <button
               onClick={() => { posthog()?.capture?.("tour_all_complete"); onComplete(null); }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Great, thanks!
             </button>
           )}
@@ -359,7 +363,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
       }}>
         {/* Step counter */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", flex: 1 }}>
+          <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", flex: 1 }}>
             {displayTitle}
             {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.amber, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
           </div>
@@ -374,7 +378,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
             </button>
           )}
           <button onClick={handleNext}
-            style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer" }}>
             {step + 1 >= steps.length ? "Done" : "Next"}
           </button>
           <button onClick={handleSkip}
@@ -425,7 +429,7 @@ function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 10 }}>
+        <div style={{ ...T.displayLg, fontSize: 22, color: "#1a1a1a", marginBottom: 10 }}>
           Want a quick tour?
         </div>
         <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
@@ -433,7 +437,7 @@ function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
         </div>
         <button
           onClick={() => { posthog()?.capture?.("tour_prompt_accepted"); onStartTour(); }}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
           Start tour
         </button>
         <button
@@ -756,16 +760,18 @@ const inputStyle = {
 };
 
 const labelStyle = {
-  fontSize: 12, fontWeight: 700, color: C.stone,
-  letterSpacing: 1, textTransform: "uppercase",
-  marginBottom: 6, display: "block",
+  ...T.eyebrow,
+  fontSize: 12,
+  color: C.stone,
+  marginBottom: 6,
+  display: "block"
 };
 
 function SectionLabel({ children }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, marginTop: 8 }}>
       <div style={{ height: 2, width: 14, background: C.accent, borderRadius: 99 }} />
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.stone, textTransform: "uppercase" }}>{children}</div>
+      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone }}>{children}</div>
     </div>
   );
 }
@@ -788,7 +794,7 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
       justifyContent: "center", minHeight: "60vh", padding: "40px 24px",
     }}>
       <div style={{ fontSize: 48, marginBottom: 20, lineHeight: 1 }}>🌱</div>
-      <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 6 }}>
+      <div style={{ ...T.displayLg, fontSize: 20, color: C.forest, marginBottom: 6 }}>
         Vercro
       </div>
       <div style={{ fontSize: 14, color: C.stone, minWidth: 180, textAlign: "center" }}>
@@ -952,7 +958,7 @@ function AuthScreen({ onAuth }) {
   if (sent) return (
     <div style={{ padding: 32, textAlign: "center" }}>
       <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
-      <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700 }}>Check your email</div>
+      <div style={{ ...T.displayLg, fontSize: 20 }}>Check your email</div>
       <div style={{ color: C.stone, marginTop: 8, fontSize: 14 }}>
         {isForgot
           ? <>We sent a password reset link to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.</>
@@ -969,7 +975,7 @@ function AuthScreen({ onAuth }) {
     <div style={{ padding: "40px 24px", maxWidth: 400, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontSize: 36 }}>🌱</div>
-        <div style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.forest, marginTop: 8 }}>Vercro</div>
+        <div style={{ ...T.displayLg, fontSize: 26, color: C.forest, marginTop: 8 }}>Vercro</div>
         <div style={{ color: C.stone, fontSize: 13, marginTop: 4 }}>{isSignUp ? "Create your account" : "Sign in to your garden"}</div>
       </div>
       {error && <ErrorMsg msg={error} />}
@@ -1001,7 +1007,7 @@ function AuthScreen({ onAuth }) {
         </div>
         <div><label style={labelStyle}>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
         <div><label style={labelStyle}>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
-        <button onClick={handle} disabled={loading || !email || !password} style={{ background: (!email || !password) ? C.border : C.forest, color: (!email || !password) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+        <button onClick={handle} disabled={loading || !email || !password} style={{ ...T.control, background: (!email || !password) ? C.border : C.forest, color: (!email || !password) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, cursor: "pointer" }}>
           {loading ? "…" : isSignUp ? "Create account" : "Sign in"}
         </button>
         <button onClick={() => setIsSignUp(!isSignUp)} style={{ background: "none", border: "none", color: C.forest, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
@@ -1149,7 +1155,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(s.crop)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>{s.crop}</div>
+            <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>{s.crop}</div>
             {s.variety && (
               <div style={{ fontSize: 12, color: accentColor, fontWeight: 600, marginTop: 1 }}>{s.variety}</div>
             )}
@@ -1157,11 +1163,11 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0, marginLeft: 8 }}>
           {isPrimary && (
-            <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: 20, padding: "2px 7px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <span style={{ ...T.eyebrow, fontSize: 9, color: accentColor, background: isCompanionType ? "#f0ebf8" : "#e8f5ee", borderRadius: 20, padding: "2px 7px" }}>
               {isCompanionType ? (s.type === "companion" ? "Companion" : "Beneficial") : "Top pick"}
             </span>
           )}
-          <span style={{ fontSize: 9, fontWeight: 700, color: conf.color, background: conf.bg, borderRadius: 20, padding: "2px 7px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+          <span style={{ ...T.eyebrow, fontSize: 9, color: conf.color, background: conf.bg, borderRadius: 20, padding: "2px 7px" }}>
             {conf.label}
           </span>
         </div>
@@ -1200,17 +1206,16 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
       <button
         onClick={() => onAdd(s)}
         style={{
+          ...T.control,
           width: "100%",
           background: accentColor,
           color: "#fff",
           border: "none",
           borderRadius: 8,
           padding: "10px",
-          fontWeight: 700,
           fontSize: 13,
           cursor: "pointer",
-          fontFamily: F.display,
-          letterSpacing: 0.2,
+          letterSpacing: 0.2
         }}>
         + Add {s.crop} to this area
       </button>
@@ -1281,7 +1286,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Boost this area</div>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>Boost this area</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{area.name}</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
@@ -1305,7 +1310,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
         {state === "error" && (
           <div style={{ textAlign: "center", padding: "32px 20px" }}>
             <div style={{ fontSize: 13, color: C.red, marginBottom: 12 }}>Something went wrong. Try again?</div>
-            <button onClick={generate} style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={generate} style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer" }}>
               Try again
             </button>
           </div>
@@ -1684,7 +1689,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
       <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Share your harvest 🌱</div>
+          <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>Share your harvest 🌱</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
         </div>
 
@@ -1695,7 +1700,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
             { id: "season", label: "📊 Season summary" },
           ].map(m => (
             <button key={m.id} onClick={() => setMode(m.id)}
-              style={{ flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === m.id ? C.forest : C.border}`, background: mode === m.id ? "#f0f5f3" : "transparent", color: mode === m.id ? C.forest : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === m.id ? C.forest : C.border}`, background: mode === m.id ? "#f0f5f3" : "transparent", color: mode === m.id ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
               {m.label}
             </button>
           ))}
@@ -1706,7 +1711,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
           {mode === "single" ? (
             <>
               <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.crop)}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, marginBottom: 4 }}>{item.crop}</div>
+              <div style={{ ...T.displayLg, fontSize: 20, marginBottom: 4 }}>{item.crop}</div>
               {item.variety && <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{item.variety}</div>}
               <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
                 {[harvestData?.quantity_value ? `${harvestData.quantity_value}${harvestData.quantity_unit}` : null, harvestData?.yield_score ? `Yield ${harvestData.yield_score}/10` : null].filter(Boolean).join(" · ")}
@@ -1715,7 +1720,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, marginBottom: 12 }}>{new Date().getFullYear()} Season Summary</div>
+              <div style={{ ...T.displayMd, fontSize: 16, marginBottom: 12 }}>{new Date().getFullYear()} Season Summary</div>
               {Object.entries(allHarvests.reduce((acc, h) => { acc[h.crop_name] = (acc[h.crop_name] || 0) + 1; return acc; }, {})).slice(0,4).map(([name, count]) => (
                 <div key={name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, opacity: 0.9 }}>
                   <span>{getCropEmoji(name)} {name}</span>
@@ -1728,7 +1733,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         </div>
 
         <button onClick={generateCard} disabled={generating}
-          style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, opacity: generating ? 0.7 : 1 }}>
+          style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: generating ? 0.7 : 1 }}>
           {generating ? "Generating…" : "⬇ Save image to share"}
         </button>
 
@@ -1765,10 +1770,10 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
-          <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, color: "#1a1a1a" }}>{item.crop}</div>
+          <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>{item.crop}</div>
         </div>
         {isReady
-          ? <span style={{ fontSize: 10, fontWeight: 700, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
+          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
           : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>{weeksLeft}w away</span>
         }
       </div>
@@ -1786,7 +1791,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
         </div>
       </div>
       <button onClick={() => !pending && onHarvest()}
-        style={{ width: "100%", padding: "8px", borderRadius: 8, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontWeight: 700, fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
+        style={{ ...T.bodyStrong, width: "100%", padding: "8px", borderRadius: 8, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
         {pending ? "Logging…" : "🌾 Harvest Now"}
       </button>
     </div>
@@ -1896,12 +1901,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         {undone ? (
           <div style={{ textAlign: "center", padding: "20px 0", color: C.stone }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>↩️</div>
-            <div style={{ fontWeight: 700, fontFamily: F.display }}>Harvest undone</div>
+            <div style={{ ...T.displayMd }}>Harvest undone</div>
           </div>
         ) : saved ? (
           <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>{isFinal ? "🎉" : "🌾"}</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 4 }}>
               {isFinal ? "Harvest logged!" : "Partial harvest logged!"}
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
@@ -1913,11 +1918,11 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             {/* Share prompt — only for final harvests */}
             {isFinal && (
               <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px", marginBottom: 16, textAlign: "left" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>Share your harvest? 🌱</div>
+                <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>Share your harvest? 🌱</div>
                 <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>Save a card to share with your allotment group or on social media.</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setShowShare(true)}
-                    style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 12, cursor: "pointer" }}>
                     Share harvest card
                   </button>
                   <button onClick={onClose}
@@ -1932,14 +1937,14 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
                 Undo harvest
               </button>
             ) : (
-              <button onClick={onClose} style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+              <button onClick={onClose} style={{ ...T.control, width: "100%", padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
                 Done
               </button>
             )}
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
 
             {/* Final vs Partial toggle */}
@@ -1964,7 +1969,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             {/* Yield score */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Yield Volume</label>
+                <label style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>Yield Volume</label>
                 <span style={{ fontSize: 18, fontWeight: 800, color: trafficColor(yieldScore) }}>{yieldScore}</span>
               </div>
               <input type="range" min="1" max="10" value={yieldScore} onChange={e => setYieldScore(Number(e.target.value))}
@@ -1977,7 +1982,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             {/* Quality score */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Quality</label>
+                <label style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>Quality</label>
                 <span style={{ fontSize: 18, fontWeight: 800, color: trafficColor(qualScore) }}>{qualScore}</span>
               </div>
               <input type="range" min="1" max="10" value={qualScore} onChange={e => setQualScore(Number(e.target.value))}
@@ -2036,7 +2041,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
               <button onClick={save} disabled={saving}
-                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+                style={{ ...T.control, flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Saving…" : "Save Harvest"}
               </button>
             </div>
@@ -2087,17 +2092,17 @@ function BadgeCelebrationSheet({ unlocks, onClose }) {
       <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", padding:"32px 24px 48px", width:"100%", maxWidth:440, textAlign:"center" }}>
         {/* Sparkle animation */}
         <div style={{ fontSize:72, marginBottom:8, animation:"badgePop 0.4s ease-out" }}>{u.badge?.icon_key || "🏆"}</div>
-        <div style={{ fontSize:13, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>
+        <div style={{ ...T.eyebrow, fontSize:13, color:C.forest, marginBottom:8 }}>
           {u.badge?.type === "monthly" ? "Challenge Complete" : "Badge Unlocked"}
         </div>
-        <div style={{ fontSize:24, fontWeight:700, fontFamily:F.display, color:"#1a1a1a", marginBottom:8 }}>{u.badge?.title}</div>
+        <div style={{ ...T.displayLg, fontSize:24, color:"#1a1a1a", marginBottom:8 }}>{u.badge?.title}</div>
         <div style={{ fontSize:14, color:C.stone, marginBottom:u.badge?.celebration_copy ? 8 : 24, lineHeight:1.5 }}>{u.badge?.description}</div>
         {u.badge?.celebration_copy && (
           <div style={{ fontSize:15, color:C.forest, fontStyle:"italic", marginBottom:24 }}>{u.badge.celebration_copy}</div>
         )}
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <button onClick={handleNext}
-            style={{ background:C.forest, color:"#fff", border:"none", borderRadius:12, padding:"14px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:F.display }}>
+            style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:12, padding:"14px", fontSize:15, cursor:"pointer" }}>
             {idx < unlocks.length - 1 ? "Next →" : "Continue"}
           </button>
         </div>
@@ -2157,7 +2162,7 @@ function BadgeCard({ badge }) {
       <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom: badge.is_completed ? 4 : 10 }}>
         <span style={{ fontSize:28, filter: locked ? "grayscale(1)" : "none" }}>{badge.icon_key}</span>
         <div style={{ flex:1 }}>
-          <div style={{ fontSize:13, fontWeight:700, color: locked ? "#888" : "#1a1a1a" }}>{badge.title}</div>
+          <div style={{ ...T.bodyStrong, fontSize:13, color: locked ? "#888" : "#1a1a1a" }}>{badge.title}</div>
           <div style={{ fontSize:11, color:C.stone, lineHeight:1.4, marginTop:2 }}>{badge.description}</div>
         </div>
         {badge.is_completed && <span style={{ fontSize:16 }}>✅</span>}
@@ -2210,7 +2215,7 @@ function BadgesPage() {
   return (
     <div style={{ padding:"16px 16px 100px" }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:22, fontWeight:700, fontFamily:F.display, color:"#1a1a1a" }}>Challenges & Badges</div>
+        <div style={{ ...T.displayLg, fontSize:22, color:"#1a1a1a" }}>Challenges & Badges</div>
         <div style={{ fontSize:13, color:C.stone, marginTop:2 }}>Track progress and unlock rewards for real garden activity.</div>
       </div>
 
@@ -2218,7 +2223,7 @@ function BadgesPage() {
       <div style={{ display:"flex", gap:8, marginBottom:20 }}>
         {SECTIONS.map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
-            style={{ flex:1, padding:"9px", borderRadius:10, border:`2px solid ${activeSection === s.id ? C.forest : C.border}`, background: activeSection === s.id ? "#f0f5f3" : "transparent", color: activeSection === s.id ? C.forest : C.stone, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+            style={{ ...T.control, flex:1, padding:"9px", borderRadius:10, border:`2px solid ${activeSection === s.id ? C.forest : C.border}`, background: activeSection === s.id ? "#f0f5f3" : "transparent", color: activeSection === s.id ? C.forest : C.stone, fontSize:13, cursor:"pointer" }}>
             {s.label}
           </button>
         ))}
@@ -2234,11 +2239,11 @@ function BadgesPage() {
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontSize:24 }}>{monthly.icon_key}</span>
                   <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.8 }}>Monthly Challenge</div>
-                    <div style={{ fontSize:15, fontWeight:700, fontFamily:F.display, color:"#1a1a1a" }}>{monthly.title}</div>
+                    <div style={{ ...T.eyebrow, fontSize:11, color:C.forest }}>Monthly Challenge</div>
+                    <div style={{ ...T.displayMd, fontSize:15, color:"#1a1a1a" }}>{monthly.title}</div>
                   </div>
                 </div>
-                <span style={{ fontSize:13, fontWeight:700, color:monthly.is_completed ? C.forest : "#1a1a1a" }}>
+                <span style={{ ...T.bodyStrong, fontSize:13, color:monthly.is_completed ? C.forest : "#1a1a1a" }}>
                   {monthly.is_completed ? "✅ Done" : `${monthly.progress} / ${monthly.threshold}`}
                 </span>
               </div>
@@ -2252,7 +2257,7 @@ function BadgesPage() {
           )}
 
           {/* Active milestones */}
-          <div style={{ fontSize:13, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>In Progress</div>
+          <div style={{ ...T.eyebrow, fontSize:13, color:C.stone, marginBottom:10 }}>In Progress</div>
           {active.length === 0 ? (
             <div style={{ background:C.offwhite, borderRadius:12, padding:"20px", textAlign:"center" }}>
               <div style={{ fontSize:13, color:C.stone }}>No badges in progress yet.</div>
@@ -2276,7 +2281,7 @@ function BadgesPage() {
             if (!catBadges.length) return null;
             return (
               <div key={cat} style={{ marginBottom:24 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>{CATEGORY_LABELS[cat]}</div>
+                <div style={{ ...T.eyebrow, fontSize:13, color:C.stone, marginBottom:10 }}>{CATEGORY_LABELS[cat]}</div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   {catBadges.map(b => <BadgeCard key={b.id} badge={b} />)}
                 </div>
@@ -2292,7 +2297,7 @@ function BadgesPage() {
           {earned.length === 0 ? (
             <div style={{ background:C.offwhite, borderRadius:12, padding:"32px 20px", textAlign:"center" }}>
               <div style={{ fontSize:32, marginBottom:12 }}>🌱</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Start growing your collection</div>
+              <div style={{ ...T.bodyStrong, fontSize:15, color:"#1a1a1a", marginBottom:6 }}>Start growing your collection</div>
               <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Complete tasks, add crops, log sowing and harvests to unlock your first badges.</div>
             </div>
           ) : (
@@ -2745,7 +2750,7 @@ What's on your list this month?
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Share my garden 🌱</div>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>Share my garden 🌱</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Generate a card to share with friends</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
@@ -2755,7 +2760,7 @@ What's on your list this month?
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {[["recent", "Recent"], ["month", "This month"]].map(([val, label]) => (
             <button key={val} onClick={() => handleModeChange(val)}
-              style={{ flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === val ? C.forest : C.border}`, background: mode === val ? "#f0f5f3" : "transparent", color: mode === val ? C.forest : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${mode === val ? C.forest : C.border}`, background: mode === val ? "#f0f5f3" : "transparent", color: mode === val ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
               {label}
             </button>
           ))}
@@ -2779,12 +2784,12 @@ What's on your list this month?
               if (!tasks.length) return null;
               return (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                  <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 6 }}>
                     What you did <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: C.stone }}>(edit to personalise)</span>
                   </div>
                   {tasks.map((t, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: C.leaf, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 700, flexShrink: 0 }}>✓</div>
+                      <div style={{ ...T.bodyStrong, width: 24, height: 24, borderRadius: "50%", background: C.leaf, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", flexShrink: 0 }}>✓</div>
                       <input
                         value={taskLabels[i] || ""}
                         onChange={e => {
@@ -2840,7 +2845,7 @@ What's on your list this month?
 
             {/* Actions */}
             <button onClick={generateCard} disabled={generating}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
+              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
               {generating ? "Generating…" : "⬆ Share my garden"}
             </button>
             <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
@@ -2873,15 +2878,15 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   if (readyNow.length > 0) {
     return (
       <div style={{ background: `linear-gradient(135deg, #2d5a27 0%, #1e3d20 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
-        <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Ready to harvest</div>
-        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, marginBottom: 4 }}>
+        <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Ready to harvest</div>
+        <div style={{ ...T.displayMd, fontSize: 18, marginBottom: 4 }}>
           🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
         </div>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 14 }}>
           {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
         </div>
         <button onClick={() => onLogHarvest(readyNow[0])}
-          style={{ background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
+          style={{ ...T.control, background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
           🌾 Log harvest
         </button>
       </div>
@@ -2895,8 +2900,8 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Latest harvest</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 4 }}>Latest harvest</div>
+            <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a" }}>
               {getCropEmoji(lastHarvest.crop_name)} {lastHarvest.crop_name}
               {lastHarvest.variety ? ` — ${lastHarvest.variety}` : ""}
             </div>
@@ -2933,7 +2938,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   if (recentHarvests !== null && recentHarvests.length === 0) {
     return (
       <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
+        <div style={{ ...T.displayMd, fontSize: 16, color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
         <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
       </div>
     );
@@ -2960,7 +2965,7 @@ function GardenStatusCard({ data }) {
 
   return (
     <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Garden Status</div>
+      <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 12 }}>Garden Status</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {/* Crops growing */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -3020,7 +3025,7 @@ function ComingUpSoonCard({ data }) {
     <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 18 }}>⏳</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1 }}>Coming Up Soon</span>
+        <span style={{ ...T.eyebrow, fontSize: 12, color: C.stone }}>Coming Up Soon</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {upcoming.map((t, i) => (
@@ -3111,12 +3116,12 @@ function NotificationDashboardPrompt({ onTabChange }) {
       <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: C.forest, fontFamily: F.display }}>Get garden reminders</div>
+          <div style={{ ...T.bodyStrong, fontSize: 14, color: C.forest }}>Get garden reminders</div>
           <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Frost alerts, task reminders and crop checks — when they matter</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <button onClick={enable}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
             Turn on
           </button>
           <button onClick={() => setDismissed(true)}
@@ -3178,7 +3183,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
       </div>
       {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 2 }}>
+        <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 2 }}>
           {title}
         </div>
         <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: meta ? 5 : 0 }}>
@@ -3186,11 +3191,13 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
         </div>
         {meta && (
           <div style={{
+            ...T.bodyStrong,
             display: "inline-block",
-            fontSize: 11, fontWeight: 700,
+            fontSize: 11,
             color: isExpired ? C.red : C.forest,
             background: isExpired ? C.red + "12" : C.forest + "12",
-            borderRadius: 20, padding: "2px 8px",
+            borderRadius: 20,
+            padding: "2px 8px"
           }}>
             {meta}
           </div>
@@ -3198,13 +3205,14 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
       </div>
       {/* CTA */}
       <div style={{
+        ...T.bodyStrong,
         flexShrink: 0,
         padding: "8px 14px",
         borderRadius: 10,
         background: isExpired ? "#f5f5f5" : C.forest,
         color: isExpired ? C.stone : "#fff",
-        fontSize: 12, fontWeight: 700,
-        whiteSpace: "nowrap",
+        fontSize: 12,
+        whiteSpace: "nowrap"
       }}>
         {isExpired ? "Upgrade" : "Open camera"}
       </div>
@@ -3322,7 +3330,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
             {cfg.icon}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: F.body }}>{item.title}</div>
+            <div style={{ ...T.bodyStrong, fontSize: 15, color: "#1a1a1a" }}>{item.title}</div>
             {item.subtitle && <div style={{ fontSize: 12, color: C.stone, marginTop: 2, fontFamily: F.body }}>{item.subtitle}</div>}
           </div>
         </div>
@@ -3348,7 +3356,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
         {/* Note */}
         {item.is_manual ? (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: F.body, marginBottom: 8 }}>Note</div>
+            <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>Note</div>
             {editing ? (
               <div>
                 <textarea
@@ -3360,7 +3368,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
                 />
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                   <button onClick={handleSave} disabled={saving}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F.body }}>
+                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer" }}>
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => { setEditing(false); setNote(item.note || ""); }}
@@ -3378,7 +3386,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
           </div>
         ) : item.note ? (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: F.body, marginBottom: 8 }}>Note</div>
+            <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>Note</div>
             <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: F.body, lineHeight: 1.5 }}>{item.note}</div>
           </div>
         ) : null}
@@ -3398,7 +3406,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={handleDelete} disabled={deleting}
-                    style={{ flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F.body }}>
+                    style={{ ...T.control, flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer" }}>
                     {deleting ? "Deleting…" : "Yes, delete"}
                   </button>
                   <button onClick={() => setConfirmDelete(false)}
@@ -3584,7 +3592,7 @@ function GardenLog({ onLogActivity }) {
           <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 40px", boxShadow: "0 -4px 24px rgba(0,0,0,0.12)" }}
             onClick={e => e.stopPropagation()}>
             <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: F.display, marginBottom: 16, color: "#1a1a1a" }}>Filter activity</div>
+            <div style={{ ...T.bodyStrong, fontSize: 14, marginBottom: 16, color: "#1a1a1a" }}>Filter activity</div>
             {FILTERS.map(f => (
               <button key={f.id} onClick={() => handleFilterChange(f.id)}
                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, padding: "13px 0", cursor: "pointer", fontSize: 14, color: filter === f.id ? C.forest : "#1a1a1a", fontWeight: filter === f.id ? 700 : 400, fontFamily: F.body }}>
@@ -3600,7 +3608,7 @@ function GardenLog({ onLogActivity }) {
       {items.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>
             {filter === "all" ? "Nothing in your garden log yet" : "No matching activity"}
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 20 }}>
@@ -3610,7 +3618,7 @@ function GardenLog({ onLogActivity }) {
           </div>
           {filter === "all" ? (
             <button onClick={onLogActivity}
-              style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+              style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, cursor: "pointer" }}>
               Log activity
             </button>
           ) : (
@@ -3625,7 +3633,7 @@ function GardenLog({ onLogActivity }) {
       {/* Timeline */}
       {grouped.map(group => (
         <div key={group.label} style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: F.body, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
             {group.label}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -3957,7 +3965,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   if (loading && !data) return (
     <div style={{ padding: "60px 24px 80px", textAlign: "center" }}>
       <div style={{ fontSize: 44, marginBottom: 16 }}>🌱</div>
-      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
+      <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 8 }}>
         Looking at your garden
       </div>
       <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
@@ -4129,8 +4137,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
-            <div style={{ fontSize: 11, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, lineHeight: 1.1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.6, marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+            <div style={{ ...T.displayLg, fontSize: 22, lineHeight: 1.1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
             <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>Here&apos;s what&apos;s happening in your garden today</div>
             {data.weather ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, opacity: 0.85 }}>
@@ -4172,7 +4180,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
       {showFirstRun && (
         <div style={{ background: C.forest, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: F.display, color: "#fff", marginBottom: 6 }}>
+          <div style={{ ...T.displayMd, fontSize: 17, color: "#fff", marginBottom: 6 }}>
             Here's your garden plan for today 👇
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, marginBottom: 14 }}>
@@ -4180,7 +4188,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} }}
-              style={{ background: "#fff", color: C.forest, border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
+              style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, cursor: "pointer" }}>
               Got it
             </button>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} onTabChange("add"); }}
@@ -4218,20 +4226,20 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
       <div ref={tourRefs.tourRef_todayFocus} style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today&apos;s focus</div>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
 
         {focusItem ? (
           <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
+                <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>
                   {focusItem.crop?.name || "Garden task"}
                 </div>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => completeTask(focusItem)}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
+                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer" }}>
                     ✓ Mark done
                   </button>
                   <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
@@ -4259,7 +4267,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 28 }}>🌿</span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
+              <div style={{ ...T.displayMd, fontSize: 15, color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
               <div style={{ fontSize: 12, color: C.stone }}>
                 {thisWeekTasks.length > 0 ? `${thisWeekTasks.length} thing${thisWeekTasks.length !== 1 ? "s" : ""} coming up this week` : comingUpTasks.length > 0 ? `${comingUpTasks.length} task${comingUpTasks.length !== 1 ? "s" : ""} planned ahead` : "Nothing urgent — enjoy your garden"}
               </div>
@@ -4284,13 +4292,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           const alsoGroups = Object.values(alsoGrouped).slice(0, 3);
           return (
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Also today</div>
+              <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {alsoGroups.map((group, gi) => (
                   <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
-                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
+                      <span style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
                       {group.isSuccession && (
                         <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
                       )}
@@ -4360,7 +4368,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <div style={{ marginTop: 12 }}>
               <button onClick={() => setShowAllToday(p => !p)}
                 style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
-                <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                <span style={{ ...T.eyebrow, fontSize: 12 }}>
                   See all ({totalCount})
                 </span>
                 <span style={{ fontSize: 16, transition: "transform 0.2s", display: "inline-block", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
@@ -4372,7 +4380,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                         <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
+                        <span style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
                         {group.isSuccession && (
                           <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
                         )}
@@ -4412,7 +4420,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
                 {undoQueue[t.id] && (
                   <button onClick={() => undoComplete(t)}
-                    style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+                    style={{ ...T.control, fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer" }}>
                     Undo
                   </button>
                 )}
@@ -4436,13 +4444,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
             <span style={{ fontSize: 20, flexShrink: 0 }}>🗓️</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Busy week ahead</div>
+              <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a", marginBottom: 2 }}>Busy week ahead</div>
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: 8 }}>
                 You have {upcomingCount} tasks coming up. Going anywhere? We can adjust your plan around it.
               </div>
               <button
                 onClick={() => onTabChange("profile", { openTimeAway: true })}
-                style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", marginRight: 8 }}>
+                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer", marginRight: 8 }}>
                 Plan time away →
               </button>
               <button
@@ -4468,7 +4476,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: C.forest, fontWeight: 700 }}>Set dates →</span>
+            <span style={{ ...T.bodyStrong, fontSize: 12, color: C.forest }}>Set dates →</span>
             <button
               onClick={e => { e.stopPropagation(); setTimeAwayDismissed(true); try { localStorage.setItem("vercro_timeaway_dismissed", "1"); } catch(e) {} }}
               style={{ background: "none", border: "none", fontSize: 16, color: C.stone, cursor: "pointer", padding: 0, lineHeight: 1 }}>×</button>
@@ -4494,7 +4502,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── 3. WATCH OUTS ──────────────────────────────────────────────────── */}
       {watchOuts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Watch outs</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Watch outs</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {watchOuts.map(group => {
               const t = group[0]; // representative task for shared fields
@@ -4511,10 +4519,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, color: "#1a1a1a" }}>
+                        <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>
                           {cropNames.length > 0 ? cropNames.join(", ") : "Watch out"}
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: urgColour, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", flexShrink: 0, marginLeft: 8 }}>
+                        <span style={{ ...T.eyebrow, fontSize: 10, color: urgColour, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>
                           {t.urgency === "high" ? "Act now" : t.urgency === "medium" ? "Inspect" : "Watch"}
                         </span>
                       </div>
@@ -4527,20 +4535,20 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                         <button onClick={async () => {
                           await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild") : Promise.resolve()));
                           group.forEach(x => completeTask(x));
-                        }} style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        }} style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontSize: 12, cursor: "pointer" }}>
                           🐛 Found it
                         </button>
                         <button onClick={async () => {
                           await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy") : Promise.resolve()));
                           group.forEach(x => completeTask(x));
-                        }} style={{ flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "8px", color: C.forest, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        }} style={{ ...T.control, flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: 8, padding: "8px", color: C.forest, fontSize: 12, cursor: "pointer" }}>
                           ✓ All clear
                         </button>
                       </>
                     ) : (
                       <>
                         <button onClick={() => group.forEach(x => completeTask(x))}
-                          style={{ flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                          style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontSize: 12, cursor: "pointer" }}>
                           ✓ Done
                         </button>
                         <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); }}
@@ -4560,13 +4568,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── 4. COMING UP NEXT ──────────────────────────────────────────────── */}
       {comingUpByCrop.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Coming up next</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Coming up next</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {comingUpByCrop.slice(0, 5).map(({ name, emoji, tasks }) => (
               <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{emoji}</span>
-                  <span style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a" }}>{name}</span>
+                  <span style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a" }}>{name}</span>
                   <span style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
                 </div>
                 {tasks.slice(0, 3).map((t, i) => (
@@ -4594,14 +4602,14 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
           style={{ marginTop: -8, marginBottom: 20, padding: "10px 14px", background: "#f8faf6", border: `1px solid #D4E8CE`, borderRadius: "0 0 12px 12px", borderTop: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14 }}>📷</span>
-          <span style={{ fontSize: 12, color: C.stone }}>Not sure if it's ready? <span style={{ color: C.forest, fontWeight: 700 }}>Check with a photo →</span></span>
+          <span style={{ fontSize: 12, color: C.stone }}>Not sure if it's ready? <span style={{ ...T.bodyStrong, color: C.forest }}>Check with a photo →</span></span>
         </div>
       )}
 
       {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
       {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Harvest forecast</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Harvest forecast</div>
           <CollapsibleHarvestForecast
             items={data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id))}
             onHarvest={(h) => setPendingHarvest(h)}
@@ -4613,7 +4621,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
       {(data.missing_data || []).length > 0 && (
         <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Make your plan more accurate</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.amber, marginBottom: 10 }}>Make your plan more accurate</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(data.missing_data || []).slice(0, 3).map(item => (
               <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -4623,7 +4631,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   <div style={{ fontSize: 12, color: C.stone }}>Add {item.missing.join(" and ")} for more accurate tasks</div>
                 </div>
                 <button onClick={() => { if (onTabChange) onTabChange("crops", { editCropId: item.id, editCropField: item.missing[0]?.includes("variety") ? "variety" : "sow_date" }); }}
-                  style={{ fontSize: 12, fontWeight: 700, color: C.amber, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  style={{ ...T.control, fontSize: 12, color: C.amber, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
                   Add details →
                 </button>
               </div>
@@ -4634,7 +4642,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Garden progress</div>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 12 }}>Garden progress</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
             { label: "Active crops",       value: cropCount,      emoji: "🌱" },
@@ -4644,7 +4652,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           ].map(({ label, value, emoji, highlight }) => (
             <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: highlight ? C.amber : C.forest, fontFamily: F.display, lineHeight: 1 }}>{value}</div>
+              <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.amber : C.forest, lineHeight: 1 }}>{value}</div>
               <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
             </div>
           ))}
@@ -4659,7 +4667,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
       <button onClick={() => setShowShareGarden(true)}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontWeight: 700, fontSize: 13 }}>
+        style={{ ...T.control, width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
         🌱 Share my garden
       </button>
 
@@ -4680,7 +4688,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {/* Header */}
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
-              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
+              <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>
                 Nice work today
               </div>
               <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
@@ -4693,7 +4701,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {/* Tomorrow hook */}
             {sessionCompleteData.nextTask ? (
               <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px", marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
                   ⭐ Coming up next
                 </div>
                 <div style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 600, lineHeight: 1.5, marginBottom: 4 }}>
@@ -4707,7 +4715,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               </div>
             ) : (
               <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px", marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
                   ⭐ Tomorrow
                 </div>
                 <div style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 600, lineHeight: 1.5, marginBottom: 4 }}>
@@ -4722,7 +4730,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {/* CTAs */}
             <button
               onClick={() => { setShowSessionComplete(false); sessionCompletedCountRef.current = 0; }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Done
             </button>
             <button
@@ -4741,13 +4749,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>🎉</div>
-              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>5 tasks done!</div>
+              <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>5 tasks done!</div>
               <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
                 You're making real progress. Share your garden with friends — it takes 30 seconds and looks great on Instagram.
               </div>
             </div>
             <button onClick={() => { setShowShareNudge(false); setShowShareGarden(true); }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               🌱 Share my garden
             </button>
             <button onClick={() => setShowShareNudge(false)}
@@ -4766,7 +4774,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>👋</div>
-              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Invite a friend</div>
+              <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>Invite a friend</div>
               <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
                 Know a gardener who'd love this? Send them the link — Vercro is completely free to use.
               </div>
@@ -4777,7 +4785,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 https://vercro.com
               </div>
               <button onClick={() => { navigator.clipboard.writeText("https://vercro.com"); }}
-                style={{ flexShrink: 0, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                style={{ ...T.control, flexShrink: 0, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
                 Copy
               </button>
             </div>
@@ -4789,18 +4797,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 navigator.clipboard.writeText("https://vercro.com");
               }
             }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               📤 Share link
             </button>
 
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
               <a href={`https://wa.me/?text=${encodeURIComponent("I've been using Vercro to keep on top of my garden — it tells you exactly what to do each day. Free to use: https://vercro.com")}`}
                 target="_blank" rel="noreferrer"
-                style={{ flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: 12, padding: "12px", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
+                style={{ ...T.control, flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: 12, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
                 💬 WhatsApp
               </a>
               <a href={`mailto:?subject=You'd love this gardening app&body=${encodeURIComponent("Hey! I've been using Vercro to keep on top of my garden — it tells you exactly what tasks to do each day based on your crops and the weather. Completely free: https://vercro.com")}`}
-                style={{ flex: 1, background: C.offwhite, color: C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
+                style={{ ...T.control, flex: 1, background: C.offwhite, color: C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
                 ✉️ Email
               </a>
             </div>
@@ -4819,18 +4827,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           onClick={e => { if (e.target === e.currentTarget) setStrugglingCrop(null); }}>
           <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
             <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🌿</div>
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
+            <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
               Is your {strugglingCrop.name} struggling?
             </div>
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
               We'll adjust your care plan to focus on getting it back to health — reducing pressure and adding targeted checks.
             </div>
             <div style={{ background: C.offwhite, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>What we'll do:</div>
+              <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a", marginBottom: 8 }}>What we'll do:</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {["Pause non-essential tasks for this crop", "Add a daily health check prompt", "Flag it for your attention", "Resume normal care once it recovers"].map((item, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ color: C.forest, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span style={{ ...T.bodyStrong, color: C.forest, flexShrink: 0 }}>✓</span>
                     <span style={{ fontSize: 13, color: C.stone }}>{item}</span>
                   </div>
                 ))}
@@ -4839,7 +4847,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <button onClick={async () => {
               await logObservation(strugglingCrop.id, "other", "plant_struggling");
               setStrugglingCrop(null);
-            }} style={{ width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+            }} style={{ ...T.control, width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 16, cursor: "pointer", marginBottom: 10 }}>
               Yes, it&apos;s struggling
             </button>
             <button onClick={() => setStrugglingCrop(null)}
@@ -4877,7 +4885,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>
             You're all caught up
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
@@ -5084,13 +5092,13 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
   return (
     <div style={{ marginBottom: 20 }}>
       {sectionLabel && (
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{sectionLabel}</div>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>{sectionLabel}</div>
       )}
       <div onClick={() => setOpen(v => !v)}
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌱</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: C.forest }}>Crop checks</span>
+          <span style={{ ...T.bodyStrong, fontSize: 14, color: C.forest }}>Crop checks</span>
           <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
@@ -5107,14 +5115,14 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{q?.emoji || "🌱"}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{crop.name}</div>
                       {crop.variety && <div style={{ fontSize: 11, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
                     </div>
                   </div>
                   <div style={{ fontSize: 13, color: C.stone, marginBottom: 12, lineHeight: 1.4 }}>{q?.q || `Has this crop reached the ${nextStage} stage?`}</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => handleLifecycle(crop, nextStage, true)} disabled={isActioning}
-                      style={{ flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       {isActioning ? "Saving…" : "Yes ✓"}
                     </button>
                     <button onClick={() => handleLifecycle(crop, nextStage, false)} disabled={isActioning}
@@ -5134,7 +5142,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{crop.name}</div>
                       {crop.variety && <div style={{ fontSize: 11, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
                     </div>
                   </div>
@@ -5143,11 +5151,11 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => handleSowMethod(crop, "indoors")} disabled={isActioning}
-                      style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: "#1a1a1a", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: "#1a1a1a", fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       🪟 Indoors
                     </button>
                     <button onClick={() => handleSowMethod(crop, "direct_sow")} disabled={isActioning}
-                      style={{ flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: "#1a1a1a", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "9px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.offwhite, color: "#1a1a1a", fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
                       🌱 Outdoors
                     </button>
                   </div>
@@ -5163,7 +5171,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{crop.name}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>Perennial check</div>
                     </div>
                   </div>
@@ -5173,7 +5181,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                       setDismissed(prev => new Set([...prev, crop.id + "_perennial"]));
                       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
                       if (onDismiss) onDismiss();
-                    }} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    }} style={{ ...T.control, flex: 1, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
                       ✓ Done
                     </button>
                     <button onClick={() => setDismissed(prev => new Set([...prev, crop.id + "_perennial"]))}
@@ -5193,7 +5201,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
               <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{missingVariety ? "🌿" : "📅"}</span>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{item.name}</div>
+                  <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{item.name}</div>
                 </div>
                 <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
                   Missing: {item.missing.join(", ")} — add it for more accurate tasks
@@ -5201,7 +5209,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                 <div style={{ display: "flex", gap: 8 }}>
                   {onNavigateCrop && (
                     <button onClick={() => { handleMissingDismiss(item.id); onNavigateCrop(item.id, missingVariety ? "variety" : "sow_date"); }}
-                      style={{ flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                      style={{ ...T.control, flex: 2, padding: "9px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
                       {missingVariety ? "Add variety →" : "Add sow date →"}
                     </button>
                   )}
@@ -5230,7 +5238,7 @@ function TipsInner({ tips }) {
         <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: C.offwhite, borderRadius: 10, alignItems: "flex-start" }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>{tip.emoji || "🌱"}</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: "#222", marginBottom: 2 }}>{tip.title}</div>
+            <div style={{ ...T.bodyStrong, fontSize: 13, color: "#222", marginBottom: 2 }}>{tip.title}</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip.tip}</div>
           </div>
         </div>
@@ -5270,7 +5278,7 @@ function TipsSection() {
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>💡</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#222" }}>Garden tips</span>
+          <span style={{ ...T.bodyStrong, fontSize: 14, color: "#222" }}>Garden tips</span>
           <span style={{ fontSize: 11, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>This week</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
@@ -5304,7 +5312,7 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: "12px 12px 0 0", padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌾</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#222" }}>Harvest forecast</span>
+          <span style={{ ...T.bodyStrong, fontSize: 14, color: "#222" }}>Harvest forecast</span>
           <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
@@ -5383,7 +5391,7 @@ function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: "#222" }}>💡 Why now?</div>
+          <div style={{ ...T.bodyStrong, fontSize: 15, color: "#222" }}>💡 Why now?</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: C.stone, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
         </div>
 
@@ -5501,7 +5509,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: timingColor, flexShrink: 0, marginTop: 2 }} />
 
           <div style={{ flex: 1, minWidth: 0 }} onClick={() => !completed && setExpanded(e => !e)} role="button">
-            <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: F.display }}>
+            <div style={{ ...T.bodyStrong, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none" }}>
               {task.crop?.name ? getCropEmoji(task.crop.name) + " " + task.crop.name : "General"}
               {task.crop?.variety && <span style={{ fontWeight: 400, color: C.stone, fontSize: 13 }}> · {task.crop.variety}</span>}
             </div>
@@ -5520,7 +5528,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
             <div style={{ display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
               {/* Timing pill */}
               {!completed && (
-                <span style={{ background: timingBg, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: timingColor, fontWeight: 700, border: `1px solid ${timingColor}44` }}>
+                <span style={{ ...T.bodyStrong, background: timingBg, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: timingColor, border: `1px solid ${timingColor}44` }}>
                   {timingLabel}
                 </span>
               )}
@@ -5789,7 +5797,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>My Garden</div>
+          <div style={{ ...T.displayLg, fontSize: 22, color: "#1a1a1a" }}>My Garden</div>
           <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{locations.length} location{locations.length !== 1 ? "s" : ""}</div>
         </div>
         <button onClick={() => {
@@ -5800,7 +5808,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
             setShowAddLocation(!showAddLocation);
             setShowAddArea(false);
           }}
-          style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
           + Location
         </button>
       </div>
@@ -5811,7 +5819,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           onClick={e => { if (e.target === e.currentTarget) setDeleteLocationTarget(null); }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 480, margin: "0 auto" }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 14 }}>⚠️</div>
-            <div style={{ fontSize: 19, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", textAlign: "center", marginBottom: 6 }}>
+            <div style={{ ...T.displayLg, fontSize: 19, color: "#1a1a1a", textAlign: "center", marginBottom: 6 }}>
               Delete "{deleteLocationTarget.name}"?
             </div>
             <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6 }}>
@@ -5841,7 +5849,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                   } catch(e) { alert("Failed to delete location: " + e.message); }
                   setDeletingLocation(false);
                 }}
-                style={{ background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, cursor: "pointer" }}>
                 {deletingLocation ? "Deleting…" : "Yes, delete this location"}
               </button>
               <button onClick={() => setDeleteLocationTarget(null)}
@@ -5856,7 +5864,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
       {/* Add location form */}
       {showAddLocation && (
         <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, marginBottom: 12 }}>New location</div>
+          <div style={{ ...T.bodyStrong, fontSize: 14, marginBottom: 12 }}>New location</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div><label style={labelStyle}>Name</label>
               <input value={newLocation.name} onChange={e => setNewLocation(l => ({ ...l, name: e.target.value }))} style={inputStyle} placeholder="e.g. Allotment plot 7" /></div>
@@ -5864,7 +5872,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               <input value={newLocation.postcode} onChange={e => setNewLocation(l => ({ ...l, postcode: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="e.g. TS22 or 90210" />
               <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to get local weather for your garden</div>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, useful for future planning</span></div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, useful for future planning</span></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div><label style={labelStyle}>Width (m)</label>
                 <input value={newLocation.width_m} onChange={e => setNewLocation(l => ({ ...l, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 10" /></div>
@@ -5873,7 +5881,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveLocation} disabled={saving || !newLocation.name}
-                style={{ flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, cursor: "pointer" }}>
                 {saving ? "Saving…" : "Save location"}
               </button>
               <button onClick={() => setShowAddLocation(false)}
@@ -5966,7 +5974,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
                 onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: C.forest }}>{loc.name}</div>
+                <div style={{ ...T.displayMd, fontSize: 16, color: C.forest }}>{loc.name}</div>
                 {(loc.width_m || loc.length_m) && (
                   <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>
                     {loc.width_m && loc.length_m ? `${formatDimension(loc.width_m, measurementUnit)} × ${formatDimension(loc.length_m, measurementUnit)}` : loc.width_m ? `Width ${formatDimension(loc.width_m, measurementUnit)}` : `Length ${formatDimension(loc.length_m, measurementUnit)}`}
@@ -5979,7 +5987,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               {!collapsedLocs[loc.id] && (
                 <>
                   <button onClick={e => { e.stopPropagation(); setShowAddArea(loc.id); setShowAddLocation(false); setNewArea(a => ({ ...a, location_id: loc.id })); }}
-                    style={{ height: 30, background: "none", border: `1px solid ${C.forest}`, color: C.forest, borderRadius: 8, padding: "0 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    style={{ ...T.control, height: 30, background: "none", border: `1px solid ${C.forest}`, color: C.forest, borderRadius: 8, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                     + Add area
                   </button>
                   <button onClick={e => { e.stopPropagation(); setLogScope({ type: "location", id: loc.id, name: loc.name }); }}
@@ -6020,7 +6028,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           {/* Edit location inline form */}
           {editingLocation === loc.id && (
             <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, marginBottom: 10 }}>Edit location</div>
+              <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>Edit location</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={editLocationForm.name} onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} /></div>
@@ -6028,7 +6036,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                   <input value={editLocationForm.postcode} onChange={e => setEditLocationForm(f => ({ ...f, postcode: e.target.value.toUpperCase() }))} style={inputStyle} />
                   <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to get local weather for your garden</div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div><label style={labelStyle}>Width (m)</label>
                     <input value={editLocationForm.width_m} onChange={e => setEditLocationForm(f => ({ ...f, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 10" /></div>
@@ -6037,7 +6045,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => saveEditLocation(loc.id)} disabled={saving || !editLocationForm.name}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
+                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontSize: 13, cursor: "pointer" }}>
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => setEditingLocation(null)}
@@ -6054,7 +6062,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
             <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, marginBottom: 10 }}>New growing area</div>
+              <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>New growing area</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={newArea.name} onChange={e => setNewArea(a => ({ ...a, name: e.target.value }))} style={inputStyle} placeholder="e.g. Raised bed 2, Greenhouse" /></div>
@@ -6067,14 +6075,14 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     <option value="container">Container / pots</option>
                     <option value="indoors">Indoors (permanent)</option>
                   </select></div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, supports future planning</span></div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, supports future planning</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div><label style={labelStyle}>Width (m)</label>
                     <input value={newArea.width_m} onChange={e => setNewArea(a => ({ ...a, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 2.4" /></div>
                   <div><label style={labelStyle}>Length (m)</label>
                     <input value={newArea.length_m} onChange={e => setNewArea(a => ({ ...a, length_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 1.2" /></div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Soil <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, improves recommendations</span></div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: -4 }}>Soil <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional, improves recommendations</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div><label style={labelStyle}>Soil pH</label>
                     <input value={newArea.soil_ph} onChange={e => setNewArea(a => ({ ...a, soil_ph: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 6.5" /></div>
@@ -6083,7 +6091,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={saveArea} disabled={saving || !newArea.name}
-                    style={{ flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                    style={{ ...T.control, flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, cursor: "pointer" }}>
                     {saving ? "Saving…" : "Save area"}
                   </button>
                   <button onClick={() => setShowAddArea(false)}
@@ -6119,7 +6127,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteArea(area.id)} disabled={saving}
-                        style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 12, cursor: "pointer" }}>
                         {saving ? "Removing…" : "Yes, remove"}
                       </button>
                       <button onClick={() => setConfirmArea(null)}
@@ -6133,7 +6141,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 {editingArea === area.id ? (
                   /* Edit form */
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, color: "#1a1a1a" }}>Edit area</div>
+                    <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>Edit area</div>
                     <div>
                       <label style={labelStyle}>Name</label>
                       <input value={editAreaForm.name} onChange={e => setEditAreaForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
@@ -6149,14 +6157,14 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         <option value="indoors">Indoors (permanent)</option>
                       </select>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
+                    <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: -4 }}>Size <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div><label style={labelStyle}>Width (m)</label>
                         <input value={editAreaForm.width_m} onChange={e => setEditAreaForm(f => ({ ...f, width_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 2.4" /></div>
                       <div><label style={labelStyle}>Length (m)</label>
                         <input value={editAreaForm.length_m} onChange={e => setEditAreaForm(f => ({ ...f, length_m: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 1.2" /></div>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>Soil <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
+                    <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: -4 }}>Soil <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— optional</span></div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div><label style={labelStyle}>Soil pH</label>
                         <input value={editAreaForm.soil_ph} onChange={e => setEditAreaForm(f => ({ ...f, soil_ph: e.target.value }))} style={inputStyle} inputMode="decimal" placeholder="e.g. 6.5" /></div>
@@ -6165,7 +6173,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => saveEditArea(area.id)} disabled={saving || !editAreaForm.name}
-                        style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
+                        style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontSize: 13, cursor: "pointer" }}>
                         {saving ? "Saving…" : "Save"}
                       </button>
                       <button onClick={() => setEditingArea(null)}
@@ -6425,7 +6433,7 @@ function CropGrowthDiary({ crop, onClose }) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>
               {getCropEmoji(crop.name)} {crop.name} — Growth Diary
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{photos.length} photo{photos.length !== 1 ? "s" : ""}</div>
@@ -6439,12 +6447,12 @@ function CropGrowthDiary({ crop, onClose }) {
             placeholder="Add a caption (optional)" style={{ ...inputStyle, marginBottom: 8 }} />
           <div style={{ display: "flex", gap: 8 }}>
             <label htmlFor="crop-diary-photo-camera"
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: F.display }}>
+              style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
               {uploading ? "Uploading…" : "📷 Camera"}
             </label>
             <input id="crop-diary-photo-camera" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
             <label htmlFor="crop-diary-photo-library"
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: F.display }}>
+              style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
               🖼️ Library
             </label>
             <input id="crop-diary-photo-library" type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
@@ -6635,12 +6643,12 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
             style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
             x
           </button>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 5 }}>
             {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.leaf, flexShrink: 0 }} />
-            <div style={{ fontSize: 19, fontWeight: 700, color: "#fff", fontFamily: F.display }}>
+            <div style={{ ...T.displayLg, fontSize: 19, color: "#fff" }}>
               {STAGES.find(s => s.key === currentStageKey)?.label || "Growing"} now
             </div>
           </div>
@@ -6659,16 +6667,16 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         {!loading && confirmed && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
             <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>checkmark</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Timeline updated</div>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 8 }}>Timeline updated</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
             {harvestNode?.formatted_date && (
               <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Harvest now expected</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: "#3B6D11", marginBottom: 4 }}>Harvest now expected</div>
+                <div style={{ ...T.displayMd, fontSize: 18, color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
               </div>
             )}
             <button onClick={onClose}
-              style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+              style={{ ...T.control, width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", cursor: "pointer" }}>
               Done
             </button>
           </div>
@@ -6738,7 +6746,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
-                          style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: F.display }}>
+                          style={{ ...T.bodyStrong, flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: selected ? "pointer" : "default" }}>
                           {saving ? "Saving..." : "Confirm stage"}
                         </button>
                         <button onClick={() => { setAdjusting(false); setSelected(null); }}
@@ -6767,7 +6775,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       )}
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmHarvestDate} disabled={!dateInput || saving}
-                          style={{ flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: dateInput ? "pointer" : "default", fontFamily: F.display }}>
+                          style={{ ...T.control, flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: dateInput ? "pointer" : "default" }}>
                           {saving ? "Saving..." : "Update harvest date"}
                         </button>
                         <button onClick={() => setAdjusting(false)}
@@ -6784,18 +6792,18 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, fontStyle: "italic" }}>Positive = behind schedule. Negative = ahead.</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                         <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) - 7))}
-                          style={{ width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>-</button>
+                          style={{ ...T.control, width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", color: C.forest, flexShrink: 0 }}>-</button>
                         <input type="number" value={daysInput} onChange={e => setDaysInput(e.target.value)}
                           style={{ ...inputStyle, textAlign: "center", flex: 1 }} inputMode="numeric" />
                         <button onClick={() => setDaysInput(d => String((parseInt(d, 10) || 0) + 7))}
-                          style={{ width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", fontWeight: 700, color: C.forest, flexShrink: 0 }}>+</button>
+                          style={{ ...T.control, width: 40, height: 40, borderRadius: 8, border: "1px solid " + C.border, background: C.offwhite, fontSize: 18, cursor: "pointer", color: C.forest, flexShrink: 0 }}>+</button>
                       </div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 12, textAlign: "center" }}>
                         {parseInt(daysInput, 10) === 0 ? "No adjustment" : parseInt(daysInput, 10) > 0 ? daysInput + " days behind — harvest later" : Math.abs(parseInt(daysInput, 10)) + " days ahead — harvest sooner"}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmDaysOffset} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                           {saving ? "Saving..." : "Apply adjustment"}
                         </button>
                         <button onClick={() => setAdjusting(false)}
@@ -6832,7 +6840,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
                   {actions.length > 0 && (
                     <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What to do right now</div>
+                      <div style={{ ...T.eyebrow, fontSize: 10, color: "#3B6D11", marginBottom: 8 }}>What to do right now</div>
                       {actions.map((a, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < actions.length - 1 ? 6 : 0 }}>
                           <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
@@ -6844,20 +6852,20 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Next milestone</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{STAGES[stageIdx + 1]?.label || "Harvest"}</div>
+                      <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 3 }}>Next milestone</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>{STAGES[stageIdx + 1]?.label || "Harvest"}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>{harvestNode?.formatted_date ? "By " + harvestNode.formatted_date : "Coming up"}</div>
                     </div>
                     <div style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Growing for</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{daysSown !== null ? daysSown + " days" : "—"}</div>
+                      <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 3 }}>Growing for</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>{daysSown !== null ? daysSown + " days" : "—"}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>{sowDate ? "since " + new Date(sowDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "add a sow date"}</div>
                     </div>
                   </div>
 
                   {journeyNodes.length > 0 && (
                     <div style={{ border: "1px solid " + C.border, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Your journey so far</div>
+                      <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 10 }}>Your journey so far</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                         {journeyNodes.map((n, i) => (
                           <div key={n.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -6880,10 +6888,10 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                   )}
 
                   <div style={{ borderTop: "1px solid " + C.border, paddingTop: 14 }}>
-                    <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Is this timeline right for your plant?</div>
+                    <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 8 }}>Is this timeline right for your plant?</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => confirmStage(currentStageKey)} disabled={saving}
-                        style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                        style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                         {saving ? "Saving..." : "Yes — looks right"}
                       </button>
                       <button onClick={() => openAdjustMode("stage")}
@@ -6906,7 +6914,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         {!loading && !confirmed && !timeline && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>plant</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
+            <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop growth timeline.</div>
           </div>
         )}
@@ -7137,7 +7145,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
         {step === "done" && (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 38, marginBottom: 10 }}>{hint?.includes("wrong") ? "⚠️" : actionDef.emoji || "✓"}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>
+            <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>
               {hint?.includes("wrong") ? "Something went wrong" : "Logged"}
             </div>
             {hint && <div style={{ fontSize: 13, color: C.stone }}>{hint}</div>}
@@ -7148,7 +7156,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
         {step === "action" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Log activity</div>
+              <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a" }}>Log activity</div>
               <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
             </div>
 
@@ -7178,7 +7186,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
                   style={{ ...btnBase, background: C.offwhite, border: `1px solid ${C.border}`, padding: "16px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
                   <span style={{ fontSize: 24 }}>{a.emoji}</span>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{a.label}</div>
+                    <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{a.label}</div>
                     <div style={{ fontSize: 10, color: C.stone, marginTop: 1 }}>{a.desc}</div>
                   </div>
                 </button>
@@ -7198,7 +7206,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <button onClick={() => setStep("action")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
+              <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>
                 {actionDef.emoji} {actionDef.label} — where?
               </div>
             </div>
@@ -7233,7 +7241,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <button onClick={() => setStep("location")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
+              <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>
                 Which beds?
               </div>
             </div>
@@ -7280,7 +7288,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <button onClick={() => setStep("areas")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Which crops?</div>
+              <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>Which crops?</div>
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 14 }}>Select all that were fed</div>
 
@@ -7328,9 +7336,9 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <button onClick={() => setStep("action")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Log activity</div>
+              <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>Log activity</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
+            <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>What did you do?</div>
             <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
               placeholder="e.g. Applied copper fungicide, staked tomatoes…"
               style={{ ...inputStyle, marginBottom: 8 }}
@@ -7396,7 +7404,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
         {/* Handle */}
         <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
 
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
+        <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 4 }}>
           Duplicate crop
         </div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 20, lineHeight: 1.5 }}>
@@ -7435,7 +7443,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
         </div>
 
         <button onClick={handleSave} disabled={saving || !areaId}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: (saving || !areaId) ? "default" : "pointer", opacity: (saving || !areaId) ? 0.6 : 1, marginBottom: 10 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: (saving || !areaId) ? "default" : "pointer", opacity: (saving || !areaId) ? 0.6 : 1, marginBottom: 10 }}>
           {saving ? "Adding…" : `Add ${cropName} to this area`}
         </button>
         <button onClick={onClose}
@@ -7706,7 +7714,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onClick={e => { if (e.target === e.currentTarget) { setPendingNoHarvest(null); setNoHarvestReason(null); } }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
+            <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>
               No harvest from {pendingNoHarvest.name} this year?
             </div>
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 20 }}>
@@ -7748,7 +7756,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               Record no harvest
             </button>
             <button
@@ -7766,7 +7774,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onClick={e => { if (e.target === e.currentTarget) setPendingDormant(null); }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 10 }}>
+            <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 10 }}>
               Mark {pendingDormant.name} as dormant?
             </div>
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
@@ -7780,7 +7788,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.control, width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
               💤 Mark dormant
             </button>
             <button
@@ -7798,7 +7806,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onClick={e => { if (e.target === e.currentTarget) { setPendingFail(null); setFailReason(null); } }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
+            <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>
               What happened to {pendingFail.name}?
             </div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 20 }}>Select a reason to help Vercro learn from failures.</div>
@@ -7833,7 +7841,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", fontFamily: F.display, marginBottom: 10 }}>
+              style={{ ...T.displayMd, width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", marginBottom: 10 }}>
               Mark as failed
             </button>
             <button
@@ -7866,7 +7874,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
           {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
             <button key={id} onClick={() => setCropTab(id)}
-              style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display, transition: "all 0.15s" }}>
+              style={{ ...T.control, flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontSize: 13, cursor: "pointer", transition: "all 0.15s" }}>
               {label}
             </button>
           ))}
@@ -7883,16 +7891,16 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>My Crops</div>
+            <div style={{ ...T.displayLg, fontSize: 22, color: "#1a1a1a" }}>My Crops</div>
             <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{visibleCrops.length} of {crops.length} crop{crops.length !== 1 ? "s" : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button ref={tourRefs.tourRef_addCropBtn} onClick={() => onAddCrop()}
-              style={{ background: C.forest, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ ...T.control, background: C.forest, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               + Add Crop
             </button>
             <button ref={tourRefs.tourRef_filterSortBtn} onClick={() => setShowFilters(v => !v)}
-              style={{ background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ ...T.control, background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
@@ -7902,7 +7910,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Status filter */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Status</div>
+              <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Status</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["dormant", "💤 Dormant"], ["harvested", "Harvested"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterStatus(val)}
@@ -7914,7 +7922,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </div>
             {/* Type filter */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Type</div>
+              <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Type</div>
               <div style={{ display: "flex", gap: 6 }}>
                 {[["", "All"], ["veg", "🥦 Veg"], ["fruit", "🍅 Fruit"], ["herb", "🌿 Herb"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterType(val)}
@@ -7927,7 +7935,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             {/* Location filter — only shown when user has 2+ locations */}
             {uniqueLocations.length > 1 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Location</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Location</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button onClick={() => { setFilterLocation(""); setFilterArea(""); }}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterLocation === "" ? C.forest : C.border}`, background: filterLocation === "" ? C.forest : "transparent", color: filterLocation === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -7944,7 +7952,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             )}
             {/* Area filter */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Area</div>
+              <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Area</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button onClick={() => setFilterArea("")}
                   style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${filterArea === "" ? C.forest : C.border}`, background: filterArea === "" ? C.forest : "transparent", color: filterArea === "" ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -7960,7 +7968,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </div>
             {/* Sort */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Sort by</div>
+              <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Sort by</div>
               <div style={{ display: "flex", gap: 6 }}>
                 {[["recent", "Recently added"], ["alpha", "A–Z"], ["pct", "% grown"]].map(([val, label]) => (
                   <button key={val} onClick={() => setSortBy(val)}
@@ -8019,7 +8027,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => deleteGroup(group.id)} disabled={saving}
-                    style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
                     {saving ? "Removing…" : "Yes, remove all"}
                   </button>
                   <button onClick={() => setConfirmDeleteGroup(null)}
@@ -8035,7 +8043,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setExpandedGroups(e => ({ ...e, [group.id]: !isExpanded }))}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                   <span style={{ fontSize: 18 }}>{getCropEmoji(group.crop_name)}</span>
-                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>
+                  <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>
                     {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
                   </div>
                   <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>
@@ -8093,7 +8101,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     <div key={sowing.id} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>
+                          <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>
                             Sow {sowing.succession_index}
                             {sowing.sown_date && (
                               <span style={{ fontWeight: 400, color: C.stone, marginLeft: 8 }}>
@@ -8136,7 +8144,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                           <div style={{ fontSize: 12, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove Sow {sowing.succession_index}?</div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => deleteCrop(sowing.id)} disabled={saving}
-                              style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "7px 0", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                              style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "7px 0", fontSize: 12, cursor: "pointer" }}>
                               {saving ? "Removing…" : "Yes, remove"}
                             </button>
                             <button onClick={() => setConfirm(null)}
@@ -8161,7 +8169,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       {isNext && canAddMore && (
                         <button onClick={() => { setAddingSowingFor(group.id); setNewSowingForm({ sown_date: "", status: "growing" }); }}
-                          style={{ background: C.forest, border: "none", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          style={{ ...T.control, background: C.forest, border: "none", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
                           + Add Sow {idx}
                         </button>
                       )}
@@ -8172,7 +8180,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 {/* Add next sowing form */}
                 {addingSowingFor === group.id && (
                   <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", marginTop: 4 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, marginBottom: 10 }}>Add Sow {nextIdx}</div>
+                    <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>Add Sow {nextIdx}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div>
                         <label style={labelStyle}>Sow date</label>
@@ -8189,7 +8197,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => addNextSowing(group.id)} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: F.display }}>
+                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                           {saving ? "Saving…" : `Save Sow ${nextIdx}`}
                         </button>
                         <button onClick={() => setAddingSowingFor(null)}
@@ -8223,7 +8231,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 10 }}>Remove {crop.name}? This cannot be undone.</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => deleteCrop(crop.id)} disabled={saving}
-                  style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
                   {saving ? "Removing…" : "Yes, remove"}
                 </button>
                 <button onClick={() => setConfirm(null)}
@@ -8237,7 +8245,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           {editing === crop.id ? (
             /* Edit form */
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>Edit {crop.name}</div>
+              <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Edit {crop.name}</div>
               <div>
                 <label style={labelStyle}>Variety</label>
                 <select
@@ -8316,7 +8324,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
-                  style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                  style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, cursor: "pointer" }}>
                   {saving ? "Saving…" : "Save changes"}
                 </button>
                 <button onClick={() => setEditing(null)}
@@ -8334,7 +8342,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     </button>
                   ) : (
                     <div style={{ border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", background: "#f0f5f3" }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                         <div>
@@ -8352,7 +8360,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => convertToSuccession(crop.id)} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: F.display }}>
+                          style={{ ...T.control, flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontSize: 13, color: "#fff", cursor: "pointer" }}>
                           {saving ? "Converting…" : "Convert"}
                         </button>
                         <button onClick={() => setConvertingCrop(null)}
@@ -8387,7 +8395,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>{crop.name}</div>
                       {crop.status === "dormant" && (
                         <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "1px 7px" }}>💤 Dormant</span>
                       )}
@@ -8399,7 +8407,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       {plantCheckEnabled && (
                         <button onClick={() => setCropPlantCheck(crop)}
-                          style={{ height: 30, background: C.forest, border: "none", borderRadius: 8, padding: "0 12px", fontSize: 11, color: "#fff", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          style={{ ...T.control, height: 30, background: C.forest, border: "none", borderRadius: 8, padding: "0 12px", fontSize: 11, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>
                           🔍 Check
                         </button>
                       )}
@@ -8922,12 +8930,12 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>{getCropEmoji(cropProfile?.name || "")}</div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>{cropProfile?.name} added!</div>
+        <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 8 }}>{cropProfile?.name} added!</div>
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
         <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
-          style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display }}>
+          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontSize: 14, cursor: "pointer" }}>
           Add Another Crop
         </button>
       </div>
@@ -8939,7 +8947,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
+        <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
         <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {form.crop_other}</div>
       </div>
     );
@@ -8956,7 +8964,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 13, color: C.stone, cursor: "pointer" }}>
             ← Back
           </button>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Confirm crop</div>
+          <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>Confirm crop</div>
         </div>
 
         {error && <ErrorMsg msg={error} />}
@@ -8966,7 +8974,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <div style={{ fontSize: 40 }}>{getCropEmoji(cropProfile.name)}</div>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>{cropProfile.name}</div>
+              <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>{cropProfile.name}</div>
               {(form.variety || varieties.find(v => v.id === form.variety_id)?.name) && (
                 <div style={{ fontSize: 13, color: C.stone }}>
                   {form.variety || varieties.find(v => v.id === form.variety_id)?.name}
@@ -8984,25 +8992,25 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {cropProfile.sow_window && (
               <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Sow window</div>
+                <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Sow window</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.sow_window}</div>
               </div>
             )}
             {cropProfile.harvest_window && (
               <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Harvest</div>
+                <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Harvest</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.harvest_window}</div>
               </div>
             )}
             {cropProfile.spacing_cm && (
               <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Spacing</div>
+                <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Spacing</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.spacing_cm}cm</div>
               </div>
             )}
             {cropProfile.days_to_maturity && (
               <div style={{ background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Matures in</div>
+                <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Matures in</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cropProfile.days_to_maturity}</div>
               </div>
             )}
@@ -9010,19 +9018,19 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
           {cropProfile.feeding_notes && (
             <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Feeding</div>
+              <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Feeding</div>
               <div style={{ fontSize: 12, color: "#1a1a1a", lineHeight: 1.5 }}>{cropProfile.feeding_notes}</div>
             </div>
           )}
           {cropProfile.companion_plants && (
             <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Companion plants</div>
+              <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone, marginBottom: 2 }}>Companion plants</div>
               <div style={{ fontSize: 12, color: "#1a1a1a", lineHeight: 1.5 }}>{cropProfile.companion_plants}</div>
             </div>
           )}
           {cropProfile.common_issues && (
             <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: C.amber, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Watch out for</div>
+              <div style={{ ...T.eyebrow, fontSize: 10, color: C.amber, marginBottom: 2 }}>Watch out for</div>
               <div style={{ fontSize: 12, color: "#1a1a1a", lineHeight: 1.5 }}>{cropProfile.common_issues}</div>
             </div>
           )}
@@ -9030,7 +9038,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
         {/* Planting summary */}
         <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Your planting details</div>
+          <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>Your planting details</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ fontSize: 13, color: "#1a1a1a" }}>📍 {area?.name || "Unknown area"}</div>
             <div style={{ fontSize: 13, color: "#1a1a1a" }}>{statusLabel}</div>
@@ -9045,7 +9053,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             Edit details
           </button>
           <button onClick={handleSave} disabled={saving}
-            style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, opacity: saving ? 0.7 : 1 }}>
+            style={{ ...T.control, flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
             {saving ? "Adding…" : "Add to my garden 🌱"}
           </button>
         </div>
@@ -9077,7 +9085,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         />
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Add Crop</div>
+        <div style={{ ...T.displayLg, fontSize: 22, color: "#1a1a1a" }}>Add Crop</div>
         {onCancel && (
           <button onClick={onCancel}
             style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: C.stone, lineHeight: 1, padding: "0 4px" }}>
@@ -9095,7 +9103,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <label style={{ ...labelStyle, marginBottom: 0 }}>What are you growing?</label>
             <button type="button" onClick={() => setShowScanner(true)}
-              style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
               📷 Scan packet
             </button>
           </div>
@@ -9147,7 +9155,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             {STATUS_OPTIONS.map(opt => (
               <div key={opt.value} onClick={() => set("status", opt.value)}
                 style={{ border: `2px solid ${form.status === opt.value ? C.forest : C.border}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", background: form.status === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: form.status === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
+                <div style={{ ...T.bodyStrong, fontSize: 13, color: form.status === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
               </div>
             ))}
@@ -9189,7 +9197,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             ].map(opt => (
               <div key={opt.value} onClick={() => set("lifecycle_mode", opt.value)}
                 style={{ border: "2px solid " + (form.lifecycle_mode === opt.value ? C.forest : C.border), borderRadius: 10, padding: "9px 12px", cursor: "pointer", background: form.lifecycle_mode === opt.value ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: form.lifecycle_mode === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
+                <div style={{ ...T.bodyStrong, fontSize: 13, color: form.lifecycle_mode === opt.value ? C.forest : "#1a1a1a" }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{opt.hint}</div>
               </div>
             ))}
@@ -9202,7 +9210,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
               onClick={() => setSuccessionMode(v => !v)}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: successionMode ? C.forest : "#1a1a1a" }}>🔁 Succession sowing</div>
+                <div style={{ ...T.bodyStrong, fontSize: 13, color: successionMode ? C.forest : "#1a1a1a" }}>🔁 Succession sowing</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>Sow in batches for a continuous harvest — carrots, salads, beetroot</div>
               </div>
               <div style={{ width: 36, height: 20, borderRadius: 10, background: successionMode ? C.forest : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
@@ -9240,7 +9248,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         )}
 
         <button onClick={successionMode ? handleSave : handleReview} disabled={!canSave || saving}
-          style={{ background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: (!canSave || saving) ? "not-allowed" : "pointer", fontFamily: F.display, transition: "background 0.2s" }}>
+          style={{ ...T.control, background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, cursor: (!canSave || saving) ? "not-allowed" : "pointer", transition: "background 0.2s" }}>
           {saving ? "Saving…" : successionMode ? "Create succession →" : "Review & Add →"}
         </button>
       </div>
@@ -9386,7 +9394,7 @@ function FAQSection() {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 12 }}>
+      <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 12 }}>
         Help & FAQ
       </div>
       {FAQ_DATA.map((section, si) => (
@@ -9396,7 +9404,7 @@ function FAQSection() {
             style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 18 }}>{section.emoji}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>{section.section}</span>
+              <span style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{section.section}</span>
             </div>
             <span style={{ fontSize: 12, color: C.stone }}>{openSection === si ? "▲" : "▼"}</span>
           </button>
@@ -9503,7 +9511,7 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
         <span style={{ fontSize: 28, flexShrink: 0 }}>🔔</span>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: C.forest, marginBottom: 4 }}>Stay on top of your garden</div>
+          <div style={{ ...T.displayMd, fontSize: 15, color: C.forest, marginBottom: 4 }}>Stay on top of your garden</div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
             Get timely reminders for frost alerts, feeding, harvesting and crop checks — when they matter, not all day long.
           </div>
@@ -9511,7 +9519,7 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={enable} disabled={loading}
-          style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+          style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: 14, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
           {loading ? "Setting up…" : "Turn on notifications"}
         </button>
         <button onClick={onDismiss}
@@ -9559,7 +9567,7 @@ function NotificationSettingsSection() {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>Notifications</div>
+      <div style={{ ...T.eyebrow, fontSize: 13, color: C.stone, marginBottom: 12 }}>Notifications</div>
 
       {/* Permission prompt if not yet enabled */}
       {showPrompt && !prefs?.push_enabled && (
@@ -9573,7 +9581,7 @@ function NotificationSettingsSection() {
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Push notifications</div>
+            <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>Push notifications</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
               {prefs?.push_enabled ? "Enabled — tap to manage settings below" : "Off — enable to get garden reminders"}
             </div>
@@ -9669,7 +9677,7 @@ function TimeAwayTodayBanner({ blockedPeriods, onTabChange }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 20 }}>{isActive ? "✈️" : "🗓️"}</span>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+          <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>
             {isActive
               ? `You're marked away until ${endStr}`
               : `${label} starts in ${daysUntil} day${daysUntil !== 1 ? "s" : ""} (${startStr})`}
@@ -9716,7 +9724,7 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: activePeriods.length > 0 ? 12 : 0 }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Time away</div>
+            <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>Time away</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
               {activePeriods.length === 0
                 ? "Going away? We'll adjust your tasks."
@@ -9724,7 +9732,7 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
             </div>
           </div>
           <button onClick={() => setShowScreen(true)}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
             {activePeriods.length > 0 ? "Manage" : "+ Add"}
           </button>
         </div>
@@ -9732,7 +9740,7 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {activePeriods.slice(0, 2).map(p => (
               <div key={p.id} style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-                <span style={{ fontWeight: 700, color: "#1a1a1a" }}>{p.label || "Time away"}</span>
+                <span style={{ ...T.bodyStrong, color: "#1a1a1a" }}>{p.label || "Time away"}</span>
                 <span style={{ color: C.stone, marginLeft: 6 }}>
                   {new Date(p.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} –{" "}
                   {new Date(p.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
@@ -9823,7 +9831,7 @@ function TimeAwayScreen({ onClose }) {
           {/* Title block */}
           <div style={{ position: "relative" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>✈️</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>Time away</div>
+            <div style={{ ...T.displayLg, fontSize: 22, color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>Time away</div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", lineHeight: 1.5, maxWidth: 280 }}>
               Tell us when you're unavailable — we'll adjust your tasks automatically.
             </div>
@@ -9837,7 +9845,7 @@ function TimeAwayScreen({ onClose }) {
         {/* Summary strip after add */}
         {summary && (
           <div style={{ background: "#f0f7f4", border: "1px solid #c4ddd2", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 10 }}>✓ Your plan has been updated</div>
+            <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 10 }}>✓ Your plan has been updated</div>
 
             {summary.total === 0 && (
               <div style={{ fontSize: 13, color: C.stone }}>No tasks fell in this date range.</div>
@@ -9845,7 +9853,7 @@ function TimeAwayScreen({ onClose }) {
 
             {adjustments?.moved_earlier?.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 6 }}>
                   ⬆ {adjustments.moved_earlier.length} task{adjustments.moved_earlier.length !== 1 ? "s" : ""} brought forward
                 </div>
                 {adjustments.moved_earlier.map((a, i) => (
@@ -9864,7 +9872,7 @@ function TimeAwayScreen({ onClose }) {
 
             {adjustments?.moved_later?.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: "#b45309", marginBottom: 6 }}>
                   ⬇ {adjustments.moved_later.length} task{adjustments.moved_later.length !== 1 ? "s" : ""} moved back
                 </div>
                 {adjustments.moved_later.map((a, i) => (
@@ -9883,7 +9891,7 @@ function TimeAwayScreen({ onClose }) {
 
             {adjustments?.at_risk?.length > 0 && (
               <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 12px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.red, marginBottom: 6 }}>
                   ⚠ {adjustments.at_risk.length} task{adjustments.at_risk.length !== 1 ? "s" : ""} may need attention
                 </div>
                 {adjustments.at_risk.map((a, i) => (
@@ -9924,7 +9932,7 @@ function TimeAwayScreen({ onClose }) {
                   🏖️
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 3 }}>No time away added</div>
+                  <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 3 }}>No time away added</div>
                   <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.45 }}>Holidays, busy weeks, work trips — we handle the re-planning.</div>
                 </div>
               </div>
@@ -9934,7 +9942,7 @@ function TimeAwayScreen({ onClose }) {
             {periods.map(p => (
               <div key={p.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", fontFamily: F.display }}>{p.label || "Time away"}</div>
+                  <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>{p.label || "Time away"}</div>
                   <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>
                     {new Date(p.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "long" })} –{" "}
                     {new Date(p.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
@@ -9952,7 +9960,7 @@ function TimeAwayScreen({ onClose }) {
         {/* Add form */}
         {showAdd ? (
           <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginTop: 4 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 14 }}>Add time away</div>
+            <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 14 }}>Add time away</div>
 
             {error && (
               <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.red, marginBottom: 12 }}>{error}</div>
@@ -9991,14 +9999,14 @@ function TimeAwayScreen({ onClose }) {
                 Cancel
               </button>
               <button onClick={save} disabled={saving}
-                style={{ flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: 13, cursor: "pointer" }}>
                 {saving ? "Adjusting plan..." : "Adjust my plan"}
               </button>
             </div>
           </div>
         ) : (
           <button onClick={() => { setShowAdd(true); setSummary(null); setAdjustments(null); }}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display, marginTop: periods.length === 0 ? 0 : 8 }}>
+            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 14, cursor: "pointer", marginTop: periods.length === 0 ? 0 : 8 }}>
             + Add time away
           </button>
         )}
@@ -10021,7 +10029,7 @@ function HarvestSummaryCard({ crop }) {
       {/* Crop summary row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>
+          <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a" }}>
             {getCropEmoji(crop.crop_name)} {crop.crop_name}{crop.variety ? ` — ${crop.variety}` : ""}
           </div>
           <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
@@ -10154,7 +10162,7 @@ function EditProfileModal({ current, onSave, onClose }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 20 }}>
+        <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 20 }}>
           Edit Profile
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -10187,9 +10195,16 @@ function EditProfileModal({ current, onSave, onClose }) {
             onClick={handleSave}
             disabled={saving}
             style={{
-              background: C.forest, color: "#fff", border: "none", borderRadius: 12,
-              padding: "14px", fontWeight: 700, fontSize: 15,
-              cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1, marginTop: 4,
+              ...T.control,
+              background: C.forest,
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              padding: "14px",
+              fontSize: 15,
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.7 : 1,
+              marginTop: 4
             }}>
             {saving ? "Saving…" : "Save"}
           </button>
@@ -10245,14 +10260,14 @@ function ChangePasswordModal({ onClose, onSaved }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 20 }}>
+        <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 20 }}>
           Change Password
         </div>
 
         {saved ? (
           <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "16px", textAlign: "center" }}>
             <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
-            <div style={{ fontWeight: 700, color: "#2d7a28", fontSize: 14 }}>Password updated</div>
+            <div style={{ ...T.bodyStrong, color: "#2d7a28", fontSize: 14 }}>Password updated</div>
           </div>
         ) : (
           <>
@@ -10276,9 +10291,15 @@ function ChangePasswordModal({ onClose, onSaved }) {
               </div>
               <button onClick={handleSave} disabled={saving}
                 style={{
-                  background: C.forest, color: "#fff", border: "none", borderRadius: 12,
-                  padding: "14px", fontWeight: 700, fontSize: 15,
-                  cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1,
+                  ...T.control,
+                  background: C.forest,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "14px",
+                  fontSize: 15,
+                  cursor: saving ? "default" : "pointer",
+                  opacity: saving ? 0.7 : 1
                 }}>
                 {saving ? "Updating…" : "Update Password"}
               </button>
@@ -10357,7 +10378,7 @@ function NotificationsScreen({ onBack }) {
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: C.forest, padding: 0, lineHeight: 1 }}>
           ←
         </button>
-        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Notifications</div>
+        <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>Notifications</div>
       </div>
 
       <div style={{ padding: "20px 16px 48px" }}>
@@ -10387,25 +10408,25 @@ function NotificationsScreen({ onBack }) {
 
             {prefs.push_enabled && (
               <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Tasks</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Tasks</div>
                 <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
                   <ToggleRow label="Garden tasks due today" desc="Feeding, sowing, harvesting and care tasks" value={prefs.due_today_enabled} onToggle={() => toggle("due_today_enabled")} />
                   <ToggleRow label="Coming up soon" desc="Reminders a few days before key tasks" value={prefs.coming_up_enabled} onToggle={() => toggle("coming_up_enabled")} last />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Alerts</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Alerts</div>
                 <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
                   <ToggleRow label="Frost and weather alerts" desc="Time-sensitive alerts for frost and heat" value={prefs.weather_alerts_enabled} onToggle={() => toggle("weather_alerts_enabled")} />
                   <ToggleRow label="Pest and disease watch" desc="When conditions increase pest risk" value={prefs.pest_alerts_enabled} onToggle={() => toggle("pest_alerts_enabled")} last />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Insights</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Insights</div>
                 <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
                   <ToggleRow label="Quick crop checks" desc="Flowering, fruit set and condition prompts" value={prefs.crop_checks_enabled} onToggle={() => toggle("crop_checks_enabled")} />
                   <ToggleRow label="Weekly garden summary" desc="Sunday evening roundup of the week ahead" value={prefs.weekly_summary_enabled} onToggle={() => toggle("weekly_summary_enabled")} last />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, paddingLeft: 2 }}>Achievements</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8, paddingLeft: 2 }}>Achievements</div>
                 <div style={{ background: "#fff", borderRadius: 14, marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
                   <ToggleRow label="Milestones and badges" desc="Harvest milestones and badge unlocks" value={prefs.milestones_enabled} onToggle={() => toggle("milestones_enabled")} last />
                 </div>
@@ -10550,9 +10571,12 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
   // Shared styles
   const sectionLabel = {
-    fontSize: 11, fontWeight: 700, color: C.stone,
-    letterSpacing: 1, textTransform: "uppercase",
-    marginBottom: 10, marginTop: 24, paddingLeft: 2,
+    ...T.eyebrow,
+    fontSize: 11,
+    color: C.stone,
+    marginBottom: 10,
+    marginTop: 24,
+    paddingLeft: 2
   };
   const chevronRow = (icon, label, sub, onClick) => (
     <button onClick={onClick}
@@ -10594,7 +10618,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 19, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", lineHeight: 1.2 }}>
+          <div style={{ ...T.displayLg, fontSize: 19, color: "#1a1a1a", lineHeight: 1.2 }}>
             {profile.name || "Your name"}
           </div>
           {profile.postcode && (
@@ -10620,10 +10644,10 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           color: "#fff", position: "relative", overflow: "hidden",
         }}>
           <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: "50%", background: C.accent, opacity: 0.1 }} />
-          <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 4 }}>
             {new Date().getFullYear()} Season
           </div>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, marginBottom: 16 }}>Your Harvest Summary</div>
+          <div style={{ ...T.displayLg, fontSize: 20, marginBottom: 16 }}>Your Harvest Summary</div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
             {[
@@ -10632,7 +10656,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
               { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreColor(harvestStats.avgQual)  : "#fff" },
             ].map(({ val, label, color }) => (
               <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color }}>{val}</div>
+                <div style={{ ...T.bodyStrong, fontSize: 22, color }}>{val}</div>
                 <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{label}</div>
               </div>
             ))}
@@ -10642,8 +10666,8 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 28 }}>{getCropEmoji(harvestStats.best.crop_name)}</div>
               <div>
-                <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
-                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display }}>{harvestStats.best.crop_name}</div>
+                <div style={{ ...T.eyebrow, fontSize: 10, opacity: 0.65, marginBottom: 2 }}>Best performing crop</div>
+                <div style={{ ...T.displayMd, fontSize: 15 }}>{harvestStats.best.crop_name}</div>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>
                   Yield {harvestStats.best.avg_yield_score || "—"} · Quality {harvestStats.best.avg_quality_score || "—"} out of 10
                 </div>
@@ -10657,7 +10681,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                 <div key={r.label} style={{ marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                     <span style={{ fontSize: 11, opacity: 0.75 }}>{r.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700 }}>{r.val}/10</span>
+                    <span style={{ ...T.bodyStrong, fontSize: 11 }}>{r.val}/10</span>
                   </div>
                   <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: 99 }}>
                     <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: 99, transition: "width 0.6s ease" }} />
@@ -10774,7 +10798,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 12. DANGER ZONE — delete ── */}
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid #fca5a5` }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10, paddingLeft: 2 }}>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: "#dc2626", marginBottom: 10, paddingLeft: 2 }}>
           Danger Zone
         </div>
         <button
@@ -10813,7 +10837,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             {deleteStep === 1 ? (
               <>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 12 }}>Delete your account?</div>
+                <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", marginBottom: 12 }}>Delete your account?</div>
                 <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 6 }}>
                   This will permanently remove:
                 </div>
@@ -10826,7 +10850,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                   We may retain anonymised activity data to help improve Vercro. This action cannot be undone.
                 </div>
                 <button onClick={() => setDeleteStep(2)}
-                  style={{ width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
+                  style={{ ...T.control, width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
                   Continue
                 </button>
                 <button onClick={() => setShowDeleteModal(false)}
@@ -10836,7 +10860,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
               </>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#dc2626", marginBottom: 12 }}>Are you absolutely sure?</div>
+                <div style={{ ...T.displayLg, fontSize: 20, color: "#dc2626", marginBottom: 12 }}>Are you absolutely sure?</div>
                 <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 20 }}>
                   Your account will be permanently deleted and you will be signed out immediately. There is no way to recover your data after this point.
                 </div>
@@ -10846,7 +10870,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
                   </div>
                 )}
                 <button onClick={handleDeleteAccount} disabled={deleting}
-                  style={{ width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: deleting ? "default" : "pointer", opacity: deleting ? 0.6 : 1, marginBottom: 10 }}>
+                  style={{ ...T.control, width: "100%", background: "#dc2626", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: deleting ? "default" : "pointer", opacity: deleting ? 0.6 : 1, marginBottom: 10 }}>
                   {deleting ? "Deleting…" : "Yes, permanently delete my account"}
                 </button>
                 <button onClick={() => { setDeleteStep(1); setDeleteError(null); }} disabled={deleting}
@@ -10965,7 +10989,7 @@ function ProSubscriptionSection() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <div style={{ fontSize: 22 }}>🌱</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display }}>Vercro Pro</div>
+              <div style={{ ...T.displayMd, fontSize: 16 }}>Vercro Pro</div>
               <div style={{ fontSize: 12, opacity: 0.75, marginTop: 1 }}>Early supporter · Price locked</div>
             </div>
           </div>
@@ -10989,7 +11013,7 @@ function ProSubscriptionSection() {
           background: "#fff", borderRadius: 16, padding: "20px 18px",
           boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
         }}>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
+          <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
             Unlock Vercro Pro
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
@@ -11033,7 +11057,7 @@ function ProSubscriptionSection() {
           <button
             onClick={() => handleUpgrade(interval)}
             disabled={checkoutLoading || !pricing}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
+            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
             {checkoutLoading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
           </button>
         </div>
@@ -11087,7 +11111,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
         </div>
 
         <div style={{ padding: "8px 20px 12px" }}>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
+          <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
           <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
           <input
             value={search}
@@ -11109,7 +11133,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
                 <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: F.display }}>{crop.name}</div>
+                  <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>{crop.name}</div>
                   <div style={{ fontSize: 12, color: C.stone }}>
                     {crop.area?.name || ""}
                     {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
@@ -11160,19 +11184,19 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
 
-        <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
+        <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
         <div style={{ fontSize: 13, color: C.stone, textAlign: "center", marginBottom: 24 }}>Get a clear shot of the affected leaves, stems or fruit</div>
 
         {/* Camera */}
         <button onClick={() => cameraRef.current?.click()}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           📷 Take a photo
         </button>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
 
         {/* Library */}
         <button onClick={() => fileRef.current?.click()}
-          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           🖼️ Choose from library
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
@@ -11249,7 +11273,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
           <div>
-            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 700 }}>Plant Check</div>
+            <div style={{ ...T.displayMd, fontSize: 17 }}>Plant Check</div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
           </div>
         </div>
@@ -11262,7 +11286,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
           <div style={{ fontSize: 32, marginBottom: 8 }}>
             {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
           </div>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 6 }}>
             {result.looks_healthy
               ? "Looking healthy!"
               : result.problem_name || "Issue detected"}
@@ -11271,7 +11295,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             {result.reasoning_summary}
           </div>
           {result.severity && !result.looks_healthy && (
-            <div style={{ display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <div style={{ ...T.eyebrow, display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: 20, padding: "3px 12px", fontSize: 12 }}>
               {result.severity} severity
             </div>
           )}
@@ -11280,11 +11304,11 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Harvest readiness */}
         {result.harvest_readiness && (
           <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Harvest readiness</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Harvest readiness</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", textTransform: "capitalize" }}>
+                <div style={{ ...T.bodyStrong, fontSize: 15, color: "#1a1a1a", textTransform: "capitalize" }}>
                   {result.harvest_readiness === "not_ready" ? "Not ready yet" : result.harvest_readiness === "soon" ? "Ready soon" : "Ready to harvest"}
                 </div>
                 {result.harvest_readiness_detail && (
@@ -11298,10 +11322,10 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Stage detection */}
         {result.stage_detected && (
           <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Growth stage detected</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Growth stage detected</div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <span style={{ fontWeight: 700, fontSize: 15, color: C.forest, textTransform: "capitalize" }}>{result.stage_detected}</span>
+                <span style={{ ...T.bodyStrong, fontSize: 15, color: C.forest, textTransform: "capitalize" }}>{result.stage_detected}</span>
                 {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
               </div>
               {!result.stage_matches_record && result.stage_detected && (
@@ -11314,9 +11338,9 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Yield impact — Pro only */}
         {result.yield_impact_pct !== null && result.yield_impact_pct !== undefined && (
           <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Estimated yield impact</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Estimated yield impact</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
+              <span style={{ ...T.displayLg, fontSize: 22, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
                 {result.yield_impact_pct}%
               </span>
               {result.quality_impact && result.quality_impact !== "none" && (
@@ -11329,7 +11353,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Problem description */}
         {result.problem_description && !result.looks_healthy && (
           <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>What we can see</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>What we can see</div>
             <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.6 }}>{result.problem_description}</div>
           </div>
         )}
@@ -11337,10 +11361,10 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Treatment steps */}
         {result.treatment_steps?.length > 0 && (
           <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>What to do now</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>What to do now</div>
             {result.treatment_steps.map((step, i) => (
               <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < result.treatment_steps.length - 1 ? 10 : 0 }}>
-                <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                <div style={{ ...T.bodyStrong, width: 22, height: 22, borderRadius: "50%", background: C.forest, color: "#fff", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
                 <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5, flex: 1 }}>{step}</div>
               </div>
             ))}
@@ -11350,10 +11374,10 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Prevention tips */}
         {result.prevention_tips?.length > 0 && (
           <div style={{ background: "#f8faf6", border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Prevention</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Prevention</div>
             {result.prevention_tips.map((tip, i) => (
               <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
-                <span style={{ color: C.leaf, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span>
+                <span style={{ ...T.bodyStrong, color: C.leaf, fontSize: 14, flexShrink: 0 }}>✓</span>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip}</div>
               </div>
             ))}
@@ -11368,7 +11392,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleConfirmUpdate} disabled={updating}
-                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 14, cursor: "pointer" }}>
                 {updating ? "Updating…" : "Yes, update record"}
               </button>
               <button onClick={() => setUpdated(true)}
@@ -11461,7 +11485,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             ) : (
               <>
                 <button onClick={handleSaveToDiary} disabled={savingDiary}
-                  style={{ width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 14, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F.display }}>
+                  style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 14, padding: "12px", fontSize: 14, cursor: "pointer" }}>
                   {savingDiary ? "Saving…" : "📷 Save photo to growth diary"}
                 </button>
                 {diaryError && (
@@ -11473,7 +11497,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         )}
 
         <button onClick={onDone}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, cursor: "pointer" }}>
           Done
         </button>
       </div>
@@ -11613,7 +11637,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <div style={{ fontSize: 52, marginBottom: 24, animation: "pulse 1.5s infinite" }}>🔬</div>
-        <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 10, textAlign: "center" }}>Analysing your {crop?.name || "plant"}…</div>
+        <div style={{ ...T.displayLg, fontSize: 20, color: C.forest, marginBottom: 10, textAlign: "center" }}>Analysing your {crop?.name || "plant"}…</div>
         <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6, maxWidth: 280 }}>
           Checking for issues, growth stage, and harvest readiness
         </div>
@@ -11868,7 +11892,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         <div style={{ width: 36, height: 4, background: "#E0E0E0", borderRadius: 2, margin: "0 auto 24px" }} />
 
         {/* Headline */}
-        <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 8, textAlign: "center" }}>
+        <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 8, textAlign: "center" }}>
           {content.headline}
         </div>
 
@@ -11884,7 +11908,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
               <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
                 <div style={{ fontSize: 20, lineHeight: 1, marginTop: 1, flexShrink: 0 }}>{b.icon}</div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{b.title}</div>
+                  <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>{b.title}</div>
                   <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{b.body}</div>
                 </div>
               </div>
@@ -11954,7 +11978,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         <button
           onClick={handleUpgrade}
           disabled={loading || !pricing}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
+          style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
           {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
         </button>
 
@@ -12109,7 +12133,7 @@ function FeedsScreen() {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>My Feeds</div>
+        <div style={{ ...T.displayLg, fontSize: 22, color: "#1a1a1a" }}>My Feeds</div>
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>Register the feeds you own — we'll personalise your feeding tasks</div>
       </div>
 
@@ -12136,9 +12160,9 @@ function FeedsScreen() {
       {/* Add feed form */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Add a Feed</div>
+          <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>Add a Feed</div>
           <button onClick={() => setShowFeedScanner(true)}
-            style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             📷 Scan product
           </button>
         </div>
@@ -12202,7 +12226,7 @@ function FeedsScreen() {
           {/* Preview for known products */}
           {matchedCatalog && (
             <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, marginBottom: 6 }}>✓ Product identified</div>
+              <div style={{ ...T.bodyStrong, fontSize: 12, color: C.forest, marginBottom: 6 }}>✓ Product identified</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 <span style={{ fontSize: 11, background: "#e8f0fe", color: "#3a5fc8", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(matchedCatalog.feed_type)}</span>
                 <span style={{ fontSize: 11, background: C.offWhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.form}</span>
@@ -12220,7 +12244,7 @@ function FeedsScreen() {
           )}
 
           <button onClick={addFeed} disabled={saving || !canAdd}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1, fontFamily: F.display }}>
+            style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1 }}>
             {saving ? "Adding…" : "Add Feed"}
           </button>
         </div>
@@ -12236,7 +12260,7 @@ function FeedsScreen() {
           <div key={feed.id} style={{ background: feed.out_of_stock ? "#f5f5f3" : C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, opacity: feed.out_of_stock ? 0.72 : 1, transition: "opacity 0.2s, background 0.2s" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: F.display }}>
+                <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>
                   {feed.brand ? `${feed.brand} ` : ""}{feed.product_name}
                 </div>
                 {feed.enriched ? (
@@ -12279,7 +12303,7 @@ function FeedsScreen() {
                   </div>
                 </div>
                 {feed.out_of_stock && (
-                  <div style={{ fontSize: 10, color: C.stone, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Ran out</div>
+                  <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone }}>Ran out</div>
                 )}
                 <button onClick={() => deleteFeed(feed.id)}
                   style={{ background: "none", border: "none", cursor: "pointer", color: C.stone, fontSize: 18, padding: 0, lineHeight: 1, marginTop: 2 }}>×</button>
@@ -12365,7 +12389,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>
               Identify {mode === "crop" ? "seed packet" : "product"} 📷
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Take a photo of the front of the packet</div>
@@ -12378,7 +12402,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
           <>
             <label htmlFor="barcode-photo-input" style={{ display: "block", background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
-              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
+              <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>
                 Take a photo of the front of the packet
               </div>
               <div style={{ fontSize: 13, color: C.stone }}>Show the name and variety clearly — no barcode needed</div>
@@ -12392,7 +12416,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
               style={{ display: "none" }}
             />
             <label htmlFor="barcode-photo-input"
-              style={{ display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
+              style={{ ...T.control, display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
               Take photo of packet
             </label>
             <button onClick={() => setShowManual(true)}
@@ -12407,7 +12431,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 200, objectFit: "cover" }} />}
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
-            <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, marginBottom: 4 }}>Identifying product…</div>
+            <div style={{ ...T.displayMd, fontSize: 16, marginBottom: 4 }}>Identifying product…</div>
             <div style={{ fontSize: 13, color: C.stone }}>Searching product databases</div>
           </div>
         )}
@@ -12419,7 +12443,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <div style={{ fontSize: 36 }}>{getCropEmoji(result.name || "")}</div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 18, fontFamily: F.display, color: "#1a1a1a" }}>{result.name}</div>
+                <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>{result.name}</div>
                 {result.brand && <div style={{ fontSize: 13, color: C.stone }}>{result.brand}</div>}
                 <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Product identified</div>
               </div>
@@ -12435,13 +12459,13 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
                 result.form       && { label: "Form",         val: result.form },
               ].filter(Boolean).map(r => (
                 <div key={r.label} style={{ background: C.offwhite, borderRadius: 10, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{r.label}</div>
+                  <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone }}>{r.label}</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginTop: 2 }}>{r.val}</div>
                 </div>
               ))}
             </div>
             <button onClick={() => { onResult(result); }}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display }}>
+              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer" }}>
               Add {result.name} →
             </button>
           </>
@@ -12453,12 +12477,12 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
-              <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>We don't recognise this one yet</div>
+              <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>We don't recognise this one yet</div>
               <div style={{ fontSize: 13, color: C.stone }}>Use the dropdowns to tell us what it is and we'll look up all the growing details automatically.</div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { onResult({ found: false }); }}
-                style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
                 Continue →
               </button>
               <button onClick={() => { setStatus("idle"); setPreview(null); setResult(null); }}
@@ -12473,13 +12497,13 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {status === "error" && (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ ...T.displayMd, fontSize: 16, marginBottom: 8 }}>Something went wrong</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>Try again or enter the barcode manually.</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setStatus("idle"); setPreview(null); }}
                 style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Try again</button>
               <button onClick={() => setShowManual(true)}
-                style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Manual entry</button>
+                style={{ ...T.control, flex: 1, padding: "12px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", cursor: "pointer" }}>Manual entry</button>
             </div>
           </div>
         )}
@@ -12488,7 +12512,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {showManual && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 24, borderRadius: "16px 16px 0 0" }}>
             <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%" }}>
-              <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
+              <div style={{ ...T.displayMd, fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
               <input value={manualCode} onChange={e => setManualCode(e.target.value)}
                 placeholder="e.g. 5000174002017" autoFocus
                 style={{ ...inputStyle, marginBottom: 12 }}
@@ -12497,7 +12521,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
                 <button onClick={() => setShowManual(false)}
                   style={{ flex: 1, padding: "11px", borderRadius: 10, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                 <button onClick={handleManual}
-                  style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Look up</button>
+                  style={{ ...T.control, flex: 2, padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", cursor: "pointer" }}>Look up</button>
               </div>
             </div>
           </div>
@@ -12556,14 +12580,14 @@ function FeedbackSheet({ onClose, isNative = false }) {
         {done ? (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🙏</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>Thanks for your feedback!</div>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 6 }}>Thanks for your feedback!</div>
             <div style={{ fontSize: 13, color: C.stone }}>It really helps shape Vercro.</div>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
+                <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a" }}>
                   {isNative ? "Report a bug or idea 💡" : "Share your thoughts 💬"}
                 </div>
                 <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
@@ -12578,7 +12602,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
             {/* Star rating — web only */}
             {!isNative && (
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>
                   How are you finding Vercro? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(tap to submit with just a rating)</span>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -12594,14 +12618,14 @@ function FeedbackSheet({ onClose, isNative = false }) {
 
             {/* Category */}
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+              <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>
                 {isNative ? "What is it?" : "What kind of feedback?"} <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {categories.map(c => (
                   <div key={c.id} onClick={() => setCategory(category === c.id ? "" : c.id)}
                     style={{ border: `2px solid ${category === c.id ? C.forest : C.border}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", background: category === c.id ? "#f0f5f3" : C.cardBg, transition: "all 0.15s" }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: category === c.id ? C.forest : "#1a1a1a" }}>{c.label}</div>
+                    <div style={{ ...T.bodyStrong, fontSize: 13, color: category === c.id ? C.forest : "#1a1a1a" }}>{c.label}</div>
                     <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{c.hint}</div>
                   </div>
                 ))}
@@ -12610,7 +12634,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
 
             {/* Message */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+              <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>
                 {isNative ? "Describe it" : "Want to say more?"} <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
               </div>
               <textarea
@@ -12622,7 +12646,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
             </div>
 
             <button onClick={submit} disabled={!canSubmit || saving}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontWeight: 700, fontSize: 15, cursor: canSubmit ? "pointer" : "default", fontFamily: F.display, transition: "background 0.2s" }}>
+              style={{ ...T.control, width: "100%", padding: "14px", borderRadius: 12, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontSize: 15, cursor: canSubmit ? "pointer" : "default", transition: "background 0.2s" }}>
               {saving ? "Sending…" : "Send feedback"}
             </button>
           </>
@@ -12833,7 +12857,7 @@ Use the exact task IDs provided.`;
       {/* Context block */}
       <div style={{ background: "#F0F7FF", border: "1px solid #B3D4F5", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editContext ? 8 : 4 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#1a3a5c", textTransform: "uppercase", letterSpacing: 1 }}>Current priorities / context</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: "#1a3a5c" }}>Current priorities / context</div>
           <button onClick={() => { setEditContext(!editContext); setContextDraft(context); }}
             style={{ fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
             {editContext ? "Cancel" : "Edit"}
@@ -12845,7 +12869,7 @@ Use the exact task IDs provided.`;
               placeholder="e.g. iOS build 16 in review. Web launched 15 Apr. Priority is fixing bugs before marketing push. Android tiered pricing next."
               style={{ width: "100%", minHeight: 80, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "8px 10px", resize: "vertical", fontFamily: F.body, boxSizing: "border-box" }} />
             <button onClick={saveContext}
-              style={{ marginTop: 8, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              style={{ ...T.control, marginTop: 8, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
               Save
             </button>
           </>
@@ -12858,7 +12882,7 @@ Use the exact task IDs provided.`;
 
       {/* Add manual task */}
       <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Add task</div>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Add task</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <select value={manualType} onChange={e => setManualType(e.target.value)}
             style={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "6px 8px", background: "#fff" }}>
@@ -12871,7 +12895,7 @@ Use the exact task IDs provided.`;
             placeholder="Describe the task…"
             style={{ flex: 1, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "6px 10px" }} />
           <button onClick={addManualTask}
-            style={{ padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            style={{ ...T.control, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
             Add
           </button>
         </div>
@@ -12884,7 +12908,7 @@ Use the exact task IDs provided.`;
           {doneTasks.length > 0 && <span style={{ marginLeft: 8 }}>· {doneTasks.length} done</span>}
         </div>
         <button onClick={rerank} disabled={ranking || activeTasks.length === 0}
-          style={{ padding: "7px 14px", background: ranking ? C.border : C.forest, color: ranking ? C.stone : "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: ranking ? "default" : "pointer" }}>
+          style={{ ...T.control, padding: "7px 14px", background: ranking ? C.border : C.forest, color: ranking ? C.stone : "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: ranking ? "default" : "pointer" }}>
           {ranking ? "Ranking…" : "⚡ Re-rank with AI"}
         </button>
       </div>
@@ -12898,9 +12922,9 @@ Use the exact task IDs provided.`;
         <div key={task.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.forest }}>{TYPE_LABEL[task.type] || task.type}</span>
+              <span style={{ ...T.bodyStrong, fontSize: 11, color: C.forest }}>{TYPE_LABEL[task.type] || task.type}</span>
               {task.priority !== null && (
-                <span style={{ fontSize: 11, background: "#E8F0FE", color: "#1a3a8f", borderRadius: 6, padding: "2px 7px", fontWeight: 700 }}>
+                <span style={{ ...T.bodyStrong, fontSize: 11, background: "#E8F0FE", color: "#1a3a8f", borderRadius: 6, padding: "2px 7px" }}>
                   #{task.priority}
                 </span>
               )}
@@ -12952,7 +12976,7 @@ Use the exact task IDs provided.`;
           {showDone && doneTasks.map(task => (
             <div key={task.id} style={{ background: "#FAFAFA", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 8, opacity: 0.6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.stone }}>{TYPE_LABEL[task.type] || task.type}</span>
+                <span style={{ ...T.bodyStrong, fontSize: 11, color: C.stone }}>{TYPE_LABEL[task.type] || task.type}</span>
                 <span style={{ fontSize: 11, color: C.stone }}>{new Date(task.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
               </div>
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: 8 }}>{task.title}</div>
@@ -12975,13 +12999,13 @@ Use the exact task IDs provided.`;
       {donePrompt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", maxWidth: 380, width: "100%" }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Mark as done</div>
+            <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 8 }}>Mark as done</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
               This came from {donePrompt.user_name || "a user"}{donePrompt.user_email ? ` (${donePrompt.user_email})` : ""}. Would you like to send them a thank-you reply letting them know their feedback has been acted on?
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={() => { openGmailReply(donePrompt, true); confirmDone(donePrompt); }}
-                style={{ padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, cursor: "pointer" }}>
                 ✉️ Send reply + mark done
               </button>
               <button onClick={() => confirmDone(donePrompt)}
@@ -13004,7 +13028,7 @@ Use the exact task IDs provided.`;
 function MetricSection({ title, children }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>{title}</div>
+      <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 8 }}>{title}</div>
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
         {children}
       </div>
@@ -13032,7 +13056,7 @@ function MetricCard({ label, value, sub, status, suggestion }) {
   return (
     <div style={{ background: C.offwhite, borderRadius: 12, padding: "12px 14px" }}>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", lineHeight: 1, marginBottom: 3 }}>{value ?? "—"}</div>
+      <div style={{ ...T.bodyStrong, fontSize: 22, color: "#1a1a1a", lineHeight: 1, marginBottom: 3 }}>{value ?? "—"}</div>
       {sub && <div style={{ fontSize: 11, color: C.stone, marginBottom: 6 }}>{sub}</div>}
       {badge && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -13047,7 +13071,7 @@ function MetricCard({ label, value, sub, status, suggestion }) {
       )}
       {open && suggestion && (
         <div style={{ marginTop: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#1a1a1a", lineHeight: 1.6 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6, color: C.forest }}>{suggestion.title}</div>
+          <div style={{ ...T.bodyStrong, marginBottom: 6, color: C.forest }}>{suggestion.title}</div>
           <div style={{ color: C.stone, marginBottom: 6 }}>{suggestion.body}</div>
           <ul style={{ margin: 0, paddingLeft: 16, color: C.stone }}>
             {suggestion.steps.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
@@ -13071,7 +13095,7 @@ function MetricRowWithFix({ label, val, sub, status, suggestion }) {
           {sub && <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{sub}</div>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", fontFamily: F.display }}>{val ?? "—"}</div>
+          <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a" }}>{val ?? "—"}</div>
           {badge && <span style={{ fontSize: 10, background: bg, color: col, borderRadius: 99, padding: "2px 7px" }}>{badge}</span>}
           {suggestion && status !== "green" && (
             <button onClick={() => setOpen(o => !o)}
@@ -13083,7 +13107,7 @@ function MetricRowWithFix({ label, val, sub, status, suggestion }) {
       </div>
       {open && suggestion && (
         <div style={{ margin: "0 14px 10px", background: C.offwhite, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#1a1a1a", lineHeight: 1.6, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontWeight: 700, marginBottom: 5, color: C.forest }}>{suggestion.title}</div>
+          <div style={{ ...T.bodyStrong, marginBottom: 5, color: C.forest }}>{suggestion.title}</div>
           <div style={{ color: C.stone, marginBottom: 6 }}>{suggestion.body}</div>
           <ul style={{ margin: 0, paddingLeft: 16, color: C.stone }}>
             {suggestion.steps.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
@@ -13198,7 +13222,7 @@ function InviteWaitlistButton() {
   return (
     <>
       <button onClick={run} disabled={running}
-        style={{ background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
+        style={{ ...T.control, background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
         {running ? "Sending…" : "Send Invite Emails"}
       </button>
       {status && (
@@ -13233,7 +13257,7 @@ function AdminTools() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Invite waitlist */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>📬 Invite Waitlist Users</div>
+        <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>📬 Invite Waitlist Users</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Emails everyone on the waitlist telling them access is now open. Each user is only emailed once. Also updates their status to accepted.
         </div>
@@ -13241,19 +13265,19 @@ function AdminTools() {
       </div>
 
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>🏆 Backfill Badges</div>
+        <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>🏆 Backfill Badges</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Calculates badge progress for all existing users from their real data — tasks completed, crops added, harvests logged etc. Run this once after deploying badges. Safe to re-run.
         </div>
         <button onClick={runBackfill} disabled={running}
-          style={{ background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
+          style={{ ...T.control, background: running ? C.border : C.forest, color: running ? C.stone : "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
           {running ? "Running…" : "Run Badge Backfill"}
         </button>
         {backfillStatus && (
           <div style={{ marginTop: 14, padding: "12px", borderRadius: 8, background: backfillStatus.ok ? "#f0f8f0" : "#fff0f0", border: `1px solid ${backfillStatus.ok ? "#b8ddb8" : "#f4b8b8"}` }}>
             {backfillStatus.ok ? (
               <>
-                <div style={{ fontWeight: 700, color: C.forest, fontSize: 13, marginBottom: 8 }}>✅ Backfill complete — {backfillStatus.count} users processed</div>
+                <div style={{ ...T.bodyStrong, color: C.forest, fontSize: 13, marginBottom: 8 }}>✅ Backfill complete — {backfillStatus.count} users processed</div>
                 <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 12, color: C.stone }}>
                   {(backfillStatus.results || []).map((r, i) => (
                     <div key={i} style={{ padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -13291,7 +13315,7 @@ function FunnelTab({ data }) {
     if (!d) return <td style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontSize: 12 }}>—</td>;
     return (
       <td style={{ padding: "8px 10px", textAlign: "center" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: rateColor(d.rate) }}>{d.rate}%</div>
+        <div style={{ ...T.bodyStrong, fontSize: 14, color: rateColor(d.rate) }}>{d.rate}%</div>
         <div style={{ fontSize: 10, color: C.stone }}>of {d.eligible}</div>
       </td>
     );
@@ -13328,7 +13352,7 @@ function FunnelTab({ data }) {
 
       {/* ── Activation funnel ── */}
       <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 14 }}>Activation funnel</div>
+        <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 14 }}>Activation funnel</div>
         {[
           { label: "Signed up",      value: funnel.signed_up,       pct: 100 },
           { label: "Onboarded",      value: funnel.onboarded,       pct: funnel.signed_up > 0 ? Math.round(funnel.onboarded / funnel.signed_up * 100) : 0 },
@@ -13339,7 +13363,7 @@ function FunnelTab({ data }) {
           <div key={label} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: C.forest }}>{label}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>{(value||0).toLocaleString()} <span style={{ fontWeight: 400, color: C.stone }}>({pct}%)</span></span>
+              <span style={{ ...T.bodyStrong, fontSize: 13, color: C.forest }}>{(value||0).toLocaleString()} <span style={{ fontWeight: 400, color: C.stone }}>({pct}%)</span></span>
             </div>
             <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${pct}%`, background: C.forest, borderRadius: 4 }} />
@@ -13350,7 +13374,7 @@ function FunnelTab({ data }) {
 
       {/* ── Behaviour → retention ── */}
       <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Behaviour → retention</div>
+        <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 12 }}>Behaviour → retention</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -13372,7 +13396,7 @@ function FunnelTab({ data }) {
 
       {/* ── Push vs no-push ── */}
       <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Push notifications — D7 retention</div>
+        <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 12 }}>Push notifications — D7 retention</div>
         {[
           { label: "With push",    ...push_retention.push },
           { label: "Without push", ...push_retention.no_push },
@@ -13380,7 +13404,7 @@ function FunnelTab({ data }) {
           <div key={label} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: C.forest }}>{label} <span style={{ color: C.stone, fontWeight: 400 }}>({eligible} users)</span></span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: rateColor(rate) }}>{rate !== null ? `${rate}%` : "—"}</span>
+              <span style={{ ...T.bodyStrong, fontSize: 13, color: rateColor(rate) }}>{rate !== null ? `${rate}%` : "—"}</span>
             </div>
             {rate !== null && (
               <div style={{ height: 8, background: "#E8F0EC", borderRadius: 4, overflow: "hidden" }}>
@@ -13393,7 +13417,7 @@ function FunnelTab({ data }) {
 
       {/* ── 14-day cohort table ── */}
       <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.sage}`, padding: "16px 14px", marginBottom: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>14-day cohort table</div>
+        <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 8 }}>14-day cohort table</div>
 
         {/* Bug fix banner */}
         <div style={{ background: "#FFFBE6", border: "1px solid #F5C842", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: "#92600A", lineHeight: 1.5 }}>
@@ -13404,13 +13428,13 @@ function FunnelTab({ data }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: `2px solid ${C.sage}`, background: "#F5FAF7" }}>
-                <th style={{ padding: "8px 10px", textAlign: "left",   color: C.stone, fontWeight: 700 }}>Date</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>New</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>Activated</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>1st Task</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>D1</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>D3</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", color: C.stone, fontWeight: 700 }}>D7</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "left", color: C.stone }}>Date</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.stone }}>New</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.stone }}>Activated</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.stone }}>1st Task</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.stone }}>D1</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.stone }}>D3</th>
+                <th style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.stone }}>D7</th>
               </tr>
             </thead>
             <tbody>
@@ -13419,7 +13443,7 @@ function FunnelTab({ data }) {
                 const rowBg = day.is_post_fix ? "#F5FAF7" : "transparent";
                 const CohortCell = ({ d }) => {
                   if (!d) return <td style={{ padding: "8px 10px", textAlign: "center", color: "#ccc", fontSize: 11 }}>—</td>;
-                  return <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 700, color: rateColor(d.rate) }}>{d.rate}%</td>;
+                  return <td style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: rateColor(d.rate) }}>{d.rate}%</td>;
                 };
                 return (
                   <tr key={day.date} style={{ borderBottom: `1px solid ${C.sage}`, background: rowBg }}>
@@ -13427,7 +13451,7 @@ function FunnelTab({ data }) {
                       {day.is_post_fix && <span style={{ color: "#2F5D50", marginRight: 4 }}>✓</span>}
                       {dateLabel}
                     </td>
-                    <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 700, color: C.forest }}>{day.signups}</td>
+                    <td style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.forest }}>{day.signups}</td>
                     <td style={{ padding: "8px 10px", textAlign: "center", color: day.activation_pct >= 70 ? "#2F5D50" : "#92600A" }}>
                       {day.activation_pct !== null ? `${day.activation_pct}%` : "—"}
                     </td>
@@ -13464,7 +13488,7 @@ function ViewerAdminScreen() {
 
   return (
     <div style={{ padding: "24px 16px", maxWidth: 480, margin: "0 auto" }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 20 }}>
+      <div style={{ ...T.eyebrow, fontSize: 13, color: C.forest, marginBottom: 20 }}>
         Vercro — Overview
       </div>
       {loading && <div style={{ color: C.stone, fontSize: 14 }}>Loading…</div>}
@@ -13501,18 +13525,18 @@ function DemoAdminScreen() {
 
   return (
     <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, marginBottom: 4, color: "#1a1a1a" }}>Demo tools</div>
+      <div style={{ ...T.displayLg, fontSize: 22, marginBottom: 4, color: "#1a1a1a" }}>Demo tools</div>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>Reset this account back to the demo state</div>
 
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>Marketing reset</div>
+        <div style={{ ...T.displayMd, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>Marketing reset</div>
         <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 16 }}>
           Wipes all crops, tasks and harvest logs and restores the demo garden to its default state. Use this before handing the phone to someone new.
         </div>
 
         {!confirm ? (
           <button onClick={() => setConfirm(true)}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+            style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, cursor: "pointer" }}>
             Reset demo garden
           </button>
         ) : (
@@ -13522,7 +13546,7 @@ function DemoAdminScreen() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={runReset} disabled={resetting}
-                style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
+                style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 12, fontSize: 14, cursor: "pointer" }}>
                 {resetting ? "Resetting…" : "Yes, reset now"}
               </button>
               <button onClick={() => setConfirm(false)}
@@ -13606,7 +13630,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
 
   return (
     <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, marginBottom: 4, color: "#1a1a1a" }}>Admin</div>
+      <div style={{ ...T.displayLg, fontSize: 22, marginBottom: 4, color: "#1a1a1a" }}>Admin</div>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>Internal tools — only visible to you</div>
 
       {/* Sub tabs */}
@@ -13621,7 +13645,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
           { id: "tools",    label: "🔧 Tools" },
         ].map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
-            style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            style={{ ...T.control, padding: "8px 14px", borderRadius: 20, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
             {t.label}
           </button>
         ))}
@@ -13649,7 +13673,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
           <div>
             {/* Hero strip */}
             <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "18px 20px", marginBottom: 16, color: "#fff" }}>
-              <div style={{ fontSize: 10, opacity: 0.6, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Founder dashboard · live data</div>
+              <div style={{ ...T.eyebrow, fontSize: 10, opacity: 0.6, marginBottom: 12 }}>Founder dashboard · live data</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 {[
                   { label: "Signups",    val: metrics.totalSignups,   sub: `+${metrics.newSignupsWeek} this week` },
@@ -13661,7 +13685,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                 ].map(s => (
                   <div key={s.label}>
                     <div style={{ fontSize: 22, fontWeight: 800 }}>{s.val}</div>
-                    <div style={{ fontSize: 10, opacity: 0.85, fontWeight: 700, marginTop: 1 }}>{s.label}</div>
+                    <div style={{ ...T.bodyStrong, fontSize: 10, opacity: 0.85, marginTop: 1 }}>{s.label}</div>
                     <div style={{ fontSize: 10, opacity: 0.55, marginTop: 1 }}>{s.sub}</div>
                   </div>
                 ))}
@@ -13688,7 +13712,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {/* ── OVERVIEW ── */}
             {metricTab === "overview" && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Business health</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Business health</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
                   <MetricCard label="Activation rate" value={`${actRate}%`} sub="signup → first crop"
                     status={status(actRate, 60, 40)}
@@ -13704,7 +13728,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     suggestion={dauWau && dauWau < 0.25 ? SUGGESTIONS.dau_wau : null} />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Flags needing attention</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Flags needing attention</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   {[
                     { condition: actRate < 60,  label: `Activation ${actRate}% — users dropping off before first crop`, sug: SUGGESTIONS.activation, severity: actRate < 40 ? "red" : "amber" },
@@ -13723,7 +13747,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   )}
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Investor snapshot</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Investor snapshot</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="MAU" val={mau} sub="monthly active users (30 days)" />
                   <MetricRow label="MAU growth" val={metrics.wowGrowth !== null ? `${metrics.wowGrowth > 0 ? "+" : ""}${metrics.wowGrowth}%` : "—"} sub="week on week" highlight={metrics.wowGrowth > 0} />
@@ -13737,7 +13761,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {/* ── GROWTH ── */}
             {metricTab === "growth" && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Acquisition</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Acquisition</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Total signups" val={metrics.totalSignups} sub="everyone who registered" />
                   <MetricRow label="New this week" val={metrics.newSignupsWeek} />
@@ -13746,7 +13770,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     status="amber" suggestion={SUGGESTIONS.waitlist} />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Retention curve</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Retention curve</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   {[
                     { label: "Week 1 retention", val: w1Ret ? `${w1Ret}%` : "—", pct: w1Ret, target: 30, sug: SUGGESTIONS.week1retention },
@@ -13756,7 +13780,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <div style={{ fontSize: 13, color: "#1a1a1a" }}>{r.label}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 15, fontWeight: 700 }}>{r.val}</span>
+                          <span style={{ ...T.bodyStrong, fontSize: 15 }}>{r.val}</span>
                           <span style={{ fontSize: 10, color: C.stone }}>target {r.target}%</span>
                         </div>
                       </div>
@@ -13767,7 +13791,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   ))}
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Engagement</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Engagement</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="Weekly active users (WAU)" val={metrics.wau} />
                   <MetricRow label="Daily active users (DAU)" val={metrics.dau} />
@@ -13780,7 +13804,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {/* ── USAGE ── */}
             {metricTab === "usage" && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Engagement</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Engagement</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Activated users" val={metrics.totalActivated} sub="completed onboarding" />
                   <MetricRowWithFix label="Activation rate" val={`${actRate}%`} sub="signup → first crop · target 60%"
@@ -13792,7 +13816,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <MetricRow label="Tasks completed" val={metrics.tasksCompleted} sub="all time" />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Garden data</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Garden data</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Gardens created" val={metrics.totalLocations} />
                   <MetricRow label="Growing areas" val={metrics.totalAreas} />
@@ -13804,7 +13828,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <MetricRow label="Growth diary photos" val={metrics.totalPhotos} />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Dataset</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Dataset</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="Crop varieties tracked" val={metrics.totalVarieties} />
                   <MetricRow label="Yield data points" val={metrics.yieldDataPoints} />
@@ -13818,14 +13842,14 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
             {/* ── RETENTION ── */}
             {metricTab === "retention" && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Cohort retention curve</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Cohort retention curve</div>
                 <div style={{ fontSize: 12, color: C.stone, marginBottom: 14, lineHeight: 1.5 }}>
                   Did users do anything intentional in each window after their signup date? Binary per user. Day 1 excluded (onboarding noise).
                 </div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 55px", padding: "10px 14px", borderBottom: `1px solid ${C.border}`, background: C.pageBg }}>
                     {["Window", "Cohort", "Retained", "Rate"].map(h => (
-                      <div key={h} style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, textAlign: h === "Window" ? "left" : "right" }}>{h}</div>
+                      <div key={h} style={{ ...T.eyebrow, fontSize: 10, color: C.stone, textAlign: h === "Window" ? "left" : "right" }}>{h}</div>
                     ))}
                   </div>
                   {[
@@ -13840,12 +13864,12 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     return (
                       <div key={row.label} style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 55px", padding: "12px 14px", borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : "none", alignItems: "center" }}>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>{row.label}</div>
+                          <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>{row.label}</div>
                           <div style={{ fontSize: 11, color: C.stone }}>{row.sub}</div>
                         </div>
                         <div style={{ textAlign: "right", fontSize: 13, color: C.stone }}>{row.raw ? Number(row.raw.cohort).toLocaleString() : "—"}</div>
                         <div style={{ textAlign: "right", fontSize: 13, color: C.stone }}>{row.raw ? Number(row.raw.retained).toLocaleString() : "—"}</div>
-                        <div style={{ textAlign: "right", fontWeight: 700, fontSize: 14, color: colour }}>
+                        <div style={{ ...T.bodyStrong, textAlign: "right", fontSize: 14, color: colour }}>
                           {r != null ? `${r}%` : "—"}{thin ? "*" : ""}
                         </div>
                       </div>
@@ -13866,7 +13890,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                       <div key={row.label} style={{ marginBottom: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                           <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{row.label}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: thin ? C.stone : colour }}>
+                          <span style={{ ...T.bodyStrong, fontSize: 12, color: thin ? C.stone : colour }}>
                             {r != null ? `${r}%` : "—"}{thin ? " (small sample)" : ""}
                           </span>
                         </div>
@@ -13883,7 +13907,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
 
             {metricTab === "comms" && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Push notifications</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Push notifications</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRowWithFix label="Push opt-in rate" val={metrics.pushOptIn ? `${metrics.pushOptIn}%` : "—"} sub="of activated users · target 60%"
                     status={metrics.pushOptIn ? status(metrics.pushOptIn, 60, 40) : null}
@@ -13895,7 +13919,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     status={metrics.pushCTR7d != null ? status(metrics.pushCTR7d, 10, 5) : null} />
                   {metrics.pushByType7d && Object.keys(metrics.pushByType7d).length > 0 && (
                     <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>By type (7d)</div>
+                      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>By type (7d)</div>
                       {Object.entries(metrics.pushByType7d).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
                         <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>{type.replace(/_/g, " ")}</span>
@@ -13913,7 +13937,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   return (
                     <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                       <div style={{ padding: "10px 16px", borderBottom: `1px solid ${C.border}` }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Morning push — 7d avg per run</div>
+                        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Morning push — 7d avg per run</div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>Eligible</span>
                           <span style={{ fontWeight: 600 }}>{avg(morning, "eligible")}</span>
@@ -13929,7 +13953,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                         <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{morning.length} run{morning.length !== 1 ? "s" : ""} in last 7 days</div>
                       </div>
                       <div style={{ padding: "10px 16px" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Evening push — 7d avg per run</div>
+                        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Evening push — 7d avg per run</div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>Eligible</span>
                           <span style={{ fontWeight: 600 }}>{avg(evening, "eligible")}</span>
@@ -13948,7 +13972,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   );
                 })()}
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email sequences</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Email sequences</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Waitlist invites sent" val={metrics.emailWaitlistInvites || "—"} />
                   <MetricRow label="Feedback day 3 sent" val={metrics.emailFeedbackDay3 || "—"} />
@@ -13958,7 +13982,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <MetricRow label="Daily fallback emails" val={metrics.emailDailyFallback || "—"} />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Email performance (30 days)</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Email performance (30 days)</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <MetricRow label="Delivered" val={metrics.emailDelivered30d ?? "—"} />
                   <MetricRow label="Opened" val={metrics.emailOpened30d ?? "—"} />
@@ -13969,7 +13993,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                     status={metrics.emailBounceRate30d != null ? (metrics.emailBounceRate30d < 2 ? "green" : metrics.emailBounceRate30d < 5 ? "amber" : "red") : null} />
                   {metrics.emailOpensByType30d && Object.keys(metrics.emailOpensByType30d).length > 0 && (
                     <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Opens by type (30d)</div>
+                      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Opens by type (30d)</div>
                       {Object.entries(metrics.emailOpensByType30d).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
                         <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#1a1a1a", marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>{type.replace(/_/g, " ")}</span>
@@ -13985,7 +14009,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   )}
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Feedback</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Feedback</div>
                 <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
                   <MetricRow label="Total submissions" val={metrics.totalFeedback || "—"} />
                   <MetricRow label="Average rating" val={metrics.avgRating ? `${metrics.avgRating}/5` : "—"} highlight={metrics.avgRating >= 4} />
@@ -14005,7 +14029,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
           {crops.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>Queue is clear</div>
+              <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>Queue is clear</div>
               <div style={{ fontSize: 13 }}>No AI-added crops awaiting review</div>
             </div>
           ) : (
@@ -14016,7 +14040,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <div style={{ fontSize: 28 }}>{getCropEmoji(crop.name)}</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ ...T.displayMd, fontSize: 15, color: "#1a1a1a" }}>{crop.name}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>Added by {crop.added_by_email || "unknown"} · {new Date(crop.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
                     </div>
                   </div>
@@ -14031,7 +14055,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                       { label: "Crop type",    val: crop.crop_type || null },
                     ].filter(r => r.val).map(r => (
                       <div key={r.label} style={{ background: C.offwhite, borderRadius: 8, padding: "8px 10px" }}>
-                        <div style={{ fontSize: 10, color: C.stone, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>{r.label}</div>
+                        <div style={{ ...T.eyebrow, fontSize: 10, color: C.stone }}>{r.label}</div>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginTop: 1 }}>{r.val}</div>
                       </div>
                     ))}
@@ -14043,11 +14067,11 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => approve(crop.id)} disabled={acting === crop.id}
-                      style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 2, padding: "10px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
                       ✓ Approve
                     </button>
                     <button onClick={() => reject(crop.id)} disabled={acting === crop.id}
-                      style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.red}`, background: "transparent", color: C.red, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
                       ✕ Reject
                     </button>
                   </div>
@@ -14064,7 +14088,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
           <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>{users.length} user{users.length !== 1 ? "s" : ""} signed up</div>
           {users.map(u => (
             <div key={u.id} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 2 }}>{u.name || "No name set"}</div>
+              <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 2 }}>{u.name || "No name set"}</div>
               <div style={{ fontSize: 12, color: C.stone }}>{u.email}</div>
               <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
                 <span style={{ fontSize: 11, color: C.stone }}>Joined {new Date(u.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -15216,13 +15240,13 @@ function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, o
         }} />
       </div>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:10, fontWeight:700, color:"#aaa", textTransform:"uppercase", letterSpacing:0.8, marginBottom:2 }}>
+        <div style={{ ...T.eyebrow, fontSize:10, color:"#aaa", marginBottom:2 }}>
           {label}
         </div>
         {isEmpty ? (
           <div style={{ fontSize:13, color:C.stone, fontStyle:"italic" }}>
             No crop planned
-            {onTap && <span style={{ color:C.forest, fontWeight:700, fontStyle:"normal" }}> · Plan next season →</span>}
+            {onTap && <span style={{ ...T.bodyStrong, color:C.forest, fontStyle:"normal" }}> · Plan next season →</span>}
           </div>
         ) : (
           <div style={{ fontSize:15, fontWeight:600, color:"#1a1a1a", lineHeight:1.3 }}>
@@ -15335,7 +15359,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
       <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 12, marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{label}</div>
+            <div style={{ ...T.eyebrow, fontSize: 12, color: C.stone, marginBottom: 3 }}>{label}</div>
             {value != null
               ? <div style={{ fontSize: 18, fontWeight: 700, color: displayColor || "#1a1a1a" }}>{displayValue}</div>
               : <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic" }}>Not recorded</div>
@@ -15363,7 +15387,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
               <button key={opt.val}
                 onClick={() => logReading("moisture", opt.val, "manual")}
                 disabled={saving === "moisture"}
-                style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1px solid ${opt.color}`, background: "transparent", color: opt.color, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                style={{ ...T.control, flex: 1, padding: "8px 4px", borderRadius: 8, border: `1px solid ${opt.color}`, background: "transparent", color: opt.color, fontSize: 13, cursor: "pointer" }}>
                 {saving === "moisture" ? "…" : opt.label}
               </button>
             ))}
@@ -15382,7 +15406,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
               />
               <button onClick={() => logReading("temperature", inputVal, "manual")}
                 disabled={!inputVal || saving === "temperature"}
-                style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
                 {saving === "temperature" ? "…" : "Save"}
               </button>
             </div>
@@ -15401,7 +15425,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
               />
               <button onClick={() => logReading("ph", inputVal, "manual")}
                 disabled={!inputVal || saving === "ph"}
-                style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>
                 {saving === "ph" ? "…" : "Save"}
               </button>
             </div>
@@ -15420,7 +15444,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 20px 44px", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()} {...swipe}>
         <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
-        <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+        <div style={{ ...T.displayMd, fontSize: 18, color: "#1a1a1a", marginBottom: 4 }}>
           Soil conditions
         </div>
         <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>
@@ -15482,7 +15506,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
         </div>
         <div style={{ margin:"12px 16px 0", borderRadius:14, padding:"14px 16px",
           background:`linear-gradient(135deg, ${baseColor}dd, ${baseColor}99)` }}>
-          <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, color:"rgba(255,255,255,0.9)" }}>
+          <div style={{ ...T.displayMd, fontSize:18, color:"rgba(255,255,255,0.9)" }}>
             {area.name.replace(/^"|"$/g,"")}
           </div>
           <div style={{ fontSize:12, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
@@ -15499,17 +15523,17 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
           {crops.length===0 ? (
             <div style={{ textAlign:"center", padding:"32px 0", color:C.stone }}>
               <div style={{ fontSize:36, marginBottom:8 }}>🌱</div>
-              <div style={{ fontFamily:F.display, fontSize:15, fontWeight:700, marginBottom:4 }}>Empty bed</div>
+              <div style={{ ...T.displayMd, fontSize:15, marginBottom:4 }}>Empty bed</div>
               <div style={{ fontSize:13 }}>Nothing planted here this season</div>
             </div>
           ) : crops.map(crop=>(
             <div key={crop.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 0", borderBottom:`1px solid ${C.border}` }}>
               <span style={{ fontSize:22, flexShrink:0 }}>{getCropEmoji(crop.name)}</span>
               <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", fontFamily:F.display }}>{crop.name}</div>
+                <div style={{ ...T.displayMd, fontSize:15, color:"#1a1a1a" }}>{crop.name}</div>
                 {crop.variety && <div style={{ fontSize:12, color:C.stone }}>{typeof crop.variety==="object"?crop.variety.name:crop.variety}</div>}
               </div>
-              <div style={{ fontSize:11, fontWeight:700, color:statusColor[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
+              <div style={{ ...T.bodyStrong, fontSize:11, color:statusColor[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
                 {statusLabel[crop.status]||crop.status||"Growing"}
               </div>
             </div>
@@ -15527,11 +15551,11 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
             <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:12 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <span style={{ fontSize:13 }}>🔒</span>
-                <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.5 }}>
+                <div style={{ ...T.eyebrow, fontSize:11, color:C.forest }}>
                   Planned next — {lockedAssignment.planned_year}
                 </div>
               </div>
-              <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a" }}>{lockedAssignment.crop_name}</div>
+              <div style={{ ...T.bodyStrong, fontSize:14, color:"#1a1a1a" }}>{lockedAssignment.crop_name}</div>
               <div style={{ fontSize:11, color:C.stone, marginTop:3 }}>
                 Locked in · this bed is committed for {lockedAssignment.planned_year}
               </div>
@@ -15539,7 +15563,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
           )}
 
           <div style={{ marginTop:20, background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14, padding:"14px 16px" }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Area insights</div>
+            <div style={{ ...T.eyebrow, fontSize:11, color:C.stone, marginBottom:12 }}>Area insights</div>
             <div style={{ display:"flex", gap:8 }}>
               {[["📊","Yield"],["🔄","Rotation"],["📐","Space"]].map(([icon,label])=>(
                 <div key={label} style={{ flex:1, background:"#fff", border:"1px solid #E3E7E1", borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
@@ -15563,10 +15587,14 @@ const PLAN_STATUS_COLOUR = { draft: "#D9A441", committed: "#2F5D50", archived: "
 function PlanBadge({ status }) {
   return (
     <span style={{
-      display: "inline-block", fontSize: 9, fontWeight: 700, letterSpacing: 0.8,
-      textTransform: "uppercase", padding: "2px 7px", borderRadius: 20,
+      ...T.eyebrow,
+      display: "inline-block",
+      fontSize: 9,
+      padding: "2px 7px",
+      borderRadius: 20,
       background: PLAN_STATUS_COLOUR[status] + "22",
-      color: PLAN_STATUS_COLOUR[status], border: `1px solid ${PLAN_STATUS_COLOUR[status]}44`,
+      color: PLAN_STATUS_COLOUR[status],
+      border: `1px solid ${PLAN_STATUS_COLOUR[status]}44`
     }}>
       {PLAN_STATUS_LABEL[status]}
     </span>
@@ -15589,7 +15617,7 @@ function ScoreBar({ label, value, max = 10, colour = C.forest }) {
   return (
     <div style={{ marginBottom: 6 }}>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-        <div style={{ fontSize:10, fontWeight:700, color:C.stone, textTransform:"uppercase", letterSpacing:0.5 }}>{label}</div>
+        <div style={{ ...T.eyebrow, fontSize:10, color:C.stone }}>{label}</div>
         <div style={{ fontSize:10, fontWeight:700, color:colour }}>{value}/{max}</div>
       </div>
       <div style={{ height:4, borderRadius:99, background:"#E8EDE8", overflow:"hidden" }}>
@@ -15610,7 +15638,7 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
       style={{ borderRadius:16, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour+"08" : "#fff", padding:"16px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ fontFamily:F.display, fontSize:15, fontWeight:700, color:"#1a1a1a" }}>{option.name}</div>
+          <div style={{ ...T.displayMd, fontSize:15, color:"#1a1a1a" }}>{option.name}</div>
           {recommended && (
             <div style={{ fontSize:10, fontWeight:700, color:"#fff", background:C.forest, borderRadius:99, padding:"2px 7px" }}>Recommended</div>
           )}
@@ -15635,8 +15663,8 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
               color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":colour },
           ].map((item, i, arr) => (
             <div key={i} style={{ flex:1, padding:"8px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
-              <div style={{ fontSize:14, fontWeight:700, color:item.color||colour, fontFamily:F.display, letterSpacing:-0.3 }}>{item.value}</div>
-              <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.4, marginTop:1 }}>{item.label}</div>
+              <div style={{ ...T.bodyStrong, fontSize:14, color:item.color||colour, letterSpacing:-0.3 }}>{item.value}</div>
+              <div style={{ ...T.eyebrow, fontSize:9, color:"#999", marginTop:1 }}>{item.label}</div>
             </div>
           ))}
         </div>
@@ -15653,7 +15681,7 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
         {/* Diff summary — what changed vs baseline */}
         {option.change_summary && (
           <div style={{ marginBottom:10 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>
+            <div style={{ ...T.bodyStrong, fontSize:12, color:"#1a1a1a", marginBottom:6 }}>
               {option.change_summary}
             </div>
             {(option.changes||[]).map((c,i) => (
@@ -15718,10 +15746,10 @@ function PlanPerformanceStrip({ plan }) {
       {items.map((item, i) => (
         <div key={i} style={{ flex:1, padding:"10px 8px", textAlign:"center",
           borderRight: i<items.length-1 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
-          <div style={{ fontSize:17, fontWeight:700, color:item.color||"#2f5d50", fontFamily:F.display, letterSpacing:-0.3 }}>
+          <div style={{ ...T.displayMd, fontSize:17, color:item.color||"#2f5d50", letterSpacing:-0.3 }}>
             {item.value}
           </div>
-          <div style={{ fontSize:10, color:"#888", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>
+          <div style={{ ...T.eyebrow, fontSize:10, color:"#888", marginTop:2 }}>
             {item.label}
           </div>
         </div>
@@ -15757,16 +15785,23 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
       <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
         {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
-        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:16 }}>Compare plans</div>
+        <div style={{ ...T.displayMd, fontSize:17, marginBottom:16 }}>Compare plans</div>
 
         {/* Plan selector buttons */}
         <div style={{ display:"flex", gap:8, marginBottom:16 }}>
           {options.map((opt, i) => (
             <button key={i} onClick={() => { onSelect(i); onClose(); }}
-              style={{ flex:1, padding:"10px 4px", borderRadius:10, border:"none", cursor:"pointer",
+              style={{
+                ...T.control,
+                flex:1,
+                padding:"10px 4px",
+                borderRadius:10,
+                border:"none",
+                cursor:"pointer",
                 background: i===selectedIdx ? "#2f5d50" : "#f0f4f0",
                 color: i===selectedIdx ? "#fff" : "#1a1a1a",
-                fontSize:12, fontWeight:700 }}>
+                fontSize:12
+}}>
               {opt.name}
               {opt.id===recommendedId && (
                 <div style={{ fontSize:9, opacity:0.85, marginTop:2 }}>★ Recommended</div>
@@ -15869,7 +15904,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
 
   if (!isPro) return (
     <div style={{ marginTop:20, padding:"16px 14px", background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:14 }}>
-      <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>🏡 Improve your garden</div>
+      <div style={{ ...T.bodyStrong, fontSize:13, color:"#1a1a1a", marginBottom:4 }}>🏡 Improve your garden</div>
       <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:10 }}>
         See whether adding a greenhouse, raised bed or irrigation could increase harvest and value — with payback estimates.
       </div>
@@ -15880,7 +15915,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
   return (
     <div style={{ marginTop:20 }}>
       <div style={{ height:1, background:C.border, marginBottom:16 }} />
-      <div style={{ fontFamily:F.display, fontSize:16, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>Improve your garden</div>
+      <div style={{ ...T.displayMd, fontSize:16, color:"#1a1a1a", marginBottom:2 }}>Improve your garden</div>
       <div style={{ fontSize:12, color:C.stone, marginBottom:14, lineHeight:1.5 }}>
         See whether adding infrastructure could increase your harvest, value or ease.
       </div>
@@ -15891,7 +15926,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
           <button key={t.id} onClick={() => handleSelect(t.id)}
             style={{ padding:"10px 10px 8px", borderRadius:12, border:`1.5px solid ${selected===t.id?C.forest:C.border}`, background:selected===t.id?"#F0F5F3":"#fff", cursor:"pointer", textAlign:"left" }}>
             <div style={{ fontSize:20, marginBottom:3 }}>{t.emoji}</div>
-            <div style={{ fontSize:12, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>{t.label}</div>
+            <div style={{ ...T.bodyStrong, fontSize:12, color:"#1a1a1a", marginBottom:2 }}>{t.label}</div>
             <div style={{ fontSize:10, color:C.stone, lineHeight:1.4 }}>{t.benefit}</div>
           </button>
         ))}
@@ -15905,7 +15940,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
 
           {result.incompatible ? (
             <div style={{ padding:"14px", fontSize:12, color:C.stone, lineHeight:1.5 }}>
-              <div style={{ fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>Less relevant for your setup</div>
+              <div style={{ ...T.bodyStrong, color:"#1a1a1a", marginBottom:4 }}>Less relevant for your setup</div>
               {result.incompatibility_note}
             </div>
           ) : (
@@ -15953,8 +15988,8 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                   { label:"Payback",        value: result.roi?.payback_seasons != null ? `~${result.roi.payback_seasons} seasons` : "—" },
                 ].map((m,i,arr) => (
                   <div key={i} style={{ flex:1, textAlign:"center", borderRight:i<arr.length-1?`1px solid ${C.border}`:"none", paddingBottom:4 }}>
-                    <div style={{ fontSize:16, fontWeight:700, color:C.forest, fontFamily:F.display }}>{m.value}</div>
-                    <div style={{ fontSize:9, color:C.stone, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{m.label}</div>
+                    <div style={{ ...T.displayMd, fontSize:16, color:C.forest }}>{m.value}</div>
+                    <div style={{ ...T.eyebrow, fontSize:9, color:C.stone, marginTop:2 }}>{m.label}</div>
                   </div>
                 ))}
               </div>
@@ -15993,7 +16028,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                   {result.roi?.value_gain_3yr != null && (
                     <div style={{ fontSize:12, marginBottom:6 }}>
                       <span style={{ color:C.stone }}>3-year estimated gain: </span>
-                      <span style={{ fontWeight:700, color:C.forest }}>£{result.roi.value_gain_3yr}</span>
+                      <span style={{ ...T.bodyStrong, color:C.forest }}>£{result.roi.value_gain_3yr}</span>
                       {result.roi.net_3yr != null && (
                         <span style={{ color:C.stone }}> · Net 3yr: {result.roi.net_3yr>=0?`+£${result.roi.net_3yr}`:`-£${Math.abs(result.roi.net_3yr)}`}</span>
                       )}
@@ -16031,12 +16066,12 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
               {/* Apply CTA */}
               <div style={{ padding:"0 14px 14px" }}>
                 {applied ? (
-                  <div style={{ fontSize:12, color:C.forest, fontWeight:700, textAlign:"center", padding:"10px 0" }}>
+                  <div style={{ ...T.bodyStrong, fontSize:12, color:C.forest, textAlign:"center", padding:"10px 0" }}>
                     ✅ Noted — {planContext ? "infrastructure assumptions added to this plan" : "use this when creating your next plan"}
                   </div>
                 ) : (
                   <button onClick={handleApply}
-                    style={{ width:"100%", padding:"12px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    style={{ ...T.control, width:"100%", padding:"12px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:13, cursor:"pointer" }}>
                     {planContext ? "Apply to this plan" : "Note this for my plan"}
                   </button>
                 )}
@@ -16139,7 +16174,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:20, padding:"36px 28px", textAlign:"center", maxWidth:280 }}>
         <div style={{ fontSize:36, marginBottom:12 }}>🌱</div>
-        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:8 }}>Working out your rotation…</div>
+        <div style={{ ...T.displayMd, fontSize:17, marginBottom:8 }}>Working out your rotation…</div>
         <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Keeping your crops, just moving them to better beds</div>
       </div>
     </div>
@@ -16164,8 +16199,8 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           { label:"Yield/m²",  value: metrics.yield_per_m2   != null ? `${metrics.yield_per_m2}kg`     : "—" },
         ].map((item, i, arr) => (
           <div key={i} style={{ flex:1, padding:"10px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
-            <div style={{ fontSize:15, fontWeight:700, color:colour, fontFamily:F.display }}>{item.value}</div>
-            <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{item.label}</div>
+            <div style={{ ...T.displayMd, fontSize:15, color:colour }}>{item.value}</div>
+            <div style={{ ...T.eyebrow, fontSize:9, color:"#999", marginTop:2 }}>{item.label}</div>
           </div>
         ))}
       </div>
@@ -16188,7 +16223,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: name ────────────────────────────────────────────────────────────
   if (step === "name") return (
     <Sheet onBack={() => setStep(planToSaveRef.current === plan ? "baseline" : "result")}>
-      <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, marginBottom:6 }}>Name this plan</div>
+      <div style={{ ...T.displayMd, fontSize:18, marginBottom:6 }}>Name this plan</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
         Give your plan a name so you can find it easily. You can create as many plans as you like and decide later which one to use.
       </div>
@@ -16196,12 +16231,12 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         value={planName}
         onChange={e => setPlanName(e.target.value)}
         placeholder="e.g. My rotated garden"
-        style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, fontFamily:F.display, outline:"none" }}
+        style={{ ...T.bodyStrong, width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, outline:"none" }}
         autoFocus
       />
       {err && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
       <button onClick={handleSave} disabled={saving || !planName.trim()}
-        style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:saving || !planName.trim() ? "not-allowed" : "pointer", opacity: saving || !planName.trim() ? 0.6 : 1 }}>
+        style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:saving || !planName.trim() ? "not-allowed" : "pointer", opacity: saving || !planName.trim() ? 0.6 : 1 }}>
         {saving ? "Saving plan…" : "Save plan"}
       </button>
     </Sheet>
@@ -16210,7 +16245,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: baseline ────────────────────────────────────────────────────────
   if (step === "baseline") return (
     <Sheet>
-      <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, marginBottom:4 }}>Your rotated garden 🌱</div>
+      <div style={{ ...T.displayMd, fontSize:18, marginBottom:4 }}>Your rotated garden 🌱</div>
       <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>
         Same crops, better beds — based on what you're already growing this year.
       </div>
@@ -16222,10 +16257,10 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         </div>
       )}
       <div style={{ height:1, background:C.border, margin:"16px 0" }} />
-      <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:4 }}>Want to improve this?</div>
+      <div style={{ ...T.bodyStrong, fontSize:14, color:"#1a1a1a", marginBottom:4 }}>Want to improve this?</div>
       <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>We can make a few targeted changes to get more from your garden.</div>
       <button onClick={() => setStep("ask_year_round")}
-        style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
+        style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer", marginBottom:10 }}>
         Yes, improve it →
       </button>
       <button onClick={() => { const p = { ...baseline, label: "Your rotated garden" }; planToSaveRef.current = p; setPlan(p); setPlanName("My rotated garden"); setStep("name"); }}
@@ -16239,7 +16274,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: ask year-round growing ─────────────────────────────────────────
   if (step === "ask_year_round") return (
     <Sheet onBack={() => setStep("baseline")}>
-      <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:6 }}>Year-round growing?</div>
+      <div style={{ ...T.displayMd, fontSize:17, marginBottom:6 }}>Year-round growing?</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
         Where beds would sit empty between crops, we can suggest something to fill the gap — using crops you already grow where possible.
       </div>
@@ -16258,7 +16293,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         }}
           style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <div>
-            <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
+            <div style={{ ...T.bodyStrong, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
             <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
           </div>
         </button>
@@ -16269,7 +16304,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: ask how many areas to improve ──────────────────────────────────
   if (step === "ask_improve") return (
     <Sheet onBack={() => setStep("ask_year_round")}>
-      <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:6 }}>Change any areas?</div>
+      <div style={{ ...T.displayMd, fontSize:17, marginBottom:6 }}>Change any areas?</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
         We can swap out one or more beds for something that performs better — without changing your whole garden.
       </div>
@@ -16289,7 +16324,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         }}
           style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <div>
-            <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
+            <div style={{ ...T.bodyStrong, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
             <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
           </div>
         </button>
@@ -16300,7 +16335,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: ask preference ─────────────────────────────────────────────────
   if (step === "ask_preference") return (
     <Sheet onBack={() => setStep("ask_improve")}>
-      <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:6 }}>What matters most?</div>
+      <div style={{ ...T.displayMd, fontSize:17, marginBottom:6 }}>What matters most?</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20 }}>This helps us choose the best crops for the areas we're changing.</div>
       {[
         { value:"yield",    label:"More food",      desc:"Prioritise crops that produce the most", emoji:"🥕" },
@@ -16314,7 +16349,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", marginBottom:8, cursor:"pointer", textAlign:"left" }}>
           <span style={{ fontSize:24, flexShrink:0 }}>{opt.emoji}</span>
           <div>
-            <div style={{ fontWeight:700, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
+            <div style={{ ...T.bodyStrong, fontSize:14, color:"#1a1a1a", marginBottom:2 }}>{opt.label}</div>
             <div style={{ fontSize:12, color:C.stone }}>{opt.desc}</div>
           </div>
         </button>
@@ -16327,7 +16362,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     const hasChanges = plan?.change_count > 0;
     return (
       <Sheet onBack={() => setStep("ask_preference")}>
-        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:4 }}>
+        <div style={{ ...T.displayMd, fontSize:17, marginBottom:4 }}>
           {hasChanges ? "Your improved plan" : "Your rotated plan"}
         </div>
         <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>
@@ -16342,7 +16377,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
             {(plan.improvements||[]).map((imp,i) => (
               <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5f8f5", borderRadius:10, borderLeft:`3px solid ${C.forest}` }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                  <div style={{ ...T.bodyStrong, fontSize:13, color:"#1a1a1a" }}>
                     {imp.area_name} → <span style={{ color:C.forest }}>{imp.to_crop}</span>
                   </div>
                   <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>
@@ -16354,7 +16389,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
             {(plan.gap_fills||[]).map((gf,i) => (
               <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5fbf5", borderRadius:10, borderLeft:`3px solid #4a9a60` }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                  <div style={{ ...T.bodyStrong, fontSize:13, color:"#1a1a1a" }}>
                     {gf.area_name} + <span style={{ color:"#4a9a60" }}>{gf.crop_name}</span>
                   </div>
                   <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>{gf.note}</div>
@@ -16400,7 +16435,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           ← Adjust options
         </button>
         <button onClick={() => { setPlanName(plan?.label || "My improved garden"); setStep("name"); }}
-          style={{ width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+          style={{ ...T.control, width:"100%", padding:"15px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer" }}>
           Use this plan →
         </button>
       </Sheet>
@@ -16458,14 +16493,14 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
       <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}
         {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
-        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:2 }}>Plan crop for {area.name}</div>
+        <div style={{ ...T.displayMd, fontSize:17, marginBottom:2 }}>Plan crop for {area.name}</div>
         <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>In: {plan.name}</div>
 
         {selectedDef && (
           <div style={{ display:"flex", alignItems:"center", gap:10, background:"#F0F5F3", borderRadius:12, padding:"10px 14px", marginBottom:14 }}>
             <div style={{ fontSize:22 }}>{selectedDef.emoji || "🌱"}</div>
             <div style={{ flex:1 }}>
-              <div style={{ fontWeight:700, fontSize:14 }}>{selectedDef.name}</div>
+              <div style={{ ...T.bodyStrong, fontSize:14 }}>{selectedDef.name}</div>
               <div style={{ fontSize:11, color:C.stone }}>Selected</div>
             </div>
             <button onClick={()=>{ setSelected(null); setQuery(""); }} style={{ background:"none", border:"none", color:C.stone, fontSize:18, cursor:"pointer" }}>✕</button>
@@ -16497,12 +16532,12 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
         <div style={{ display:"flex", gap:8 }}>
           {currentAssignment?.id && (
             <button onClick={handleRemove} disabled={removing}
-              style={{ flex:1, padding:"13px", borderRadius:14, border:`1.5px solid ${C.red}`, background:"#fff", color:C.red, fontSize:14, fontWeight:700, cursor:"pointer" }}>
+              style={{ ...T.control, flex:1, padding:"13px", borderRadius:14, border:`1.5px solid ${C.red}`, background:"#fff", color:C.red, fontSize:14, cursor:"pointer" }}>
               {removing ? "Removing…" : "Remove"}
             </button>
           )}
           <button onClick={handleSave} disabled={saving || (!selected && !query.trim())}
-            style={{ flex:2, padding:"13px", borderRadius:14, border:"none", background:(selected||query.trim())?C.forest:"#ccc", color:"#fff", fontSize:14, fontWeight:700, cursor:(selected||query.trim())?"pointer":"default" }}>
+            style={{ ...T.control, flex:2, padding:"13px", borderRadius:14, border:"none", background:(selected||query.trim())?C.forest:"#ccc", color:"#fff", fontSize:14, cursor:(selected||query.trim())?"pointer":"default" }}>
             {saving ? "Saving…" : currentAssignment?.id ? "Update" : "Assign crop"}
           </button>
         </div>
@@ -16683,16 +16718,16 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
     return (
       <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         {/* Header */}
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Garden health</div>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Garden health</div>
 
         {/* Encouragement line */}
         <div style={{ fontSize: 13, color: C.forest, fontWeight: 600, marginBottom: 10, lineHeight: 1.4 }}>{encouragement}</div>
 
         {/* Score + confidence */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-          <div style={{ fontSize: 38, fontWeight: 700, fontFamily: F.display, color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
+          <div style={{ ...T.displayLg, fontSize: 38, color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
           <div style={{ textAlign: "right", paddingTop: 4 }}>
-            <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700, marginBottom: 2 }}>
+            <div style={{ ...T.bodyStrong, fontSize: 11, color: confidenceColor(confidence_level), marginBottom: 2 }}>
               {confidenceLabel}
             </div>
             <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 130 }}>
@@ -16709,10 +16744,10 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         {/* What's helping */}
         {showPositives.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>What's helping</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>What's helping</div>
             {showPositives.map((p, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.forest, marginBottom: 4 }}>
-                <span style={{ color: C.leaf, fontWeight: 700 }}>✓</span><span>{p}</span>
+                <span style={{ ...T.bodyStrong, color: C.leaf }}>✓</span><span>{p}</span>
               </div>
             ))}
           </div>
@@ -16721,7 +16756,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         {/* Needs attention soon — urgent only */}
         {urgentItems.length > 0 && (
           <div style={{ marginBottom: 12, background: "#FFF8ED", borderRadius: 10, padding: "10px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#92600A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Needs attention soon</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: "#92600A", marginBottom: 6 }}>Needs attention soon</div>
             {urgentItems.map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "#92600A", marginBottom: i < urgentItems.length - 1 ? 6 : 0 }}>
                 <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span><span>{s}</span>
@@ -16733,7 +16768,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         {/* Next steps to improve this — non-urgent */}
         {improvItems.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Next steps to improve this</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Next steps to improve this</div>
             {improvItems.map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: C.stone, marginBottom: 4 }}>
                 <span style={{ flexShrink: 0, marginTop: 1 }}>→</span><span>{s}</span>
@@ -16746,7 +16781,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         {canSeeBreakdown && components && (
           <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
             <button onClick={() => setExpanded(e => !e)}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.forest, fontWeight: 700, marginBottom: expanded ? 12 : 0, padding: 0 }}>
+              style={{ ...T.control, background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.forest, marginBottom: expanded ? 12 : 0, padding: 0 }}>
               {expanded ? "▲ Hide breakdown" : "▼ Show breakdown"}
             </button>
             {expanded && (
@@ -16770,7 +16805,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
             <LockRow label="Crop observation freshness" />
             <LockRow label="Soil data quality" />
             <button onClick={onUpgrade}
-              style={{ width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              style={{ ...T.control, width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, cursor: "pointer" }}>
               Unlock deeper garden insights
             </button>
           </div>
@@ -16793,7 +16828,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   // No plan quality data yet — show simple placeholder
   if (!planQuality) return (
     <div style={{ background: isCommitted ? "#f0f7f4" : "#fff", border: `1px solid ${isCommitted ? C.sage : C.border}`, borderRadius: 14, padding: "16px 18px", marginTop: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Plan quality</div>
+      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Plan quality</div>
       <div style={{ fontSize: 13, color: C.stone }}>
         {isCommitted ? "This plan is locked in for next season." : "Assign crops to areas to build out this plan."}
       </div>
@@ -16808,12 +16843,12 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
       {/* Score + label */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Plan quality</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: F.display, color: labelColor, lineHeight: 1 }}>{label}</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 4 }}>Plan quality</div>
+          <div style={{ ...T.displayLg, fontSize: 28, color: labelColor, lineHeight: 1 }}>{label}</div>
           {canSeeBreakdown && <div style={{ fontSize: 12, color: C.stone, marginTop: 3 }}>{score}/100</div>}
         </div>
         <div style={{ textAlign: "right", paddingTop: 4 }}>
-          <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700 }}>
+          <div style={{ ...T.bodyStrong, fontSize: 11, color: confidenceColor(confidence_level) }}>
             {confidence_level === "High" ? "Well supported" : confidence_level === "Medium" ? "Getting clearer" : "Early estimate"}
           </div>
           <div style={{ fontSize: 10, color: C.stone, lineHeight: 1.4, maxWidth: 130, marginTop: 2 }}>
@@ -16825,7 +16860,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
       {/* Ways to strengthen */}
       {risk_flags?.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Ways to strengthen this plan</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Ways to strengthen this plan</div>
           {risk_flags.map(f => (
             <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#92600A", marginBottom: 4 }}>
               <span>→</span><span>{f}</span>
@@ -16838,7 +16873,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
       {canSeeBreakdown && (
         <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
           <button onClick={() => setExpanded(e => !e)}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.forest, fontWeight: 700, marginBottom: expanded ? 12 : 0, padding: 0 }}>
+            style={{ ...T.control, background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.forest, marginBottom: expanded ? 12 : 0, padding: 0 }}>
             {expanded ? "▲ Hide breakdown" : "▼ Show breakdown"}
           </button>
           {expanded && (
@@ -16865,7 +16900,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
           <LockRow label="Space efficiency" />
           <LockRow label="Yield potential" />
           <button onClick={onUpgrade}
-            style={{ width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", marginTop: 6, padding: "9px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "none", color: C.forest, fontSize: 12, cursor: "pointer" }}>
             Unlock deeper plan insights
           </button>
         </div>
@@ -16886,17 +16921,17 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
     if (committedPlan) {
       return (
         <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
             Coming next
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+          <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>
             Your plan for next season is ready.
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
             {committedPlan.name} is locked in. Prep and sowing tasks will be generated from it when your current season ends.
           </div>
           <button onClick={() => onViewPlan(committedPlan.id)}
-            style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
             View next plan
           </button>
         </div>
@@ -16907,17 +16942,17 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
       const firstDraft = locPlans.find(p => p.status === "draft");
       return (
         <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
             Coming next
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+          <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>
             You've started planning next season.
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
             You have draft plans but none are locked in yet. Review and commit a plan to start generating next season's tasks.
           </div>
           <button onClick={() => onViewPlan(firstDraft.id)}
-            style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
             Review plans
           </button>
         </div>
@@ -16927,17 +16962,17 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
     // No plans at all
     return (
       <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
           Coming next
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+        <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>
           Plan your next season
         </div>
         <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
           Create a rotation plan now to improve your garden year on year and get ahead of next season's sowing.
         </div>
         <button onClick={onCreatePlan}
-          style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
           Create a plan
         </button>
       </div>
@@ -16950,14 +16985,14 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
   if (selectedPlan.status === "committed") {
     return (
       <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
           This is your locked next plan
         </div>
         <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
           This plan will become active when your current season ends. Prep and sowing tasks will be generated from it automatically.
         </div>
         <button onClick={onViewLive}
-          style={{ width: "100%", padding: "11px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "#fff", color: C.forest, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: `1px solid ${C.forest}`, background: "#fff", color: C.forest, fontSize: 13, cursor: "pointer" }}>
           View live garden
         </button>
       </div>
@@ -16967,17 +17002,17 @@ function ComingNextCard({ isPlanMode, selectedPlan, locPlans, onViewPlan, onCrea
   // Draft plan
   return (
     <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>
         How this changes next season
       </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+      <div style={{ ...T.bodyStrong, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>
         {selectedPlan.name}
       </div>
       <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 14 }}>
         Lock in this plan and Vercro will use it to guide prep, sowing and planting tasks as your current season ends.
       </div>
       <button onClick={onCommit}
-        style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+        style={{ ...T.control, width: "100%", padding: "11px", borderRadius: 10, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
         Use this plan
       </button>
     </div>
@@ -17096,7 +17131,7 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>
         Recommended for your garden
       </div>
       {shown.map((r, i) => (
@@ -17107,11 +17142,11 @@ function PlanRecommendationsSection({ isPlanMode, gardenHealth, planQuality, loc
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{r.icon}</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 3 }}>{r.title}</div>
+              <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a", marginBottom: 3 }}>{r.title}</div>
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.5 }}>{r.body}</div>
               {r.cta && (
                 <button onClick={r.cta.action}
-                  style={{ marginTop: 10, padding: "7px 14px", borderRadius: 8, border: "none", background: C.forest, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  style={{ ...T.control, marginTop: 10, padding: "7px 14px", borderRadius: 8, border: "none", background: C.forest, color: "#fff", fontSize: 12, cursor: "pointer" }}>
                   {r.cta.label}
                 </button>
               )}
@@ -17144,7 +17179,7 @@ function CompareWithLiveCard({ areas, liveCrops, assignments, planQuality, onVie
 
   if (!rows.length) return (
     <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "14px 16px", marginTop: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.forest, marginBottom: 2 }}>No changes from live garden</div>
+      <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 2 }}>No changes from live garden</div>
       <div style={{ fontSize: 12, color: C.stone }}>This plan has the same crop layout as your current garden.</div>
     </div>
   );
@@ -17152,9 +17187,9 @@ function CompareWithLiveCard({ areas, liveCrops, assignments, planQuality, onVie
   return (
     <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Changes from live garden</div>
+        <div style={{ ...T.bodyStrong, fontSize: 13, color: "#1a1a1a" }}>Changes from live garden</div>
         <button onClick={onViewLive}
-          style={{ fontSize: 11, color: C.forest, fontWeight: 700, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          style={{ ...T.control, fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           View live ›
         </button>
       </div>
@@ -17162,13 +17197,13 @@ function CompareWithLiveCard({ areas, liveCrops, assignments, planQuality, onVie
       {/* Delta rows */}
       {rows.map(({ area, liveNames, plannedName }) => (
         <div key={area.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 4 }}>
             {area.name}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ flex: 1, fontSize: 12, color: "#888", textDecoration: "line-through" }}>{liveNames}</div>
             <div style={{ fontSize: 14, color: C.stone }}>→</div>
-            <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: C.forest }}>{plannedName}</div>
+            <div style={{ ...T.bodyStrong, flex: 1, fontSize: 12, color: C.forest }}>{plannedName}</div>
           </div>
         </div>
       ))}
@@ -17215,7 +17250,7 @@ function SeasonTransitionBanner({ locPlans, onViewPlan }) {
     }}>
       <span style={{ fontSize: 22, flexShrink: 0 }}>🌱</span>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
+        <div style={{ ...T.bodyStrong, fontSize: 13, color: "#fff", marginBottom: 2 }}>
           {committedPlan.name} is ready for {seasonLabel}
         </div>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.4 }}>
@@ -17223,7 +17258,7 @@ function SeasonTransitionBanner({ locPlans, onViewPlan }) {
         </div>
       </div>
       <button onClick={() => onViewPlan(committedPlan.id)}
-        style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+        style={{ ...T.control, flexShrink: 0, padding: "7px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, cursor: "pointer" }}>
         View
       </button>
     </div>
@@ -17245,12 +17280,12 @@ function CommitPlanModal({ plan, onConfirm, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:9200, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 20px" }}>
       <div style={{ width:"100%", maxWidth:380, background:"#fff", borderRadius:20, padding:"28px 22px 22px", boxSizing:"border-box" }}>
         <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>🌱</div>
-        <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, textAlign:"center", marginBottom:10 }}>Commit this plan?</div>
+        <div style={{ ...T.displayMd, fontSize:18, textAlign:"center", marginBottom:10 }}>Commit this plan?</div>
         <div style={{ fontSize:14, color:C.stone, textAlign:"center", lineHeight:1.6, marginBottom:24 }}>
           Your current garden stays unchanged. Vercro will use <strong>{plan.name}</strong> to guide prep, sowing and planting tasks as areas become available.
         </div>
         <button onClick={handleCommit} disabled={committing}
-          style={{ width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
+          style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer", marginBottom:10 }}>
           {committing ? "Committing…" : "Commit plan"}
         </button>
         <button onClick={onClose}
@@ -17838,10 +17873,10 @@ function PlanScreen({ tourRefs = {} }) {
       <div style={{background:`linear-gradient(135deg,${C.forest} 0%,#1e3d33 100%)`,borderRadius:16,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
         <div style={{position:"relative"}}>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>
+          <div style={{ ...T.eyebrow, fontSize:10, color:"rgba(255,255,255,0.4)", marginBottom:3 }}>
             {isPlanMode ? "Garden Plan" : "Garden Visualiser"}
           </div>
-          <div style={{fontFamily:F.display,fontSize:19,fontWeight:700,color:"#fff",marginBottom:2}}>
+          <div style={{ ...T.displayLg, fontSize:19, color:"#fff", marginBottom:2 }}>
             {isPlanMode ? selectedPlan?.name : (loc?.name||"My garden")}{!isPlanMode&&loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
           </div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",display:"flex",alignItems:"center",gap:6}}>
@@ -17856,7 +17891,7 @@ function PlanScreen({ tourRefs = {} }) {
       {/* ── Location selector — always visible, Pro gated for additional locations ── */}
       {locations.length > 0 && (
         <div ref={tourRefs.tourRef_planLocationSelector} style={{marginBottom:12}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Location</div>
+          <div style={{ ...T.eyebrow, fontSize:11, color:C.stone, marginBottom:6 }}>Location</div>
           <div style={{position:"relative"}}>
             <select
               value={selectedLoc || ""}
@@ -17905,7 +17940,7 @@ function PlanScreen({ tourRefs = {} }) {
               if (!isPro && !isMark) { setShowPlanPaywall(true); return; }
               setShowCreatePlan(true);
             }}
-            style={{flexShrink:0,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.forest}`,background:"#fff",color:C.forest,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+            style={{ ...T.control, flexShrink:0, padding:"10px 14px", borderRadius:12, border:`1.5px solid ${C.forest}`, background:"#fff", color:C.forest, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>
             + New plan
           </button>
         </div>
@@ -17919,7 +17954,7 @@ function PlanScreen({ tourRefs = {} }) {
             </div>
             {selectedPlan.status==="draft" && (
               <button onClick={()=>setShowCommit(true)}
-                style={{flexShrink:0,padding:"7px 14px",borderRadius:10,border:"none",background:C.forest,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                style={{ ...T.control, flexShrink:0, padding:"7px 14px", borderRadius:10, border:"none", background:C.forest, color:"#fff", fontSize:12, cursor:"pointer" }}>
                 Commit
               </button>
             )}
@@ -17937,7 +17972,7 @@ function PlanScreen({ tourRefs = {} }) {
                     setTimeout(()=>setPlanToast(null),1800);
                   } catch(e){} finally { setDeletingPlanId(null); setConfirmDeleteId(null); }
                 }} disabled={!!deletingPlanId}
-                  style={{padding:"5px 10px",borderRadius:8,border:"none",background:C.red,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                  style={{ ...T.control, padding:"5px 10px", borderRadius:8, border:"none", background:C.red, color:"#fff", fontSize:11, cursor:"pointer" }}>
                   {deletingPlanId===selectedPlan.id?"…":"Yes, delete"}
                 </button>
                 <button onClick={()=>setConfirmDeleteId(null)}
@@ -17960,9 +17995,9 @@ function PlanScreen({ tourRefs = {} }) {
         <div style={{minHeight:38,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
           {activeBlock ? (
             <>
-              <div style={{fontSize:13,fontFamily:F.display,fontWeight:700,color:"#1a1a1a",flex:1}}>{activeAreaName}</div>
+              <div style={{ ...T.bodyStrong, fontSize:13, color:"#1a1a1a", flex:1 }}>{activeAreaName}</div>
               <button onClick={()=>handleRotate(activeBlock)}
-                style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontSize:14,fontWeight:700,cursor:"pointer"}}>↻ Rotate</button>
+                style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:10, padding:"8px 18px", fontSize:14, cursor:"pointer" }}>↻ Rotate</button>
               <button onClick={()=>setDetailArea(activeBlock)}
                 style={{background:"#fff",color:C.forest,border:`1.5px solid ${C.forest}`,borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Detail</button>
               <button onClick={()=>setActiveBlock(null)}
@@ -17972,7 +18007,7 @@ function PlanScreen({ tourRefs = {} }) {
             <>
               <div style={{fontSize:11,color:C.stone,flex:1}}>Tap an area to select · drag to reposition</div>
               <button onClick={()=>{ try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc}));}catch(e){} setSavedToast(true); setTimeout(()=>setSavedToast(false),1500); }}
-                style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:10, padding:"7px 14px", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
                 🔒 Save view
               </button>
             </>
@@ -18002,7 +18037,7 @@ function PlanScreen({ tourRefs = {} }) {
               {/* Background — renders the ground texture so it looks intentional */}
               <div style={{height:260,background:`linear-gradient(180deg, #3a5c26 0%, #2d4a1e 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px",textAlign:"center"}}>
                 <div style={{fontSize:36,marginBottom:12}}>📐</div>
-                <div style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:"#fff",marginBottom:8}}>
+                <div style={{ ...T.displayMd, fontSize:17, color:"#fff", marginBottom:8 }}>
                   {hasAnyAreas ? "Area dimensions needed" : "No growing areas yet"}
                 </div>
                 <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.5,marginBottom:18,maxWidth:260}}>
@@ -18015,7 +18050,7 @@ function PlanScreen({ tourRefs = {} }) {
                     // Show a tip sheet explaining how to add dimensions
                     setShowDimensionsTip(true);
                   }}
-                  style={{padding:"9px 20px",borderRadius:10,border:"1px solid rgba(255,255,255,0.4)",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                  style={{ ...T.control, padding:"9px 20px", borderRadius:10, border:"1px solid rgba(255,255,255,0.4)", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:13, cursor:"pointer" }}>
                   Need help? →
                 </button>
               </div>
@@ -18035,7 +18070,7 @@ function PlanScreen({ tourRefs = {} }) {
             <div style={{position:"absolute",top:10,right:10,zIndex:50,display:"flex",gap:3,background:"rgba(0,0,0,0.35)",backdropFilter:"blur(8px)",borderRadius:10,padding:"3px 4px"}}>
               {[["+",z=>Math.min(2.5,+(z+0.25).toFixed(2))],["−",z=>Math.max(0.4,+(z-0.25).toFixed(2))],["Fit",()=>1]].map(([label,fn])=>(
                 <button key={label} onClick={()=>setZoom(z=>{ const nz=fn(z); try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom:nz,selectedLoc}));}catch(e){} return nz; })}
-                  style={{minWidth:label==="Fit"?28:24,height:24,borderRadius:7,border:"none",background:"rgba(255,255,255,0.18)",color:"#fff",fontSize:label==="Fit"?9:15,fontWeight:700,cursor:"pointer",padding:label==="Fit"?"0 6px":0,lineHeight:1}}>
+                  style={{ ...T.control, minWidth:label==="Fit"?28:24, height:24, borderRadius:7, border:"none", background:"rgba(255,255,255,0.18)", color:"#fff", fontSize:label==="Fit"?9:15, cursor:"pointer", padding:label==="Fit"?"0 6px":0, lineHeight:1 }}>
                   {label}
                 </button>
               ))}
@@ -18067,7 +18102,7 @@ function PlanScreen({ tourRefs = {} }) {
       {/* Scale bar */}
       <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:5,marginTop:5}}>
         <div style={{width:Math.min(pxPerM,50),height:2,background:"rgba(0,0,0,0.2)",borderRadius:1}}/>
-        <div style={{fontSize:9,color:"rgba(0,0,0,0.35)",fontWeight:700}}>1m</div>
+        <div style={{ ...T.bodyStrong, fontSize:9, color:"rgba(0,0,0,0.35)" }}>1m</div>
       </div>
 
       {/* ── Garden Health / Plan Quality status card ── */}
@@ -18136,7 +18171,7 @@ function PlanScreen({ tourRefs = {} }) {
       {/* Area assignment list — plan mode only */}
       {isPlanMode && planAreas.length > 0 && (
         <div style={{marginTop:16}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.stone,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Area assignments</div>
+          <div style={{ ...T.eyebrow, fontSize:11, color:C.stone, marginBottom:10 }}>Area assignments</div>
           {planAreas.map(area => {
             const assignment = assignmentMap[area.id];
             return (
@@ -18145,7 +18180,7 @@ function PlanScreen({ tourRefs = {} }) {
                 style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${assignment?C.forest+"44":C.border}`,background:assignment?"#F0F5F3":"#FAFAFA",marginBottom:8,cursor:selectedPlan?.status==="draft"?"pointer":"default"}}>
                 <div style={{fontSize:20,minWidth:24,textAlign:"center"}}>{assignment?.crop_definition?.emoji||(assignment?"🌱":"⬜")}</div>
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:13,color:"#1a1a1a"}}>{area.name}</div>
+                  <div style={{ ...T.bodyStrong, fontSize:13, color:"#1a1a1a" }}>{area.name}</div>
                   {assignment
                     ? <div style={{fontSize:12,color:C.forest,marginTop:1}}>{assignment.crop_name||assignment.crop_definition?.name}</div>
                     : <div style={{fontSize:12,color:C.stone,marginTop:1}}>No crop planned</div>
@@ -18176,7 +18211,7 @@ function PlanScreen({ tourRefs = {} }) {
           onClick={e=>{ if(e.target===e.currentTarget) setShowDimensionsTip(false); }}>
           <div style={{width:"100%",maxWidth:480,background:"#fff",borderRadius:"20px 20px 0 0",padding:"28px 24px 48px",boxSizing:"border-box"}}>
             <div style={{width:36,height:4,background:"#ddd",borderRadius:99,margin:"0 auto 20px"}}/>
-            <div style={{fontSize:20,fontWeight:700,fontFamily:F.display,color:"#1a1a1a",marginBottom:8}}>
+            <div style={{ ...T.displayLg, fontSize:20, color:"#1a1a1a", marginBottom:8 }}>
               How to set up your layout
             </div>
             <div style={{fontSize:14,color:C.stone,lineHeight:1.6,marginBottom:20}}>
@@ -18190,13 +18225,13 @@ function PlanScreen({ tourRefs = {} }) {
                 {step:"4",text:"Come back to Plan and your layout will appear"},
               ].map(({step,text})=>(
                 <div key={step} style={{display:"flex",alignItems:"flex-start",gap:14}}>
-                  <div style={{width:28,height:28,borderRadius:"50%",background:C.forest,color:"#fff",fontSize:13,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{step}</div>
+                  <div style={{ ...T.bodyStrong, width:28, height:28, borderRadius:"50%", background:C.forest, color:"#fff", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{step}</div>
                   <div style={{fontSize:14,color:"#1a1a1a",lineHeight:1.5,paddingTop:4}}>{text}</div>
                 </div>
               ))}
             </div>
             <button onClick={()=>setShowDimensionsTip(false)}
-              style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:C.forest,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+              style={{ ...T.control, width:"100%", padding:"14px", borderRadius:12, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:"pointer" }}>
               Got it
             </button>
           </div>
@@ -18513,9 +18548,9 @@ function OnboardingScreen({ session, onComplete }) {
   // ── Loading screen ──────────────────────────────────────────────────────────
   if (step === 5) {
     return (
-      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: F.display }}>
+      <div style={{ ...T.displayMd, minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 12, textAlign: "center" }}>Building your garden plan...</div>
+        <div style={{ ...T.bodyStrong, fontSize: 22, color: C.forest, marginBottom: 12, textAlign: "center" }}>Building your garden plan...</div>
         <div style={{ fontSize: 15, color: C.stone, textAlign: "center", minHeight: 24 }}>{loadingMsg}</div>
       </div>
     );
@@ -18535,9 +18570,9 @@ function OnboardingScreen({ session, onComplete }) {
       return null;
     }
     return (
-      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: F.display, maxWidth: 440, margin: "0 auto" }}>
+      <div style={{ ...T.displayMd, minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", maxWidth: 440, margin: "0 auto" }}>
         <div style={{ fontSize: 52, marginBottom: 16 }}>🔔</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 8, textAlign: "center" }}>
+        <div style={{ ...T.bodyStrong, fontSize: 22, color: C.forest, marginBottom: 8, textAlign: "center" }}>
           Your garden plan is ready
         </div>
         <div style={{ fontSize: 15, color: C.stone, textAlign: "center", lineHeight: 1.6, marginBottom: 32, maxWidth: 320 }}>
@@ -18585,10 +18620,10 @@ function OnboardingScreen({ session, onComplete }) {
       </div>
 
       <div style={{ padding: "28px 24px 0" }}>
-        <div style={{ fontSize: 11, color: C.stone, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>
           Step {step + 1} of 4
         </div>
-        <div style={{ fontSize: 24, fontWeight: 700, color: C.forest, marginBottom: 4 }}>
+        <div style={{ ...T.bodyStrong, fontSize: 24, color: C.forest, marginBottom: 4 }}>
           {stepLabels[step]}
         </div>
 
@@ -18608,7 +18643,7 @@ function OnboardingScreen({ session, onComplete }) {
               We'll use your postcode for local weather and task timing.
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>First name</label>
+              <label style={{ ...T.eyebrow, fontSize: 11, color: C.stone, display: "block", marginBottom: 6 }}>First name</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -18618,7 +18653,7 @@ function OnboardingScreen({ session, onComplete }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: 1.5, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Postcode or zip code</label>
+              <label style={{ ...T.eyebrow, fontSize: 11, color: C.stone, display: "block", marginBottom: 6 }}>Postcode or zip code</label>
               <input
                 value={postcode}
                 onChange={e => setPostcode(e.target.value.toUpperCase())}
@@ -18653,7 +18688,7 @@ function OnboardingScreen({ session, onComplete }) {
                       transition: "all 0.15s",
                     }}>
                     <span style={{ fontSize: 24 }}>{crop.emoji}</span>
-                    <span style={{ fontSize: 15, fontWeight: 600, fontFamily: F.display, color: selected ? "#fff" : "#1a1a1a" }}>
+                    <span style={{ ...T.displayMd, fontSize: 15, color: selected ? "#fff" : "#1a1a1a" }}>
                       {crop.name}
                     </span>
                   </button>
@@ -18681,7 +18716,7 @@ function OnboardingScreen({ session, onComplete }) {
                     textAlign: "left",
                     transition: "all 0.15s",
                   }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: stage === s.id ? "#fff" : "#1a1a1a", marginBottom: 3 }}>
+                  <div style={{ ...T.displayMd, fontSize: 15, color: stage === s.id ? "#fff" : "#1a1a1a", marginBottom: 3 }}>
                     {s.label}
                   </div>
                   <div style={{ fontSize: 13, color: stage === s.id ? "rgba(255,255,255,0.7)" : C.stone }}>
@@ -18718,7 +18753,7 @@ function OnboardingScreen({ session, onComplete }) {
                     transition: "all 0.15s",
                   }}>
                   <span style={{ fontSize: 28 }}>{a.emoji}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, fontFamily: F.display, color: areaType === a.id ? "#fff" : "#1a1a1a", textAlign: "center" }}>
+                  <span style={{ ...T.bodyStrong, fontSize: 14, color: areaType === a.id ? "#fff" : "#1a1a1a", textAlign: "center" }}>
                     {a.label}
                   </span>
                 </button>
@@ -18736,7 +18771,7 @@ function OnboardingScreen({ session, onComplete }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {SOURCE_OPTIONS.map(s => (
                 <button key={s.id} onClick={() => setSelfSource(selfSource === s.id ? null : s.id)}
-                  style={{ background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, fontWeight: 600, color: selfSource === s.id ? "#fff" : "#1a1a1a", fontFamily: F.display, transition: "all 0.15s" }}>
+                  style={{ ...T.control, background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, color: selfSource === s.id ? "#fff" : "#1a1a1a", transition: "all 0.15s" }}>
                   {s.label}
                 </button>
               ))}
@@ -18749,6 +18784,7 @@ function OnboardingScreen({ session, onComplete }) {
           onClick={next}
           disabled={!canAdvance()}
           style={{
+            ...T.control,
             width: "100%",
             marginTop: 28,
             padding: 16,
@@ -18757,10 +18793,8 @@ function OnboardingScreen({ session, onComplete }) {
             border: "none",
             borderRadius: 12,
             fontSize: 16,
-            fontWeight: 700,
             cursor: canAdvance() ? "pointer" : "not-allowed",
-            fontFamily: F.display,
-            transition: "background 0.2s",
+            transition: "background 0.2s"
           }}>
           {step === 4 ? "Build my plan 🌱" : "Continue →"}
         </button>
@@ -18782,7 +18816,7 @@ function IOSInstallBanner({ onDismiss }) {
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 408, background: "#1a2e28", borderRadius: 16, padding: "16px 18px", zIndex: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.25)", display: "flex", gap: 14, alignItems: "flex-start" }}>
       <div style={{ fontSize: 28, flexShrink: 0 }}>🌱</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Add Vercro to your home screen</div>
+        <div style={{ ...T.bodyStrong, fontSize: 13, color: "#fff", marginBottom: 4 }}>Add Vercro to your home screen</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
           Tap <strong style={{ color: "rgba(255,255,255,0.85)" }}>Share ⎋</strong> then <strong style={{ color: "rgba(255,255,255,0.85)" }}>"Add to Home Screen"</strong> for the full experience including camera features.
         </div>
@@ -19009,7 +19043,7 @@ export default function GrowSmart() {
       {/* Header */}
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", paddingTop: "max(16px, env(safe-area-inset-top))", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Vercro 🌱</div>
+          <div style={{ ...T.displayLg, fontSize: 20, color: "#1a1a1a" }}>Vercro 🌱</div>
           {["dashboard","garden","plan","crops","profile"].includes(tab) && (
             <TourPill tab={tab === "dashboard" ? "today" : tab} onStart={startTour} />
           )}
