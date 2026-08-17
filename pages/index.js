@@ -635,8 +635,28 @@ const C = {
   cardBg:    "#FFFFFF",  // card surface. Unchanged — separation from the ground
                          // improves on its own, ΔE 2.3 -> 5.1.
 
-  // ── Untouched in slice 3A: brand green, and every semantic state colour. ───
-  forest:    "#2F5D50",
+  // ── Brand primary ──────────────────────────────────────────────────────────
+  // `forest` is now brand `pine`. The key name is kept deliberately: renaming it
+  // to `primary` would mean editing 393 call sites for no behavioural gain, and
+  // the token system exists precisely so a value can move without them. Read it
+  // as the primary/interaction role — action fills, accent text, brand outlines,
+  // progress fills, toggles, selected states, the active nav tile.
+  // Contrast improves everywhere it is text: 6.47 -> 7.14 on paper, 7.49 -> 8.27
+  // on cards.
+  forest:    "#24555F",
+
+  // Genuinely dark brand surfaces only: the Today header, first-run banner,
+  // crop-timeline and Plant Check sheet headers, the Profile harvest hero, the
+  // Pro card, the Admin hero, the season banner, the Plan hero and the harvest
+  // hero. Ten sites. Everything else that happened to be a non-tappable forest
+  // fill — progress bars, toggles, dots, step badges, chips, the active nav tile
+  // — stays on `forest`, because those are interaction colour, not surface.
+  // White text on this reads 14.64 against 7.49 on the old header.
+  //
+  // Never place C.ink on this: they sit dE 3.0 apart and the text would vanish.
+  surfaceDark: "#072C3C",
+
+  // ── Untouched in slice 3B: every semantic state colour. ────────────────────
   sage:      "#A8C1B5",
   leaf:      "#6FAF63",
   amber:     "#D9A441",
@@ -1726,7 +1746,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         </div>
 
         {/* Preview */}
-        <div style={{ background: `linear-gradient(135deg, #2F5D50, #1e3d33)`, borderRadius: 14, padding: "24px 20px", marginBottom: 20, color: "#fff", textAlign: "center" }}>
+        <div style={{ background: `linear-gradient(135deg, ${C.forest}, ${C.surfaceDark})`, borderRadius: 14, padding: "24px 20px", marginBottom: 20, color: "#fff", textAlign: "center" }}>
           {mode === "single" ? (
             <>
               <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.crop)}</div>
@@ -2896,7 +2916,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   // State 1 — crops ready right now → show CTA
   if (readyNow.length > 0) {
     return (
-      <div style={{ background: `linear-gradient(135deg, #2d5a27 0%, #1e3d20 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.surfaceDark} 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
         <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Ready to harvest</div>
         <div style={{ ...T.displayMd, fontSize: 18, marginBottom: 4 }}>
           🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
@@ -2905,7 +2925,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
           {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
         </div>
         <button onClick={() => onLogHarvest(readyNow[0])}
-          style={{ ...T.control, background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
+          style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
           🌾 Log harvest
         </button>
       </div>
@@ -4152,7 +4172,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     <div>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div ref={tourRefs.tourRef_todayHeader} style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
+      <div ref={tourRefs.tourRef_todayHeader} style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.surfaceDark} 100%)`, color: "#fff", borderRadius: 16, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
@@ -4198,7 +4218,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
       {showFirstRun && (
-        <div style={{ background: C.forest, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
+        <div style={{ background: C.surfaceDark, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ ...T.displayMd, fontSize: 17, color: "#fff", marginBottom: 6 }}>
             Here's your garden plan for today 👇
           </div>
@@ -6657,7 +6677,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "94vh", overflowY: "auto" }}>
 
-        <div style={{ background: C.forest, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
+        <div style={{ background: C.surfaceDark, padding: "16px 18px 18px", position: "relative", borderRadius: "20px 20px 0 0" }}>
           <button onClick={onClose}
             style={{ position: "absolute", top: 12, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
             x
@@ -9836,7 +9856,7 @@ function TimeAwayScreen({ onClose }) {
     <div style={{ position: "fixed", inset: 0, background: "#F7FAF8", zIndex: 2000, overflowY: "auto" }}>
 
       {/* ── Dark green hero header ── */}
-      <div style={{ background: "#2F5D50" }}>
+      <div style={{ background: C.surfaceDark }}>
         <div style={{ maxWidth: 440, margin: "0 auto", padding: "28px 20px 26px", position: "relative", overflow: "hidden" }}>
           {/* Decorative circles */}
           <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.055)", top: -50, right: -50 }} />
@@ -10658,7 +10678,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       {/* ── 3. HARVEST SUMMARY — hero card ── */}
       {harvestStats && (
         <div style={{
-          background: `linear-gradient(135deg, ${C.forest} 0%, #1e3d33 100%)`,
+          background: `linear-gradient(135deg, ${C.forest} 0%, ${C.surfaceDark} 100%)`,
           borderRadius: 16, padding: "20px", marginBottom: 20,
           color: "#fff", position: "relative", overflow: "hidden",
         }}>
@@ -11002,7 +11022,7 @@ function ProSubscriptionSection() {
       {isPro ? (
         /* ── Pro active state ── */
         <div style={{
-          background: `linear-gradient(135deg, #1a3a2e 0%, ${C.forest} 100%)`,
+          background: `linear-gradient(135deg, ${C.surfaceDark} 0%, ${C.forest} 100%)`,
           borderRadius: 16, padding: "18px 20px", color: "#fff",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -11288,7 +11308,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", overflowY: "auto" }}>
       {/* Header */}
-      <div style={{ background: C.forest, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ background: C.surfaceDark, color: "#fff", padding: "env(safe-area-inset-top, 20px) 20px 16px", paddingTop: "max(env(safe-area-inset-top), 20px)", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
           <div>
@@ -13325,7 +13345,7 @@ function FunnelTab({ data }) {
 
   const rateColor = (r) => {
     if (r === null || r === undefined) return C.stone;
-    if (r >= 30) return "#2F5D50";
+    if (r >= 30) return C.forest;
     if (r >= 15) return "#92600A";
     return "#8B1A1A";
   };
@@ -13362,9 +13382,9 @@ function FunnelTab({ data }) {
           { label: "Activated with no tasks (post-fix)",  value: health_check.no_tasks_post_fix, ok: noTasksOk },
         ].map(({ label, value, ok }) => (
           <div key={label} style={{ flex: 1, background: ok ? "#EAF5EE" : "#FFF0F0", border: `1px solid ${ok ? "#B8DEC7" : "#F5C6C6"}`, borderRadius: 12, padding: "12px 14px" }}>
-            <div style={{ fontSize: 11, color: ok ? "#2F5D50" : "#8B1A1A", fontWeight: 600, marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: ok ? "#2F5D50" : "#8B1A1A" }}>{value}</div>
-            <div style={{ fontSize: 11, color: ok ? "#2F5D50" : "#8B1A1A" }}>{ok ? "✓ Target: 0" : "⚠ Target: 0"}</div>
+            <div style={{ fontSize: 11, color: ok ? C.forest : "#8B1A1A", fontWeight: 600, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: ok ? C.forest : "#8B1A1A" }}>{value}</div>
+            <div style={{ fontSize: 11, color: ok ? C.forest : "#8B1A1A" }}>{ok ? "✓ Target: 0" : "⚠ Target: 0"}</div>
           </div>
         ))}
       </div>
@@ -13467,11 +13487,11 @@ function FunnelTab({ data }) {
                 return (
                   <tr key={day.date} style={{ borderBottom: `1px solid ${C.sage}`, background: rowBg }}>
                     <td style={{ padding: "8px 10px", color: C.forest, fontWeight: day.is_post_fix ? 700 : 400, whiteSpace: "nowrap" }}>
-                      {day.is_post_fix && <span style={{ color: "#2F5D50", marginRight: 4 }}>✓</span>}
+                      {day.is_post_fix && <span style={{ color: C.forest, marginRight: 4 }}>✓</span>}
                       {dateLabel}
                     </td>
                     <td style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.forest }}>{day.signups}</td>
-                    <td style={{ padding: "8px 10px", textAlign: "center", color: day.activation_pct >= 70 ? "#2F5D50" : "#92600A" }}>
+                    <td style={{ padding: "8px 10px", textAlign: "center", color: day.activation_pct >= 70 ? C.forest : "#92600A" }}>
                       {day.activation_pct !== null ? `${day.activation_pct}%` : "—"}
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "center", color: rateColor(day.first_task_pct) }}>
@@ -13691,7 +13711,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
         return (
           <div>
             {/* Hero strip */}
-            <div style={{ background: `linear-gradient(135deg, ${C.forest}, #1e3d33)`, borderRadius: 14, padding: "18px 20px", marginBottom: 16, color: "#fff" }}>
+            <div style={{ background: `linear-gradient(135deg, ${C.forest}, ${C.surfaceDark})`, borderRadius: 14, padding: "18px 20px", marginBottom: 16, color: "#fff" }}>
               <div style={{ ...T.eyebrow, fontSize: 10, opacity: 0.6, marginBottom: 12 }}>Founder dashboard · live data</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 {[
@@ -15601,7 +15621,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
 
 // ── Plan helpers ──────────────────────────────────────────────────────────────
 const PLAN_STATUS_LABEL = { draft: "Draft", committed: "Committed", archived: "Archived" };
-const PLAN_STATUS_COLOUR = { draft: "#D9A441", committed: "#2F5D50", archived: "#9E9E9E" };
+const PLAN_STATUS_COLOUR = { draft: "#D9A441", committed: C.forest, archived: "#9E9E9E" };
 
 function PlanBadge({ status }) {
   return (
@@ -15758,14 +15778,14 @@ function PlanPerformanceStrip({ plan }) {
     { label:"Shop Value", value: m.shop_value_gbp  != null ? `£${Math.round(m.shop_value_gbp)}`  : "—" },
     { label:"Yield/m²",   value: m.yield_per_m2    != null ? `${m.yield_per_m2}kg`                : "—" },
     { label:"Effort",     value: m.effort_level   || "—",
-      color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":"#2f5d50" },
+      color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":C.forest },
   ];
   return (
     <div style={{ display:"flex", borderTop:"1px solid rgba(0,0,0,0.08)", background:"#f8faf8", borderRadius:"0 0 14px 14px" }}>
       {items.map((item, i) => (
         <div key={i} style={{ flex:1, padding:"10px 8px", textAlign:"center",
           borderRight: i<items.length-1 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
-          <div style={{ ...T.displayMd, fontSize:17, color:item.color||"#2f5d50", letterSpacing:-0.3 }}>
+          <div style={{ ...T.displayMd, fontSize:17, color:item.color||C.forest, letterSpacing:-0.3 }}>
             {item.value}
           </div>
           <div style={{ ...T.eyebrow, fontSize:10, color:"#888", marginTop:2 }}>
@@ -15817,7 +15837,7 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
                 borderRadius:10,
                 border:"none",
                 cursor:"pointer",
-                background: i===selectedIdx ? "#2f5d50" : "#f0f4f0",
+                background: i===selectedIdx ? C.forest : "#f0f4f0",
                 color: i===selectedIdx ? "#fff" : C.ink,
                 fontSize:12
 }}>
@@ -15844,7 +15864,7 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
                     return (
                       <td key={i} style={{ padding:"9px 4px", textAlign:"center",
                         fontWeight: isBest?700:400,
-                        color: isBest?"#2f5d50":C.ink }}>
+                        color: isBest?C.forest:C.ink }}>
                         {fmt(val)}
                       </td>
                     );
@@ -17263,7 +17283,7 @@ function SeasonTransitionBanner({ locPlans, onViewPlan }) {
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, #1a3a2e 0%, ${C.forest} 100%)`,
+      background: `linear-gradient(135deg, ${C.surfaceDark} 0%, ${C.forest} 100%)`,
       borderRadius: 14, padding: "14px 16px", marginTop: 12,
       display: "flex", alignItems: "center", gap: 12,
     }}>
@@ -17889,7 +17909,7 @@ function PlanScreen({ tourRefs = {} }) {
     <div style={{paddingBottom:16}}>
 
       {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${C.forest} 0%,#1e3d33 100%)`,borderRadius:16,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
+      <div style={{background:`linear-gradient(135deg,${C.forest} 0%,${C.surfaceDark} 100%)`,borderRadius:16,padding:"16px 18px 14px",marginBottom:14,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:-20,right:-20,width:90,height:90,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
         <div style={{position:"relative"}}>
           <div style={{ ...T.eyebrow, fontSize:10, color:"rgba(255,255,255,0.4)", marginBottom:3 }}>
