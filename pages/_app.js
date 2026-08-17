@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import posthog from "posthog-js";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { display, body } from "@/lib/fonts";
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -33,5 +34,20 @@ export default function App({ Component, pageProps }) {
     return () => router.events.off("routeChangeComplete", handleRouteChange);
   }, []);
 
-  return <Component {...pageProps} />;
+  // Brand fonts are published as CSS custom properties rather than by wrapping
+  // the app in a <div class={font.className}>. A wrapper element would sit
+  // between <body> and the app root in index.js, which relies on min-height:100vh
+  // plus sticky and fixed children — adding a block-level ancestor risks changing
+  // that layout. A fragment adds no DOM node, so nothing about the tree changes.
+  return (
+    <>
+      <style jsx global>{`
+        :root {
+          --font-display: ${display.style.fontFamily};
+          --font-body: ${body.style.fontFamily};
+        }
+      `}</style>
+      <Component {...pageProps} />
+    </>
+  );
 }

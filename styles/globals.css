@@ -19,7 +19,11 @@ body {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  /* --font-body is defined in pages/_app.js from next/font. The fallback inside
+     var() keeps the declaration valid if the variable is ever missing — AuthScreen
+     and the initial loading screen render outside the app root and inherit from
+     here, so this is their only font declaration. */
+  font-family: var(--font-body, Arial, Helvetica, sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

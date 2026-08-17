@@ -17,6 +17,11 @@ import Script from "next/script";
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+// Brand typefaces. F.display = Newsreader, F.body = Hanken Grotesk — see lib/fonts.js.
+// These replace the generic "serif"/"sans-serif" families this file used to declare
+// inline, which resolved to whatever each platform picked (Times on iOS) rather than
+// to a Vercro face.
+import { F } from "@/lib/fonts";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -262,7 +267,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
         <div style={{ background: "#fff", borderRadius: 20, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
             You know the {tabLabel} tab
           </div>
           {!allDoneOnComplete && nextLabel && (
@@ -278,14 +283,14 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
           {!allDoneOnComplete && nextLabel && (
             <button
               onClick={() => { posthog()?.capture?.("tour_completion_next_cta", { from_tab: tab, to_tab: next }); onComplete(next); }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               Take the {nextLabel} tour
             </button>
           )}
           {allDoneOnComplete && (
             <button
               onClick={() => { posthog()?.capture?.("tour_all_complete"); onComplete(null); }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               Great, thanks!
             </button>
           )}
@@ -354,7 +359,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
       }}>
         {/* Step counter */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", flex: 1 }}>
             {displayTitle}
             {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.amber, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
           </div>
@@ -399,7 +404,7 @@ function TourPill({ tab, onStart }) {
         fontWeight: 600,
         color: C.forest,
         cursor: "pointer",
-        fontFamily: "sans-serif",
+        fontFamily: F.body,
         flexShrink: 0,
       }}>
       Guide
@@ -420,7 +425,7 @@ function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 10 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 10 }}>
           Want a quick tour?
         </div>
         <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
@@ -428,7 +433,7 @@ function PostOnboardingTourPrompt({ onStartTour, onDismiss }) {
         </div>
         <button
           onClick={() => { posthog()?.capture?.("tour_prompt_accepted"); onStartTour(); }}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
           Start tour
         </button>
         <button
@@ -783,7 +788,7 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
       justifyContent: "center", minHeight: "60vh", padding: "40px 24px",
     }}>
       <div style={{ fontSize: 48, marginBottom: 20, lineHeight: 1 }}>🌱</div>
-      <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 6 }}>
+      <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 6 }}>
         Vercro
       </div>
       <div style={{ fontSize: 14, color: C.stone, minWidth: 180, textAlign: "center" }}>
@@ -947,7 +952,7 @@ function AuthScreen({ onAuth }) {
   if (sent) return (
     <div style={{ padding: 32, textAlign: "center" }}>
       <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
-      <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700 }}>Check your email</div>
+      <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700 }}>Check your email</div>
       <div style={{ color: C.stone, marginTop: 8, fontSize: 14 }}>
         {isForgot
           ? <>We sent a password reset link to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.</>
@@ -964,7 +969,7 @@ function AuthScreen({ onAuth }) {
     <div style={{ padding: "40px 24px", maxWidth: 400, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontSize: 36 }}>🌱</div>
-        <div style={{ fontFamily: "serif", fontSize: 26, fontWeight: 700, color: C.forest, marginTop: 8 }}>Vercro</div>
+        <div style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.forest, marginTop: 8 }}>Vercro</div>
         <div style={{ color: C.stone, fontSize: 13, marginTop: 4 }}>{isSignUp ? "Create your account" : "Sign in to your garden"}</div>
       </div>
       {error && <ErrorMsg msg={error} />}
@@ -996,7 +1001,7 @@ function AuthScreen({ onAuth }) {
         </div>
         <div><label style={labelStyle}>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
         <div><label style={labelStyle}>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
-        <button onClick={handle} disabled={loading || !email || !password} style={{ background: (!email || !password) ? C.border : C.forest, color: (!email || !password) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+        <button onClick={handle} disabled={loading || !email || !password} style={{ background: (!email || !password) ? C.border : C.forest, color: (!email || !password) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
           {loading ? "…" : isSignUp ? "Create account" : "Sign in"}
         </button>
         <button onClick={() => setIsSignUp(!isSignUp)} style={{ background: "none", border: "none", color: C.forest, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
@@ -1144,7 +1149,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(s.crop)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{s.crop}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>{s.crop}</div>
             {s.variety && (
               <div style={{ fontSize: 12, color: accentColor, fontWeight: 600, marginTop: 1 }}>{s.variety}</div>
             )}
@@ -1204,7 +1209,7 @@ function AreaOptimiserSuggestionCard({ s, onAdd, isPrimary }) {
           fontWeight: 700,
           fontSize: 13,
           cursor: "pointer",
-          fontFamily: "serif",
+          fontFamily: F.display,
           letterSpacing: 0.2,
         }}>
         + Add {s.crop} to this area
@@ -1276,7 +1281,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Boost this area</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Boost this area</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{area.name}</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone, padding: 0, lineHeight: 1 }}>×</button>
@@ -1679,7 +1684,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
       <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Share your harvest 🌱</div>
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Share your harvest 🌱</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
         </div>
 
@@ -1701,7 +1706,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
           {mode === "single" ? (
             <>
               <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.crop)}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", marginBottom: 4 }}>{item.crop}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, marginBottom: 4 }}>{item.crop}</div>
               {item.variety && <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{item.variety}</div>}
               <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
                 {[harvestData?.quantity_value ? `${harvestData.quantity_value}${harvestData.quantity_unit}` : null, harvestData?.yield_score ? `Yield ${harvestData.yield_score}/10` : null].filter(Boolean).join(" · ")}
@@ -1710,7 +1715,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", marginBottom: 12 }}>{new Date().getFullYear()} Season Summary</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, marginBottom: 12 }}>{new Date().getFullYear()} Season Summary</div>
               {Object.entries(allHarvests.reduce((acc, h) => { acc[h.crop_name] = (acc[h.crop_name] || 0) + 1; return acc; }, {})).slice(0,4).map(([name, count]) => (
                 <div key={name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, opacity: 0.9 }}>
                   <span>{getCropEmoji(name)} {name}</span>
@@ -1723,7 +1728,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         </div>
 
         <button onClick={generateCard} disabled={generating}
-          style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", opacity: generating ? 0.7 : 1 }}>
+          style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, opacity: generating ? 0.7 : 1 }}>
           {generating ? "Generating…" : "⬇ Save image to share"}
         </button>
 
@@ -1760,7 +1765,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
-          <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>{item.crop}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, color: "#1a1a1a" }}>{item.crop}</div>
         </div>
         {isReady
           ? <span style={{ fontSize: 10, fontWeight: 700, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px" }}>Ready now</span>
@@ -1891,12 +1896,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         {undone ? (
           <div style={{ textAlign: "center", padding: "20px 0", color: C.stone }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>↩️</div>
-            <div style={{ fontWeight: 700, fontFamily: "serif" }}>Harvest undone</div>
+            <div style={{ fontWeight: 700, fontFamily: F.display }}>Harvest undone</div>
           </div>
         ) : saved ? (
           <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>{isFinal ? "🎉" : "🌾"}</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
               {isFinal ? "Harvest logged!" : "Partial harvest logged!"}
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
@@ -1934,7 +1939,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>Log Harvest</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
 
             {/* Final vs Partial toggle */}
@@ -2085,14 +2090,14 @@ function BadgeCelebrationSheet({ unlocks, onClose }) {
         <div style={{ fontSize:13, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>
           {u.badge?.type === "monthly" ? "Challenge Complete" : "Badge Unlocked"}
         </div>
-        <div style={{ fontSize:24, fontWeight:700, fontFamily:"serif", color:"#1a1a1a", marginBottom:8 }}>{u.badge?.title}</div>
+        <div style={{ fontSize:24, fontWeight:700, fontFamily:F.display, color:"#1a1a1a", marginBottom:8 }}>{u.badge?.title}</div>
         <div style={{ fontSize:14, color:C.stone, marginBottom:u.badge?.celebration_copy ? 8 : 24, lineHeight:1.5 }}>{u.badge?.description}</div>
         {u.badge?.celebration_copy && (
           <div style={{ fontSize:15, color:C.forest, fontStyle:"italic", marginBottom:24 }}>{u.badge.celebration_copy}</div>
         )}
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <button onClick={handleNext}
-            style={{ background:C.forest, color:"#fff", border:"none", borderRadius:12, padding:"14px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"serif" }}>
+            style={{ background:C.forest, color:"#fff", border:"none", borderRadius:12, padding:"14px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:F.display }}>
             {idx < unlocks.length - 1 ? "Next →" : "Continue"}
           </button>
         </div>
@@ -2205,7 +2210,7 @@ function BadgesPage() {
   return (
     <div style={{ padding:"16px 16px 100px" }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:22, fontWeight:700, fontFamily:"serif", color:"#1a1a1a" }}>Challenges & Badges</div>
+        <div style={{ fontSize:22, fontWeight:700, fontFamily:F.display, color:"#1a1a1a" }}>Challenges & Badges</div>
         <div style={{ fontSize:13, color:C.stone, marginTop:2 }}>Track progress and unlock rewards for real garden activity.</div>
       </div>
 
@@ -2230,7 +2235,7 @@ function BadgesPage() {
                   <span style={{ fontSize:24 }}>{monthly.icon_key}</span>
                   <div>
                     <div style={{ fontSize:11, fontWeight:700, color:C.forest, textTransform:"uppercase", letterSpacing:0.8 }}>Monthly Challenge</div>
-                    <div style={{ fontSize:15, fontWeight:700, fontFamily:"serif", color:"#1a1a1a" }}>{monthly.title}</div>
+                    <div style={{ fontSize:15, fontWeight:700, fontFamily:F.display, color:"#1a1a1a" }}>{monthly.title}</div>
                   </div>
                 </div>
                 <span style={{ fontSize:13, fontWeight:700, color:monthly.is_completed ? C.forest : "#1a1a1a" }}>
@@ -2740,7 +2745,7 @@ What's on your list this month?
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Share my garden 🌱</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Share my garden 🌱</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Generate a card to share with friends</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.stone }}>×</button>
@@ -2835,7 +2840,7 @@ What's on your list this month?
 
             {/* Actions */}
             <button onClick={generateCard} disabled={generating}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
               {generating ? "Generating…" : "⬆ Share my garden"}
             </button>
             <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
@@ -2869,14 +2874,14 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
     return (
       <div style={{ background: `linear-gradient(135deg, #2d5a27 0%, #1e3d20 100%)`, borderRadius: 14, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
         <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Ready to harvest</div>
-        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", marginBottom: 4 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, marginBottom: 4 }}>
           🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
         </div>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 14 }}>
           {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
         </div>
         <button onClick={() => onLogHarvest(readyNow[0])}
-          style={{ background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+          style={{ background: "#fff", color: "#2d5a27", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
           🌾 Log harvest
         </button>
       </div>
@@ -2891,7 +2896,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Latest harvest</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
               {getCropEmoji(lastHarvest.crop_name)} {lastHarvest.crop_name}
               {lastHarvest.variety ? ` — ${lastHarvest.variety}` : ""}
             </div>
@@ -2928,7 +2933,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   if (recentHarvests !== null && recentHarvests.length === 0) {
     return (
       <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
         <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
       </div>
     );
@@ -3106,7 +3111,7 @@ function NotificationDashboardPrompt({ onTabChange }) {
       <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: C.forest, fontFamily: "serif" }}>Get garden reminders</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: C.forest, fontFamily: F.display }}>Get garden reminders</div>
           <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Frost alerts, task reminders and crop checks — when they matter</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -3173,7 +3178,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
       </div>
       {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 2 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 2 }}>
           {title}
         </div>
         <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4, marginBottom: meta ? 5 : 0 }}>
@@ -3317,19 +3322,19 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
             {cfg.icon}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: "sans-serif" }}>{item.title}</div>
-            {item.subtitle && <div style={{ fontSize: 12, color: C.stone, marginTop: 2, fontFamily: "sans-serif" }}>{item.subtitle}</div>}
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: F.body }}>{item.title}</div>
+            {item.subtitle && <div style={{ fontSize: 12, color: C.stone, marginTop: 2, fontFamily: F.body }}>{item.subtitle}</div>}
           </div>
         </div>
 
         {/* Timestamp */}
-        <div style={{ fontSize: 12, color: C.stone, fontFamily: "sans-serif", marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 12, color: C.stone, fontFamily: F.body, marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
           {formatFull(item.occurred_at)}
         </div>
 
         {/* Quantity */}
         {item.quantity_g > 0 && (
-          <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: F.body, marginBottom: 12 }}>
             <span style={{ fontWeight: 600 }}>Quantity: </span>
             {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
           </div>
@@ -3343,7 +3348,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
         {/* Note */}
         {item.is_manual ? (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "sans-serif", marginBottom: 8 }}>Note</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: F.body, marginBottom: 8 }}>Note</div>
             {editing ? (
               <div>
                 <textarea
@@ -3351,30 +3356,30 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
                   onChange={e => setNote(e.target.value)}
                   placeholder="Add a note…"
                   rows={3}
-                  style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "sans-serif", resize: "none", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: F.body, resize: "none", outline: "none", boxSizing: "border-box" }}
                 />
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                   <button onClick={handleSave} disabled={saving}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F.body }}>
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => { setEditing(false); setNote(item.note || ""); }}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: "sans-serif", color: C.stone }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: F.body, color: C.stone }}>
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
               <div onClick={() => setEditing(true)}
-                style={{ fontSize: 13, color: note ? "#1a1a1a" : C.stone, fontFamily: "sans-serif", lineHeight: 1.5, padding: "10px 12px", background: C.offwhite, borderRadius: 10, cursor: "pointer", fontStyle: note ? "normal" : "italic" }}>
+                style={{ fontSize: 13, color: note ? "#1a1a1a" : C.stone, fontFamily: F.body, lineHeight: 1.5, padding: "10px 12px", background: C.offwhite, borderRadius: 10, cursor: "pointer", fontStyle: note ? "normal" : "italic" }}>
                 {note || "Tap to add a note…"}
               </div>
             )}
           </div>
         ) : item.note ? (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "sans-serif", marginBottom: 8 }}>Note</div>
-            <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", lineHeight: 1.5 }}>{item.note}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: F.body, marginBottom: 8 }}>Note</div>
+            <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: F.body, lineHeight: 1.5 }}>{item.note}</div>
           </div>
         ) : null}
 
@@ -3383,21 +3388,21 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
           <div style={{ marginTop: 8 }}>
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)}
-                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, color: "#c0392b", cursor: "pointer", fontFamily: "sans-serif" }}>
+                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, color: "#c0392b", cursor: "pointer", fontFamily: F.body }}>
                 Delete activity
               </button>
             ) : (
               <div style={{ background: "#fff5f5", border: "1px solid #fcc", borderRadius: 10, padding: 14 }}>
-                <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "sans-serif", marginBottom: 12, textAlign: "center" }}>
+                <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: F.body, marginBottom: 12, textAlign: "center" }}>
                   Delete this activity? This cannot be undone.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={handleDelete} disabled={deleting}
-                    style={{ flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+                    style={{ flex: 1, background: "#c0392b", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F.body }}>
                     {deleting ? "Deleting…" : "Yes, delete"}
                   </button>
                   <button onClick={() => setConfirmDelete(false)}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: "sans-serif", color: C.stone }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, cursor: "pointer", fontFamily: F.body, color: C.stone }}>
                     Cancel
                   </button>
                 </div>
@@ -3502,13 +3507,13 @@ function GardenLog({ onLogActivity }) {
 
   if (loading) return (
     <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-      <div style={{ fontSize: 13, fontFamily: "sans-serif" }}>Loading your garden log…</div>
+      <div style={{ fontSize: 13, fontFamily: F.body }}>Loading your garden log…</div>
     </div>
   );
 
   if (error) return (
     <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
-      <div style={{ fontSize: 13, fontFamily: "sans-serif" }}>{error}</div>
+      <div style={{ fontSize: 13, fontFamily: F.body }}>{error}</div>
     </div>
   );
 
@@ -3540,11 +3545,11 @@ function GardenLog({ onLogActivity }) {
                   cursor:      isTappable ? "pointer" : "default",
                 }}>
                 <span style={{ fontSize: isPrimary ? 16 : 14 }}>{icon}</span>
-                <span style={{ fontSize: isPrimary ? 13 : 12, color: isWarning ? "#8a6600" : "#1a1a1a", fontFamily: "sans-serif", fontWeight: isPrimary ? 600 : 500, flex: 1 }}>
+                <span style={{ fontSize: isPrimary ? 13 : 12, color: isWarning ? "#8a6600" : "#1a1a1a", fontFamily: F.body, fontWeight: isPrimary ? 600 : 500, flex: 1 }}>
                   {insight.label}
                 </span>
                 {isTappable && (
-                  <span style={{ fontSize: 11, color: C.forest, fontFamily: "sans-serif", fontWeight: 600 }}>View →</span>
+                  <span style={{ fontSize: 11, color: C.forest, fontFamily: F.body, fontWeight: 600 }}>View →</span>
                 )}
               </div>
             );
@@ -3557,7 +3562,7 @@ function GardenLog({ onLogActivity }) {
 
       {/* Header strip + filter icon */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div style={{ fontSize: 12, color: C.stone, fontFamily: "sans-serif" }}>
+        <div style={{ fontSize: 12, color: C.stone, fontFamily: F.body }}>
           {filter === "all" ? "Your garden activity" : activeFilterLabel}
         </div>
         <button onClick={() => setShowFilters(true)}
@@ -3567,7 +3572,7 @@ function GardenLog({ onLogActivity }) {
             <line x1="3" y1="7" x2="11" y2="7" />
             <line x1="5" y1="11" x2="9" y2="11" />
           </svg>
-          <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "sans-serif" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, fontFamily: F.body }}>
             {filter !== "all" ? activeFilterLabel : "Filter"}
           </span>
         </button>
@@ -3579,10 +3584,10 @@ function GardenLog({ onLogActivity }) {
           <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 440, background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 20px 40px", boxShadow: "0 -4px 24px rgba(0,0,0,0.12)" }}
             onClick={e => e.stopPropagation()}>
             <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "serif", marginBottom: 16, color: "#1a1a1a" }}>Filter activity</div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: F.display, marginBottom: 16, color: "#1a1a1a" }}>Filter activity</div>
             {FILTERS.map(f => (
               <button key={f.id} onClick={() => handleFilterChange(f.id)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, padding: "13px 0", cursor: "pointer", fontSize: 14, color: filter === f.id ? C.forest : "#1a1a1a", fontWeight: filter === f.id ? 700 : 400, fontFamily: "sans-serif" }}>
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, padding: "13px 0", cursor: "pointer", fontSize: 14, color: filter === f.id ? C.forest : "#1a1a1a", fontWeight: filter === f.id ? 700 : 400, fontFamily: F.body }}>
                 {f.label}
                 {filter === f.id && <span style={{ color: C.forest, fontSize: 16 }}>✓</span>}
               </button>
@@ -3595,7 +3600,7 @@ function GardenLog({ onLogActivity }) {
       {items.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>
             {filter === "all" ? "Nothing in your garden log yet" : "No matching activity"}
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 20 }}>
@@ -3605,12 +3610,12 @@ function GardenLog({ onLogActivity }) {
           </div>
           {filter === "all" ? (
             <button onClick={onLogActivity}
-              style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+              style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
               Log activity
             </button>
           ) : (
             <button onClick={() => handleFilterChange("all")}
-              style={{ background: "none", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+              style={{ background: "none", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F.body }}>
               Clear filter
             </button>
           )}
@@ -3620,7 +3625,7 @@ function GardenLog({ onLogActivity }) {
       {/* Timeline */}
       {grouped.map(group => (
         <div key={group.label} style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: "sans-serif", paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, fontFamily: F.body, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
             {group.label}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -3643,28 +3648,28 @@ function GardenLog({ onLogActivity }) {
                     </div>
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", fontFamily: "sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", fontFamily: F.body, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {title}
                       </div>
                       {item.subtitle && (
-                        <div style={{ fontSize: 11, color: C.stone, marginTop: 1, fontFamily: "sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 1, fontFamily: F.body, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {item.subtitle}
                         </div>
                       )}
                       {item.note && (
-                        <div style={{ fontSize: 11, color: "#666", marginTop: 3, fontStyle: "italic", lineHeight: 1.4, fontFamily: "sans-serif", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>
+                        <div style={{ fontSize: 11, color: "#666", marginTop: 3, fontStyle: "italic", lineHeight: 1.4, fontFamily: F.body, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>
                           {item.note}
                         </div>
                       )}
                       {item.quantity_g > 0 && (
-                        <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontFamily: "sans-serif" }}>
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontFamily: F.body }}>
                           {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
                         </div>
                       )}
                     </div>
                     {/* Right side */}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                      <div style={{ fontSize: 10, color: C.stone, fontFamily: "sans-serif" }}>
+                      <div style={{ fontSize: 10, color: C.stone, fontFamily: F.body }}>
                         {formatTime(item.occurred_at)}
                       </div>
                       {item.photo_url && (
@@ -3682,10 +3687,10 @@ function GardenLog({ onLogActivity }) {
                     <div style={{ marginTop: 3, marginLeft: 16, display: "flex", flexDirection: "column", gap: 3 }}>
                       {item._cluster.map(child => (
                         <div key={child.id} style={{ background: C.offwhite, borderRadius: 8, padding: "7px 10px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ fontSize: 12, fontFamily: "sans-serif", color: "#1a1a1a", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <div style={{ fontSize: 12, fontFamily: F.body, color: "#1a1a1a", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {child.crop_name || child.title}
                           </div>
-                          <div style={{ fontSize: 10, color: C.stone, fontFamily: "sans-serif", flexShrink: 0 }}>
+                          <div style={{ fontSize: 10, color: C.stone, fontFamily: F.body, flexShrink: 0 }}>
                             {formatTime(child.occurred_at)}
                           </div>
                         </div>
@@ -3702,7 +3707,7 @@ function GardenLog({ onLogActivity }) {
       {/* Load more */}
       {hasMore && (
         <button onClick={() => load(nextCursor)} disabled={loadingMore}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: "sans-serif", marginTop: 4 }}>
+          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 16px", fontSize: 13, color: C.stone, cursor: "pointer", fontFamily: F.body, marginTop: 4 }}>
           {loadingMore ? "Loading…" : "Load more"}
         </button>
       )}
@@ -3952,7 +3957,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   if (loading && !data) return (
     <div style={{ padding: "60px 24px 80px", textAlign: "center" }}>
       <div style={{ fontSize: 44, marginBottom: 16 }}>🌱</div>
-      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
         Looking at your garden
       </div>
       <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
@@ -4125,7 +4130,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
             <div style={{ fontSize: 11, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", lineHeight: 1.1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, lineHeight: 1.1 }}>{greeting}{data.user ? `, ${data.user}` : ""}</div>
             <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>Here&apos;s what&apos;s happening in your garden today</div>
             {data.weather ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, opacity: 0.85 }}>
@@ -4150,7 +4155,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       <div ref={tourRefs.tourRef_todayLogToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
         {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
           <button key={id} onClick={() => onDashboardViewChange(id)}
-            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: "sans-serif", boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: F.body, boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
             {label}
           </button>
         ))}
@@ -4167,7 +4172,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
       {showFirstRun && (
         <div style={{ background: C.forest, borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "serif", color: "#fff", marginBottom: 6 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: F.display, color: "#fff", marginBottom: 6 }}>
             Here's your garden plan for today 👇
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, marginBottom: 14 }}>
@@ -4175,7 +4180,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} }}
-              style={{ background: "#fff", color: C.forest, border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+              style={{ background: "#fff", color: C.forest, border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
               Got it
             </button>
             <button onClick={() => { setShowFirstRun(false); try { localStorage.setItem("vercro_first_run_seen", "1"); } catch(e) {} onTabChange("add"); }}
@@ -4220,13 +4225,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
                   {focusItem.crop?.name || "Garden task"}
                 </div>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => completeTask(focusItem)}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
                     ✓ Mark done
                   </button>
                   <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
@@ -4254,7 +4259,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 28 }}>🌿</span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
+              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
               <div style={{ fontSize: 12, color: C.stone }}>
                 {thisWeekTasks.length > 0 ? `${thisWeekTasks.length} thing${thisWeekTasks.length !== 1 ? "s" : ""} coming up this week` : comingUpTasks.length > 0 ? `${comingUpTasks.length} task${comingUpTasks.length !== 1 ? "s" : ""} planned ahead` : "Nothing urgent — enjoy your garden"}
               </div>
@@ -4285,7 +4290,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
-                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
                       {group.isSuccession && (
                         <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
                       )}
@@ -4367,7 +4372,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                         <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
+                        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a" }}>{group.displayName || group.crop?.name || "General"}</span>
                         {group.isSuccession && (
                           <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
                         )}
@@ -4506,7 +4511,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, color: "#1a1a1a" }}>
                           {cropNames.length > 0 ? cropNames.join(", ") : "Watch out"}
                         </div>
                         <span style={{ fontSize: 10, fontWeight: 700, color: urgColour, background: urgColour + "22", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase", flexShrink: 0, marginLeft: 8 }}>
@@ -4561,7 +4566,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{emoji}</span>
-                  <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: "#1a1a1a" }}>{name}</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: "#1a1a1a" }}>{name}</span>
                   <span style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
                 </div>
                 {tasks.slice(0, 3).map((t, i) => (
@@ -4639,7 +4644,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           ].map(({ label, value, emoji, highlight }) => (
             <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: highlight ? C.amber : C.forest, fontFamily: "serif", lineHeight: 1 }}>{value}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: highlight ? C.amber : C.forest, fontFamily: F.display, lineHeight: 1 }}>{value}</div>
               <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
             </div>
           ))}
@@ -4675,7 +4680,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {/* Header */}
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
-              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
+              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
                 Nice work today
               </div>
               <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
@@ -4717,7 +4722,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {/* CTAs */}
             <button
               onClick={() => { setShowSessionComplete(false); sessionCompletedCountRef.current = 0; }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               Done
             </button>
             <button
@@ -4736,13 +4741,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>🎉</div>
-              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>5 tasks done!</div>
+              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>5 tasks done!</div>
               <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
                 You're making real progress. Share your garden with friends — it takes 30 seconds and looks great on Instagram.
               </div>
             </div>
             <button onClick={() => { setShowShareNudge(false); setShowShareGarden(true); }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               🌱 Share my garden
             </button>
             <button onClick={() => setShowShareNudge(false)}
@@ -4761,7 +4766,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>👋</div>
-              <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Invite a friend</div>
+              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Invite a friend</div>
               <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
                 Know a gardener who'd love this? Send them the link — Vercro is completely free to use.
               </div>
@@ -4784,7 +4789,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 navigator.clipboard.writeText("https://vercro.com");
               }
             }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               📤 Share link
             </button>
 
@@ -4814,7 +4819,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           onClick={e => { if (e.target === e.currentTarget) setStrugglingCrop(null); }}>
           <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 440, margin: "0 auto" }}>
             <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🌿</div>
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
               Is your {strugglingCrop.name} struggling?
             </div>
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
@@ -4834,7 +4839,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <button onClick={async () => {
               await logObservation(strugglingCrop.id, "other", "plant_struggling");
               setStrugglingCrop(null);
-            }} style={{ width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+            }} style={{ width: "100%", background: C.amber, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 16, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               Yes, it&apos;s struggling
             </button>
             <button onClick={() => setStrugglingCrop(null)}
@@ -4872,7 +4877,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>
             You're all caught up
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
@@ -5085,7 +5090,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌱</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: C.forest }}>Crop checks</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: C.forest }}>Crop checks</span>
           <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
@@ -5102,7 +5107,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{q?.emoji || "🌱"}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
                       {crop.variety && <div style={{ fontSize: 11, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
                     </div>
                   </div>
@@ -5129,7 +5134,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
                       {crop.variety && <div style={{ fontSize: 11, color: C.stone }}>{typeof crop.variety === "object" ? crop.variety.name : crop.variety}</div>}
                     </div>
                   </div>
@@ -5158,7 +5163,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 22 }}>{getCropEmoji(crop.name)}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>Perennial check</div>
                     </div>
                   </div>
@@ -5188,7 +5193,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
               <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{missingVariety ? "🌿" : "📅"}</span>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>{item.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>{item.name}</div>
                 </div>
                 <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>
                   Missing: {item.missing.join(", ")} — add it for more accurate tasks
@@ -5265,7 +5270,7 @@ function TipsSection() {
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>💡</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#222" }}>Garden tips</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#222" }}>Garden tips</span>
           <span style={{ fontSize: 11, color: C.stone, background: C.offwhite, borderRadius: 20, padding: "2px 8px" }}>This week</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
@@ -5299,7 +5304,7 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: "12px 12px 0 0", padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌾</span>
-          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#222" }}>Harvest forecast</span>
+          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#222" }}>Harvest forecast</span>
           <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
@@ -5496,7 +5501,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: timingColor, flexShrink: 0, marginTop: 2 }} />
 
           <div style={{ flex: 1, minWidth: 0 }} onClick={() => !completed && setExpanded(e => !e)} role="button">
-            <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: "serif" }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: completed ? C.stone : "#222", textDecoration: completed ? "line-through" : "none", fontFamily: F.display }}>
               {task.crop?.name ? getCropEmoji(task.crop.name) + " " + task.crop.name : "General"}
               {task.crop?.variety && <span style={{ fontWeight: 400, color: C.stone, fontSize: 13 }}> · {task.crop.variety}</span>}
             </div>
@@ -5784,7 +5789,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Garden</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>My Garden</div>
           <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{locations.length} location{locations.length !== 1 ? "s" : ""}</div>
         </div>
         <button onClick={() => {
@@ -5806,7 +5811,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           onClick={e => { if (e.target === e.currentTarget) setDeleteLocationTarget(null); }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 44px", width: "100%", maxWidth: 480, margin: "0 auto" }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 14 }}>⚠️</div>
-            <div style={{ fontSize: 19, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", textAlign: "center", marginBottom: 6 }}>
+            <div style={{ fontSize: 19, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", textAlign: "center", marginBottom: 6 }}>
               Delete "{deleteLocationTarget.name}"?
             </div>
             <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6 }}>
@@ -5836,7 +5841,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                   } catch(e) { alert("Failed to delete location: " + e.message); }
                   setDeletingLocation(false);
                 }}
-                style={{ background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                 {deletingLocation ? "Deleting…" : "Yes, delete this location"}
               </button>
               <button onClick={() => setDeleteLocationTarget(null)}
@@ -5851,7 +5856,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
       {/* Add location form */}
       {showAddLocation && (
         <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", marginBottom: 12 }}>New location</div>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, marginBottom: 12 }}>New location</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div><label style={labelStyle}>Name</label>
               <input value={newLocation.name} onChange={e => setNewLocation(l => ({ ...l, name: e.target.value }))} style={inputStyle} placeholder="e.g. Allotment plot 7" /></div>
@@ -5868,7 +5873,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveLocation} disabled={saving || !newLocation.name}
-                style={{ flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ flex: 1, background: !newLocation.name ? C.border : C.forest, color: !newLocation.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                 {saving ? "Saving…" : "Save location"}
               </button>
               <button onClick={() => setShowAddLocation(false)}
@@ -5961,7 +5966,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
                 onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif", color: C.forest }}>{loc.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display, color: C.forest }}>{loc.name}</div>
                 {(loc.width_m || loc.length_m) && (
                   <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>
                     {loc.width_m && loc.length_m ? `${formatDimension(loc.width_m, measurementUnit)} × ${formatDimension(loc.length_m, measurementUnit)}` : loc.width_m ? `Width ${formatDimension(loc.width_m, measurementUnit)}` : `Length ${formatDimension(loc.length_m, measurementUnit)}`}
@@ -6015,7 +6020,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           {/* Edit location inline form */}
           {editingLocation === loc.id && (
             <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", marginBottom: 10 }}>Edit location</div>
+              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, marginBottom: 10 }}>Edit location</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={editLocationForm.name} onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} /></div>
@@ -6032,7 +6037,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => saveEditLocation(loc.id)} disabled={saving || !editLocationForm.name}
-                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                    style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => setEditingLocation(null)}
@@ -6049,7 +6054,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
             <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 12, padding: "14px", marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", marginBottom: 10 }}>New growing area</div>
+              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, marginBottom: 10 }}>New growing area</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
                   <input value={newArea.name} onChange={e => setNewArea(a => ({ ...a, name: e.target.value }))} style={inputStyle} placeholder="e.g. Raised bed 2, Greenhouse" /></div>
@@ -6078,7 +6083,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={saveArea} disabled={saving || !newArea.name}
-                    style={{ flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                    style={{ flex: 1, background: !newArea.name ? C.border : C.forest, color: !newArea.name ? C.stone : "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                     {saving ? "Saving…" : "Save area"}
                   </button>
                   <button onClick={() => setShowAddArea(false)}
@@ -6128,7 +6133,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 {editingArea === area.id ? (
                   /* Edit form */
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", color: "#1a1a1a" }}>Edit area</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, color: "#1a1a1a" }}>Edit area</div>
                     <div>
                       <label style={labelStyle}>Name</label>
                       <input value={editAreaForm.name} onChange={e => setEditAreaForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
@@ -6160,7 +6165,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => saveEditArea(area.id)} disabled={saving || !editAreaForm.name}
-                        style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                        style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
                         {saving ? "Saving…" : "Save"}
                       </button>
                       <button onClick={() => setEditingArea(null)}
@@ -6420,7 +6425,7 @@ function CropGrowthDiary({ crop, onClose }) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
               {getCropEmoji(crop.name)} {crop.name} — Growth Diary
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>{photos.length} photo{photos.length !== 1 ? "s" : ""}</div>
@@ -6434,12 +6439,12 @@ function CropGrowthDiary({ crop, onClose }) {
             placeholder="Add a caption (optional)" style={{ ...inputStyle, marginBottom: 8 }} />
           <div style={{ display: "flex", gap: 8 }}>
             <label htmlFor="crop-diary-photo-camera"
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: "serif" }}>
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: F.display }}>
               {uploading ? "Uploading…" : "📷 Camera"}
             </label>
             <input id="crop-diary-photo-camera" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
             <label htmlFor="crop-diary-photo-library"
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: "serif" }}>
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, cursor: uploading ? "default" : "pointer", fontFamily: F.display }}>
               🖼️ Library
             </label>
             <input id="crop-diary-photo-library" type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
@@ -6635,7 +6640,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.leaf, flexShrink: 0 }} />
-            <div style={{ fontSize: 19, fontWeight: 700, color: "#fff", fontFamily: "serif" }}>
+            <div style={{ fontSize: 19, fontWeight: 700, color: "#fff", fontFamily: F.display }}>
               {STAGES.find(s => s.key === currentStageKey)?.label || "Growing"} now
             </div>
           </div>
@@ -6654,16 +6659,16 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         {!loading && confirmed && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
             <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3DE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26 }}>checkmark</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline updated</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Timeline updated</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
             {harvestNode?.formatted_date && (
               <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
                 <div style={{ fontSize: 11, color: "#3B6D11", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Harvest now expected</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
               </div>
             )}
             <button onClick={onClose}
-              style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+              style={{ width: "100%", background: C.forest, border: "none", borderRadius: 12, padding: 14, fontSize: 14, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
               Done
             </button>
           </div>
@@ -6733,7 +6738,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => { if (selected) confirmStage(selected); }} disabled={!selected || saving}
-                          style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: "serif" }}>
+                          style={{ flex: 1, background: selected ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: selected ? "pointer" : "default", fontFamily: F.display }}>
                           {saving ? "Saving..." : "Confirm stage"}
                         </button>
                         <button onClick={() => { setAdjusting(false); setSelected(null); }}
@@ -6762,7 +6767,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       )}
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmHarvestDate} disabled={!dateInput || saving}
-                          style={{ flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: dateInput ? "pointer" : "default", fontFamily: "serif" }}>
+                          style={{ flex: 1, background: dateInput ? C.forest : C.border, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: dateInput ? "pointer" : "default", fontFamily: F.display }}>
                           {saving ? "Saving..." : "Update harvest date"}
                         </button>
                         <button onClick={() => setAdjusting(false)}
@@ -6790,7 +6795,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={confirmDaysOffset} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                           {saving ? "Saving..." : "Apply adjustment"}
                         </button>
                         <button onClick={() => setAdjusting(false)}
@@ -6878,7 +6883,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                     <div style={{ fontSize: 10, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Is this timeline right for your plant?</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => confirmStage(currentStageKey)} disabled={saving}
-                        style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                        style={{ flex: 1, background: C.forest, border: "none", borderRadius: 12, padding: 12, fontSize: 13, color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                         {saving ? "Saving..." : "Yes — looks right"}
                       </button>
                       <button onClick={() => openAdjustMode("stage")}
@@ -6901,7 +6906,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         {!loading && !confirmed && !timeline && (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>plant</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Timeline not available</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>Add a sow date to unlock your crop growth timeline.</div>
           </div>
         )}
@@ -7132,7 +7137,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
         {step === "done" && (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 38, marginBottom: 10 }}>{hint?.includes("wrong") ? "⚠️" : actionDef.emoji || "✓"}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>
               {hint?.includes("wrong") ? "Something went wrong" : "Logged"}
             </div>
             {hint && <div style={{ fontSize: 13, color: C.stone }}>{hint}</div>}
@@ -7143,7 +7148,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
         {step === "action" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Log activity</div>
               <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.stone }}>×</button>
             </div>
 
@@ -7193,7 +7198,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <button onClick={() => setStep("action")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
                 {actionDef.emoji} {actionDef.label} — where?
               </div>
             </div>
@@ -7228,7 +7233,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <button onClick={() => setStep("location")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
                 Which beds?
               </div>
             </div>
@@ -7275,7 +7280,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <button onClick={() => setStep("areas")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Which crops?</div>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Which crops?</div>
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 14 }}>Select all that were fed</div>
 
@@ -7323,7 +7328,7 @@ function LogActionSheet({ scope, onClose, onLogged, conflictTaskType, crop }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <button onClick={() => setStep("action")} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.stone, padding: 0 }}>←</button>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Log activity</div>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Log activity</div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>What did you do?</div>
             <input type="text" value={otherLabel} onChange={e => setOtherLabel(e.target.value)}
@@ -7391,7 +7396,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
         {/* Handle */}
         <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
 
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
           Duplicate crop
         </div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 20, lineHeight: 1.5 }}>
@@ -7701,7 +7706,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onClick={e => { if (e.target === e.currentTarget) { setPendingNoHarvest(null); setNoHarvestReason(null); } }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
               No harvest from {pendingNoHarvest.name} this year?
             </div>
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 20 }}>
@@ -7743,7 +7748,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               Record no harvest
             </button>
             <button
@@ -7761,7 +7766,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onClick={e => { if (e.target === e.currentTarget) setPendingDormant(null); }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 10 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 10 }}>
               Mark {pendingDormant.name} as dormant?
             </div>
             <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 24 }}>
@@ -7775,7 +7780,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10 }}>
               💤 Mark dormant
             </button>
             <button
@@ -7793,7 +7798,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onClick={e => { if (e.target === e.currentTarget) { setPendingFail(null); setFailReason(null); } }}>
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>
               What happened to {pendingFail.name}?
             </div>
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 20 }}>Select a reason to help Vercro learn from failures.</div>
@@ -7828,7 +7833,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   load();
                 } catch(e) { alert(e.message); }
               }}
-              style={{ width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", fontFamily: "serif", marginBottom: 10 }}>
+              style={{ width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", fontFamily: F.display, marginBottom: 10 }}>
               Mark as failed
             </button>
             <button
@@ -7861,7 +7866,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
           {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
             <button key={id} onClick={() => setCropTab(id)}
-              style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif", transition: "all 0.15s" }}>
+              style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display, transition: "all 0.15s" }}>
               {label}
             </button>
           ))}
@@ -7878,7 +7883,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Crops</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>My Crops</div>
             <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{visibleCrops.length} of {crops.length} crop{crops.length !== 1 ? "s" : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -8030,7 +8035,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setExpandedGroups(e => ({ ...e, [group.id]: !isExpanded }))}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                   <span style={{ fontSize: 18 }}>{getCropEmoji(group.crop_name)}</span>
-                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>
                     {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
                   </div>
                   <span style={{ fontSize: 11, background: C.forest + "18", color: C.forest, borderRadius: 20, padding: "2px 8px", fontWeight: 600 }}>
@@ -8167,7 +8172,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 {/* Add next sowing form */}
                 {addingSowingFor === group.id && (
                   <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: 10, padding: "12px 14px", marginTop: 4 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "serif", marginBottom: 10 }}>Add Sow {nextIdx}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.display, marginBottom: 10 }}>Add Sow {nextIdx}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div>
                         <label style={labelStyle}>Sow date</label>
@@ -8184,7 +8189,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => addNextSowing(group.id)} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: "serif" }}>
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: F.display }}>
                           {saving ? "Saving…" : `Save Sow ${nextIdx}`}
                         </button>
                         <button onClick={() => setAddingSowingFor(null)}
@@ -8232,7 +8237,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           {editing === crop.id ? (
             /* Edit form */
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Edit {crop.name}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>Edit {crop.name}</div>
               <div>
                 <label style={labelStyle}>Variety</label>
                 <select
@@ -8311,7 +8316,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => saveEdit(crop.id)} disabled={saving}
-                  style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                  style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                   {saving ? "Saving…" : "Save changes"}
                 </button>
                 <button onClick={() => setEditing(null)}
@@ -8347,7 +8352,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => convertToSuccession(crop.id)} disabled={saving}
-                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: "serif" }}>
+                          style={{ flex: 1, background: C.forest, border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer", fontFamily: F.display }}>
                           {saving ? "Converting…" : "Convert"}
                         </button>
                         <button onClick={() => setConvertingCrop(null)}
@@ -8382,7 +8387,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
                       {crop.status === "dormant" && (
                         <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 20, padding: "1px 7px" }}>💤 Dormant</span>
                       )}
@@ -8917,12 +8922,12 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>{getCropEmoji(cropProfile?.name || "")}</div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>{cropProfile?.name} added!</div>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>{cropProfile?.name} added!</div>
         <div style={{ fontSize: 14, color: C.stone, marginBottom: 24 }}>
           {enriching ? "Identifying and enriching crop data — tasks will appear shortly 🔍" : "Tasks will be generated for your garden."}
         </div>
         <button onClick={() => { setStep("form"); setCropProfile(null); setEnriching(false); setForm({ crop_def_id: "", variety_id: "", variety: "", crop_other: "", area_id: "", status: "", sown_date: "", transplant_date: "", notes: "", lifecycle_mode: "seasonal" }); }}
-          style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+          style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display }}>
           Add Another Crop
         </button>
       </div>
@@ -8934,7 +8939,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Finding your crop…</div>
         <div style={{ fontSize: 13, color: C.stone }}>Building a growing profile for {form.crop_other}</div>
       </div>
     );
@@ -8951,7 +8956,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 13, color: C.stone, cursor: "pointer" }}>
             ← Back
           </button>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Confirm crop</div>
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Confirm crop</div>
         </div>
 
         {error && <ErrorMsg msg={error} />}
@@ -8961,7 +8966,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <div style={{ fontSize: 40 }}>{getCropEmoji(cropProfile.name)}</div>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{cropProfile.name}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>{cropProfile.name}</div>
               {(form.variety || varieties.find(v => v.id === form.variety_id)?.name) && (
                 <div style={{ fontSize: 13, color: C.stone }}>
                   {form.variety || varieties.find(v => v.id === form.variety_id)?.name}
@@ -9040,7 +9045,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             Edit details
           </button>
           <button onClick={handleSave} disabled={saving}
-            style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", opacity: saving ? 0.7 : 1 }}>
+            style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, opacity: saving ? 0.7 : 1 }}>
             {saving ? "Adding…" : "Add to my garden 🌱"}
           </button>
         </div>
@@ -9072,7 +9077,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         />
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Add Crop</div>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Add Crop</div>
         {onCancel && (
           <button onClick={onCancel}
             style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: C.stone, lineHeight: 1, padding: "0 4px" }}>
@@ -9235,7 +9240,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
         )}
 
         <button onClick={successionMode ? handleSave : handleReview} disabled={!canSave || saving}
-          style={{ background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: (!canSave || saving) ? "not-allowed" : "pointer", fontFamily: "serif", transition: "background 0.2s" }}>
+          style={{ background: (!canSave || saving) ? C.border : C.forest, color: (!canSave || saving) ? C.stone : "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700, cursor: (!canSave || saving) ? "not-allowed" : "pointer", fontFamily: F.display, transition: "background 0.2s" }}>
           {saving ? "Saving…" : successionMode ? "Create succession →" : "Review & Add →"}
         </button>
       </div>
@@ -9381,7 +9386,7 @@ function FAQSection() {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 12 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 12 }}>
         Help & FAQ
       </div>
       {FAQ_DATA.map((section, si) => (
@@ -9391,7 +9396,7 @@ function FAQSection() {
             style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 18 }}>{section.emoji}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>{section.section}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>{section.section}</span>
             </div>
             <span style={{ fontSize: 12, color: C.stone }}>{openSection === si ? "▲" : "▼"}</span>
           </button>
@@ -9498,7 +9503,7 @@ function NotificationPermissionCard({ onEnabled, onDismiss }) {
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
         <span style={{ fontSize: 28, flexShrink: 0 }}>🔔</span>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: C.forest, marginBottom: 4 }}>Stay on top of your garden</div>
+          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: C.forest, marginBottom: 4 }}>Stay on top of your garden</div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
             Get timely reminders for frost alerts, feeding, harvesting and crop checks — when they matter, not all day long.
           </div>
@@ -9711,7 +9716,7 @@ function TimeAwaySection({ openOnMount = false, onOpened }) {
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: activePeriods.length > 0 ? 12 : 0 }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Time away</div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Time away</div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
               {activePeriods.length === 0
                 ? "Going away? We'll adjust your tasks."
@@ -9818,7 +9823,7 @@ function TimeAwayScreen({ onClose }) {
           {/* Title block */}
           <div style={{ position: "relative" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>✈️</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>Time away</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>Time away</div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", lineHeight: 1.5, maxWidth: 280 }}>
               Tell us when you're unavailable — we'll adjust your tasks automatically.
             </div>
@@ -9919,7 +9924,7 @@ function TimeAwayScreen({ onClose }) {
                   🏖️
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 3 }}>No time away added</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 3 }}>No time away added</div>
                   <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.45 }}>Holidays, busy weeks, work trips — we handle the re-planning.</div>
                 </div>
               </div>
@@ -9929,7 +9934,7 @@ function TimeAwayScreen({ onClose }) {
             {periods.map(p => (
               <div key={p.id} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", fontFamily: "serif" }}>{p.label || "Time away"}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", fontFamily: F.display }}>{p.label || "Time away"}</div>
                   <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>
                     {new Date(p.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "long" })} –{" "}
                     {new Date(p.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
@@ -9947,7 +9952,7 @@ function TimeAwayScreen({ onClose }) {
         {/* Add form */}
         {showAdd ? (
           <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginTop: 4 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 14 }}>Add time away</div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 14 }}>Add time away</div>
 
             {error && (
               <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.red, marginBottom: 12 }}>{error}</div>
@@ -9986,14 +9991,14 @@ function TimeAwayScreen({ onClose }) {
                 Cancel
               </button>
               <button onClick={save} disabled={saving}
-                style={{ flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ flex: 2, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: F.display }}>
                 {saving ? "Adjusting plan..." : "Adjust my plan"}
               </button>
             </div>
           </div>
         ) : (
           <button onClick={() => { setShowAdd(true); setSummary(null); setAdjustments(null); }}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif", marginTop: periods.length === 0 ? 0 : 8 }}>
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display, marginTop: periods.length === 0 ? 0 : 8 }}>
             + Add time away
           </button>
         )}
@@ -10016,7 +10021,7 @@ function HarvestSummaryCard({ crop }) {
       {/* Crop summary row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "serif", color: "#1a1a1a" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.display, color: "#1a1a1a" }}>
             {getCropEmoji(crop.crop_name)} {crop.crop_name}{crop.variety ? ` — ${crop.variety}` : ""}
           </div>
           <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
@@ -10149,7 +10154,7 @@ function EditProfileModal({ current, onSave, onClose }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 20 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 20 }}>
           Edit Profile
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -10240,7 +10245,7 @@ function ChangePasswordModal({ onClose, onSaved }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 20 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 20 }}>
           Change Password
         </div>
 
@@ -10352,7 +10357,7 @@ function NotificationsScreen({ onBack }) {
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: C.forest, padding: 0, lineHeight: 1 }}>
           ←
         </button>
-        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Notifications</div>
+        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Notifications</div>
       </div>
 
       <div style={{ padding: "20px 16px 48px" }}>
@@ -10589,7 +10594,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 19, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", lineHeight: 1.2 }}>
+          <div style={{ fontSize: 19, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", lineHeight: 1.2 }}>
             {profile.name || "Your name"}
           </div>
           {profile.postcode && (
@@ -10618,7 +10623,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
             {new Date().getFullYear()} Season
           </div>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", marginBottom: 16 }}>Your Harvest Summary</div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, marginBottom: 16 }}>Your Harvest Summary</div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
             {[
@@ -10638,7 +10643,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
               <div style={{ fontSize: 28 }}>{getCropEmoji(harvestStats.best.crop_name)}</div>
               <div>
                 <div style={{ fontSize: 10, opacity: 0.65, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>Best performing crop</div>
-                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif" }}>{harvestStats.best.crop_name}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display }}>{harvestStats.best.crop_name}</div>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>
                   Yield {harvestStats.best.avg_yield_score || "—"} · Quality {harvestStats.best.avg_quality_score || "—"} out of 10
                 </div>
@@ -10808,7 +10813,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
             {deleteStep === 1 ? (
               <>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 12 }}>Delete your account?</div>
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 12 }}>Delete your account?</div>
                 <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 6 }}>
                   This will permanently remove:
                 </div>
@@ -10831,7 +10836,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
               </>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#dc2626", marginBottom: 12 }}>Are you absolutely sure?</div>
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#dc2626", marginBottom: 12 }}>Are you absolutely sure?</div>
                 <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 20 }}>
                   Your account will be permanently deleted and you will be signed out immediately. There is no way to recover your data after this point.
                 </div>
@@ -10960,7 +10965,7 @@ function ProSubscriptionSection() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <div style={{ fontSize: 22 }}>🌱</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: "serif" }}>Vercro Pro</div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: F.display }}>Vercro Pro</div>
               <div style={{ fontSize: 12, opacity: 0.75, marginTop: 1 }}>Early supporter · Price locked</div>
             </div>
           </div>
@@ -10984,7 +10989,7 @@ function ProSubscriptionSection() {
           background: "#fff", borderRadius: 16, padding: "20px 18px",
           boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
         }}>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
+          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, lineHeight: 1.3 }}>
             Unlock Vercro Pro
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
@@ -11028,7 +11033,7 @@ function ProSubscriptionSection() {
           <button
             onClick={() => handleUpgrade(interval)}
             disabled={checkoutLoading || !pricing}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, opacity: (checkoutLoading || !pricing) ? 0.7 : 1 }}>
             {checkoutLoading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
           </button>
         </div>
@@ -11082,7 +11087,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
         </div>
 
         <div style={{ padding: "8px 20px 12px" }}>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
+          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>🔍 Which crop?</div>
           <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
           <input
             value={search}
@@ -11104,7 +11109,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
                 <span style={{ fontSize: 24, flexShrink: 0 }}>{getCropEmoji(crop.name)}</span>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: "serif" }}>{crop.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", fontFamily: F.display }}>{crop.name}</div>
                   <div style={{ fontSize: 12, color: C.stone }}>
                     {crop.area?.name || ""}
                     {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
@@ -11155,19 +11160,19 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd" }} />
         </div>
 
-        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
+        <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4, textAlign: "center" }}>Take or choose a photo</div>
         <div style={{ fontSize: 13, color: C.stone, textAlign: "center", marginBottom: 24 }}>Get a clear shot of the affected leaves, stems or fruit</div>
 
         {/* Camera */}
         <button onClick={() => cameraRef.current?.click()}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           📷 Take a photo
         </button>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
 
         {/* Library */}
         <button onClick={() => fileRef.current?.click()}
-          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           🖼️ Choose from library
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
@@ -11244,7 +11249,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 13, cursor: "pointer" }}>← Back</button>
           <div>
-            <div style={{ fontFamily: "serif", fontSize: 17, fontWeight: 700 }}>Plant Check</div>
+            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 700 }}>Plant Check</div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>{getCropEmoji(crop.name)} {crop.name}</div>
           </div>
         </div>
@@ -11257,7 +11262,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
           <div style={{ fontSize: 32, marginBottom: 8 }}>
             {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
           </div>
-          <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
             {result.looks_healthy
               ? "Looking healthy!"
               : result.problem_name || "Issue detected"}
@@ -11311,7 +11316,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
           <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Estimated yield impact</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: "serif", fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
+              <span style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
                 {result.yield_impact_pct}%
               </span>
               {result.quality_impact && result.quality_impact !== "none" && (
@@ -11363,7 +11368,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleConfirmUpdate} disabled={updating}
-                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display }}>
                 {updating ? "Updating…" : "Yes, update record"}
               </button>
               <button onClick={() => setUpdated(true)}
@@ -11456,7 +11461,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             ) : (
               <>
                 <button onClick={handleSaveToDiary} disabled={savingDiary}
-                  style={{ width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 14, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "serif" }}>
+                  style={{ width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: 14, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F.display }}>
                   {savingDiary ? "Saving…" : "📷 Save photo to growth diary"}
                 </button>
                 {diaryError && (
@@ -11468,7 +11473,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         )}
 
         <button onClick={onDone}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
           Done
         </button>
       </div>
@@ -11608,7 +11613,7 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 720, background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <div style={{ fontSize: 52, marginBottom: 24, animation: "pulse 1.5s infinite" }}>🔬</div>
-        <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 10, textAlign: "center" }}>Analysing your {crop?.name || "plant"}…</div>
+        <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.forest, marginBottom: 10, textAlign: "center" }}>Analysing your {crop?.name || "plant"}…</div>
         <div style={{ fontSize: 14, color: C.stone, textAlign: "center", lineHeight: 1.6, maxWidth: 280 }}>
           Checking for issues, growth stage, and harvest readiness
         </div>
@@ -11863,7 +11868,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         <div style={{ width: 36, height: 4, background: "#E0E0E0", borderRadius: 2, margin: "0 auto 24px" }} />
 
         {/* Headline */}
-        <div style={{ fontFamily: "serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 8, textAlign: "center" }}>
+        <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 8, textAlign: "center" }}>
           {content.headline}
         </div>
 
@@ -11949,7 +11954,7 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
         <button
           onClick={handleUpgrade}
           disabled={loading || !pricing}
-          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "serif", marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
+          style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F.display, marginBottom: 10, opacity: (loading || !pricing) ? 0.7 : 1 }}>
           {loading ? "Loading…" : interval === "annual" ? `Start for ${pricing?.display?.annual || "…"} / year` : `Start for ${pricing?.display?.monthly || "…"} / month`}
         </button>
 
@@ -12104,7 +12109,7 @@ function FeedsScreen() {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>My Feeds</div>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>My Feeds</div>
         <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>Register the feeds you own — we'll personalise your feeding tasks</div>
       </div>
 
@@ -12131,7 +12136,7 @@ function FeedsScreen() {
       {/* Add feed form */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Add a Feed</div>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Add a Feed</div>
           <button onClick={() => setShowFeedScanner(true)}
             style={{ background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.forest, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             📷 Scan product
@@ -12215,7 +12220,7 @@ function FeedsScreen() {
           )}
 
           <button onClick={addFeed} disabled={saving || !canAdd}
-            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1, fontFamily: "serif" }}>
+            style={{ background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (saving || !canAdd) ? 0.5 : 1, fontFamily: F.display }}>
             {saving ? "Adding…" : "Add Feed"}
           </button>
         </div>
@@ -12231,7 +12236,7 @@ function FeedsScreen() {
           <div key={feed.id} style={{ background: feed.out_of_stock ? "#f5f5f3" : C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, opacity: feed.out_of_stock ? 0.72 : 1, transition: "opacity 0.2s, background 0.2s" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: "serif" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", fontFamily: F.display }}>
                   {feed.brand ? `${feed.brand} ` : ""}{feed.product_name}
                 </div>
                 {feed.enriched ? (
@@ -12360,7 +12365,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
               Identify {mode === "crop" ? "seed packet" : "product"} 📷
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>Take a photo of the front of the packet</div>
@@ -12373,7 +12378,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
           <>
             <label htmlFor="barcode-photo-input" style={{ display: "block", background: C.offwhite, border: `2px dashed ${C.border}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
               <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
-              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>
                 Take a photo of the front of the packet
               </div>
               <div style={{ fontSize: 13, color: C.stone }}>Show the name and variety clearly — no barcode needed</div>
@@ -12387,7 +12392,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
               style={{ display: "none" }}
             />
             <label htmlFor="barcode-photo-input"
-              style={{ display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif", marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
+              style={{ display: "block", width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display, marginBottom: 10, textAlign: "center", boxSizing: "border-box" }}>
               Take photo of packet
             </label>
             <button onClick={() => setShowManual(true)}
@@ -12402,7 +12407,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 200, objectFit: "cover" }} />}
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
-            <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 4 }}>Identifying product…</div>
+            <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, marginBottom: 4 }}>Identifying product…</div>
             <div style={{ fontSize: 13, color: C.stone }}>Searching product databases</div>
           </div>
         )}
@@ -12414,7 +12419,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <div style={{ fontSize: 36 }}>{getCropEmoji(result.name || "")}</div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 18, fontFamily: "serif", color: "#1a1a1a" }}>{result.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 18, fontFamily: F.display, color: "#1a1a1a" }}>{result.name}</div>
                 {result.brand && <div style={{ fontSize: 13, color: C.stone }}>{result.brand}</div>}
                 <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Product identified</div>
               </div>
@@ -12436,7 +12441,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
               ))}
             </div>
             <button onClick={() => { onResult(result); }}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "serif" }}>
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: F.display }}>
               Add {result.name} →
             </button>
           </>
@@ -12448,12 +12453,12 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
             {preview && <img src={preview} alt="scan" style={{ width: "100%", borderRadius: 12, marginBottom: 16, maxHeight: 160, objectFit: "cover" }} />}
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
-              <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>We don't recognise this one yet</div>
+              <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>We don't recognise this one yet</div>
               <div style={{ fontSize: 13, color: C.stone }}>Use the dropdowns to tell us what it is and we'll look up all the growing details automatically.</div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { onResult({ found: false }); }}
-                style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ flex: 2, padding: "13px", borderRadius: 12, border: "none", background: C.forest, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: F.display }}>
                 Continue →
               </button>
               <button onClick={() => { setStatus("idle"); setPreview(null); setResult(null); }}
@@ -12468,7 +12473,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {status === "error" && (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, marginBottom: 8 }}>Something went wrong</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 20 }}>Try again or enter the barcode manually.</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setStatus("idle"); setPreview(null); }}
@@ -12483,7 +12488,7 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
         {showManual && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 24, borderRadius: "16px 16px 0 0" }}>
             <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%" }}>
-              <div style={{ fontWeight: 700, fontFamily: "serif", fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
+              <div style={{ fontWeight: 700, fontFamily: F.display, fontSize: 16, marginBottom: 12 }}>Enter barcode manually</div>
               <input value={manualCode} onChange={e => setManualCode(e.target.value)}
                 placeholder="e.g. 5000174002017" autoFocus
                 style={{ ...inputStyle, marginBottom: 12 }}
@@ -12551,14 +12556,14 @@ function FeedbackSheet({ onClose, isNative = false }) {
         {done ? (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🙏</div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Thanks for your feedback!</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>Thanks for your feedback!</div>
             <div style={{ fontSize: 13, color: C.stone }}>It really helps shape Vercro.</div>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>
                   {isNative ? "Report a bug or idea 💡" : "Share your thoughts 💬"}
                 </div>
                 <div style={{ fontSize: 12, color: C.stone, marginTop: 2 }}>
@@ -12617,7 +12622,7 @@ function FeedbackSheet({ onClose, isNative = false }) {
             </div>
 
             <button onClick={submit} disabled={!canSubmit || saving}
-              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontWeight: 700, fontSize: 15, cursor: canSubmit ? "pointer" : "default", fontFamily: "serif", transition: "background 0.2s" }}>
+              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: canSubmit ? C.forest : C.border, color: canSubmit ? "#fff" : C.stone, fontWeight: 700, fontSize: 15, cursor: canSubmit ? "pointer" : "default", fontFamily: F.display, transition: "background 0.2s" }}>
               {saving ? "Sending…" : "Send feedback"}
             </button>
           </>
@@ -12838,7 +12843,7 @@ Use the exact task IDs provided.`;
           <>
             <textarea value={contextDraft} onChange={e => setContextDraft(e.target.value)}
               placeholder="e.g. iOS build 16 in review. Web launched 15 Apr. Priority is fixing bugs before marketing push. Android tiered pricing next."
-              style={{ width: "100%", minHeight: 80, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "8px 10px", resize: "vertical", fontFamily: "sans-serif", boxSizing: "border-box" }} />
+              style={{ width: "100%", minHeight: 80, fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}`, padding: "8px 10px", resize: "vertical", fontFamily: F.body, boxSizing: "border-box" }} />
             <button onClick={saveContext}
               style={{ marginTop: 8, padding: "6px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
               Save
@@ -12970,13 +12975,13 @@ Use the exact task IDs provided.`;
       {donePrompt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", maxWidth: 380, width: "100%" }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 8 }}>Mark as done</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 8 }}>Mark as done</div>
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 16 }}>
               This came from {donePrompt.user_name || "a user"}{donePrompt.user_email ? ` (${donePrompt.user_email})` : ""}. Would you like to send them a thank-you reply letting them know their feedback has been acted on?
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={() => { openGmailReply(donePrompt, true); confirmDone(donePrompt); }}
-                style={{ padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                 ✉️ Send reply + mark done
               </button>
               <button onClick={() => confirmDone(donePrompt)}
@@ -13014,7 +13019,7 @@ function MetricRow({ label, val, sub, highlight }) {
         <div style={{ fontSize: 13, color: "#1a1a1a" }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{sub}</div>}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: highlight ? C.forest : "#1a1a1a", fontFamily: "serif" }}>{val ?? "—"}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: highlight ? C.forest : "#1a1a1a", fontFamily: F.display }}>{val ?? "—"}</div>
     </div>
   );
 }
@@ -13066,7 +13071,7 @@ function MetricRowWithFix({ label, val, sub, status, suggestion }) {
           {sub && <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{sub}</div>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", fontFamily: "serif" }}>{val ?? "—"}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", fontFamily: F.display }}>{val ?? "—"}</div>
           {badge && <span style={{ fontSize: 10, background: bg, color: col, borderRadius: 99, padding: "2px 7px" }}>{badge}</span>}
           {suggestion && status !== "green" && (
             <button onClick={() => setOpen(o => !o)}
@@ -13228,7 +13233,7 @@ function AdminTools() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Invite waitlist */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>📬 Invite Waitlist Users</div>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>📬 Invite Waitlist Users</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Emails everyone on the waitlist telling them access is now open. Each user is only emailed once. Also updates their status to accepted.
         </div>
@@ -13236,7 +13241,7 @@ function AdminTools() {
       </div>
 
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>🏆 Backfill Badges</div>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>🏆 Backfill Badges</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Calculates badge progress for all existing users from their real data — tasks completed, crops added, harvests logged etc. Run this once after deploying badges. Safe to re-run.
         </div>
@@ -13496,18 +13501,18 @@ function DemoAdminScreen() {
 
   return (
     <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 4, color: "#1a1a1a" }}>Demo tools</div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, marginBottom: 4, color: "#1a1a1a" }}>Demo tools</div>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>Reset this account back to the demo state</div>
 
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 6 }}>Marketing reset</div>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 6 }}>Marketing reset</div>
         <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 16 }}>
           Wipes all crops, tasks and harvest logs and restores the demo garden to its default state. Use this before handing the phone to someone new.
         </div>
 
         {!confirm ? (
           <button onClick={() => setConfirm(true)}
-            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+            style={{ width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
             Reset demo garden
           </button>
         ) : (
@@ -13517,7 +13522,7 @@ function DemoAdminScreen() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={runReset} disabled={resetting}
-                style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "serif" }}>
+                style={{ flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: F.display }}>
                 {resetting ? "Resetting…" : "Yes, reset now"}
               </button>
               <button onClick={() => setConfirm(false)}
@@ -13601,7 +13606,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
 
   return (
     <div>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "serif", marginBottom: 4, color: "#1a1a1a" }}>Admin</div>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: F.display, marginBottom: 4, color: "#1a1a1a" }}>Admin</div>
       <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>Internal tools — only visible to you</div>
 
       {/* Sub tabs */}
@@ -14000,7 +14005,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
           {crops.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a", marginBottom: 4 }}>Queue is clear</div>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a", marginBottom: 4 }}>Queue is clear</div>
               <div style={{ fontSize: 13 }}>No AI-added crops awaiting review</div>
             </div>
           ) : (
@@ -14011,7 +14016,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <div style={{ fontSize: 28 }}>{getCropEmoji(crop.name)}</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "serif", color: "#1a1a1a" }}>{crop.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.display, color: "#1a1a1a" }}>{crop.name}</div>
                       <div style={{ fontSize: 11, color: C.stone }}>Added by {crop.added_by_email || "unknown"} · {new Date(crop.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
                     </div>
                   </div>
@@ -15415,7 +15420,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
       <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "20px 20px 44px", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()} {...swipe}>
         <div style={{ width: 36, height: 4, background: "#ddd", borderRadius: 99, margin: "0 auto 20px" }} />
-        <div style={{ fontFamily: "serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+        <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
           Soil conditions
         </div>
         <div style={{ fontSize: 12, color: C.stone, marginBottom: 20 }}>
@@ -15477,7 +15482,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
         </div>
         <div style={{ margin:"12px 16px 0", borderRadius:14, padding:"14px 16px",
           background:`linear-gradient(135deg, ${baseColor}dd, ${baseColor}99)` }}>
-          <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, color:"rgba(255,255,255,0.9)" }}>
+          <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, color:"rgba(255,255,255,0.9)" }}>
             {area.name.replace(/^"|"$/g,"")}
           </div>
           <div style={{ fontSize:12, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
@@ -15494,14 +15499,14 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
           {crops.length===0 ? (
             <div style={{ textAlign:"center", padding:"32px 0", color:C.stone }}>
               <div style={{ fontSize:36, marginBottom:8 }}>🌱</div>
-              <div style={{ fontFamily:"serif", fontSize:15, fontWeight:700, marginBottom:4 }}>Empty bed</div>
+              <div style={{ fontFamily:F.display, fontSize:15, fontWeight:700, marginBottom:4 }}>Empty bed</div>
               <div style={{ fontSize:13 }}>Nothing planted here this season</div>
             </div>
           ) : crops.map(crop=>(
             <div key={crop.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 0", borderBottom:`1px solid ${C.border}` }}>
               <span style={{ fontSize:22, flexShrink:0 }}>{getCropEmoji(crop.name)}</span>
               <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", fontFamily:"serif" }}>{crop.name}</div>
+                <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", fontFamily:F.display }}>{crop.name}</div>
                 {crop.variety && <div style={{ fontSize:12, color:C.stone }}>{typeof crop.variety==="object"?crop.variety.name:crop.variety}</div>}
               </div>
               <div style={{ fontSize:11, fontWeight:700, color:statusColor[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
@@ -15605,7 +15610,7 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
       style={{ borderRadius:16, border:`2px solid ${isSelected ? colour : C.border}`, background: isSelected ? colour+"08" : "#fff", padding:"16px 14px", cursor:"pointer", transition:"border-color 0.15s, background 0.15s", marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ fontFamily:"serif", fontSize:15, fontWeight:700, color:"#1a1a1a" }}>{option.name}</div>
+          <div style={{ fontFamily:F.display, fontSize:15, fontWeight:700, color:"#1a1a1a" }}>{option.name}</div>
           {recommended && (
             <div style={{ fontSize:10, fontWeight:700, color:"#fff", background:C.forest, borderRadius:99, padding:"2px 7px" }}>Recommended</div>
           )}
@@ -15630,7 +15635,7 @@ function PlanOptionCard({ option, index, selected, onSelect, recommended }) {
               color: m.effort_level==="Easy"?"#2a7a40":m.effort_level==="High"?"#b84c00":colour },
           ].map((item, i, arr) => (
             <div key={i} style={{ flex:1, padding:"8px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
-              <div style={{ fontSize:14, fontWeight:700, color:item.color||colour, fontFamily:"serif", letterSpacing:-0.3 }}>{item.value}</div>
+              <div style={{ fontSize:14, fontWeight:700, color:item.color||colour, fontFamily:F.display, letterSpacing:-0.3 }}>{item.value}</div>
               <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.4, marginTop:1 }}>{item.label}</div>
             </div>
           ))}
@@ -15713,7 +15718,7 @@ function PlanPerformanceStrip({ plan }) {
       {items.map((item, i) => (
         <div key={i} style={{ flex:1, padding:"10px 8px", textAlign:"center",
           borderRight: i<items.length-1 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
-          <div style={{ fontSize:17, fontWeight:700, color:item.color||"#2f5d50", fontFamily:"serif", letterSpacing:-0.3 }}>
+          <div style={{ fontSize:17, fontWeight:700, color:item.color||"#2f5d50", fontFamily:F.display, letterSpacing:-0.3 }}>
             {item.value}
           </div>
           <div style={{ fontSize:10, color:"#888", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>
@@ -15752,7 +15757,7 @@ function ComparePlansSheet({ options, selectedIdx, onSelect, onClose, recommende
       <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"20px 16px 36px", boxSizing:"border-box", maxHeight:"90vh", overflowY:"auto" }}
         {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 16px" }} />
-        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:16 }}>Compare plans</div>
+        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:16 }}>Compare plans</div>
 
         {/* Plan selector buttons */}
         <div style={{ display:"flex", gap:8, marginBottom:16 }}>
@@ -15875,7 +15880,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
   return (
     <div style={{ marginTop:20 }}>
       <div style={{ height:1, background:C.border, marginBottom:16 }} />
-      <div style={{ fontFamily:"serif", fontSize:16, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>Improve your garden</div>
+      <div style={{ fontFamily:F.display, fontSize:16, fontWeight:700, color:"#1a1a1a", marginBottom:2 }}>Improve your garden</div>
       <div style={{ fontSize:12, color:C.stone, marginBottom:14, lineHeight:1.5 }}>
         See whether adding infrastructure could increase your harvest, value or ease.
       </div>
@@ -15948,7 +15953,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
                   { label:"Payback",        value: result.roi?.payback_seasons != null ? `~${result.roi.payback_seasons} seasons` : "—" },
                 ].map((m,i,arr) => (
                   <div key={i} style={{ flex:1, textAlign:"center", borderRight:i<arr.length-1?`1px solid ${C.border}`:"none", paddingBottom:4 }}>
-                    <div style={{ fontSize:16, fontWeight:700, color:C.forest, fontFamily:"serif" }}>{m.value}</div>
+                    <div style={{ fontSize:16, fontWeight:700, color:C.forest, fontFamily:F.display }}>{m.value}</div>
                     <div style={{ fontSize:9, color:C.stone, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{m.label}</div>
                   </div>
                 ))}
@@ -16134,7 +16139,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:20, padding:"36px 28px", textAlign:"center", maxWidth:280 }}>
         <div style={{ fontSize:36, marginBottom:12 }}>🌱</div>
-        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:8 }}>Working out your rotation…</div>
+        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:8 }}>Working out your rotation…</div>
         <div style={{ fontSize:13, color:C.stone, lineHeight:1.5 }}>Keeping your crops, just moving them to better beds</div>
       </div>
     </div>
@@ -16159,7 +16164,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           { label:"Yield/m²",  value: metrics.yield_per_m2   != null ? `${metrics.yield_per_m2}kg`     : "—" },
         ].map((item, i, arr) => (
           <div key={i} style={{ flex:1, padding:"10px 4px", textAlign:"center", borderRight: i<arr.length-1?`1px solid ${C.border}`:"none" }}>
-            <div style={{ fontSize:15, fontWeight:700, color:colour, fontFamily:"serif" }}>{item.value}</div>
+            <div style={{ fontSize:15, fontWeight:700, color:colour, fontFamily:F.display }}>{item.value}</div>
             <div style={{ fontSize:9, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, marginTop:2 }}>{item.label}</div>
           </div>
         ))}
@@ -16183,7 +16188,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: name ────────────────────────────────────────────────────────────
   if (step === "name") return (
     <Sheet onBack={() => setStep(planToSaveRef.current === plan ? "baseline" : "result")}>
-      <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:6 }}>Name this plan</div>
+      <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, marginBottom:6 }}>Name this plan</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
         Give your plan a name so you can find it easily. You can create as many plans as you like and decide later which one to use.
       </div>
@@ -16191,7 +16196,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         value={planName}
         onChange={e => setPlanName(e.target.value)}
         placeholder="e.g. My rotated garden"
-        style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, fontFamily:"serif", outline:"none" }}
+        style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, fontFamily:F.display, outline:"none" }}
         autoFocus
       />
       {err && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
@@ -16205,7 +16210,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: baseline ────────────────────────────────────────────────────────
   if (step === "baseline") return (
     <Sheet>
-      <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, marginBottom:4 }}>Your rotated garden 🌱</div>
+      <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, marginBottom:4 }}>Your rotated garden 🌱</div>
       <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>
         Same crops, better beds — based on what you're already growing this year.
       </div>
@@ -16234,7 +16239,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: ask year-round growing ─────────────────────────────────────────
   if (step === "ask_year_round") return (
     <Sheet onBack={() => setStep("baseline")}>
-      <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:6 }}>Year-round growing?</div>
+      <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:6 }}>Year-round growing?</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
         Where beds would sit empty between crops, we can suggest something to fill the gap — using crops you already grow where possible.
       </div>
@@ -16264,7 +16269,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: ask how many areas to improve ──────────────────────────────────
   if (step === "ask_improve") return (
     <Sheet onBack={() => setStep("ask_year_round")}>
-      <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:6 }}>Change any areas?</div>
+      <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:6 }}>Change any areas?</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20, lineHeight:1.5 }}>
         We can swap out one or more beds for something that performs better — without changing your whole garden.
       </div>
@@ -16295,7 +16300,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
   // ── SCREEN: ask preference ─────────────────────────────────────────────────
   if (step === "ask_preference") return (
     <Sheet onBack={() => setStep("ask_improve")}>
-      <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:6 }}>What matters most?</div>
+      <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:6 }}>What matters most?</div>
       <div style={{ fontSize:13, color:C.stone, marginBottom:20 }}>This helps us choose the best crops for the areas we're changing.</div>
       {[
         { value:"yield",    label:"More food",      desc:"Prioritise crops that produce the most", emoji:"🥕" },
@@ -16322,7 +16327,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
     const hasChanges = plan?.change_count > 0;
     return (
       <Sheet onBack={() => setStep("ask_preference")}>
-        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:4 }}>
+        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:4 }}>
           {hasChanges ? "Your improved plan" : "Your rotated plan"}
         </div>
         <div style={{ fontSize:12, color:C.stone, marginBottom:16 }}>
@@ -16453,7 +16458,7 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
       <div style={{ width:"100%", background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 36px", boxSizing:"border-box", maxHeight:"80vh", overflowY:"auto" }}
         {...swipe}>
         <div style={{ width:36, height:4, background:"#ddd", borderRadius:99, margin:"0 auto 20px" }} />
-        <div style={{ fontFamily:"serif", fontSize:17, fontWeight:700, marginBottom:2 }}>Plan crop for {area.name}</div>
+        <div style={{ fontFamily:F.display, fontSize:17, fontWeight:700, marginBottom:2 }}>Plan crop for {area.name}</div>
         <div style={{ fontSize:12, color:C.stone, marginBottom:20 }}>In: {plan.name}</div>
 
         {selectedDef && (
@@ -16685,7 +16690,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
 
         {/* Score + confidence */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-          <div style={{ fontSize: 38, fontWeight: 700, fontFamily: "serif", color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
+          <div style={{ fontSize: 38, fontWeight: 700, fontFamily: F.display, color: scoreColor(score), lineHeight: 1 }}>{score}%</div>
           <div style={{ textAlign: "right", paddingTop: 4 }}>
             <div style={{ fontSize: 11, color: confidenceColor(confidence_level), fontWeight: 700, marginBottom: 2 }}>
               {confidenceLabel}
@@ -16804,7 +16809,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Plan quality</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "serif", color: labelColor, lineHeight: 1 }}>{label}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: F.display, color: labelColor, lineHeight: 1 }}>{label}</div>
           {canSeeBreakdown && <div style={{ fontSize: 12, color: C.stone, marginTop: 3 }}>{score}/100</div>}
         </div>
         <div style={{ textAlign: "right", paddingTop: 4 }}>
@@ -17240,7 +17245,7 @@ function CommitPlanModal({ plan, onConfirm, onClose }) {
     <div style={{ position:"fixed", inset:0, zIndex:9200, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 20px" }}>
       <div style={{ width:"100%", maxWidth:380, background:"#fff", borderRadius:20, padding:"28px 22px 22px", boxSizing:"border-box" }}>
         <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>🌱</div>
-        <div style={{ fontFamily:"serif", fontSize:18, fontWeight:700, textAlign:"center", marginBottom:10 }}>Commit this plan?</div>
+        <div style={{ fontFamily:F.display, fontSize:18, fontWeight:700, textAlign:"center", marginBottom:10 }}>Commit this plan?</div>
         <div style={{ fontSize:14, color:C.stone, textAlign:"center", lineHeight:1.6, marginBottom:24 }}>
           Your current garden stays unchanged. Vercro will use <strong>{plan.name}</strong> to guide prep, sowing and planting tasks as areas become available.
         </div>
@@ -17836,7 +17841,7 @@ function PlanScreen({ tourRefs = {} }) {
           <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>
             {isPlanMode ? "Garden Plan" : "Garden Visualiser"}
           </div>
-          <div style={{fontFamily:"serif",fontSize:19,fontWeight:700,color:"#fff",marginBottom:2}}>
+          <div style={{fontFamily:F.display,fontSize:19,fontWeight:700,color:"#fff",marginBottom:2}}>
             {isPlanMode ? selectedPlan?.name : (loc?.name||"My garden")}{!isPlanMode&&loc?.width_m&&loc?.length_m?` · ${loc.width_m}×${loc.length_m}m`:""}
           </div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",display:"flex",alignItems:"center",gap:6}}>
@@ -17955,7 +17960,7 @@ function PlanScreen({ tourRefs = {} }) {
         <div style={{minHeight:38,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
           {activeBlock ? (
             <>
-              <div style={{fontSize:13,fontFamily:"serif",fontWeight:700,color:"#1a1a1a",flex:1}}>{activeAreaName}</div>
+              <div style={{fontSize:13,fontFamily:F.display,fontWeight:700,color:"#1a1a1a",flex:1}}>{activeAreaName}</div>
               <button onClick={()=>handleRotate(activeBlock)}
                 style={{background:C.forest,color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontSize:14,fontWeight:700,cursor:"pointer"}}>↻ Rotate</button>
               <button onClick={()=>setDetailArea(activeBlock)}
@@ -17997,7 +18002,7 @@ function PlanScreen({ tourRefs = {} }) {
               {/* Background — renders the ground texture so it looks intentional */}
               <div style={{height:260,background:`linear-gradient(180deg, #3a5c26 0%, #2d4a1e 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px",textAlign:"center"}}>
                 <div style={{fontSize:36,marginBottom:12}}>📐</div>
-                <div style={{fontFamily:"serif",fontSize:17,fontWeight:700,color:"#fff",marginBottom:8}}>
+                <div style={{fontFamily:F.display,fontSize:17,fontWeight:700,color:"#fff",marginBottom:8}}>
                   {hasAnyAreas ? "Area dimensions needed" : "No growing areas yet"}
                 </div>
                 <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.5,marginBottom:18,maxWidth:260}}>
@@ -18171,7 +18176,7 @@ function PlanScreen({ tourRefs = {} }) {
           onClick={e=>{ if(e.target===e.currentTarget) setShowDimensionsTip(false); }}>
           <div style={{width:"100%",maxWidth:480,background:"#fff",borderRadius:"20px 20px 0 0",padding:"28px 24px 48px",boxSizing:"border-box"}}>
             <div style={{width:36,height:4,background:"#ddd",borderRadius:99,margin:"0 auto 20px"}}/>
-            <div style={{fontSize:20,fontWeight:700,fontFamily:"serif",color:"#1a1a1a",marginBottom:8}}>
+            <div style={{fontSize:20,fontWeight:700,fontFamily:F.display,color:"#1a1a1a",marginBottom:8}}>
               How to set up your layout
             </div>
             <div style={{fontSize:14,color:C.stone,lineHeight:1.6,marginBottom:20}}>
@@ -18508,7 +18513,7 @@ function OnboardingScreen({ session, onComplete }) {
   // ── Loading screen ──────────────────────────────────────────────────────────
   if (step === 5) {
     return (
-      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif" }}>
+      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: F.display }}>
         <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
         <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 12, textAlign: "center" }}>Building your garden plan...</div>
         <div style={{ fontSize: 15, color: C.stone, textAlign: "center", minHeight: 24 }}>{loadingMsg}</div>
@@ -18530,7 +18535,7 @@ function OnboardingScreen({ session, onComplete }) {
       return null;
     }
     return (
-      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: "serif", maxWidth: 440, margin: "0 auto" }}>
+      <div style={{ minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", fontFamily: F.display, maxWidth: 440, margin: "0 auto" }}>
         <div style={{ fontSize: 52, marginBottom: 16 }}>🔔</div>
         <div style={{ fontSize: 22, fontWeight: 700, color: C.forest, marginBottom: 8, textAlign: "center" }}>
           Your garden plan is ready
@@ -18572,7 +18577,7 @@ function OnboardingScreen({ session, onComplete }) {
   const progress = ((step + 1) / 5) * 100;
 
   return (
-    <div style={{ background: C.offwhite, minHeight: "100vh", maxWidth: 440, margin: "0 auto", fontFamily: "Georgia, serif", paddingBottom: 40 }}>
+    <div style={{ background: C.offwhite, minHeight: "100vh", maxWidth: 440, margin: "0 auto", fontFamily: F.body, paddingBottom: 40 }}>
 
       {/* Progress bar */}
       <div style={{ height: 3, background: C.border }}>
@@ -18648,7 +18653,7 @@ function OnboardingScreen({ session, onComplete }) {
                       transition: "all 0.15s",
                     }}>
                     <span style={{ fontSize: 24 }}>{crop.emoji}</span>
-                    <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "serif", color: selected ? "#fff" : "#1a1a1a" }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, fontFamily: F.display, color: selected ? "#fff" : "#1a1a1a" }}>
                       {crop.name}
                     </span>
                   </button>
@@ -18676,7 +18681,7 @@ function OnboardingScreen({ session, onComplete }) {
                     textAlign: "left",
                     transition: "all 0.15s",
                   }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "serif", color: stage === s.id ? "#fff" : "#1a1a1a", marginBottom: 3 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: F.display, color: stage === s.id ? "#fff" : "#1a1a1a", marginBottom: 3 }}>
                     {s.label}
                   </div>
                   <div style={{ fontSize: 13, color: stage === s.id ? "rgba(255,255,255,0.7)" : C.stone }}>
@@ -18713,7 +18718,7 @@ function OnboardingScreen({ session, onComplete }) {
                     transition: "all 0.15s",
                   }}>
                   <span style={{ fontSize: 28 }}>{a.emoji}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, fontFamily: "serif", color: areaType === a.id ? "#fff" : "#1a1a1a", textAlign: "center" }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, fontFamily: F.display, color: areaType === a.id ? "#fff" : "#1a1a1a", textAlign: "center" }}>
                     {a.label}
                   </span>
                 </button>
@@ -18731,7 +18736,7 @@ function OnboardingScreen({ session, onComplete }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {SOURCE_OPTIONS.map(s => (
                 <button key={s.id} onClick={() => setSelfSource(selfSource === s.id ? null : s.id)}
-                  style={{ background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, fontWeight: 600, color: selfSource === s.id ? "#fff" : "#1a1a1a", fontFamily: "serif", transition: "all 0.15s" }}>
+                  style={{ background: selfSource === s.id ? C.forest : "#fff", border: `2px solid ${selfSource === s.id ? C.forest : C.border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", fontSize: 14, fontWeight: 600, color: selfSource === s.id ? "#fff" : "#1a1a1a", fontFamily: F.display, transition: "all 0.15s" }}>
                   {s.label}
                 </button>
               ))}
@@ -18754,7 +18759,7 @@ function OnboardingScreen({ session, onComplete }) {
             fontSize: 16,
             fontWeight: 700,
             cursor: canAdvance() ? "pointer" : "not-allowed",
-            fontFamily: "serif",
+            fontFamily: F.display,
             transition: "background 0.2s",
           }}>
           {step === 4 ? "Build my plan 🌱" : "Continue →"}
@@ -19000,11 +19005,11 @@ export default function GrowSmart() {
   }} />;
 
   return (
-    <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: "Georgia, serif", maxWidth: 440, margin: "0 auto", paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <div style={{ background: C.offwhite, minHeight: "100vh", fontFamily: F.body, maxWidth: 440, margin: "0 auto", paddingBottom: "env(safe-area-inset-bottom)" }}>
       {/* Header */}
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", paddingTop: "max(16px, env(safe-area-inset-top))", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "serif", color: "#1a1a1a" }}>Vercro 🌱</div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: F.display, color: "#1a1a1a" }}>Vercro 🌱</div>
           {["dashboard","garden","plan","crops","profile"].includes(tab) && (
             <TourPill tab={tab === "dashboard" ? "today" : tab} onStart={startTour} />
           )}
@@ -19078,7 +19083,7 @@ export default function GrowSmart() {
   ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...((isViewer || isPartnerAdmin) && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
-            <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: "sans-serif", fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
+            <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: F.body, fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
           </button>
         ))}
       </div>
