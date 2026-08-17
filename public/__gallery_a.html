@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Vercro gallery A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#E9EDEF;--surface:#FFFFFF;--ink:#0E2A2E;--ink-soft:#33514F;--forest:#2F5D50;--rust:#B5563A;--sage:#A8C1B5;--line:#D9DFE0;--line-strong:#C3CDCE;--text:#1D2A28;--muted:#6A7876;--season:#C8844C;--amber:#C89A3C;--red:#B5493E;--green:#4E8C5A;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;}
+body{background:#4d585a;font-family:'Inter',system-ui,sans-serif;padding:34px;}
+.board{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;justify-content:center;max-width:1360px;margin:0 auto;}
+.col{display:flex;flex-direction:column;gap:10px;width:400px;}
+.cap{color:#dbe3e4;font-size:13px;font-weight:600;text-align:center;}
+.cap span{color:#8fa0a1;font-weight:400;}
+.phone{width:400px;height:812px;background:var(--ground);border-radius:32px;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.35);}
+.serif{font-family:'Fraunces',Georgia,serif;}
+.ico{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--rust);display:flex;align-items:center;gap:7px;}
+.eyebrow .tick{width:13px;height:1.5px;background:var(--rust);}
+.hair{height:1px;background:var(--line);border:0;}
+.crop-token{width:38px;height:38px;border-radius:11px;background:#EDF2F0;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--forest);flex-shrink:0;}
+.crop-token.lg{width:48px;height:48px;border-radius:13px;font-size:21px;}
+.btn-primary{background:var(--forest);color:#fff;border:0;border-radius:12px;padding:14px;font-size:15px;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;cursor:pointer;}
+.btn-ghost{background:none;border:1px solid var(--line-strong);border-radius:12px;padding:14px;font-size:15px;color:var(--ink-soft);font-family:inherit;font-weight:500;width:100%;}
+.btn-sm{font-size:12px;font-weight:600;border-radius:9px;padding:7px 12px;font-family:inherit;cursor:pointer;}
+.btn-sm.out{background:none;border:1px solid var(--line-strong);color:var(--ink-soft);}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:2px 16px;}
+.field{background:#fff;border:1.4px solid var(--line-strong);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:10px;}
+.field .lab{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.field .val{font-size:15px;color:var(--ink);font-weight:500;margin-top:3px;}
+.field .cd{margin-left:auto;color:var(--muted);}
+.flabel{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;display:block;}
+/* dark header */
+.dhead{background:var(--ink);color:#EAF0EE;padding:20px;display:flex;align-items:center;gap:12px;}
+.dhead .back{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#EAF0EE;flex-shrink:0;}
+.dhead .k{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#9FB7B0;font-weight:600;}
+.dhead .t{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:#F4F8F6;margin-top:2px;}
+.scr{position:absolute;left:0;right:0;bottom:0;overflow:hidden;padding:20px;}
+/* bottom sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:20px 20px 26px;box-shadow:0 -12px 40px rgba(0,0,0,.12);}
+.grab{width:38px;height:4px;border-radius:2px;background:#D5DCDD;margin:0 auto 18px;}
+.dim{position:absolute;inset:0;background:rgba(14,25,26,.45);}
+/* plantcheck photo target */
+.frame{aspect-ratio:1;border-radius:18px;border:2px dashed var(--line-strong);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);}
+/* severity ribbon */
+.verdict{border-radius:16px;padding:20px;color:#fff;}
+.chiprow{display:flex;gap:8px;margin-top:14px;}
+.vchip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:8px 11px;flex:1;}
+.vchip .l{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.8;}
+.vchip .v{font-size:13px;font-weight:600;margin-top:3px;}
+.step{display:flex;gap:12px;padding:13px 0;border-top:1px solid var(--line);}
+.step:first-child{border-top:0;}
+.stepn{width:24px;height:24px;border-radius:50%;background:var(--forest);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Fraunces',serif;}
+.disc{border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;background:#fff;margin-top:10px;}
+.donttag{color:var(--red);}
+/* timeline */
+.tl{display:flex;align-items:flex-start;justify-content:space-between;margin-top:6px;position:relative;padding:0 4px;}
+.tl::before{content:"";position:absolute;left:16px;right:16px;top:13px;height:2px;background:var(--line);}
+.tlnode{display:flex;flex-direction:column;align-items:center;gap:7px;position:relative;z-index:1;width:52px;}
+.tldot{width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);}
+.tlnode.done .tldot{background:var(--forest);border-color:var(--forest);color:#fff;}
+.tlnode.now .tldot{background:var(--season);border-color:var(--season);color:#fff;box-shadow:0 0 0 4px rgba(200,132,76,.2);}
+.tlnode .lb{font-size:9.5px;color:var(--muted);text-align:center;font-weight:500;}
+.tlnode.now .lb{color:var(--season);font-weight:700;}
+/* chat */
+.bubble{max-width:80%;padding:12px 14px;border-radius:14px;font-size:13.5px;line-height:1.5;}
+.bubble.me{background:var(--forest);color:#fff;margin-left:auto;border-bottom-right-radius:5px;}
+.bubble.ai{background:#fff;border:1px solid var(--line);color:var(--text);border-bottom-left-radius:5px;}
+.ctx{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;}
+.ctxchip{font-size:11px;font-weight:500;color:var(--ink-soft);background:#EEF3F1;border:1px solid var(--line);border-radius:16px;padding:5px 10px;display:flex;align-items:center;gap:5px;}
+.proposed{position:absolute;top:12px;right:12px;background:var(--rust);color:#fff;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:6px;z-index:20;}
+.pricerow{display:flex;justify-content:space-between;align-items:center;border:1.5px solid var(--line-strong);border-radius:12px;padding:13px 15px;margin-bottom:9px;}
+.pricerow.on{border-color:var(--forest);background:#F1F6F3;}
+.badge{font-size:10px;font-weight:700;color:#fff;background:var(--forest);border-radius:6px;padding:3px 8px;}
+.value{display:flex;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,.1);}
+.value:first-child{border-top:0;}
+.taskgroup{margin-top:18px;}
+.gh{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.gh .ct{font-size:10px;color:var(--muted);background:#DFE6E7;border-radius:10px;padding:1px 7px;}
+.trow{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line);}
+.trow:first-child{border-top:0;}
+.trow .cn{font-size:15px;font-weight:600;color:var(--ink);}
+.trow .ac{font-size:12px;color:var(--muted);margin-top:1px;}
+.check{width:26px;height:26px;border-radius:50%;border:1.6px solid var(--line-strong);flex-shrink:0;}
+.check.done{background:var(--forest);border-color:var(--forest);display:flex;align-items:center;justify-content:center;color:#fff;}
+</style></head><body><div class="board">
+
+<!-- ========== PLANT CHECK — INPUT ========== -->
+<div class="col"><div class="cap">Plant Check <span>· input (photo picker)</span></div>
+<div class="phone">
+  <div class="dhead"><span class="back"><svg width="17" height="17" viewBox="0 0 24 24" class="ico"><path d="M15 6l-6 6 6 6"/></svg></span><div><div class="k">Plant Check</div><div class="t">Tomatoes · Raised bed 1</div></div></div>
+  <div class="scr" style="top:76px">
+    <div class="eyebrow"><span class="tick"></span>Step 2 of 2 · Photo</div>
+    <div class="serif" style="font-size:23px;color:var(--ink);font-weight:600;margin-top:10px;line-height:1.15">Take a clear photo of the affected leaves</div>
+    <div style="font-size:13.5px;color:var(--muted);margin-top:8px;line-height:1.55">Get close to the stems, leaves or fruit you're worried about. Vercro checks for problems, growth stage and harvest readiness.</div>
+    <div class="frame" style="margin-top:18px">
+      <svg width="42" height="42" viewBox="0 0 24 24" class="ico" style="stroke-width:1.3;color:var(--sage)"><path d="M4 8V6a2 2 0 0 1 2-2h2M20 8V6a2 2 0 0 0-2-2h-2M4 16v2a2 2 0 0 0 2 2h2M20 16v2a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="12" r="3.5"/></svg>
+      <div style="font-size:12.5px;color:var(--muted)">Position the plant in frame</div>
+    </div>
+    <button class="btn-primary" style="margin-top:18px"><svg width="18" height="18" viewBox="0 0 24 24" class="ico"><path d="M4 8V6a2 2 0 0 1 2-2h2M20 8V6a2 2 0 0 0-2-2h-2M4 16v2a2 2 0 0 0 2 2h2M20 16v2a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="12" r="3.5"/></svg>Take a photo</button>
+    <button class="btn-ghost" style="margin-top:10px">Choose from library</button>
+    <div style="display:flex;align-items:center;gap:9px;margin-top:20px;padding:12px 14px;background:#EEF3F1;border-radius:12px">
+      <svg width="17" height="17" viewBox="0 0 24 24" class="ico" style="color:var(--forest);flex-shrink:0"><path d="M12 3s5 4 5 9a5 5 0 0 1-10 0c0-2 1-3 1-3"/></svg>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.45">3 free checks left this month. Your photos stay private to your garden.</div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ========== PLANT CHECK — RESULT ========== -->
+<div class="col"><div class="cap">Plant Check <span>· result (first viewport)</span></div>
+<div class="phone">
+  <div class="dhead"><span class="back"><svg width="17" height="17" viewBox="0 0 24 24" class="ico"><path d="M15 6l-6 6 6 6"/></svg></span><div><div class="k">Plant Check result</div><div class="t">Tomatoes</div></div></div>
+  <div class="scr" style="top:76px;padding-top:18px">
+    <div class="verdict" style="background:var(--ink)">
+      <div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#E0A98A;font-weight:600">Likely diagnosis</div>
+      <div class="serif" style="font-size:24px;font-weight:600;margin-top:6px;line-height:1.12">Early blight</div>
+      <div style="font-size:13px;color:#B9C9C5;line-height:1.5;margin-top:8px">Dark concentric spots on the lower leaves, consistent with early blight after the recent damp spell.</div>
+      <div class="chiprow">
+        <div class="vchip"><div class="l">Severity</div><div class="v" style="color:#F0B893">Medium</div></div>
+        <div class="vchip"><div class="l">Confidence</div><div class="v">High</div></div>
+        <div class="vchip"><div class="l">Recovery</div><div class="v" style="color:#A8D0A8">Likely</div></div>
+      </div>
+    </div>
+    <div style="margin-top:18px"><div class="eyebrow"><span class="tick"></span>Do this now</div>
+      <div class="list" style="margin-top:11px">
+        <div class="step"><span class="stepn">1</span><div style="font-size:13.5px;color:var(--ink);line-height:1.45;padding-top:2px">Remove and bin affected lower leaves — don't compost them.</div></div>
+        <div class="step"><span class="stepn">2</span><div style="font-size:13.5px;color:var(--ink);line-height:1.45;padding-top:2px">Water at the base only, keeping foliage dry.</div></div>
+        <div class="step"><span class="stepn">3</span><div style="font-size:13.5px;color:var(--ink);line-height:1.45;padding-top:2px">Improve airflow — space plants and remove crowding growth.</div></div>
+      </div>
+    </div>
+    <div class="disc donttag"><svg width="18" height="18" viewBox="0 0 24 24" class="ico" style="flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg><div style="font-size:12.5px;color:var(--ink-soft);line-height:1.45"><b style="color:var(--red)">Don't</b> overhead water or feed with high nitrogen while treating.</div></div>
+    <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:16px">Scroll for what we saw, treatment, prevention &amp; follow-up ↓</div>
+  </div>
+</div></div>
+
+<!-- ========== INDIVIDUAL CROP ========== -->
+<div class="col"><div class="cap">Individual crop <span>· living record</span></div>
+<div class="phone">
+  <div class="dhead" style="flex-direction:column;align-items:stretch;gap:14px;padding-bottom:22px">
+    <div style="display:flex;align-items:center;gap:12px"><span class="back"><svg width="17" height="17" viewBox="0 0 24 24" class="ico"><path d="M15 6l-6 6 6 6"/></svg></span>
+      <div class="crop-token lg" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16);color:#EAF0EE">T</div>
+      <div><div class="k">Gardener's Delight · Raised bed 1</div><div class="t" style="font-size:22px">Tomatoes</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#9FB7B0"><span>Sown 12 Apr</span><span style="color:var(--season);font-weight:600">Fruiting</span><span>Harvest ~ late Aug</span></div>
+    <div style="height:6px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden"><span style="display:block;width:68%;height:100%;background:var(--season)"></span></div>
+  </div>
+  <div class="scr" style="top:196px;padding-top:16px">
+    <div class="tl">
+      <div class="tlnode done"><span class="tldot"><svg width="11" height="11" viewBox="0 0 24 24" class="ico" style="stroke-width:2.5"><path d="M5 12l5 5L20 6"/></svg></span><span class="lb">Seed</span></div>
+      <div class="tlnode done"><span class="tldot"><svg width="11" height="11" viewBox="0 0 24 24" class="ico" style="stroke-width:2.5"><path d="M5 12l5 5L20 6"/></svg></span><span class="lb">Seedling</span></div>
+      <div class="tlnode done"><span class="tldot"><svg width="11" height="11" viewBox="0 0 24 24" class="ico" style="stroke-width:2.5"><path d="M5 12l5 5L20 6"/></svg></span><span class="lb">Veg</span></div>
+      <div class="tlnode done"><span class="tldot"><svg width="11" height="11" viewBox="0 0 24 24" class="ico" style="stroke-width:2.5"><path d="M5 12l5 5L20 6"/></svg></span><span class="lb">Flower</span></div>
+      <div class="tlnode now"><span class="tldot"></span><span class="lb">Fruiting</span></div>
+      <div class="tlnode"><span class="tldot"></span><span class="lb">Harvest</span></div>
+    </div>
+    <div style="margin-top:22px"><div class="eyebrow"><span class="tick"></span>At this stage</div>
+      <div class="list" style="margin-top:11px">
+        <div class="step" style="align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" class="ico" style="color:var(--forest);flex-shrink:0"><path d="M5 12l5 5L20 6"/></svg><div style="font-size:13px;color:var(--ink);padding-top:0">Feed weekly with high potash</div></div>
+        <div class="step" style="align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" class="ico" style="color:var(--forest);flex-shrink:0"><path d="M5 12l5 5L20 6"/></svg><div style="font-size:13px;color:var(--ink)">Water consistently to avoid blossom end rot</div></div>
+        <div class="step" style="align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" class="ico" style="color:var(--forest);flex-shrink:0"><path d="M5 12l5 5L20 6"/></svg><div style="font-size:13px;color:var(--ink)">Check for pests and blight</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:16px">
+      <button class="btn-sm out" style="flex:1;padding:11px;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="3.5"/><path d="M4 8V6a2 2 0 0 1 2-2h2"/></svg>Plant Check</button>
+      <button class="btn-sm out" style="flex:1;padding:11px;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"/></svg>Log harvest</button>
+    </div>
+    <div style="margin-top:18px"><div class="eyebrow"><span class="tick"></span>Growth diary</div>
+      <div style="display:flex;gap:8px;margin-top:11px"><div style="flex:1;aspect-ratio:1;border-radius:11px;background:#DDE6E3;border:1px solid var(--line)"></div><div style="flex:1;aspect-ratio:1;border-radius:11px;background:#D3DED9;border:1px solid var(--line)"></div><div style="flex:1;aspect-ratio:1;border-radius:11px;background:#E1E8E5;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">+5</div></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ========== ADD CROP — SELECT ========== -->
+<div class="col"><div class="cap">Add Crop <span>· 1 · what &amp; where (sheet)</span></div>
+<div class="phone">
+  <div style="position:absolute;inset:0;background:var(--ground)"></div>
+  <div class="dim"></div>
+  <div class="sheet" style="max-height:92%;overflow:hidden">
+    <div class="grab"></div>
+    <div class="eyebrow"><span class="tick"></span>Add a crop</div>
+    <div class="serif" style="font-size:22px;color:var(--ink);font-weight:600;margin-top:9px;margin-bottom:16px">What are you growing?</div>
+    <div class="field" style="margin-bottom:12px"><svg width="18" height="18" viewBox="0 0 24 24" class="ico" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg><span style="color:var(--muted);font-size:14px">Search crops…</span><span style="margin-left:auto;font-size:11px;color:var(--forest);font-weight:600;display:flex;align-items:center;gap:4px"><svg width="13" height="13" viewBox="0 0 24 24" class="ico"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M15 9v6"/></svg>Scan packet</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <span style="font-size:13px;font-weight:600;color:#fff;background:var(--forest);border-radius:20px;padding:8px 13px;display:flex;align-items:center;gap:7px"><span class="crop-token" style="width:20px;height:20px;border-radius:6px;font-size:11px;background:rgba(255,255,255,.18);border:0;color:#fff">T</span>Tomatoes</span>
+      <span class="btn-sm out" style="border-radius:20px;padding:8px 13px">Courgette</span>
+      <span class="btn-sm out" style="border-radius:20px;padding:8px 13px">Lettuce</span>
+      <span class="btn-sm out" style="border-radius:20px;padding:8px 13px">Beans</span>
+    </div>
+    <label class="flabel">Variety</label>
+    <div class="field" style="margin-bottom:14px"><div><div class="val">Gardener's Delight</div></div><span class="cd"><svg width="16" height="16" viewBox="0 0 24 24" class="ico"><path d="M6 9l6 6 6-6"/></svg></span></div>
+    <label class="flabel">Where</label>
+    <div class="field" style="margin-bottom:14px"><svg width="17" height="17" viewBox="0 0 24 24" class="ico" style="color:var(--forest)"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/></svg><div class="val">Raised bed 1</div><span class="cd"><svg width="16" height="16" viewBox="0 0 24 24" class="ico"><path d="M6 9l6 6 6-6"/></svg></span></div>
+    <label class="flabel">Status</label>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px">
+      <span class="btn-sm out" style="border-radius:9px;padding:9px 12px">Planned</span>
+      <span style="font-size:12px;font-weight:600;color:#fff;background:var(--forest);border-radius:9px;padding:9px 12px">Already growing</span>
+      <span class="btn-sm out" style="border-radius:9px;padding:9px 12px">Sowing indoors</span>
+    </div>
+    <button class="btn-primary">Review &amp; add<svg width="17" height="17" viewBox="0 0 24 24" class="ico"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+</div></div>
+
+<!-- ========== ADD CROP — CONFIRM ========== -->
+<div class="col"><div class="cap">Add Crop <span>· 2 · confirm profile (sheet)</span></div>
+<div class="phone">
+  <div style="position:absolute;inset:0;background:var(--ground)"></div>
+  <div class="dim"></div>
+  <div class="sheet" style="max-height:92%;overflow:hidden">
+    <div class="grab"></div>
+    <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px"><div class="crop-token lg">T</div><div><div class="serif" style="font-size:22px;color:var(--ink);font-weight:600">Tomatoes</div><div style="font-size:13px;color:var(--muted)">Gardener's Delight · Raised bed 1</div></div></div>
+    <div class="eyebrow"><span class="tick"></span>What Vercro knows</div>
+    <div class="list" style="margin-top:11px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px;color:var(--muted)">Sow window</span><span style="font-size:13px;color:var(--ink);font-weight:600">Mar – May</span></div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px;color:var(--muted)">Harvest window</span><span style="font-size:13px;color:var(--ink);font-weight:600">Jul – Oct</span></div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px;color:var(--muted)">Days to maturity</span><span style="font-size:13px;color:var(--ink);font-weight:600">60–80 days</span></div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0"><span style="font-size:13px;color:var(--muted)">Spacing</span><span style="font-size:13px;color:var(--ink);font-weight:600">45 cm</span></div>
+    </div>
+    <div style="background:#F1F6F3;border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:8px">
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--forest);margin-bottom:5px">Good companions</div>
+      <div style="font-size:13px;color:var(--ink-soft);line-height:1.5">Basil, marigold and carrots grow well nearby.</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin:14px 0;line-height:1.5">We'll build a daily care plan and harvest forecast from your sow date and local weather.</div>
+    <button class="btn-primary"><svg width="17" height="17" viewBox="0 0 24 24" class="ico" style="stroke-width:2"><path d="M5 12l5 5L20 6"/></svg>Add to my garden</button>
+    <button class="btn-ghost" style="margin-top:9px;border:0;color:var(--muted)">Back</button>
+  </div>
+</div></div>
+
+<!-- ========== ADD FEED ========== -->
+<div class="col"><div class="cap">Add Feed <span>· register a product (sheet)</span></div>
+<div class="phone">
+  <div style="position:absolute;inset:0;background:var(--ground)"></div>
+  <div class="dim"></div>
+  <div class="sheet" style="max-height:90%;overflow:hidden">
+    <div class="grab"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div><div class="eyebrow"><span class="tick"></span>Add a feed</div><div class="serif" style="font-size:22px;color:var(--ink);font-weight:600;margin-top:9px">Register a product you own</div></div>
+    </div>
+    <button class="btn-ghost" style="margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-color:var(--forest);color:var(--forest)"><svg width="17" height="17" viewBox="0 0 24 24" class="ico"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M15 9v6"/></svg>Scan the product barcode</button>
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:16px">or enter it manually</div>
+    <label class="flabel">Brand</label>
+    <div class="field" style="margin-bottom:13px"><div class="val">Tomorite</div><span class="cd"><svg width="16" height="16" viewBox="0 0 24 24" class="ico"><path d="M6 9l6 6 6-6"/></svg></span></div>
+    <label class="flabel">Form</label>
+    <div style="display:flex;gap:8px;margin-bottom:13px"><span style="flex:1;text-align:center;font-size:13px;font-weight:600;color:#fff;background:var(--forest);border-radius:10px;padding:11px">Liquid</span><span class="btn-sm out" style="flex:1;text-align:center;border-radius:10px;padding:11px">Granular / solid</span></div>
+    <label class="flabel">Product</label>
+    <div class="field" style="margin-bottom:16px"><div class="val">Levington Tomorite Concentrate</div><span class="cd"><svg width="16" height="16" viewBox="0 0 24 24" class="ico"><path d="M6 9l6 6 6-6"/></svg></span></div>
+    <div style="background:#F1F6F3;border:1px solid var(--line);border-radius:12px;padding:12px 15px;margin-bottom:18px;display:flex;gap:12px">
+      <div style="text-align:center"><div style="font-family:'Fraunces',serif;font-size:17px;color:var(--forest);font-weight:600">4-3-8</div><div style="font-size:9.5px;color:var(--muted);letter-spacing:.06em">NPK</div></div>
+      <div class="hair" style="width:1px;height:auto;background:var(--line)"></div>
+      <div style="font-size:12.5px;color:var(--ink-soft);line-height:1.45">High potash tomato feed · dilute 10ml per litre · every 7 days</div>
+    </div>
+    <button class="btn-primary"><svg width="17" height="17" viewBox="0 0 24 24" class="ico" style="stroke-width:2"><path d="M12 5v14M5 12h14"/></svg>Add feed</button>
+  </div>
+</div></div>
+
+<!-- ========== PAYWALL ========== -->
+<div class="col"><div class="cap">Paywall <span>· Vercro Pro (sheet)</span></div>
+<div class="phone">
+  <div style="position:absolute;inset:0;background:var(--ground)"></div>
+  <div class="dim"></div>
+  <div class="sheet" style="max-height:94%;overflow:hidden;padding-top:20px;background:var(--ink)">
+    <div class="grab" style="background:rgba(255,255,255,.25)"></div>
+    <div class="serif" style="font-size:24px;color:#F4F8F6;font-weight:600;line-height:1.2;text-align:center;padding:0 10px">Grow more from your garden — with less guesswork</div>
+    <div style="font-size:13px;color:#9FB7B0;text-align:center;margin-top:10px;line-height:1.5;padding:0 8px">Vercro Pro remembers your whole garden and helps you get ahead of it.</div>
+    <div style="margin:20px 0 18px">
+      <div class="value"><svg width="19" height="19" viewBox="0 0 24 24" class="ico" style="color:var(--sage);flex-shrink:0"><circle cx="12" cy="12" r="3.5"/><path d="M4 8V6a2 2 0 0 1 2-2h2"/></svg><div><div style="font-size:13.5px;font-weight:600;color:#F4F8F6">Catch plant problems early</div><div style="font-size:12px;color:#9FB7B0;line-height:1.4">Unlimited Plant Check and harvest-readiness photos</div></div></div>
+      <div class="value"><svg width="19" height="19" viewBox="0 0 24 24" class="ico" style="color:var(--sage);flex-shrink:0"><path d="M12 21s-7-5-7-11a7 7 0 0 1 14 0c0 6-7 11-7 11Z"/><circle cx="12" cy="10" r="2.2"/></svg><div><div style="font-size:13.5px;font-weight:600;color:#F4F8F6">Plan your garden properly</div><div style="font-size:12px;color:#9FB7B0;line-height:1.4">Know what to grow next and rotate beds with confidence</div></div></div>
+      <div class="value"><svg width="19" height="19" viewBox="0 0 24 24" class="ico" style="color:var(--sage);flex-shrink:0"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/></svg><div><div style="font-size:13.5px;font-weight:600;color:#F4F8F6">Grow more from your space</div><div style="font-size:12px;color:#9FB7B0;line-height:1.4">Understand your yield, value and best-performing beds</div></div></div>
+    </div>
+    <div style="background:rgba(255,255,255,.06);border-radius:14px;padding:12px;margin-bottom:14px">
+      <div class="pricerow" style="background:transparent;border-color:rgba(255,255,255,.18);margin-bottom:8px"><span style="font-size:13px;color:#B9C9C5">Monthly</span><span style="font-size:13px;font-weight:600;color:#F4F8F6">£4.99 / mo</span></div>
+      <div class="pricerow on" style="background:rgba(255,255,255,.1);border-color:var(--sage);margin-bottom:0"><div><div style="font-size:14px;font-weight:700;color:#F4F8F6">£49 / year</div><div style="font-size:11px;color:var(--sage);margin-top:1px">Early supporter offer</div></div><span class="badge" style="background:var(--season)">Best value</span></div>
+    </div>
+    <button class="btn-primary" style="background:var(--sage);color:var(--ink);font-weight:700">Start for £49 / year</button>
+    <div style="text-align:center;font-size:11px;color:#8AA39C;margin-top:12px">Cancel anytime. No commitment.</div>
+  </div>
+</div></div>
+
+<!-- ========== ASK VERCRO (PROPOSED) ========== -->
+<div class="col"><div class="cap">Ask Vercro <span>· AI assistant (PROPOSED — not in app today)</span></div>
+<div class="phone">
+  <div class="proposed">Proposed feature</div>
+  <div class="dhead"><span class="back"><svg width="17" height="17" viewBox="0 0 24 24" class="ico"><path d="M15 6l-6 6 6 6"/></svg></span><div><div class="k">Ask Vercro</div><div class="t">Your garden, understood</div></div></div>
+  <div class="scr" style="top:76px;display:flex;flex-direction:column;gap:12px">
+    <div style="text-align:center;font-size:11px;color:var(--muted)">Vercro can see your garden context</div>
+    <div class="ctx" style="justify-content:center">
+      <span class="ctxchip"><svg width="12" height="12" viewBox="0 0 24 24" class="ico"><path d="M12 3c3 2 4 5 4 8a4 4 0 0 1-8 0c0-3 1-6 4-8Z"/></svg>14 crops</span>
+      <span class="ctxchip"><svg width="12" height="12" viewBox="0 0 24 24" class="ico"><path d="M17 18a4 4 0 0 0 0-8 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 18z"/></svg>19°C</span>
+      <span class="ctxchip"><svg width="12" height="12" viewBox="0 0 24 24" class="ico"><path d="M8 2v4M16 2v4M3 10h18"/></svg>Late summer</span>
+    </div>
+    <div class="bubble me">Why are my tomato leaves curling?</div>
+    <div class="bubble ai">Your <b>Gardener's Delight</b> in <b>Raised bed 1</b> is fruiting, and it's been 24°C with little water logged this week. Leaf curl here is usually heat &amp; irregular watering — not disease.
+      <div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)">Based on: this crop's stage · your weather · last watering log</div>
+    </div>
+    <div class="bubble ai" style="padding:10px">
+      <div style="display:flex;align-items:center;gap:10px"><div class="crop-token" style="width:32px;height:32px"><svg width="15" height="15" viewBox="0 0 24 24" class="ico" style="color:var(--forest)"><circle cx="12" cy="12" r="3.5"/><path d="M4 8V6a2 2 0 0 1 2-2h2"/></svg></div><div style="font-size:12.5px;color:var(--ink-soft)">Want me to run a Plant Check to be sure?</div><span class="btn-sm out" style="margin-left:auto">Open</span></div>
+    </div>
+    <div style="margin-top:auto;display:flex;gap:9px;align-items:center;background:#fff;border:1.4px solid var(--line-strong);border-radius:14px;padding:11px 14px"><span style="flex:1;color:var(--muted);font-size:14px">Ask about your garden…</span><span style="width:34px;height:34px;border-radius:50%;background:var(--forest);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="16" height="16" viewBox="0 0 24 24" class="ico" style="stroke-width:2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</div></div>
+
+<!-- ========== TASKS (PROPOSED) ========== -->
+<div class="col"><div class="cap">Tasks <span>· dense day (PROPOSED grouping — tasks live in Today today)</span></div>
+<div class="phone">
+  <div class="proposed">Proposed view</div>
+  <div class="dhead" style="border-radius:0"><div style="flex:1"><div class="k">All tasks</div><div class="t" style="font-size:22px">9 to do</div></div><span style="font-size:12px;color:#9FB7B0">2 overdue</span></div>
+  <div class="scr" style="top:96px;padding-top:14px">
+    <div class="taskgroup" style="margin-top:0">
+      <div class="gh" style="color:var(--red)"><svg width="14" height="14" viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2 2"/></svg>Overdue <span class="ct">2</span></div>
+      <div class="list">
+        <div class="trow"><div class="crop-token" style="border-color:#E7C9C3">T</div><div style="flex:1"><div class="cn serif">Tomatoes</div><div class="ac" style="color:var(--red)">Side-shoot · due yesterday · Raised bed 1</div></div><span class="check"></span></div>
+        <div class="trow"><div class="crop-token" style="border-color:#E7C9C3">P</div><div style="flex:1"><div class="cn serif">Peppers</div><div class="ac" style="color:var(--red)">Feed · due 2 days ago · Greenhouse</div></div><span class="check"></span></div>
+      </div>
+    </div>
+    <div class="taskgroup">
+      <div class="gh">Today <span class="ct">4</span></div>
+      <div class="list">
+        <div class="trow"><div class="crop-token">C</div><div style="flex:1"><div class="cn serif">Courgettes</div><div class="ac">Pick fruits over 15cm · Raised bed 2</div></div><span class="check"></span></div>
+        <div class="trow"><div class="crop-token">B</div><div style="flex:1"><div class="cn serif">French beans</div><div class="ac">Water at base · Raised bed 2</div></div><span class="check"></span></div>
+        <div class="trow"><div class="crop-token">S</div><div style="flex:1"><div class="cn serif">Salad leaves</div><div class="ac">Sow next succession · Raised bed 1</div></div><span class="check"></span></div>
+        <div class="trow"><div class="crop-token">L</div><div style="flex:1"><div class="cn serif">Lettuce</div><div class="ac">Thin seedlings · Raised bed 1</div></div><span class="check"></span></div>
+      </div>
+    </div>
+    <div class="taskgroup">
+      <div class="gh" style="color:var(--green)"><svg width="14" height="14" viewBox="0 0 24 24" class="ico"><path d="M5 12l5 5L20 6"/></svg>Done today <span class="ct">3</span></div>
+      <div class="list">
+        <div class="trow"><div class="crop-token" style="opacity:.55">R</div><div style="flex:1"><div class="cn serif" style="color:var(--muted);text-decoration:line-through">Runner beans</div><div class="ac">Watered · 8:20am</div></div><span class="check done"><svg width="13" height="13" viewBox="0 0 24 24" class="ico" style="stroke-width:2.4"><path d="M5 12l5 5L20 6"/></svg></span></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+</div></body></html>
