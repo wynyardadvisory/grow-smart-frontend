@@ -6756,7 +6756,11 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
             x
           </button>
           <div style={{ ...T.eyebrow, fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 5 }}>
-            {crop.name}{crop.variety ? ` — ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
+            {/* varietyName() rather than an inline typeof check: a Supabase join can
+                return variety as an object that is truthy but has no `name`, so
+                guarding on `crop.variety` alone let `undefined` reach the template
+                literal and render as the string "Carrot — undefined". */}
+            {crop.name}{varietyName(crop.variety) ? ` — ${varietyName(crop.variety)}` : ""}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
             <div style={{ width: 8, height: 8, borderRadius: R.full, background: C.leaf, flexShrink: 0 }} />
@@ -11255,7 +11259,10 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
                   <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>{crop.name}</div>
                   <div style={{ fontSize: 12, color: C.stone }}>
                     {crop.area?.name || ""}
-                    {crop.variety ? ` · ${typeof crop.variety === "object" ? crop.variety.name : crop.variety}` : ""}
+                    {/* Same guard as the crop timeline header: a variety object with
+                        no `name` is truthy, so the inline typeof check let `undefined`
+                        reach the template literal and render as " · undefined". */}
+                    {varietyName(crop.variety) ? ` · ${varietyName(crop.variety)}` : ""}
                     {crop.stage ? ` · ${crop.stage}` : ""}
                   </div>
                 </div>
