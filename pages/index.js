@@ -365,7 +365,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
           <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, flex: 1 }}>
             {displayTitle}
-            {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.amber, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
+            {currentStep.pro && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.attentionText, background: C.amber + "18", borderRadius: 20, padding: "2px 7px" }}>Pro</span>}
           </div>
           <div style={{ fontSize: 11, color: C.stone, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>{step + 1} of {steps.length}</div>
         </div>
@@ -656,6 +656,23 @@ const C = {
   // Never place C.ink on this: they sit dE 3.0 apart and the text would vanish.
   surfaceDark: "#072C3C",
 
+  // ── Semantic TEXT colours (slice 3C-i) ─────────────────────────────────────
+  // A colour that works as a fill or a border usually fails as text. Measured on
+  // the live app: C.amber 2.25:1 on a white card, C.leaf 2.63, C.sage 1.65. These
+  // are the readable counterparts, all clearing AA for normal text on both paper
+  // and cards. The fill and border tokens below are unchanged — this slice moved
+  // `color:` and nothing else.
+  positiveText:  "#3F655C",  // 5.62 paper / 6.51 card — success, confirmation
+  attentionText: "#8E5A42",  // 4.91 / 5.69 — brand soil. Needs input, not a failure
+  dangerText:    "#B03B32",  // 5.15 / 5.97 — errors and destructive actions
+  infoText:      "#2D4FC0",  // 6.06 / 7.02 — system-derived state. Deliberately blue
+                             // and not pine: "the app inferred this" must not read
+                             // as "you can press this".
+
+  // Reward, not warning — a streak is a celebration, so it stays out of the
+  // attention family. Darkened from #e65100 (3.27) only far enough to clear AA.
+  celebration:   "#BF4300",  // 4.51 / 5.23
+
   // ── Untouched in slice 3B: every semantic state colour. ────────────────────
   sage:      "#A8C1B5",
   leaf:      "#6FAF63",
@@ -844,7 +861,7 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
 }
 
 function ErrorMsg({ msg }) {
-  return <div style={{ background: "#fdf0f0", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 16px", color: C.red, fontSize: 13, marginBottom: 16 }}>{msg}</div>;
+  return <div style={{ background: "#fdf0f0", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 16px", color: C.dangerText, fontSize: 13, marginBottom: 16 }}>{msg}</div>;
 }
 
 // ── Auth screen ───────────────────────────────────────────────────────────────
@@ -1348,7 +1365,7 @@ function PlantingSuggestionsSheet({ area, hasCrops = false, boostStatus = null, 
         {/* Error */}
         {state === "error" && (
           <div style={{ textAlign: "center", padding: "32px 20px" }}>
-            <div style={{ fontSize: 13, color: C.red, marginBottom: 12 }}>Something went wrong. Try again?</div>
+            <div style={{ fontSize: 13, color: C.dangerText, marginBottom: 12 }}>Something went wrong. Try again?</div>
             <button onClick={generate} style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer" }}>
               Try again
             </button>
@@ -1950,7 +1967,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
             {!isFinal && (
-              <div style={{ fontSize: 12, color: C.leaf, marginBottom: 16, fontWeight: 600 }}>
+              <div style={{ fontSize: 12, color: C.positiveText, marginBottom: 16, fontWeight: 600 }}>
                 ✓ Crop stays active — more harvests to come
               </div>
             )}
@@ -2073,7 +2090,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             </div>
 
             {saveError && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: C.red }}>
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: C.dangerText }}>
                 {saveError}
               </div>
             )}
@@ -2176,7 +2193,7 @@ function StreakCard({ streak, longestStreak, onViewBadges }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: flameSize, lineHeight: 1 }}>🔥</span>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: streak >= 7 ? "#e65100" : C.ink, lineHeight: 1.2 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: streak >= 7 ? C.celebration : C.ink, lineHeight: 1.2 }}>
             {streak} day{streak !== 1 ? "s" : ""} in a row
           </div>
           <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{getMessage(streak)}</div>
@@ -3233,7 +3250,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
             ...T.bodyStrong,
             display: "inline-block",
             fontSize: 11,
-            color: isExpired ? C.red : C.forest,
+            color: isExpired ? C.dangerText : C.forest,
             background: isExpired ? C.red + "12" : C.forest + "12",
             borderRadius: 20,
             padding: "2px 8px"
@@ -3435,7 +3452,7 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
           <div style={{ marginTop: 8 }}>
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)}
-                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, color: "#c0392b", cursor: "pointer", fontFamily: F.body }}>
+                style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px", fontSize: 13, color: C.dangerText, cursor: "pointer", fontFamily: F.body }}>
                 Delete activity
               </button>
             ) : (
@@ -3592,7 +3609,7 @@ function GardenLog({ onLogActivity }) {
                   cursor:      isTappable ? "pointer" : "default",
                 }}>
                 <span style={{ fontSize: isPrimary ? 16 : 14 }}>{icon}</span>
-                <span style={{ fontSize: isPrimary ? 13 : 12, color: isWarning ? "#8a6600" : C.ink, fontFamily: F.body, fontWeight: isPrimary ? 600 : 500, flex: 1 }}>
+                <span style={{ fontSize: isPrimary ? 13 : 12, color: isWarning ? C.attentionText : C.ink, fontFamily: F.body, fontWeight: isPrimary ? 600 : 500, flex: 1 }}>
                   {insight.label}
                 </span>
                 {isTappable && (
@@ -4344,7 +4361,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     </div>
                     {group.tasks.map((t, ti) => (
                       <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
-                        <span style={{ color: C.sage, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
+                        <span style={{ color: C.stone, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
                         <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{t.action}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 1 }}>
                           {t.crop_instance_id && (
@@ -4426,7 +4443,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                       </div>
                       {group.tasks.map((t, ti) => (
                         <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
-                          <span style={{ color: C.sage, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
+                          <span style={{ color: C.stone, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
                           <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{t.action}</span>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 1 }}>
                             {t.crop_instance_id && (
@@ -4618,7 +4635,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 </div>
                 {tasks.slice(0, 3).map((t, i) => (
                   <div key={t.id} style={{ fontSize: 13, color: C.stone, lineHeight: 1.4, paddingTop: i > 0 ? 5 : 0, borderTop: i > 0 ? `1px solid ${C.border}` : "none", marginTop: i > 0 ? 5 : 0, display: "flex", alignItems: "flex-start", gap: 6 }}>
-                    <span style={{ color: C.sage, flexShrink: 0, marginTop: 1 }}>›</span>
+                    <span style={{ color: C.stone, flexShrink: 0, marginTop: 1 }}>›</span>
                     <span style={{ flex: 1 }}>{t.action}</span>
                   </div>
                 ))}
@@ -4660,7 +4677,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
       {(data.missing_data || []).length > 0 && (
         <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-          <div style={{ ...T.eyebrow, fontSize: 11, color: C.amber, marginBottom: 10 }}>Make your plan more accurate</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 10 }}>Make your plan more accurate</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(data.missing_data || []).slice(0, 3).map(item => (
               <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -4670,7 +4687,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   <div style={{ fontSize: 12, color: C.stone }}>Add {item.missing.join(" and ")} for more accurate tasks</div>
                 </div>
                 <button onClick={() => { if (onTabChange) onTabChange("crops", { editCropId: item.id, editCropField: item.missing[0]?.includes("variety") ? "variety" : "sow_date" }); }}
-                  style={{ ...T.control, fontSize: 12, color: C.amber, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+                  style={{ ...T.control, fontSize: 12, color: C.attentionText, background: "none", border: `1px solid ${C.amber}`, borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
                   Add details →
                 </button>
               </div>
@@ -4691,7 +4708,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           ].map(({ label, value, emoji, highlight }) => (
             <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
-              <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.amber : C.forest, lineHeight: 1 }}>{value}</div>
+              <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.attentionText : C.forest, lineHeight: 1 }}>{value}</div>
               <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
             </div>
           ))}
@@ -5556,7 +5573,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
 
             {/* Upcoming date label — uses effective_due_date if adjusted */}
             {isUpcoming && (task.effective_due_date || task.due_date) && (
-              <div style={{ fontSize: 11, color: task.adjustment_type ? "#b45309" : C.forest, fontWeight: 600, marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: task.adjustment_type ? C.attentionText : C.forest, fontWeight: 600, marginTop: 4 }}>
                 📅 Due {new Date(task.effective_due_date || task.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                 {task.adjustment_type === "moved_earlier" && " · brought forward"}
                 {task.adjustment_type === "moved_later"   && " · moved back"}
@@ -5584,7 +5601,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
                 </span>
               )}
               {isEstimated && (
-                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.amber }}>
+                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.attentionText }}>
                   ~estimated
                 </span>
               )}
@@ -5595,12 +5612,12 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
                 </span>
               )}
               {task.adjustment_type === "moved_later" && !completed && (
-                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: "#b45309", fontWeight: 600 }}>
+                <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.attentionText, fontWeight: 600 }}>
                   ⬇ Moved later
                 </span>
               )}
               {task.adjustment_type === "at_risk" && !completed && (
-                <span style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.red, fontWeight: 600 }}>
+                <span style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 20, fontSize: 10, padding: "2px 8px", color: C.dangerText, fontWeight: 600 }}>
                   ⚠ At risk
                 </span>
               )}
@@ -5870,7 +5887,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 { icon: "🌱", text: "All crops in this location and their tasks will be deleted" },
                 { icon: "📋", text: "All task history for these crops will be lost" },
               ].map((r, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#8a5c00", marginBottom: i < 2 ? 6 : 0, lineHeight: 1.4 }}>
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: C.attentionText, marginBottom: i < 2 ? 6 : 0, lineHeight: 1.4 }}>
                   <span style={{ flexShrink: 0 }}>{r.icon}</span>
                   <span>{r.text}</span>
                 </div>
@@ -6054,7 +6071,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                       <div style={{ height: 1, background: C.border }} />
                       <button
                         onClick={e => { e.stopPropagation(); setLocMenuOpen(null); setDeleteLocationTarget(loc); }}
-                        style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.red, cursor: "pointer", textAlign: "left" }}>
+                        style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.dangerText, cursor: "pointer", textAlign: "left" }}>
                         Delete location
                       </button>
                     </div>
@@ -6163,7 +6180,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
                   <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteArea(area.id)} disabled={saving}
                         style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 12, cursor: "pointer" }}>
@@ -6335,7 +6352,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                                 <div style={{ height: 1, background: C.border }} />
                                 <button
                                   onClick={() => { setAreaMenuOpen(null); setConfirmArea(area.id); }}
-                                  style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.red, cursor: "pointer", textAlign: "left" }}>
+                                  style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.dangerText, cursor: "pointer", textAlign: "left" }}>
                                   Delete area
                                 </button>
                               </div>
@@ -6710,8 +6727,8 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
             {harvestNode?.formatted_date && (
               <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
-                <div style={{ ...T.eyebrow, fontSize: 11, color: "#3B6D11", marginBottom: 4 }}>Harvest now expected</div>
-                <div style={{ ...T.displayMd, fontSize: 18, color: "#3B6D11" }}>{harvestNode.formatted_date}</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.positiveText, marginBottom: 4 }}>Harvest now expected</div>
+                <div style={{ ...T.displayMd, fontSize: 18, color: C.positiveText }}>{harvestNode.formatted_date}</div>
               </div>
             )}
             <button onClick={onClose}
@@ -6803,7 +6820,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                       <input type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
                         style={{ ...inputStyle, marginBottom: 12 }} />
                       {dateInput && (
-                        <div style={{ background: "#EAF3DE", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#2D5016" }}>
+                        <div style={{ background: "#EAF3DE", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.positiveText }}>
                           {(() => {
                             const newOffset = calcOffsetFromHarvestDate(dateInput);
                             if (newOffset === 0) return "No change from original schedule";
@@ -6879,11 +6896,11 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
                   {actions.length > 0 && (
                     <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
-                      <div style={{ ...T.eyebrow, fontSize: 10, color: "#3B6D11", marginBottom: 8 }}>What to do right now</div>
+                      <div style={{ ...T.eyebrow, fontSize: 10, color: C.positiveText, marginBottom: 8 }}>What to do right now</div>
                       {actions.map((a, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < actions.length - 1 ? 6 : 0 }}>
                           <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
-                          <div style={{ fontSize: 12, color: "#27500A", lineHeight: 1.4 }}>{a}</div>
+                          <div style={{ fontSize: 12, color: C.positiveText, lineHeight: 1.4 }}>{a}</div>
                         </div>
                       ))}
                     </div>
@@ -6912,7 +6929,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                             <div style={{ fontSize: 12, color: C.stone }}>
                               {n.label}
                               {n.formatted_date && <span style={{ color: C.ink, fontWeight: 600, marginLeft: 6 }}>{n.formatted_date}</span>}
-                              {n.status === "current" && <span style={{ color: C.leaf, fontWeight: 600, marginLeft: 6 }}>now</span>}
+                              {n.status === "current" && <span style={{ color: C.positiveText, fontWeight: 600, marginLeft: 6 }}>now</span>}
                             </div>
                           </div>
                         ))}
@@ -7450,7 +7467,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
           Adding <strong>{cropName}</strong> to a new area — starts as planned with today's date.
         </div>
 
-        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#dc2626", fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: C.dangerText, fontSize: 13 }}>{error}</div>}
 
         {/* Area selector */}
         <div style={{ marginBottom: 16 }}>
@@ -7670,6 +7687,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   };
 
   const STAGE_COLOR = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone };
+  // Text counterpart of STAGE_COLOR. The stage scale is its own semantic — amber
+  // here means "flowering", not "needs attention" — so it is not folded into the
+  // attention/positive tokens. Only the two hues that failed contrast as text are
+  // darkened (seedling 2.63:1, flowering/fruiting 2.25:1, harvesting 3.4:1); the
+  // hue is preserved so a pill's label still matches its own fill and bar, which
+  // STAGE_COLOR continues to drive unchanged.
+  const STAGE_TEXT  = { seed: C.stone, seedling: "#4B7743", vegetative: C.forest, flowering: "#876628", fruiting: "#876628", harvesting: "#9F5B17", finished: C.stone };
 
   // Infer crop type from name for type filter
   const HERB_NAMES = ["basil","parsley","mint","thyme","rosemary","chive","chives","coriander","dill","sage","oregano","tarragon","bay","fennel"];
@@ -7863,7 +7887,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   style={{
                     padding: "10px 12px", borderRadius: 10, border: `2px solid ${failReason === key ? C.red : C.border}`,
                     background: failReason === key ? "#fff5f5" : "#fff",
-                    color: failReason === key ? C.red : C.ink,
+                    color: failReason === key ? C.dangerText : C.ink,
                     fontSize: 13, fontWeight: failReason === key ? 700 : 500, cursor: "pointer", textAlign: "left",
                   }}>
                   {label}
@@ -8061,7 +8085,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             {/* Confirm delete group */}
             {confirmDeleteGroup === group.id && (
               <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", margin: "12px 14px 0" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 10 }}>
                   Remove all {group.crop_name} sowings? This will remove {sowings.length} sowing{sowings.length !== 1 ? "s" : ""} and their tasks.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -8103,7 +8127,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
               </div>
               <button onClick={() => setConfirmDeleteGroup(group.id)}
-                style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 8px", fontSize: 11, color: C.red, cursor: "pointer", flexShrink: 0 }}>
+                style={{ background: "none", border: `1px solid ${C.red}22`, borderRadius: 8, padding: "4px 8px", fontSize: 11, color: C.dangerText, cursor: "pointer", flexShrink: 0 }}>
                 ✕
               </button>
             </div>
@@ -8115,6 +8139,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
                   const stageKey   = sowing.stage || "seed";
                   const stageColor = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone }[stageKey] || C.stone;
+                  const stageText  = { seed: C.stone, seedling: "#4B7743", vegetative: C.forest, flowering: "#876628", fruiting: "#876628", harvesting: "#9F5B17", finished: C.stone }[stageKey] || C.stone;
 
                   // Time-based progress using effective days (offset-adjusted)
                   let pct = 0;
@@ -8149,7 +8174,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                             )}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "1px 7px" }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "1px 7px" }}>
                               {STAGE_LABEL[stageKey] || stageKey}
                             </span>
                             {harvestStr && <span style={{ fontSize: 11, color: C.stone }}>harvest ~{harvestStr}</span>}
@@ -8170,7 +8195,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       {sowing.sown_date && (
                         <div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                            <span style={{ fontSize: 10, color: stageColor, fontWeight: 600 }}>{pct}% grown</span>
+                            <span style={{ fontSize: 10, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
                           </div>
                           <div style={{ height: 5, background: C.border, borderRadius: 99, overflow: "hidden" }}>
                             <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99 }} />
@@ -8180,7 +8205,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       {/* Confirm delete this sowing */}
                       {confirm === sowing.id && (
                         <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 8, padding: "10px 12px" }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: C.red, marginBottom: 8 }}>Remove Sow {sowing.succession_index}?</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.dangerText, marginBottom: 8 }}>Remove Sow {sowing.succession_index}?</div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => deleteCrop(sowing.id)} disabled={saving}
                               style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "7px 0", fontSize: 12, cursor: "pointer" }}>
@@ -8267,7 +8292,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           {/* Confirm delete overlay */}
           {confirm === crop.id && (
             <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 10 }}>Remove {crop.name}? This cannot be undone.</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 10 }}>Remove {crop.name}? This cannot be undone.</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => deleteCrop(crop.id)} disabled={saving}
                   style={{ ...T.control, flex: 1, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, cursor: "pointer" }}>
@@ -8506,7 +8531,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                               )}
                               <button
                                 onClick={() => { setCropMenuOpen(null); setFailReason(null); setPendingFail(crop); }}
-                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.amber, cursor: "pointer", textAlign: "left" }}>
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.attentionText, cursor: "pointer", textAlign: "left" }}>
                                 ✕ Mark as failed
                               </button>
                               <div style={{ height: 1, background: C.border }} />
@@ -8518,7 +8543,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                               <div style={{ height: 1, background: C.border }} />
                               <button
                                 onClick={() => { setCropMenuOpen(null); setConfirm(crop.id); }}
-                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.red, cursor: "pointer", textAlign: "left" }}>
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.dangerText, cursor: "pointer", textAlign: "left" }}>
                                 Delete crop
                               </button>
                             </div>
@@ -8538,6 +8563,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               {(() => {
                 const stageKey = crop.stage || "seed";
                 const stageColor = STAGE_COLOR[stageKey] || C.stone;
+                const stageText  = STAGE_TEXT[stageKey]  || C.stone;
                 // Calculate % grown
                 let pct;
                 const isPerennial = crop.crop_def?.is_perennial;
@@ -8583,10 +8609,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 return (
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageColor, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: 20, padding: "2px 8px" }}>
                         {(() => { const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" }; return STAGE_LABEL[stageKey] || stageKey; })()}
                       </span>
-                      <span style={{ fontSize: 11, color: stageColor, fontWeight: 600 }}>{pct}% grown</span>
+                      <span style={{ fontSize: 11, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
                     </div>
                     <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: 99, transition: "width 0.5s ease" }} />
@@ -8605,11 +8631,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
                 {(crop.status === "planned" || crop.status === "sown_indoors" || !crop.crop_def_id || crop.lifecycle_mode === "established" || crop.lifecycle_mode === "overwintered") && (
                   <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
-                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.amber }}>🗓 Planned</span>}
-                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: "#2d4fc0" }}>🪟 Indoors</span>}
-                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: "#2d4fc0" }}>🔍 Being identified…</span>}
+                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>🗓 Planned</span>}
+                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🪟 Indoors</span>}
+                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🔍 Being identified…</span>}
                     {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.forest }}>🌳 Established</span>}
-                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: "#2d4fc0" }}>❄️ Overwintered</span>}
+                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: 20, fontSize: 10, padding: "1px 7px", color: C.infoText }}>❄️ Overwintered</span>}
                   </div>
                 )}
               </div>
@@ -8618,7 +8644,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               {crop.missed_task_note && (
                 <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 2 }}>⚠ Missed task</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.dangerText, marginBottom: 2 }}>⚠ Missed task</div>
                     <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
                   </div>
                   <button onClick={async () => {
@@ -9020,7 +9046,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
                 </div>
               )}
               {cropProfile.known && <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Known crop</div>}
-              {!cropProfile.known && <div style={{ fontSize: 11, color: "#7b9ef7", fontWeight: 600, marginTop: 2 }}>🔍 AI identified</div>}
+              {!cropProfile.known && <div style={{ fontSize: 11, color: C.infoText, fontWeight: 600, marginTop: 2 }}>🔍 AI identified</div>}
             </div>
           </div>
 
@@ -9069,7 +9095,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           )}
           {cropProfile.common_issues && (
             <div style={{ marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ ...T.eyebrow, fontSize: 10, color: C.amber, marginBottom: 2 }}>Watch out for</div>
+              <div style={{ ...T.eyebrow, fontSize: 10, color: C.attentionText, marginBottom: 2 }}>Watch out for</div>
               <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>{cropProfile.common_issues}</div>
             </div>
           )}
@@ -9721,14 +9747,14 @@ function TimeAwayTodayBanner({ blockedPeriods, onTabChange }) {
               ? `You're marked away until ${endStr}`
               : `${label} starts in ${daysUntil} day${daysUntil !== 1 ? "s" : ""} (${startStr})`}
           </div>
-          <div style={{ fontSize: 11, color: isActive ? "#b45309" : "#2d7a28", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: isActive ? C.attentionText : C.positiveText, marginTop: 2 }}>
             {isActive
               ? (daysLeft != null && daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining — tasks have been adjusted` : "Last day away — tasks have been adjusted")
               : "Tasks have been adjusted around these dates"}
           </div>
         </div>
       </div>
-      <span style={{ fontSize: 11, color: isActive ? "#b45309" : C.forest, fontWeight: 600, flexShrink: 0 }}>View →</span>
+      <span style={{ fontSize: 11, color: isActive ? C.attentionText : C.forest, fontWeight: 600, flexShrink: 0 }}>View →</span>
     </div>
   );
 }
@@ -9911,7 +9937,7 @@ function TimeAwayScreen({ onClose }) {
 
             {adjustments?.moved_later?.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ ...T.eyebrow, fontSize: 11, color: "#b45309", marginBottom: 6 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 6 }}>
                   ⬇ {adjustments.moved_later.length} task{adjustments.moved_later.length !== 1 ? "s" : ""} moved back
                 </div>
                 {adjustments.moved_later.map((a, i) => (
@@ -9920,7 +9946,7 @@ function TimeAwayScreen({ onClose }) {
                       <span style={{ fontSize: 12, fontWeight: 600, color: C.ink }}>{a.task?.crop?.name ? getCropEmoji(a.task.crop.name) + " " + a.task.crop.name : "Garden task"}</span>
                       <span style={{ fontSize: 12, color: C.stone }}> · {a.task?.action || a.task?.task_type}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#b45309", fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
+                    <div style={{ fontSize: 11, color: C.attentionText, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
                       {new Date(a.original_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → {new Date(a.adjusted_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                     </div>
                   </div>
@@ -9930,7 +9956,7 @@ function TimeAwayScreen({ onClose }) {
 
             {adjustments?.at_risk?.length > 0 && (
               <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 12px" }}>
-                <div style={{ ...T.eyebrow, fontSize: 11, color: C.red, marginBottom: 6 }}>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.dangerText, marginBottom: 6 }}>
                   ⚠ {adjustments.at_risk.length} task{adjustments.at_risk.length !== 1 ? "s" : ""} may need attention
                 </div>
                 {adjustments.at_risk.map((a, i) => (
@@ -9941,7 +9967,7 @@ function TimeAwayScreen({ onClose }) {
                       <span style={{ color: C.stone }}> · {new Date(a.original_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
                     </div>
                     {a.metadata?.explanation && (
-                      <div style={{ fontSize: 11, color: C.red, marginTop: 3, lineHeight: 1.4 }}>{a.metadata.explanation}</div>
+                      <div style={{ fontSize: 11, color: C.dangerText, marginTop: 3, lineHeight: 1.4 }}>{a.metadata.explanation}</div>
                     )}
                   </div>
                 ))}
@@ -9954,8 +9980,8 @@ function TimeAwayScreen({ onClose }) {
             {!adjustments && summary.total > 0 && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {summary.movedEarlier > 0 && <span style={{ fontSize: 12, color: C.forest, background: "#e8f5ee", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬆ {summary.movedEarlier} moved earlier</span>}
-                {summary.movedLater   > 0 && <span style={{ fontSize: 12, color: "#b45309", background: "#fff8ed", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬇ {summary.movedLater} moved later</span>}
-                {summary.atRisk       > 0 && <span style={{ fontSize: 12, color: C.red, background: "#fff0f0", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⚠ {summary.atRisk} at risk</span>}
+                {summary.movedLater   > 0 && <span style={{ fontSize: 12, color: C.attentionText, background: "#fff8ed", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⬇ {summary.movedLater} moved later</span>}
+                {summary.atRisk       > 0 && <span style={{ fontSize: 12, color: C.dangerText, background: "#fff0f0", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>⚠ {summary.atRisk} at risk</span>}
               </div>
             )}
           </div>
@@ -10002,7 +10028,7 @@ function TimeAwayScreen({ onClose }) {
             <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 14 }}>Add time away</div>
 
             {error && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.red, marginBottom: 12 }}>{error}</div>
+              <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.dangerText, marginBottom: 12 }}>{error}</div>
             )}
 
             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
@@ -10108,7 +10134,7 @@ function HarvestSummaryCard({ crop }) {
             <div>
               <div style={{ fontSize: 11, color: C.stone }}>
                 {new Date(e.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                {e.partial ? <span style={{ marginLeft: 6, color: C.amber, fontWeight: 600 }}>· partial</span> : ""}
+                {e.partial ? <span style={{ marginLeft: 6, color: C.attentionText, fontWeight: 600 }}>· partial</span> : ""}
               </div>
               {e.quantity_g && (
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
@@ -10215,7 +10241,7 @@ function EditProfileModal({ current, onSave, onClose }) {
               placeholder="e.g. Mark"
               maxLength={50}
             />
-            {errors.name && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
+            {errors.name && <div style={{ fontSize: 11, color: C.dangerText, marginTop: 4 }}>{errors.name}</div>}
           </div>
           <div>
             <label style={labelStyle}>Postcode or zip code</label>
@@ -10226,7 +10252,7 @@ function EditProfileModal({ current, onSave, onClose }) {
               placeholder="e.g. TS22 or 90210"
             />
             {errors.postcode
-              ? <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors.postcode}</div>
+              ? <div style={{ fontSize: 11, color: C.dangerText, marginTop: 4 }}>{errors.postcode}</div>
               : <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>Used to get local weather for your garden</div>
             }
           </div>
@@ -10306,12 +10332,12 @@ function ChangePasswordModal({ onClose, onSaved }) {
         {saved ? (
           <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 10, padding: "16px", textAlign: "center" }}>
             <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
-            <div style={{ ...T.bodyStrong, color: "#2d7a28", fontSize: 14 }}>Password updated</div>
+            <div style={{ ...T.bodyStrong, color: C.positiveText, fontSize: 14 }}>Password updated</div>
           </div>
         ) : (
           <>
             {error && (
-              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#dc2626", fontSize: 13 }}>
+              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: C.dangerText, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -10837,12 +10863,12 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 12. DANGER ZONE — delete ── */}
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid #fca5a5` }}>
-        <div style={{ ...T.eyebrow, fontSize: 11, color: "#dc2626", marginBottom: 10, paddingLeft: 2 }}>
+        <div style={{ ...T.eyebrow, fontSize: 11, color: C.dangerText, marginBottom: 10, paddingLeft: 2 }}>
           Danger Zone
         </div>
         <button
           onClick={() => { setShowDeleteModal(true); setDeleteStep(1); setDeleteError(null); }}
-          style={{ width: "100%", background: "none", border: "1px solid #fca5a5", borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#dc2626" }}>
+          style={{ width: "100%", background: "none", border: "1px solid #fca5a5", borderRadius: 12, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.dangerText }}>
           Delete account
         </button>
         <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
@@ -10899,12 +10925,12 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
               </>
             ) : (
               <>
-                <div style={{ ...T.displayLg, fontSize: 20, color: "#dc2626", marginBottom: 12 }}>Are you absolutely sure?</div>
+                <div style={{ ...T.displayLg, fontSize: 20, color: C.dangerText, marginBottom: 12 }}>Are you absolutely sure?</div>
                 <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 20 }}>
                   Your account will be permanently deleted and you will be signed out immediately. There is no way to recover your data after this point.
                 </div>
                 {deleteError && (
-                  <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#dc2626", fontSize: 13 }}>
+                  <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: C.dangerText, fontSize: 13 }}>
                     {deleteError}
                   </div>
                 )}
@@ -11368,7 +11394,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
                 {result.stage_confidence && <span style={{ fontSize: 12, color: C.stone, marginLeft: 8 }}>({result.stage_confidence} confidence)</span>}
               </div>
               {!result.stage_matches_record && result.stage_detected && (
-                <span style={{ fontSize: 11, background: "#fff3cd", color: "#856404", borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
+                <span style={{ fontSize: 11, background: "#fff3cd", color: C.attentionText, borderRadius: 8, padding: "3px 8px", fontWeight: 600 }}>Differs from record</span>
               )}
             </div>
           </div>
@@ -11379,7 +11405,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
           <div style={{ background: result.yield_impact_pct < -20 ? "#fdf0f0" : "#fff", border: `1px solid ${result.yield_impact_pct < -20 ? "#C65A5A44" : C.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Estimated yield impact</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ ...T.displayLg, fontSize: 22, color: result.yield_impact_pct < 0 ? C.red : C.leaf }}>
+              <span style={{ ...T.displayLg, fontSize: 22, color: result.yield_impact_pct < 0 ? C.dangerText : C.positiveText }}>
                 {result.yield_impact_pct}%
               </span>
               {result.quality_impact && result.quality_impact !== "none" && (
@@ -11416,7 +11442,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Prevention</div>
             {result.prevention_tips.map((tip, i) => (
               <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.prevention_tips.length - 1 ? 8 : 0 }}>
-                <span style={{ ...T.bodyStrong, color: C.leaf, fontSize: 14, flexShrink: 0 }}>✓</span>
+                <span style={{ ...T.bodyStrong, color: C.positiveText, fontSize: 14, flexShrink: 0 }}>✓</span>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{tip}</div>
               </div>
             ))}
@@ -11440,7 +11466,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
               </button>
             </div>
             {updateError && (
-              <div style={{ marginTop: 10, fontSize: 13, color: C.red }}>{updateError}</div>
+              <div style={{ marginTop: 10, fontSize: 13, color: C.dangerText }}>{updateError}</div>
             )}
           </div>
         )}
@@ -11528,7 +11554,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
                   {savingDiary ? "Saving…" : "📷 Save photo to growth diary"}
                 </button>
                 {diaryError && (
-                  <div style={{ marginTop: 8, fontSize: 13, color: C.red }}>{diaryError}</div>
+                  <div style={{ marginTop: 8, fontSize: 13, color: C.dangerText }}>{diaryError}</div>
                 )}
               </>
             )}
@@ -12205,7 +12231,7 @@ function FeedsScreen() {
             📷 Scan product
           </button>
         </div>
-        {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#2d7a28", fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
+        {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: C.positiveText, fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -12267,7 +12293,7 @@ function FeedsScreen() {
             <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: 10, padding: "12px 14px" }}>
               <div style={{ ...T.bodyStrong, fontSize: 12, color: C.forest, marginBottom: 6 }}>✓ Product identified</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                <span style={{ fontSize: 11, background: "#e8f0fe", color: "#3a5fc8", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(matchedCatalog.feed_type)}</span>
+                <span style={{ fontSize: 11, background: "#e8f0fe", color: C.infoText, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(matchedCatalog.feed_type)}</span>
                 <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.form}</span>
                 {matchedCatalog.npk && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>NPK {matchedCatalog.npk}</span>}
                 {matchedCatalog.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{matchedCatalog.dilution_ml_per_litre}ml/L</span>}
@@ -12304,7 +12330,7 @@ function FeedsScreen() {
                 </div>
                 {feed.enriched ? (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    <span style={{ fontSize: 11, background: "#e8f0fe", color: "#3a5fc8", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(feed.feed_type)}</span>
+                    <span style={{ fontSize: 11, background: "#e8f0fe", color: C.infoText, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{feedTypeLabel(feed.feed_type)}</span>
                     {feed.form && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{feed.form}</span>}
                     {feed.npk && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>NPK {feed.npk}</span>}
                     {feed.dilution_ml_per_litre && <span style={{ fontSize: 11, background: C.offwhite, color: C.stone, borderRadius: 6, padding: "2px 8px" }}>{feed.dilution_ml_per_litre}ml/L</span>}
@@ -12951,7 +12977,7 @@ Use the exact task IDs provided.`;
           {ranking ? "Ranking…" : "⚡ Re-rank with AI"}
         </button>
       </div>
-      {rankError && <div style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>{rankError}</div>}
+      {rankError && <div style={{ fontSize: 12, color: C.dangerText, marginBottom: 10 }}>{rankError}</div>}
 
       {/* Active tasks */}
       {activeTasks.length === 0 && (
@@ -12988,7 +13014,7 @@ Use the exact task IDs provided.`;
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => markDone(task)}
-              style={{ fontSize: 11, fontWeight: 600, background: "#D1FAE5", color: "#065F46", border: "1px solid #6EE7B7", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+              style={{ fontSize: 11, fontWeight: 600, background: "#D1FAE5", color: C.positiveText, border: "1px solid #6EE7B7", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
               ✓ Mark done
             </button>
             {task.user_email && (
@@ -13459,7 +13485,7 @@ function FunnelTab({ data }) {
         <div style={{ ...T.eyebrow, fontSize: 12, color: C.forest, marginBottom: 8 }}>14-day cohort table</div>
 
         {/* Bug fix banner */}
-        <div style={{ background: "#FFFBE6", border: "1px solid #F5C842", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: "#92600A", lineHeight: 1.5 }}>
+        <div style={{ background: "#FFFBE6", border: "1px solid #F5C842", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: C.attentionText, lineHeight: 1.5 }}>
           ⚠️ Bug fix deployed 24 Mar 2026 — cohorts before this date had broken onboarding. Use post-fix cohorts as your real product baseline.
         </div>
 
@@ -13491,7 +13517,7 @@ function FunnelTab({ data }) {
                       {dateLabel}
                     </td>
                     <td style={{ ...T.bodyStrong, padding: "8px 10px", textAlign: "center", color: C.forest }}>{day.signups}</td>
-                    <td style={{ padding: "8px 10px", textAlign: "center", color: day.activation_pct >= 70 ? C.forest : "#92600A" }}>
+                    <td style={{ padding: "8px 10px", textAlign: "center", color: day.activation_pct >= 70 ? C.forest : C.attentionText }}>
                       {day.activation_pct !== null ? `${day.activation_pct}%` : "—"}
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "center", color: rateColor(day.first_task_pct) }}>
@@ -13580,7 +13606,7 @@ function DemoAdminScreen() {
           </button>
         ) : (
           <div>
-            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: "#8a5c00", lineHeight: 1.5 }}>
+            <div style={{ background: "#fff8f0", border: `1px solid ${C.amber}`, borderRadius: 10, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: C.attentionText, lineHeight: 1.5 }}>
               ⚠️ This will wipe all current data and restore the demo garden. Are you sure?
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -13602,7 +13628,7 @@ function DemoAdminScreen() {
           </div>
         )}
         {result?.ok === false && (
-          <div style={{ marginTop: 14, background: "#fff0f0", border: "1px solid #f5c6c6", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.red }}>
+          <div style={{ marginTop: 14, background: "#fff0f0", border: "1px solid #f5c6c6", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.dangerText }}>
             ✗ Reset failed: {result.error}
           </div>
         )}
@@ -13983,11 +14009,11 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>Sent</span>
-                          <span style={{ fontWeight: 600, color: "#2a7a3b" }}>{avg(morning, "sent")}</span>
+                          <span style={{ fontWeight: 600, color: C.positiveText }}>{avg(morning, "sent")}</span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>No qualifying task</span>
-                          <span style={{ fontWeight: 600, color: "#b45309" }}>{avg(morning, "no_candidate")}</span>
+                          <span style={{ fontWeight: 600, color: C.attentionText }}>{avg(morning, "no_candidate")}</span>
                         </div>
                         <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{morning.length} run{morning.length !== 1 ? "s" : ""} in last 7 days</div>
                       </div>
@@ -13999,11 +14025,11 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>Sent</span>
-                          <span style={{ fontWeight: 600, color: "#2a7a3b" }}>{avg(evening, "sent")}</span>
+                          <span style={{ fontWeight: 600, color: C.positiveText }}>{avg(evening, "sent")}</span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                           <span style={{ color: C.stone }}>No qualifying task</span>
-                          <span style={{ fontWeight: 600, color: "#b45309" }}>{avg(evening, "no_candidate")}</span>
+                          <span style={{ fontWeight: 600, color: C.attentionText }}>{avg(evening, "no_candidate")}</span>
                         </div>
                         <div style={{ fontSize: 11, color: C.stone, marginTop: 4 }}>{evening.length} run{evening.length !== 1 ? "s" : ""} in last 7 days</div>
                       </div>
@@ -14110,7 +14136,7 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
                       ✓ Approve
                     </button>
                     <button onClick={() => reject(crop.id)} disabled={acting === crop.id}
-                      style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.red}`, background: "transparent", color: C.red, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
+                      style={{ ...T.control, flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.red}`, background: "transparent", color: C.dangerText, fontSize: 13, cursor: "pointer", opacity: acting === crop.id ? 0.6 : 1 }}>
                       ✕ Reject
                     </button>
                   </div>
@@ -15404,10 +15430,10 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
               : <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic" }}>Not recorded</div>
             }
             {fLabel && (
-              <div style={{ fontSize: 10, color: freshness === "stale" ? C.red : C.stone, marginTop: 2 }}>{fLabel}</div>
+              <div style={{ fontSize: 10, color: freshness === "stale" ? C.dangerText : C.stone, marginTop: 2 }}>{fLabel}</div>
             )}
             {freshness === "stale" && value != null && (
-              <div style={{ fontSize: 10, color: C.red, marginTop: 1 }}>Reading is old — update for better accuracy</div>
+              <div style={{ fontSize: 10, color: C.dangerText, marginTop: 1 }}>Reading is old — update for better accuracy</div>
             )}
           </div>
           <button onClick={() => { setActiveInput(isOpen ? null : type); setInputVal(""); setError(null); }}
@@ -15471,7 +15497,7 @@ function SoilReadingSheet({ area, onClose, onUpdated }) {
           </div>
         )}
         {error && activeInput === type && (
-          <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>{error}</div>
+          <div style={{ fontSize: 11, color: C.dangerText, marginTop: 6 }}>{error}</div>
         )}
       </div>
     );
@@ -15533,6 +15559,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
   const hasDimensions = area.width_m && area.length_m;
   const sqm = hasDimensions ? (area.width_m * area.length_m).toFixed(1) : null;
   const statusColor = { growing:C.leaf, sown_indoors:C.amber, sown_outdoors:C.amber, transplanted:C.forest, planned:C.stone, harvested:C.stone };
+  const statusText  = { growing:"#4B7743", sown_indoors:"#876628", sown_outdoors:"#876628", transplanted:C.forest, planned:C.stone, harvested:C.stone };
   const statusLabel = { growing:"Growing", sown_indoors:"Indoors", sown_outdoors:"Outdoors", transplanted:"Transplanted", planned:"Planned", harvested:"Harvested" };
 
   return (
@@ -15554,7 +15581,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
           </div>
         </div>
         {!hasDimensions && (
-          <div style={{ margin:"10px 16px 0", background:"#fff8e6", border:"1px solid #f0d080", borderRadius:10, padding:"8px 12px", fontSize:12, color:"#7a5c00", fontWeight:600 }}>
+          <div style={{ margin:"10px 16px 0", background:"#fff8e6", border:"1px solid #f0d080", borderRadius:10, padding:"8px 12px", fontSize:12, color:C.attentionText, fontWeight:600 }}>
             📐 Add dimensions in Garden tab for accurate scale
           </div>
         )}
@@ -15572,7 +15599,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
                 <div style={{ ...T.displayMd, fontSize:15, color:C.ink }}>{crop.name}</div>
                 {crop.variety && <div style={{ fontSize:12, color:C.stone }}>{typeof crop.variety==="object"?crop.variety.name:crop.variety}</div>}
               </div>
-              <div style={{ ...T.bodyStrong, fontSize:11, color:statusColor[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
+              <div style={{ ...T.bodyStrong, fontSize:11, color:statusText[crop.status]||C.stone, background:(statusColor[crop.status]||C.stone)+"18", borderRadius:20, padding:"3px 10px", flexShrink:0 }}>
                 {statusLabel[crop.status]||crop.status||"Growing"}
               </div>
             </div>
@@ -15972,7 +15999,7 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
       </div>
 
       {loading && <div style={{ textAlign:"center", padding:"20px 0", color:C.stone, fontSize:13 }}>Modelling…</div>}
-      {err && <div style={{ fontSize:12, color:C.red, padding:"8px 12px", background:"#fff0f0", borderRadius:8, marginBottom:10 }}>{err}</div>}
+      {err && <div style={{ fontSize:12, color:C.dangerText, padding:"8px 12px", background:"#fff0f0", borderRadius:8, marginBottom:10 }}>{err}</div>}
 
       {result && !loading && (
         <div style={{ background:"#F7F8F5", border:`1.5px solid ${C.forest}44`, borderRadius:14, overflow:"hidden", marginBottom:10 }}>
@@ -16221,7 +16248,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
 
   if (step === "error") return (
     <Sheet onBack={onClose}>
-      <div style={{ fontSize:13, color:C.red, padding:"12px 14px", background:"#FFF0F0", borderRadius:10 }}>
+      <div style={{ fontSize:13, color:C.dangerText, padding:"12px 14px", background:"#FFF0F0", borderRadius:10 }}>
         Couldn't generate plan: {err}
       </div>
     </Sheet>
@@ -16273,7 +16300,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         style={{ ...T.bodyStrong, width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:14, boxSizing:"border-box", marginBottom:20, outline:"none" }}
         autoFocus
       />
-      {err && <div style={{ fontSize:12, color:C.red, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
+      {err && <div style={{ fontSize:12, color:C.dangerText, marginBottom:12, padding:"8px 12px", background:"#fff0f0", borderRadius:8 }}>{err}</div>}
       <button onClick={handleSave} disabled={saving || !planName.trim()}
         style={{ ...T.control, width:"100%", padding:"14px", borderRadius:14, border:"none", background:C.forest, color:"#fff", fontSize:15, cursor:saving || !planName.trim() ? "not-allowed" : "pointer", opacity: saving || !planName.trim() ? 0.6 : 1 }}>
         {saving ? "Saving plan…" : "Save plan"}
@@ -16306,7 +16333,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
         style={{ width:"100%", padding:"13px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:C.ink, fontSize:14, fontWeight:600, cursor:"pointer" }}>
         Use this plan as-is
       </button>
-      {err && <div style={{ fontSize:12, color:C.red, marginTop:8 }}>{err}</div>}
+      {err && <div style={{ fontSize:12, color:C.dangerText, marginTop:8 }}>{err}</div>}
     </Sheet>
   );
 
@@ -16429,7 +16456,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
               <div key={i} style={{ display:"flex", gap:8, marginBottom:8, padding:"10px 12px", background:"#f5fbf5", borderRadius:10, borderLeft:`3px solid #4a9a60` }}>
                 <div style={{ flex:1 }}>
                   <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink }}>
-                    {gf.area_name} + <span style={{ color:"#4a9a60" }}>{gf.crop_name}</span>
+                    {gf.area_name} + <span style={{ color:C.positiveText }}>{gf.crop_name}</span>
                   </div>
                   <div style={{ fontSize:11, color:C.stone, marginTop:2 }}>{gf.note}</div>
                 </div>
@@ -16467,7 +16494,7 @@ function CreatePlanSheet({ locationId, locationName, onSave, onClose }) {
           </div>
         </details>
 
-        {err && <div style={{ fontSize:12, color:C.red, marginBottom:8 }}>{err}</div>}
+        {err && <div style={{ fontSize:12, color:C.dangerText, marginBottom:8 }}>{err}</div>}
 
         <button onClick={() => setStep("ask_year_round")}
           style={{ width:"100%", padding:"12px", borderRadius:14, border:`1.5px solid ${C.border}`, background:"#fff", color:C.ink, fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
@@ -16571,7 +16598,7 @@ function AssignCropSheet({ area, plan, currentAssignment, onSave, onClose }) {
         <div style={{ display:"flex", gap:8 }}>
           {currentAssignment?.id && (
             <button onClick={handleRemove} disabled={removing}
-              style={{ ...T.control, flex:1, padding:"13px", borderRadius:14, border:`1.5px solid ${C.red}`, background:"#fff", color:C.red, fontSize:14, cursor:"pointer" }}>
+              style={{ ...T.control, flex:1, padding:"13px", borderRadius:14, border:`1.5px solid ${C.red}`, background:"#fff", color:C.dangerText, fontSize:14, cursor:"pointer" }}>
               {removing ? "Removing…" : "Remove"}
             </button>
           )}
@@ -16786,7 +16813,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>What's helping</div>
             {showPositives.map((p, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.forest, marginBottom: 4 }}>
-                <span style={{ ...T.bodyStrong, color: C.leaf }}>✓</span><span>{p}</span>
+                <span style={{ ...T.bodyStrong, color: C.positiveText }}>✓</span><span>{p}</span>
               </div>
             ))}
           </div>
@@ -16795,9 +16822,9 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         {/* Needs attention soon — urgent only */}
         {urgentItems.length > 0 && (
           <div style={{ marginBottom: 12, background: "#FFF8ED", borderRadius: 10, padding: "10px 12px" }}>
-            <div style={{ ...T.eyebrow, fontSize: 11, color: "#92600A", marginBottom: 6 }}>Needs attention soon</div>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 6 }}>Needs attention soon</div>
             {urgentItems.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "#92600A", marginBottom: i < urgentItems.length - 1 ? 6 : 0 }}>
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: C.attentionText, marginBottom: i < urgentItems.length - 1 ? 6 : 0 }}>
                 <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span><span>{s}</span>
               </div>
             ))}
@@ -16901,7 +16928,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
         <div style={{ marginBottom: 12 }}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Ways to strengthen this plan</div>
           {risk_flags.map(f => (
-            <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#92600A", marginBottom: 4 }}>
+            <div key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.attentionText, marginBottom: 4 }}>
               <span>→</span><span>{f}</span>
             </div>
           ))}
@@ -17999,7 +18026,7 @@ function PlanScreen({ tourRefs = {} }) {
             )}
             {confirmDeleteId === selectedPlan.id ? (
               <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <span style={{fontSize:11,color:C.red}}>Delete?</span>
+                <span style={{fontSize:11,color:C.dangerText}}>Delete?</span>
                 <button onClick={async()=>{
                   setDeletingPlanId(selectedPlan.id);
                   try {
@@ -18667,7 +18694,7 @@ function OnboardingScreen({ session, onComplete }) {
         </div>
 
         {error && (
-          <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 10, padding: "10px 14px", marginTop: 12, fontSize: 13, color: C.red }}>
+          <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: 10, padding: "10px 14px", marginTop: 12, fontSize: 13, color: C.dangerText }}>
             {error}
           </div>
         )}
