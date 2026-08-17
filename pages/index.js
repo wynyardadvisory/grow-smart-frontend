@@ -1800,7 +1800,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {[
             { id: "single", label: `${getCropEmoji(item.crop)} This harvest` },
-            { id: "season", label: "📊 Season summary" },
+            { id: "season", label: "Season summary" },
           ].map(m => (
             <button key={m.id} onClick={() => setMode(m.id)}
               style={{ ...T.control, flex: 1, padding: "10px", borderRadius: R.sm, border: `2px solid ${mode === m.id ? C.forest : C.border}`, background: mode === m.id ? "#f0f5f3" : "transparent", color: mode === m.id ? C.forest : C.stone, fontSize: 13, cursor: "pointer" }}>
@@ -1837,7 +1837,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
 
         <button onClick={generateCard} disabled={generating}
           style={{ ...T.control, width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: generating ? 0.7 : 1 }}>
-          {generating ? "Generating…" : "⬇ Save image to share"}
+          {generating ? "Generating…" : "Save image to share"}
         </button>
 
         <div style={{ fontSize: 11, color: C.stone, textAlign: "center", marginTop: 10 }}>
@@ -1895,7 +1895,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
       </div>
       <button onClick={() => !pending && onHarvest()}
         style={{ ...T.bodyStrong, width: "100%", padding: "8px", borderRadius: R.sm, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
-        {pending ? "Logging…" : "🌾 Harvest Now"}
+        {pending ? "Logging…" : "Harvest Now"}
       </button>
     </div>
   );
@@ -2057,12 +2057,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               <button
                 onClick={() => setIsFinal(true)}
                 style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: isFinal ? "#fff" : "transparent", color: isFinal ? C.ink : C.stone, fontWeight: isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
-                🧺 Final harvest
+                Final harvest
               </button>
               <button
                 onClick={() => setIsFinal(false)}
                 style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: !isFinal ? "#fff" : "transparent", color: !isFinal ? C.ink : C.stone, fontWeight: !isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: !isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
-                🔄 More to come
+                More to come
               </button>
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 20, textAlign: "center" }}>
@@ -2132,7 +2132,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
                 </div>
               ) : (
                 <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "14px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
-                  📷 Add a photo
+                  Add a photo
                   <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                 </label>
               )}
@@ -2349,7 +2349,7 @@ function BadgesPage() {
                   </div>
                 </div>
                 <span style={{ ...T.bodyStrong, fontSize:13, color:monthly.is_completed ? C.forest : C.ink }}>
-                  {monthly.is_completed ? "✅ Done" : `${monthly.progress} / ${monthly.threshold}`}
+                  {monthly.is_completed ? "Done" : `${monthly.progress} / ${monthly.threshold}`}
                 </span>
               </div>
               <div style={{ fontSize:13, color:C.stone, marginBottom:10 }}>{monthly.description}</div>
@@ -2931,7 +2931,7 @@ What's on your list this month?
                 </div>
               ) : (
                 <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "12px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
-                  📷 Add a garden photo
+                  Add a garden photo
                   <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                 </label>
               )}
@@ -2951,7 +2951,7 @@ What's on your list this month?
             {/* Actions */}
             <button onClick={generateCard} disabled={generating}
               style={{ ...T.control, width: "100%", padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", marginBottom: 10, opacity: generating ? 0.7 : 1 }}>
-              {generating ? "Generating…" : "⬆ Share my garden"}
+              {generating ? "Generating…" : "Share my garden"}
             </button>
             <div style={{ fontSize: 11, color: C.stone, textAlign: "center" }}>
               Generates a 1080×1350px card — Instagram, Facebook and WhatsApp safe (no cropping)
@@ -2992,7 +2992,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
         </div>
         <button onClick={() => onLogHarvest(readyNow[0])}
           style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: R.sm, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
-          🌾 Log harvest
+          Log harvest
         </button>
       </div>
     );
@@ -3043,7 +3043,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   if (recentHarvests !== null && recentHarvests.length === 0) {
     return (
       <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20 }}>
-        <div style={{ ...T.displayMd, fontSize: 16, color: C.forest, marginBottom: 4 }}>🌱 No harvests yet</div>
+        <div style={{ ...T.displayMd, fontSize: 16, color: C.forest, marginBottom: 4 }}>No harvests yet</div>
         <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
       </div>
     );
@@ -4252,7 +4252,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 <span style={{ fontSize: 12, opacity: 0.8, textTransform: "capitalize" }}>{data.weather.condition}</span>
                 {data.frost_risk !== "low" && (
                   <span style={{ fontSize: 11, background: data.frost_risk === "high" ? "#e74c3c" : "#f39c12", borderRadius: R.full, padding: "1px 8px", fontWeight: 700 }}>
-                    {data.frost_risk === "high" ? "❄️ Frost" : "❄️ Near frost"}
+                    {data.frost_risk === "high" ? "Frost" : "Near frost"}
                   </span>
                 )}
               </div>
@@ -4356,7 +4356,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   <span ref={tourRefs.tourRef_whyNowPill}
                     onClick={() => { setWhyNowTask(focusItem); }}
                     style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.full, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
-                    💡 Why now?
+                    Why now?
                   </span>
                 </div>
                 {focusItem.crop_instance_id && (
@@ -4643,7 +4643,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                           await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild") : Promise.resolve()));
                           group.forEach(x => completeTask(x));
                         }} style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px", fontSize: 12, cursor: "pointer" }}>
-                          🐛 Found it
+                          Found it
                         </button>
                         <button onClick={async () => {
                           await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy") : Promise.resolve()));
@@ -4775,13 +4775,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
       <button onClick={() => setShowShareGarden(true)}
         style={{ ...T.control, width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
-        🌱 Share my garden
+        Share my garden
       </button>
 
       {/* Invite a friend button */}
       <button onClick={() => setShowReferral(true)}
         style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.stone, fontWeight: 600, fontSize: 13 }}>
-        👋 Invite a gardening friend — it's free
+        Invite a gardening friend — it's free
       </button>
 
       {/* ── SHARE NUDGE MODAL ──────────────────────────────────────────────── */}
@@ -4809,7 +4809,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             {sessionCompleteData.nextTask ? (
               <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px", marginBottom: 20 }}>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
-                  ⭐ Coming up next
+                  Coming up next
                 </div>
                 <div style={{ fontSize: 14, color: C.ink, fontWeight: 600, lineHeight: 1.5, marginBottom: 4 }}>
                   {sessionCompleteData.nextTask.crop?.name
@@ -4823,7 +4823,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             ) : (
               <div style={{ background: "#f5f9f7", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px", marginBottom: 20 }}>
                 <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 8 }}>
-                  ⭐ Tomorrow
+                  Tomorrow
                 </div>
                 <div style={{ fontSize: 14, color: C.ink, fontWeight: 600, lineHeight: 1.5, marginBottom: 4 }}>
                   Take a quick look at your garden
@@ -4863,7 +4863,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             </div>
             <button onClick={() => { setShowShareNudge(false); setShowShareGarden(true); }}
               style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
-              🌱 Share my garden
+              Share my garden
             </button>
             <button onClick={() => setShowShareNudge(false)}
               style={{ width: "100%", background: "none", border: "none", color: C.stone, fontSize: 13, cursor: "pointer", padding: "8px" }}>
@@ -4905,18 +4905,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               }
             }}
               style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
-              📤 Share link
+              Share link
             </button>
 
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
               <a href={`https://wa.me/?text=${encodeURIComponent("I've been using Vercro to keep on top of my garden — it tells you exactly what to do each day. Free to use: https://vercro.com")}`}
                 target="_blank" rel="noreferrer"
                 style={{ ...T.control, flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: R.sm, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
-                💬 WhatsApp
+                WhatsApp
               </a>
               <a href={`mailto:?subject=You'd love this gardening app&body=${encodeURIComponent("Hey! I've been using Vercro to keep on top of my garden — it tells you exactly what tasks to do each day based on your crops and the weather. Completely free: https://vercro.com")}`}
                 style={{ ...T.control, flex: 1, background: C.offwhite, color: C.forest, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px", fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block" }}>
-                ✉️ Email
+                Email
               </a>
             </div>
 
@@ -5259,11 +5259,11 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => handleSowMethod(crop, "indoors")} disabled={isActioning}
                       style={{ ...T.control, flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: C.offwhite, color: C.ink, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
-                      🪟 Indoors
+                      Indoors
                     </button>
                     <button onClick={() => handleSowMethod(crop, "direct_sow")} disabled={isActioning}
                       style={{ ...T.control, flex: 1, padding: "9px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: C.offwhite, color: C.ink, fontSize: 13, cursor: "pointer", opacity: isActioning ? 0.6 : 1 }}>
-                      🌱 Outdoors
+                      Outdoors
                     </button>
                   </div>
                 </div>
@@ -5498,7 +5498,7 @@ function WhyNowSheet({ task, onClose, onUpgradeRequired }) {
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ ...T.bodyStrong, fontSize: 15, color: "#222" }}>💡 Why now?</div>
+          <div style={{ ...T.bodyStrong, fontSize: 15, color: "#222" }}>Why now?</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: C.stone, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
         </div>
 
@@ -5683,7 +5683,7 @@ function TaskCard({ task, completed, onComplete, showUndo, onUndo, isUpcoming = 
                   ref={whyNowRef}
                   onClick={e => { e.stopPropagation(); setShowWhyNow(true); }}
                   style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.full, fontSize: 10, padding: "2px 8px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
-                  💡 Why now?
+                  Why now?
                 </span>
               )}
               {/* Expand why (static meta.why — legacy) */}
@@ -6455,7 +6455,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         }
                       }}
                       style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
-                      🌱 Boost this area
+                      Boost this area
                     </button>
                   </>
                 )}
@@ -6560,12 +6560,12 @@ function CropGrowthDiary({ crop, onClose }) {
           <div style={{ display: "flex", gap: 8 }}>
             <label htmlFor="crop-diary-photo-camera"
               style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.forest, color: uploading ? C.stone : "#fff", borderRadius: R.sm, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
-              {uploading ? "Uploading…" : "📷 Camera"}
+              {uploading ? "Uploading…" : "Camera"}
             </label>
             <input id="crop-diary-photo-camera" type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
             <label htmlFor="crop-diary-photo-library"
               style={{ ...T.bodyStrong, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: uploading ? C.offwhite : C.border, color: uploading ? C.stone : C.forest, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "13px", fontSize: 14, cursor: uploading ? "default" : "pointer" }}>
-              🖼️ Library
+              Library
             </label>
             <input id="crop-diary-photo-library" type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} disabled={uploading} />
           </div>
@@ -7847,10 +7847,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
               {[
                 { key: "did_not_fruit",    label: "Didn't fruit" },
-                { key: "frost_or_weather", label: "❄️ Frost or weather" },
-                { key: "pests_or_disease", label: "🐛 Pests or disease" },
+                { key: "frost_or_weather", label: "Frost or weather" },
+                { key: "pests_or_disease", label: "Pests or disease" },
                 { key: "poor_growth",      label: "Poor growth" },
-                { key: "plant_too_young",  label: "🌱 Too young yet" },
+                { key: "plant_too_young",  label: "Too young yet" },
                 { key: "not_sure",         label: "Not sure" },
               ].map(({ key, label }) => (
                 <button key={key}
@@ -7912,7 +7912,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 } catch(e) { alert(e.message); }
               }}
               style={{ ...T.control, width: "100%", background: C.stone, color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: "pointer", marginBottom: 10 }}>
-              💤 Mark dormant
+              Mark dormant
             </button>
             <button
               onClick={() => setPendingDormant(null)}
@@ -7935,11 +7935,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div style={{ fontSize: 14, color: C.stone, marginBottom: 20 }}>Select a reason to help Vercro learn from failures.</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
               {[
-                { key: "frost",       label: "❄️ Frost damage" },
-                { key: "disease",     label: "🍄 Disease" },
-                { key: "pest_damage", label: "🐛 Pest damage" },
-                { key: "drought",     label: "☀️ Drought" },
-                { key: "neglect",     label: "😔 Neglect" },
+                { key: "frost",       label: "Frost damage" },
+                { key: "disease",     label: "Disease" },
+                { key: "pest_damage", label: "Pest damage" },
+                { key: "drought",     label: "Drought" },
+                { key: "neglect",     label: "Neglect" },
                 { key: "other",       label: "Other" },
               ].map(({ key, label }) => (
                 <button key={key}
@@ -7995,7 +7995,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       {/* Crops / Feeds toggle — shown when navEnabled (always true) */}
       {navEnabled && (
         <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
-          {[["crops", "🌱 Crops"], ["feeds", "🧪 Feeds"]].map(([id, label]) => (
+          {[["crops", "Crops"], ["feeds", "Feeds"]].map(([id, label]) => (
             <button key={id} onClick={() => setCropTab(id)}
               style={{ ...T.control, flex: 1, padding: "9px 0", borderRadius: R.sm, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontSize: 13, cursor: "pointer", transition: "all 0.15s" }}>
               {label}
@@ -8024,7 +8024,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </button>
             <button ref={tourRefs.tourRef_filterSortBtn} onClick={() => setShowFilters(v => !v)}
               style={{ ...T.control, background: activeFilterCount > 0 ? C.forest : C.offwhite, border: `1px solid ${activeFilterCount > 0 ? C.forest : C.border}`, borderRadius: R.sm, padding: "8px 14px", fontSize: 12, color: activeFilterCount > 0 ? "#fff" : C.stone, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              ⚙ Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              Filter & Sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
         </div>
@@ -8035,7 +8035,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div>
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Status</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["dormant", "💤 Dormant"], ["harvested", "Harvested"]].map(([val, label]) => (
+                {[["", "All"], ["growing", "Growing"], ["planned", "Planned"], ["sown_indoors", "Indoors"], ["dormant", "Dormant"], ["harvested", "Harvested"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterStatus(val)}
                     style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterStatus === val ? C.forest : C.border}`, background: filterStatus === val ? C.forest : "transparent", color: filterStatus === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {label}
@@ -8047,7 +8047,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div>
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Type</div>
               <div style={{ display: "flex", gap: 6 }}>
-                {[["", "All"], ["veg", "🥦 Veg"], ["fruit", "🍅 Fruit"], ["herb", "🌿 Herb"]].map(([val, label]) => (
+                {[["", "All"], ["veg", "Veg"], ["fruit", "Fruit"], ["herb", "Herb"]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilterType(val)}
                     style={{ padding: "5px 12px", borderRadius: R.full, border: `1px solid ${filterType === val ? C.forest : C.border}`, background: filterType === val ? C.forest : "transparent", color: filterType === val ? "#fff" : C.stone, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {label}
@@ -8313,10 +8313,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       <div>
                         <label style={labelStyle}>Status</label>
                         <select value={newSowingForm.status} onChange={e => setNewSowingForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
-                          <option value="planned">🗓 Planned</option>
-                          <option value="sown_indoors">🪟 Sowing indoors</option>
-                          <option value="sown_outdoors">🌱 Sowing outdoors</option>
-                          <option value="growing">✅ Already growing</option>
+                          <option value="planned">Planned</option>
+                          <option value="sown_indoors">Sowing indoors</option>
+                          <option value="sown_outdoors">Sowing outdoors</option>
+                          <option value="growing">Already growing</option>
                         </select>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -8401,12 +8401,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               <div>
                 <label style={labelStyle}>Status</label>
                 <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
-                  <option value="planned">🗓 Planned</option>
-                  <option value="sown_indoors">🪟 Sowing indoors</option>
-                  <option value="sown_outdoors">🌱 Sowing outdoors</option>
-                  <option value="transplanted">🪴 Transplanted</option>
-                  <option value="growing">✅ Growing</option>
-                  <option value="harvested">🧺 Harvested</option>
+                  <option value="planned">Planned</option>
+                  <option value="sown_indoors">Sowing indoors</option>
+                  <option value="sown_outdoors">Sowing outdoors</option>
+                  <option value="transplanted">Transplanted</option>
+                  <option value="growing">Growing</option>
+                  <option value="harvested">Harvested</option>
                 </select>
               </div>
               <div>
@@ -8462,11 +8462,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   {convertingCrop !== crop.id ? (
                     <button onClick={() => { setConvertingCrop(crop.id); setConvertForm({ target_sowings: 3, interval_days: 14 }); }}
                       style={{ width: "100%", background: "none", border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "9px 12px", fontSize: 12, color: C.stone, cursor: "pointer", textAlign: "left" }}>
-                      🔁 Convert to succession sowing
+                      Convert to succession sowing
                     </button>
                   ) : (
                     <div style={{ border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px 14px", background: "#f0f5f3" }}>
-                      <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 4 }}>🔁 Convert to succession</div>
+                      <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 4 }}>Convert to succession</div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                         <div>
@@ -8521,7 +8521,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>{crop.name}</div>
                       {crop.status === "dormant" && (
-                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.full, padding: "1px 7px" }}>💤 Dormant</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.full, padding: "1px 7px" }}>Dormant</span>
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
@@ -8532,7 +8532,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       {plantCheckEnabled && (
                         <button onClick={() => setCropPlantCheck(crop)}
                           style={{ ...T.control, height: 30, background: C.forest, border: "none", borderRadius: R.sm, padding: "0 12px", fontSize: 11, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>
-                          🔍 Check
+                          Check
                         </button>
                       )}
                       <div ref={cropIdx === 0 ? tourRefs.tourRef_cropMenu : null} style={{ position: "relative" }}>
@@ -8548,7 +8548,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                               <button
                                 onClick={() => { setCropMenuOpen(null); setDiary(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
-                                📷 Photo diary
+                                Photo diary
                               </button>
                               <div style={{ height: 1, background: C.border }} />
                               <button
@@ -8560,7 +8560,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                               <button
                                 onClick={() => { setCropMenuOpen(null); setPendingHarvest(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
-                                🌾 Log harvest
+                                Log harvest
                               </button>
                               <div style={{ height: 1, background: C.border }} />
                               {crop.crop_def?.is_perennial && crop.status !== "dormant" && (
@@ -8568,13 +8568,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                   <button
                                     onClick={() => { setCropMenuOpen(null); setNoHarvestReason(null); setPendingNoHarvest(crop); }}
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
-                                    🌾 No harvest this year
+                                    No harvest this year
                                   </button>
                                   <div style={{ height: 1, background: C.border }} />
                                   <button
                                     onClick={() => { setCropMenuOpen(null); setPendingDormant(crop); }}
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
-                                    💤 Mark dormant
+                                    Mark dormant
                                   </button>
                                   <div style={{ height: 1, background: C.border }} />
                                 </>
@@ -8584,7 +8584,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                   <button
                                     onClick={async () => { setCropMenuOpen(null); try { await apiFetch(`/crops/${crop.id}/reactivate`, { method: "PATCH" }); load(); } catch(e) { alert(e.message); } }}
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
-                                    🌱 Reactivate
+                                    Reactivate
                                   </button>
                                   <div style={{ height: 1, background: C.border }} />
                                 </>
@@ -8691,11 +8691,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
                 {(crop.status === "planned" || crop.status === "sown_indoors" || !crop.crop_def_id || crop.lifecycle_mode === "established" || crop.lifecycle_mode === "overwintered") && (
                   <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
-                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>🗓 Planned</span>}
-                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🪟 Indoors</span>}
-                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>🔍 Being identified…</span>}
-                    {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.forest }}>🌳 Established</span>}
-                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>❄️ Overwintered</span>}
+                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>Planned</span>}
+                    {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>Indoors</span>}
+                    {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>Being identified…</span>}
+                    {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.forest }}>Established</span>}
+                    {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>Overwintered</span>}
                   </div>
                 )}
               </div>
@@ -8704,7 +8704,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
               {crop.missed_task_note && (
                 <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: R.sm, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.dangerText, marginBottom: 2 }}>⚠ Missed task</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.dangerText, marginBottom: 2 }}>Missed task</div>
                     <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
                   </div>
                   <button onClick={async () => {
@@ -8791,14 +8791,14 @@ function CropSearchInput({ cropDefs, value, onChange }) {
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              🔍 Not in list — identify "{query.trim()}" with AI
+              Not in list — identify "{query.trim()}" with AI
             </div>
           ) : (
             <div onMouseDown={() => { setOpen(false); onChange({ id: "__other__", name: "" }); setTimeout(() => inputRef.current?.focus(), 50); }}
               style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: C.stone, fontStyle: "italic" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f0f5f3"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              🔍 Not in list — identify with AI
+              Not in list — identify with AI
             </div>
           )}
         </div>
@@ -8902,11 +8902,11 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
   const selectedCrop   = cropDefs.find(d => d.id === form.crop_def_id);
 
   const STATUS_OPTIONS = [
-    { value: "planned",       label: "🗓 Planned",             hint: "I plan to grow this — not started yet" },
-    { value: "sown_indoors",  label: "🪟 Sowing indoors",      hint: "Starting on windowsill, greenhouse or cold frame" },
-    { value: "sown_outdoors", label: "🌱 Sowing outdoors",     hint: "Direct sowing outside in final position" },
-    { value: "transplanted",  label: "🪴 Transplanted",        hint: "Moved outside from indoors / greenhouse" },
-    { value: "growing",       label: "✅ Already growing",     hint: "Established and growing — add sow date below" },
+    { value: "planned",       label: "Planned",             hint: "I plan to grow this — not started yet" },
+    { value: "sown_indoors",  label: "Sowing indoors",      hint: "Starting on windowsill, greenhouse or cold frame" },
+    { value: "sown_outdoors", label: "Sowing outdoors",     hint: "Direct sowing outside in final position" },
+    { value: "transplanted",  label: "Transplanted",        hint: "Moved outside from indoors / greenhouse" },
+    { value: "growing",       label: "Already growing",     hint: "Established and growing — add sow date below" },
   ];
 
   const showSowDate        = ["sown_indoors","sown_outdoors","growing","transplanted"].includes(form.status);
@@ -9106,7 +9106,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
                 </div>
               )}
               {cropProfile.known && <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginTop: 2 }}>✓ Known crop</div>}
-              {!cropProfile.known && <div style={{ fontSize: 11, color: C.infoText, fontWeight: 600, marginTop: 2 }}>🔍 AI identified</div>}
+              {!cropProfile.known && <div style={{ fontSize: 11, color: C.infoText, fontWeight: 600, marginTop: 2 }}>AI identified</div>}
             </div>
           </div>
 
@@ -9229,7 +9229,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             <label style={{ ...labelStyle, marginBottom: 0 }}>What are you growing?</label>
             <button type="button" onClick={() => setShowScanner(true)}
               style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              📷 Scan packet
+              Scan packet
             </button>
           </div>
           <CropSearchInput
@@ -9335,7 +9335,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
               onClick={() => setSuccessionMode(v => !v)}>
               <div>
-                <div style={{ ...T.bodyStrong, fontSize: 13, color: successionMode ? C.forest : C.ink }}>🔁 Succession sowing</div>
+                <div style={{ ...T.bodyStrong, fontSize: 13, color: successionMode ? C.forest : C.ink }}>Succession sowing</div>
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>Sow in batches for a continuous harvest — carrots, salads, beetroot</div>
               </div>
               <div style={{ width: 36, height: 20, borderRadius: R.sm, background: successionMode ? C.forest : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
@@ -11234,7 +11234,7 @@ function PlantCheckCropPicker({ onSelect, onClose, prefillCropId = null }) {
         </div>
 
         <div style={{ padding: "8px 20px 12px" }}>
-          <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>🔍 Which crop?</div>
+          <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>Which crop?</div>
           <div style={{ fontSize: 13, color: C.stone, marginBottom: 12 }}>Select the crop you want to check</div>
           <input
             value={search}
@@ -11316,14 +11316,14 @@ function PlantCheckPhotoPicker({ onPhoto, onClose }) {
         {/* Camera */}
         <button onClick={() => cameraRef.current?.click()}
           style={{ ...T.control, width: "100%", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          📷 Take a photo
+          Take a photo
         </button>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFile} />
 
         {/* Library */}
         <button onClick={() => fileRef.current?.click()}
           style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `2px solid ${C.forest}`, borderRadius: R.sm, padding: "16px", fontSize: 16, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          🖼️ Choose from library
+          Choose from library
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
 
@@ -11612,7 +11612,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
               <>
                 <button onClick={handleSaveToDiary} disabled={savingDiary}
                   style={{ ...T.control, width: "100%", background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px", fontSize: 14, cursor: "pointer" }}>
-                  {savingDiary ? "Saving…" : "📷 Save photo to growth diary"}
+                  {savingDiary ? "Saving…" : "Save photo to growth diary"}
                 </button>
                 {diaryError && (
                   <div style={{ marginTop: 8, fontSize: 13, color: C.dangerText }}>{diaryError}</div>
@@ -12289,7 +12289,7 @@ function FeedsScreen() {
           <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>Add a Feed</div>
           <button onClick={() => setShowFeedScanner(true)}
             style={{ ...T.control, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "5px 10px", fontSize: 12, color: C.forest, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            📷 Scan product
+            Scan product
           </button>
         </div>
         {added && <div style={{ background: "#edf7ec", border: `1px solid ${C.leaf}`, borderRadius: R.sm, padding: "10px 14px", marginBottom: 12, color: C.positiveText, fontWeight: 600, fontSize: 13 }}>✓ Feed added</div>}
@@ -12662,10 +12662,10 @@ function BarcodeScanner({ onResult, onClose, mode = "crop" }) {
 // ── Feedback Sheet ────────────────────────────────────────────────────────────
 
 const FEEDBACK_CATEGORIES = [
-  { id: "feature", label: "💡 Feature idea",   hint: "Something you'd love to see" },
-  { id: "bug",     label: "🐛 Bug report",      hint: "Something isn't working right" },
-  { id: "general", label: "💬 General thought", hint: "Anything on your mind" },
-  { id: "praise",  label: "🌟 Positive feedback", hint: "Something you love" },
+  { id: "feature", label: "Feature idea",   hint: "Something you'd love to see" },
+  { id: "bug",     label: "Bug report",      hint: "Something isn't working right" },
+  { id: "general", label: "General thought", hint: "Anything on your mind" },
+  { id: "praise",  label: "Positive feedback", hint: "Something you love" },
 ];
 
 function FeedbackSheet({ onClose, isNative = false }) {
@@ -12943,11 +12943,11 @@ Use the exact task IDs provided.`;
   };
 
   const TYPE_LABEL = {
-    bug:     "🐛 Bug",
-    feature: "💡 Feature",
-    general: "💬 General",
-    praise:  "🌟 Praise",
-    manual:  "📝 Task"
+    bug:     "Bug",
+    feature: "Feature",
+    general: "General",
+    praise:  "Praise",
+    manual:  "Task"
   };
 
   const EFFORT_STYLE = {
@@ -13012,9 +13012,9 @@ Use the exact task IDs provided.`;
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <select value={manualType} onChange={e => setManualType(e.target.value)}
             style={{ fontSize: 12, borderRadius: R.sm, border: `1px solid ${C.border}`, padding: "6px 8px", background: "#fff" }}>
-            <option value="bug">🐛 Bug</option>
-            <option value="feature">💡 Feature</option>
-            <option value="manual">📝 Task</option>
+            <option value="bug">Bug</option>
+            <option value="feature">Feature</option>
+            <option value="manual">Task</option>
           </select>
           <input value={manualInput} onChange={e => setManualInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addManualTask()}
@@ -13035,7 +13035,7 @@ Use the exact task IDs provided.`;
         </div>
         <button onClick={rerank} disabled={ranking || activeTasks.length === 0}
           style={{ ...T.control, padding: "7px 14px", background: ranking ? C.border : C.forest, color: ranking ? C.stone : "#fff", border: "none", borderRadius: R.sm, fontSize: 12, cursor: ranking ? "default" : "pointer" }}>
-          {ranking ? "Ranking…" : "⚡ Re-rank with AI"}
+          {ranking ? "Ranking…" : "Re-rank with AI"}
         </button>
       </div>
       {rankError && <div style={{ fontSize: 12, color: C.dangerText, marginBottom: 10 }}>{rankError}</div>}
@@ -13081,7 +13081,7 @@ Use the exact task IDs provided.`;
             {task.user_email && (
               <button onClick={() => openGmailReply(task, false)}
                 style={{ fontSize: 11, fontWeight: 600, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "5px 10px", cursor: "pointer" }}>
-                ✉️ Reply in Gmail
+                Reply in Gmail
               </button>
             )}
             <button onClick={() => deleteTask(task.id)}
@@ -13132,7 +13132,7 @@ Use the exact task IDs provided.`;
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={() => { openGmailReply(donePrompt, true); confirmDone(donePrompt); }}
                 style={{ ...T.control, padding: "12px", background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, fontSize: 14, cursor: "pointer" }}>
-                ✉️ Send reply + mark done
+                Send reply + mark done
               </button>
               <button onClick={() => confirmDone(donePrompt)}
                 style={{ padding: "12px", background: "#fff", color: C.stone, border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 13, cursor: "pointer" }}>
@@ -13190,7 +13190,7 @@ function MetricCard({ label, value, sub, status, suggestion }) {
           {suggestion && status !== "green" && (
             <button onClick={() => setOpen(o => !o)}
               style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: R.full, padding: "2px 8px", cursor: "pointer" }}>
-              {open ? "hide" : "⚙ fix"}
+              {open ? "hide" : "fix"}
             </button>
           )}
         </div>
@@ -13226,7 +13226,7 @@ function MetricRowWithFix({ label, val, sub, status, suggestion }) {
           {suggestion && status !== "green" && (
             <button onClick={() => setOpen(o => !o)}
               style={{ fontSize: 10, color: C.stone, background: "none", border: `1px solid ${C.border}`, borderRadius: R.full, padding: "2px 8px", cursor: "pointer" }}>
-              {open ? "hide" : "⚙ fix"}
+              {open ? "hide" : "fix"}
             </button>
           )}
         </div>
@@ -13383,7 +13383,7 @@ function AdminTools() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Invite waitlist */}
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "18px" }}>
-        <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>📬 Invite Waitlist Users</div>
+        <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>Invite Waitlist Users</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Emails everyone on the waitlist telling them access is now open. Each user is only emailed once. Also updates their status to accepted.
         </div>
@@ -13391,7 +13391,7 @@ function AdminTools() {
       </div>
 
       <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "18px" }}>
-        <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>🏆 Backfill Badges</div>
+        <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 4 }}>Backfill Badges</div>
         <div style={{ fontSize: 13, color: C.stone, marginBottom: 16, lineHeight: 1.5 }}>
           Calculates badge progress for all existing users from their real data — tasks completed, crops added, harvests logged etc. Run this once after deploying badges. Safe to re-run.
         </div>
@@ -13512,9 +13512,9 @@ function FunnelTab({ data }) {
               </tr>
             </thead>
             <tbody>
-              <RetRow label="❌ No task completed" group={retention.no_task} />
-              <RetRow label="✅ 1 task completed"  group={retention.one_task} />
-              <RetRow label="🔥 2+ tasks completed" group={retention.two_plus} />
+              <RetRow label="No task completed" group={retention.no_task} />
+              <RetRow label="1 task completed"  group={retention.one_task} />
+              <RetRow label="2+ tasks completed" group={retention.two_plus} />
             </tbody>
           </table>
         </div>
@@ -13762,13 +13762,13 @@ function AdminScreen({ isDemo = false, metricsOnly = false }) {
       {/* Sub tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
         {[
-          { id: "metrics",  label: "📊 Metrics" },
+          { id: "metrics",  label: "Metrics" },
           ...(!metricsOnly ? [
-            { id: "crops",    label: "🌱 Crop queue" },
-            { id: "users",    label: "👤 Users" },
-            { id: "feedback", label: "💬 Feedback" },
+            { id: "crops",    label: "Crop queue" },
+            { id: "users",    label: "Users" },
+            { id: "feedback", label: "Feedback" },
           ] : []),
-          { id: "tools",    label: "🔧 Tools" },
+          { id: "tools",    label: "Tools" },
         ].map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
             style={{ ...T.control, padding: "8px 14px", borderRadius: R.full, border: `1px solid ${tab === t.id ? C.forest : C.border}`, background: tab === t.id ? C.forest : "transparent", color: tab === t.id ? "#fff" : C.stone, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -15696,7 +15696,7 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
                 <div key={label} style={{ flex:1, background:"#fff", border:"1px solid #E3E7E1", borderRadius:R.sm, padding:"10px 6px", textAlign:"center" }}>
                   <div style={{ fontSize:16, marginBottom:4, opacity:0.55 }}>{icon}</div>
                   <div style={{ fontSize:10, color:C.stone, marginBottom:4 }}>{label}</div>
-                  <div style={{ fontSize:10, fontWeight:700, color:C.stone }}>🔒 Pro</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:C.stone }}>Pro</div>
                 </div>
               ))}
             </div>
@@ -16031,11 +16031,11 @@ function InfrastructureROISection({ locationId, areas, isPro, onApply, planConte
 
   if (!isPro) return (
     <div style={{ marginTop:20, padding:"16px 14px", background:"#F7F8F5", border:"1px solid #E3E7E1", borderRadius:R.sm}}>
-      <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink, marginBottom:4 }}>🏡 Improve your garden</div>
+      <div style={{ ...T.bodyStrong, fontSize:13, color:C.ink, marginBottom:4 }}>Improve your garden</div>
       <div style={{ fontSize:12, color:C.stone, lineHeight:1.5, marginBottom:10 }}>
         See whether adding a greenhouse, raised bed or irrigation could increase harvest and value — with payback estimates.
       </div>
-      <div style={{ fontSize:11, color:C.stone, padding:"7px 10px", background:"#fff", borderRadius:R.sm, border:"1px solid #E3E7E1", textAlign:"center" }}>🔒 Pro feature</div>
+      <div style={{ fontSize:11, color:C.stone, padding:"7px 10px", background:"#fff", borderRadius:R.sm, border:"1px solid #E3E7E1", textAlign:"center" }}>Pro feature</div>
     </div>
   );
 
@@ -16705,7 +16705,7 @@ function PlanHealthCard({ isPlanMode, selectedPlan, gardenHealth, healthLoading,
   const LockRow = ({ label }) => (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
       <span style={{ fontSize: 13, color: C.stone }}>{label}</span>
-      <span style={{ fontSize: 11, color: C.stone, opacity: 0.7 }}>🔒 Pro</span>
+      <span style={{ fontSize: 11, color: C.stone, opacity: 0.7 }}>Pro</span>
     </div>
   );
 
@@ -18056,7 +18056,7 @@ function PlanScreen({ tourRefs = {} }) {
               value={selectedPlanId}
               onChange={e => setSelectedPlanId(e.target.value)}
               style={{width:"100%",padding:"10px 36px 10px 14px",borderRadius:R.sm,border:`1.5px solid ${isPlanMode?C.forest:C.border}`,background:"#fff",fontSize:13,fontWeight:600,color:C.ink,appearance:"none",cursor:"pointer",outline:"none"}}>
-              <option value="live">📍 Current garden</option>
+              <option value="live">Current garden</option>
               {locPlans.length > 0 && <option disabled>──────────────────</option>}
               {locPlans.map(p => (
                 <option key={p.id} value={p.id}>
@@ -18138,7 +18138,7 @@ function PlanScreen({ tourRefs = {} }) {
               <div style={{fontSize:11,color:C.stone,flex:1}}>Tap an area to select · drag to reposition</div>
               <button onClick={()=>{ try{localStorage.setItem(PLAN_VIEW_CACHE,JSON.stringify({zoom,selectedLoc}));}catch(e){} setSavedToast(true); setTimeout(()=>setSavedToast(false),1500); }}
                 style={{ ...T.control, background:C.forest, color:"#fff", border:"none", borderRadius:R.sm, padding:"7px 14px", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
-                🔒 Save view
+                Save view
               </button>
             </>
           )}
@@ -18448,7 +18448,7 @@ function PlanScreen({ tourRefs = {} }) {
               (p.location_id===updated.location_id && p.status==="committed") ? {...p,status:"archived"} : p
             ));
             setShowCommit(false);
-            setPlanToast("✅ Plan committed");
+            setPlanToast("Plan committed");
             setTimeout(()=>setPlanToast(null),2500);
           }}
           onClose={()=>setShowCommit(false)}
@@ -18463,37 +18463,37 @@ const TAB_ICONS = {
   dashboard: (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="11" cy="11" r="4" fill="currentColor"/>
-      <line x1="11" y1="1" x2="11" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="11" y1="18" x2="11" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="1" y1="11" x2="4" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="18" y1="11" x2="21" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="3.5" y1="3.5" x2="5.7" y2="5.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="16.3" y1="16.3" x2="18.5" y2="18.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="18.5" y1="3.5" x2="16.3" y2="5.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="5.7" y1="16.3" x2="3.5" y2="18.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="11" y1="1" x2="11" y2="4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="11" y1="18" x2="11" y2="21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="1" y1="11" x2="4" y2="11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="18" y1="11" x2="21" y2="11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="3.5" y1="3.5" x2="5.7" y2="5.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="16.3" y1="16.3" x2="18.5" y2="18.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="18.5" y1="3.5" x2="16.3" y2="5.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="5.7" y1="16.3" x2="3.5" y2="18.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
     </svg>
   ),
   garden: (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <line x1="6" y1="3" x2="13" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="4" y1="6" x2="8" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="6" y1="3" x2="13" y2="12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="4" y1="6" x2="8" y2="4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
       <path d="M13 12 Q11 13 10.5 15.5 Q12 17 14 16 Q16.5 14.5 15.5 11.5 Z" fill="currentColor"/>
-      <path d="M4 19 Q11 17.5 19 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <path d="M4 19 Q11 17.5 19 19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
       <circle cx="8" cy="19.5" r="1" fill="currentColor" opacity="0.6"/>
       <circle cx="15" cy="19.5" r="1" fill="currentColor" opacity="0.6"/>
     </svg>
   ),
   crops: (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M11 19 L11 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M11 19 L11 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
       <path d="M11 14 C11 14 7 12 5 8 C8 8 11 10 11 10" fill="currentColor" opacity="0.85"/>
       <path d="M11 11 C11 11 15 9 17 5 C14 5 11 8 11 8" fill="currentColor" opacity="0.85"/>
-      <path d="M6 19 Q11 17 16 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <path d="M6 19 Q11 17 16 19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
     </svg>
   ),
   plan: (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 19 L3 5 L17 19 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+      <path d="M3 19 L3 5 L17 19 Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
       <path d="M3 14 L12 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       <path d="M3 9.5 L7.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       <circle cx="3" cy="19" r="1.2" fill="currentColor"/>
@@ -18504,7 +18504,7 @@ const TAB_ICONS = {
   profile: (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="11" cy="7.5" r="3.5" fill="currentColor"/>
-      <path d="M3.5 19 C3.5 15 7 12.5 11 12.5 C15 12.5 18.5 15 18.5 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <path d="M3.5 19 C3.5 15 7 12.5 11 12.5 C15 12.5 18.5 15 18.5 19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
     </svg>
   ),
   feeds: (
@@ -19245,8 +19245,18 @@ export default function GrowSmart() {
       ]
     : TABS
   ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...((isViewer || isPartnerAdmin) && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: tab === t.id ? C.forest : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: tab === t.id ? "#fff" : C.stone, transition: "all 0.2s" }}>{t.icon}</div>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ position: "relative", flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            {/* No filled tile behind the active icon. Pine vs stone alone measures only
+                1.14:1 (OKLab dE 0.042) — perceptually near-identical — so icon and label
+                colour cannot carry active state on their own, and weight was doing all
+                the work. This rule restores a second, independent signal.
+                It is absolutely positioned inside the button's existing 10px top padding
+                so it costs no layout height: nav height, tab width, the 77px touch target
+                and the icon/label positions are all unchanged. */}
+            {tab === t.id && (
+              <span style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", width: 20, height: 2, background: C.forest }} />
+            )}
+            <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: tab === t.id ? C.forest : C.stone, transition: "color 0.2s" }}>{t.icon}</div>
             <div style={{ fontSize: 10, color: tab === t.id ? C.forest : C.stone, fontFamily: F.body, fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</div>
           </button>
         ))}
