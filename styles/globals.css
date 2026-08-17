@@ -1,13 +1,13 @@
+/* Vercro has no dark theme. The Next.js starter shipped a prefers-color-scheme
+   block here that flipped --background to #0a0a0a, and body consumes it. Every
+   signed-in screen masked that because the app root in index.js paints its own
+   background — but AuthScreen, OnboardingScreen and the initial loading gate all
+   render OUTSIDE that root, so on a dark-mode device the sign-in screen rendered
+   full-viewport black with light-mode text on top. Removed, along with the
+   matching color-scheme:dark rule that darkened native form controls. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 html,
@@ -37,10 +37,4 @@ body {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
 }
