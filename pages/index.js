@@ -11025,15 +11025,26 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           </div>
           <div style={{ ...T.displayLg, fontSize: 20, marginBottom: 16 }}>Your Harvest Summary</div>
 
+          {/* Each score tile carries its own rail. The value and its magnitude now
+              live together instead of being stated once here and again in a separate
+              block below — the same fix applied to Crops in 6A. Harvests is a count,
+              not a 0-10 score, so it has no rail; the grid keeps all three tiles the
+              same height. scoreTextDark (SCORE_TEXT_ON_DARK, 3C-ii) still colours the
+              number, and scoreColor still fills the rail, exactly as before. */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
             {[
-              { val: harvestStats.total, label: "Harvests", color: "#fff" },
-              { val: harvestStats.avgYield || "—", label: "Avg Yield", color: harvestStats.avgYield ? scoreTextDark(harvestStats.avgYield) : "#fff" },
-              { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreTextDark(harvestStats.avgQual)  : "#fff" },
-            ].map(({ val, label, color }) => (
+              { val: harvestStats.total, label: "Harvests", color: "#fff", score: null },
+              { val: harvestStats.avgYield || "—", label: "Avg Yield", color: harvestStats.avgYield ? scoreTextDark(harvestStats.avgYield) : "#fff", score: harvestStats.avgYield || null },
+              { val: harvestStats.avgQual  || "—", label: "Avg Quality", color: harvestStats.avgQual  ? scoreTextDark(harvestStats.avgQual)  : "#fff", score: harvestStats.avgQual || null },
+            ].map(({ val, label, color, score }) => (
               <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: R.sm, padding: "12px 10px", textAlign: "center" }}>
                 <div style={{ ...T.bodyStrong, fontSize: 22, color }}>{val}</div>
                 <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{label}</div>
+                {score != null && (
+                  <div style={{ height: 4, background: "rgba(255,255,255,0.15)", borderRadius: R.full, marginTop: 8, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: (score / 10 * 100) + "%", background: scoreColor(score), borderRadius: R.full, transition: "width 0.6s ease" }} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -11051,21 +11062,9 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             </div>
           )}
 
-          {(harvestStats.avgYield || harvestStats.avgQual) && (
-            <div>
-              {[{ label: "Yield", val: harvestStats.avgYield }, { label: "Quality", val: harvestStats.avgQual }].filter(r => r.val).map(r => (
-                <div key={r.label} style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 11, opacity: 0.75 }}>{r.label}</span>
-                    <span style={{ ...T.bodyStrong, fontSize: 11 }}>{r.val}/10</span>
-                  </div>
-                  <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: R.full}}>
-                    <div style={{ height: "100%", width: (r.val / 10 * 100) + "%", background: scoreColor(r.val), borderRadius: R.full, transition: "width 0.6s ease" }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* The standalone Yield/Quality rail block that sat here has moved into the
+              stat tiles above. It restated the same two values the tiles already
+              showed; both the numbers and the rails survive, in one place. */}
         </div>
       )}
 
