@@ -6047,6 +6047,46 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
     return acc;
   }, {});
 
+  // Single definition of "this area already has something growing". Planned crops
+  // deliberately do not count — PlantingSuggestionsSheet uses exactly this rule to
+  // decide whether it asks "what to plant" or "what to add", and Boost prominence
+  // now keys off the same thing. Note this is NOT the same as areaCrops.length,
+  // which includes planned crops and drives whether the chip row renders at all.
+  const areaHasGrowingCrops = (areaId) =>
+    (cropsByArea[areaId] || []).filter(c => c.status !== "planned").length > 0;
+
+  // One Boost handler shared by both prominence treatments, so the full-width and
+  // compact buttons cannot drift apart. Behaviour is unchanged: check the server
+  // limit, hard-paywall when spent, otherwise consume a use and open the sheet;
+  // on error open anyway (fail-open).
+  const runBoost = async (area) => {
+    if (typeof window !== "undefined" && window.posthog) {
+      // Placement instrumentation. Uses only values already in hand — no extra
+      // request. boostStatus comes from the mount-time load, so `uses` may lag by
+      // one; is_pro, has_crops and area_type are exact.
+      window.posthog.capture("boost_tapped", {
+        is_pro:    boostStatus?.is_pro ?? null,
+        has_crops: areaHasGrowingCrops(area.id),
+        uses:      boostStatus?.uses ?? null,
+        limit:     boostStatus?.limit ?? null,
+        area_type: area.type ?? null,
+      });
+    }
+    // Always check server-side boost limit — paywalls permanently active
+    try {
+      const status = await apiFetch("/features/boost-status");
+      setBoostStatus(status);
+      if (!status.can_use) { setBoostPaywallArea(area); return; }
+      // Consume one use then open
+      const updated = await apiFetch("/features/boost-use", { method: "POST" });
+      setBoostStatus(updated);
+      setSuggestArea(area);
+    } catch(e) {
+      // On error, open anyway — don't block the user
+      setSuggestArea(area);
+    }
+  };
+
   if (loading) return <VercroLoadingScreen message="Loading your garden" />;
   if (error)   return <ErrorMsg msg={error} />;
 
@@ -6183,7 +6223,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
       {suggestArea && (
         <PlantingSuggestionsSheet
           area={suggestArea}
-          hasCrops={(cropsByArea[suggestArea?.id] || []).filter(c => c.status !== 'planned').length > 0}
+          hasCrops={areaHasGrowingCrops(suggestArea?.id)}
           boostStatus={boostStatus}
           onClose={(result) => {
             setSuggestArea(null);
@@ -6374,6 +6414,12 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 <SortableContext items={displayAreas.map(a => a.id)} strategy={verticalListSortingStrategy}>
                   {displayAreas.map((area, areaIdx) => {
                     const areaCrops = cropsByArea[area.id] || [];
+                    // Boost prominence follows the same rule the suggestions sheet uses.
+                    // Empty bed -> Boost answers "what should I plant here?", so it keeps
+                    // the full-width treatment. Populated bed -> it is a refinement, so it
+                    // joins the compact action vocabulary. Note hasGrowing true implies
+                    // areaCrops.length > 0, so the compact button always has a row to sit in.
+                    const hasGrowing = areaHasGrowingCrops(area.id);
                     return (
                       <SortableAreaCard key={area.id} id={area.id} multiArea={multiArea}>{handleProps => (
                       <div ref={areaIdx === 0 ? tourRefs.tourRef_gardenArea : null} style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10 }}>
@@ -6574,7 +6620,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                       </div>
                     </div>
                     {areaCrops.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8, alignItems: "center" }}>
                         {areaCrops.map(c => {
                           const isPlanned  = c.status === "planned";
                           const isIndoors  = c.status === "sown_indoors";
@@ -6598,29 +6644,31 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                             </span>
                           );
                         })}
+                        {/* Populated bed: Boost sits at the end of the contents row as a
+                            compact action. Rectangular R.sm and pine, so it reads as an
+                            action against the pill-shaped chips, and it costs no extra row
+                            when it fits beside them. */}
+                        {hasGrowing && (
+                          <button ref={areaIdx === 0 ? tourRefs.tourRef_suggestCrops : null}
+                            onClick={() => runBoost(area)}
+                            style={{ marginLeft: "auto", flexShrink: 0, height: 26, padding: "0 12px", borderRadius: R.sm, border: `1px solid ${C.forest}`, background: "transparent", color: C.forest, fontWeight: 600, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            Boost
+                          </button>
+                        )}
                       </div>
                     )}
                     {areaCrops.length === 0 && (
                       <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>No crops yet</div>
                     )}
-                    <button ref={areaIdx === 0 ? tourRefs.tourRef_suggestCrops : null} onClick={async () => {
-                        // Always check server-side boost limit — paywalls permanently active
-                        try {
-                          const status = await apiFetch("/features/boost-status");
-                          setBoostStatus(status);
-                          if (!status.can_use) { setBoostPaywallArea(area); return; }
-                          // Consume one use then open
-                          const updated = await apiFetch("/features/boost-use", { method: "POST" });
-                          setBoostStatus(updated);
-                          setSuggestArea(area);
-                        } catch(e) {
-                          // On error, open anyway — don't block the user
-                          setSuggestArea(area);
-                        }
-                      }}
-                      style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: R.sm, border: `1px solid ${C.lineSoft}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
-                      Boost this area
-                    </button>
+                    {/* Empty bed: Boost stays full-width. Nothing is growing here yet, so
+                        "what should I plant?" is the primary question this card can answer. */}
+                    {!hasGrowing && (
+                      <button ref={areaIdx === 0 ? tourRefs.tourRef_suggestCrops : null}
+                        onClick={() => runBoost(area)}
+                        style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: R.sm, border: `1px solid ${C.lineSoft}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
+                        Boost this area
+                      </button>
+                    )}
                   </>
                 )}
               </div>
