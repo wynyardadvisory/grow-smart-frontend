@@ -10973,7 +10973,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         ref={tourRefs.tourRef_profileDetails}
         onClick={() => setShowEditModal(true)}
         style={{
-          background: "#fff", borderRadius: R.sm, padding: "20px 16px",
+          background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "20px 16px",
           marginBottom: 20, cursor: "pointer",
           display: "flex", alignItems: "center", gap: 16
         }}>
@@ -10994,7 +10994,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </div>
         <div style={{
           fontSize: 13, color: C.forest, fontWeight: 600,
-          background: "#f0f7f4", borderRadius: R.sm, padding: "6px 12px", flexShrink: 0
+          background: TINT.positive, borderRadius: R.sm, padding: "6px 12px", flexShrink: 0
         }}>
           Edit
         </div>
@@ -11008,9 +11008,11 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         <div style={{
           background: C.surfaceDark,
           borderRadius: R.sm, padding: "20px", marginBottom: 20,
-          color: "#fff", position: "relative", overflow: "hidden"
+          color: "#fff", position: "relative"
         }}>
-          <div style={{ position: "absolute", top: -15, right: -15, width: 80, height: 80, borderRadius: R.full, background: C.accent, opacity: 0.1 }} />
+          {/* The 80px accent circle that sat top-right is gone — the same ornament
+              removed from Today's header, missed then because it lives here. It was
+              also the only thing requiring overflow:hidden on this card. */}
           <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 4 }}>
             {new Date().getFullYear()} Season
           </div>
@@ -11061,7 +11063,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       )}
 
       {/* ── 4. HARVEST LOG ── */}
-      <div ref={tourRefs.tourRef_harvestLog} style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
+      <div ref={tourRefs.tourRef_harvestLog} style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
         <button onClick={() => setLogOpen(o => !o)}
           style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -11071,11 +11073,11 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           <span style={{ color: C.stone, fontSize: 16 }}>{logOpen ? "▲" : "▼"}</span>
         </button>
         {logOpen && (
-          <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}` }}>
+          <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.lineSoft}` }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 14, paddingTop: 14 }}>
               {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => (
                 <button key={y} onClick={() => setLogYear(y)}
-                  style={{ padding: "6px 16px", borderRadius: R.full, border: `1px solid ${logYear === y ? C.forest : C.border}`, background: logYear === y ? C.forest : "none", color: logYear === y ? "#fff" : C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                  style={{ padding: "6px 16px", borderRadius: R.full, border: `1px solid ${logYear === y ? C.forest : C.lineSoft}`, background: logYear === y ? C.forest : "none", color: logYear === y ? "#fff" : C.stone, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                   {y}
                 </button>
               ))}
@@ -11093,13 +11095,13 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 5. GARDEN SECTION ── */}
       <div style={sectionLabel}>Garden</div>
-      <div style={{ background: "#fff", borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
+      <div style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
         {chevronRow("🏆", "Challenges & Badges", "Track progress and unlock garden rewards", () => onTabChange("badges"))}
       </div>
 
       {/* ── 6. NOTIFICATIONS ROW ── */}
       <div style={sectionLabel}>Notifications</div>
-      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
+      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
         {chevronRow("🔔", "Notifications", "Daily tasks, weather alerts and reminders", () => setShowNotifScreen(true))}
       </div>
 
@@ -11110,16 +11112,16 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 8. PREFERENCES ── */}
       <div style={sectionLabel}>Measurements & Communications</div>
-      <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
+      <div style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
 
         {/* Measurements */}
-        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.lineSoft}` }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Measurements</div>
           <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>How dimensions are shown for beds and areas</div>
           <div style={{ display: "flex", gap: 8 }}>
             {[{ value: "metric", label: "Metres" }, { value: "imperial", label: "Feet & inches" }].map(opt => (
               <button key={opt.value} onClick={() => saveMeasurementUnit(opt.value)}
-                style={{ flex: 1, padding: "9px 0", borderRadius: R.sm, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.border}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                style={{ flex: 1, padding: "9px 0", borderRadius: R.sm, border: `1px solid ${measurementUnit === opt.value ? C.forest : C.lineSoft}`, background: measurementUnit === opt.value ? C.forest : "transparent", color: measurementUnit === opt.value ? "#fff" : C.stone, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {opt.label}
               </button>
             ))}
@@ -11134,16 +11136,16 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
           </div>
           <button
             onClick={() => !emailPrefLoading && saveEmailPreference(!marketingEmails)}
-            style={{ width: 44, height: 26, borderRadius: R.sm, border: "none", cursor: emailPrefLoading ? "default" : "pointer", background: marketingEmails ? C.forest : "#ccc", position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1 }}>
-            <span style={{ position: "absolute", top: 3, left: marketingEmails ? 21 : 3, width: 20, height: 20, borderRadius: R.full, background: "#fff", transition: "left 0.2s"}} />
+            style={{ width: 44, height: 28, borderRadius: R.sm, border: "none", cursor: emailPrefLoading ? "default" : "pointer", background: marketingEmails ? C.forest : C.lineSoft, position: "relative", flexShrink: 0, transition: "background 0.2s", opacity: emailPrefLoading ? 0.6 : 1 }}>
+            <span style={{ position: "absolute", top: 4, left: marketingEmails ? 21 : 3, width: 20, height: 20, borderRadius: R.full, background: "#fff", transition: "left 0.2s"}} />
           </button>
         </div>
       </div>
 
       {/* ── 9. ACCOUNT ── */}
       <div style={sectionLabel}>Account</div>
-      <div style={{ background: "#fff", borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
-        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
+        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.lineSoft}` }}>
           <div style={{ fontSize: 11, color: C.stone, marginBottom: 2 }}>Signed in as</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{session?.user?.email}</div>
         </div>
@@ -11159,7 +11161,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
 
       {/* ── 11. SIGN OUT ── */}
       <button onClick={() => supabase.auth.signOut()}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8, marginTop: 8 }}>
+        style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8, marginTop: 8 }}>
         Sign Out
       </button>
 
@@ -11179,7 +11181,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
       </div>
 
       {/* ── VERSION ── */}
-      <div style={{ fontSize: 10, color: "#ccc", textAlign: "center", marginTop: 24 }}>v1.0</div>
+      <div style={{ fontSize: 10, color: C.lineSoft, textAlign: "center", marginTop: 24 }}>v1.0</div>
 
       {/* ── MODALS ── */}
 
@@ -11205,10 +11207,10 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             {deleteStep === 1 ? (
               <>
                 <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 12 }}>Delete your account?</div>
-                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 6 }}>
+                <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 6 }}>
                   This will permanently remove:
                 </div>
-                <div style={{ fontSize: 13, color: "#444", lineHeight: 1.8, marginBottom: 20, paddingLeft: 4 }}>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.8, marginBottom: 20, paddingLeft: 4 }}>
                   · Your profile and personal details{"\n"}
                   · All your crops and garden data{"\n"}
                   · Your harvest history and task records
@@ -11228,7 +11230,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
             ) : (
               <>
                 <div style={{ ...T.displayLg, fontSize: 20, color: C.dangerText, marginBottom: 12 }}>Are you absolutely sure?</div>
-                <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginBottom: 20 }}>
+                <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6, marginBottom: 20 }}>
                   Your account will be permanently deleted and you will be signed out immediately. There is no way to recover your data after this point.
                 </div>
                 {deleteError && (
