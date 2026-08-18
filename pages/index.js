@@ -1577,6 +1577,55 @@ function getCropEmoji(name) {
   return "🌱";
 }
 
+// ── Crop token (slice 6B) ────────────────────────────────────────────────────
+// Two-letter identity mark used ONLY where a crop has no photo. Photos always win.
+//
+// Why letters rather than emoji: measured against the real 283-definition
+// catalogue, getCropEmoji() yields 25 distinct marks and puts 158 crops (56%) on
+// an identical 🌱, with 🥬 covering 16 crops, 🥦 15 and 🌿 13. The monogram yields
+// 148 distinct marks and cuts the worst cluster from 158 to 10.
+//
+// Two letters cannot make 280 crops unique and this does not try to. What matters
+// is collisions inside one garden, which are rare. CROP_TOKEN_OVERRIDE exists only
+// to break genuine, common clashes that hurt scanning — it is deliberately tiny and
+// is NOT an attempt at catalogue-wide uniqueness. Add to it only when a real pair
+// proves confusing in use.
+const CROP_TOKEN_OVERRIDE = {
+  cabbage: "Cb",   // would otherwise collide with Carrot on "Ca"
+};
+
+function getCropToken(name) {
+  if (!name) return "?";
+  // Strip "— variety" and any "(Autumn)"-style suffix, then collapse whitespace.
+  const base = String(name).split("—")[0].split("(")[0].trim().replace(/\s+/g, " ");
+  if (!base) return "?";
+  const override = CROP_TOKEN_OVERRIDE[base.toLowerCase()];
+  if (override) return override;
+  const cap = (a, b) => a.toUpperCase() + (b || "").toLowerCase();
+  const words = base.split(" ").filter(Boolean);
+  if (words.length > 1) return cap(words[0][0], words[1][0]);   // Brussels Sprout -> Bs
+  const letters = words[0].replace(/[^A-Za-z]/g, "");
+  return letters ? cap(letters[0], letters[1]) : "?";           // Carrot -> Ca
+}
+
+// Renders the crop identity mark for the no-photo case. `size` keeps the 48px
+// list geometry from 6A while allowing a smaller inline mark in group headers.
+function CropToken({ name, size = 48 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: R.sm,
+      background: C.offwhite,
+      border: `1px dashed ${C.border}`,   // retained: this is the "no photo yet — tap to add" affordance
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: F.display, fontWeight: 500, color: C.forest,
+      fontSize: Math.round(size * 0.4), lineHeight: 1, letterSpacing: "0.01em",
+      flexShrink: 0, userSelect: "none",
+    }}>
+      {getCropToken(name)}
+    </div>
+  );
+}
+
 // ── Share Harvest Card ────────────────────────────────────────────────────────
 // Generates a 1080x1080 canvas image for sharing to WhatsApp, Instagram etc.
 
@@ -8256,7 +8305,9 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setExpandedGroups(e => ({ ...e, [group.id]: !isExpanded }))}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                  <span style={{ fontSize: 18 }}>{getCropEmoji(group.crop_name)}</span>
+                  {/* Smaller inline mark — succession groups have no photo slot,
+                      so this always renders the token. */}
+                  <CropToken name={group.crop_name} size={26} />
                   <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>
                     {group.crop_name}{group.variety_name ? ` — ${group.variety_name}` : ""}
                   </div>
@@ -8604,9 +8655,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       <img src={cropPhotos[crop.id]} alt={crop.name}
                         style={{ width: 48, height: 48, borderRadius: R.sm, objectFit: "cover", display: "block" }} />
                     ) : (
-                      <div style={{ width: 48, height: 48, borderRadius: R.sm, background: C.offwhite, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
-                        {getCropEmoji(crop.name)}
-                      </div>
+                      /* No photo — two-letter identity mark. Same 48x48 box, same
+                         R.sm, same dashed affordance, so 6A's row geometry is
+                         untouched. A photo, when present, always wins above. */
+                      <CropToken name={crop.name} size={48} />
                     )}
                     {crop.missed_task_note && (
                       <div title={crop.missed_task_note}
