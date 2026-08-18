@@ -6098,7 +6098,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 {deletingLocation ? "Deleting…" : "Yes, delete this location"}
               </button>
               <button onClick={() => setDeleteLocationTarget(null)}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 14, fontSize: 14, color: "#666", cursor: "pointer" }}>
+                style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: 14, fontSize: 14, color: "#666", cursor: "pointer" }}>
                 Cancel — keep it
               </button>
             </div>
@@ -6130,7 +6130,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                 {saving ? "Saving…" : "Save location"}
               </button>
               <button onClick={() => setShowAddLocation(false)}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -6236,7 +6236,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     + Add area
                   </button>
                   <button onClick={e => { e.stopPropagation(); setLogScope({ type: "location", id: loc.id, name: loc.name }); }}
-                    style={{ height: 30, background: "none", border: `1px solid ${C.border}`, color: C.stone, borderRadius: R.sm, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    style={{ height: 30, background: "none", border: `1px solid ${C.lineSoft}`, color: C.stone, borderRadius: R.sm, padding: "0 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                     Log
                   </button>
                 </>
@@ -6245,19 +6245,19 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
               <div style={{ position: "relative" }}>
                 <button
                   onClick={e => { e.stopPropagation(); setLocMenuOpen(locMenuOpen === loc.id ? null : loc.id); }}
-                  style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+                  style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
                   ⋯
                 </button>
                 {locMenuOpen === loc.id && (
                   <>
                     <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={e => { e.stopPropagation(); setLocMenuOpen(null); }} />
-                    <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 140, overflow: "hidden" }}>
+                    <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 140, overflow: "hidden" }}>
                       <button
                         onClick={e => { e.stopPropagation(); setLocMenuOpen(null); setEditingLocation(loc.id); setEditLocationForm({ name: loc.name || "", postcode: loc.postcode || "", width_m: loc.width_m ?? "", length_m: loc.length_m ?? "" }); }}
                         style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
                         Edit location
                       </button>
-                      <div style={{ height: 1, background: C.border }} />
+                      <div style={{ height: 1, background: C.lineSoft }} />
                       <button
                         onClick={e => { e.stopPropagation(); setLocMenuOpen(null); setDeleteLocationTarget(loc); }}
                         style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.dangerText, cursor: "pointer", textAlign: "left" }}>
@@ -6272,7 +6272,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
 
           {/* Edit location inline form */}
           {editingLocation === loc.id && (
-            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "14px", marginBottom: 10 }}>
+            <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${C.forest}`, borderRadius: R.sm, padding: "14px", marginBottom: 10 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>Edit location</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
@@ -6294,7 +6294,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     {saving ? "Saving…" : "Save"}
                   </button>
                   <button onClick={() => setEditingLocation(null)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                    style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                     Cancel
                   </button>
                 </div>
@@ -6306,7 +6306,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
 
           {/* Add area form for this location */}
           {showAddArea === loc.id && (
-            <div style={{ background: C.cardBg, border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "14px", marginBottom: 10 }}>
+            <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${C.forest}`, borderRadius: R.sm, padding: "14px", marginBottom: 10 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, marginBottom: 10 }}>New growing area</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div><label style={labelStyle}>Name</label>
@@ -6340,7 +6340,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     {saving ? "Saving…" : "Save area"}
                   </button>
                   <button onClick={() => setShowAddArea(false)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                    style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                     Cancel
                   </button>
                 </div>
@@ -6364,11 +6364,11 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                     const areaCrops = cropsByArea[area.id] || [];
                     return (
                       <SortableAreaCard key={area.id} id={area.id} multiArea={multiArea}>{handleProps => (
-                      <div ref={areaIdx === 0 ? tourRefs.tourRef_gardenArea : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10 }}>
+                      <div ref={areaIdx === 0 ? tourRefs.tourRef_gardenArea : null} style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 10 }}>
 
                 {/* Confirm delete */}
                 {confirmArea === area.id && (
-                  <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "10px 12px", marginBottom: 10 }}>
+                  <div style={{ background: TINT.danger, border: `1px solid ${TINT_LINE.danger}`, borderRadius: R.sm, padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 8 }}>Remove {area.name}? {areaCrops.length > 0 ? `This will also remove ${areaCrops.length} crop${areaCrops.length > 1 ? "s" : ""} in it.` : ""}</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteArea(area.id)} disabled={saving}
@@ -6376,7 +6376,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         {saving ? "Removing…" : "Yes, remove"}
                       </button>
                       <button onClick={() => setConfirmArea(null)}
-                        style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                        style={{ flex: 1, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "8px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
                         Cancel
                       </button>
                     </div>
@@ -6422,7 +6422,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         {saving ? "Saving…" : "Save"}
                       </button>
                       <button onClick={() => setEditingArea(null)}
-                        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                        style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                         Cancel
                       </button>
                     </div>
@@ -6444,17 +6444,30 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id}
                           onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: C.ink }}>{area.name}</div>
-                          <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+                          {/* The area is the container; its crops are the contents. Promoting
+                              the name to T.displayMd puts the bed above its chips in the
+                              reading order, which 14px/600 body did not. */}
+                          <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>{area.name}</div>
+                          {/* Type and size stay their own quiet line. */}
+                          <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>
                             {[
                               area.type.replace(/_/g, " "),
                               area.width_m && area.length_m ? `${formatDimension(area.width_m, measurementUnit)} × ${formatDimension(area.length_m, measurementUnit)}` : area.width_m ? `${formatDimension(area.width_m, measurementUnit)} wide` : area.length_m ? `${formatDimension(area.length_m, measurementUnit)} long` : null,
                             ].filter(Boolean).join(" · ")}
                           </div>
-                          {/* Soil status — read-only, tap to open SoilReadingSheet */}
+                          {/* Soil readings — the control is now the whole row rather than the
+                              text, taking the hit area from 75x13 (the smallest target in the
+                              app) to the full text column at ~28px, matching the app's 28px
+                              controls. It costs no layout height: the header row is governed
+                              by the 61px action column, and name + meta + this row still fit
+                              inside it. Same setSoilSheetArea handler, same readings, same
+                              168h staleness rules, both variants preserved. */}
                           {(() => {
                             const moistureLabel = { dry: "Dry", ok: "Ideal", wet: "Wet" };
-                            const moistureColor = { dry: C.amber, ok: C.forest, wet: "#5B8FA8" };
+                            // Dry soil is an attention state, so it takes the attention TEXT
+                            // token — C.amber fails as text (3C). Ideal stays pine; wet keeps
+                            // its own informational blue.
+                            const moistureColor = { dry: C.attentionText, ok: C.forest, wet: "#5B8FA8" };
                             const freshnessHours = (ts) => ts ? (Date.now() - new Date(ts).getTime()) / 3600000 : null;
                             const mHours = freshnessHours(area.soil_moisture_logged_at);
                             const tHours = freshnessHours(area.soil_temperature_logged_at);
@@ -6472,22 +6485,19 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                             if (area.soil_ph != null) {
                               parts.push({ key: "p", text: `pH ${area.soil_ph}`, color: isStale(pHours) ? C.stone : C.ink });
                             }
-                            if (!parts.length) return (
-                              <button onClick={() => setSoilSheetArea(area)}
-                                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", marginTop: 4 }}>
-                                <span style={{ fontSize: 10, color: C.stone, textDecoration: "underline" }}>Add soil readings</span>
-                              </button>
-                            );
                             return (
                               <button onClick={() => setSoilSheetArea(area)}
-                                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", marginTop: 4 }}>
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "7px 0 4px", cursor: "pointer", textAlign: "left", font: "inherit" }}>
                                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                                   {parts.map((p, i) => (
-                                    <span key={p.key} style={{ fontSize: 10, color: p.color, fontWeight: 600 }}>
-                                      {p.text}{i < parts.length - 1 ? <span style={{ color: C.border, marginLeft: 6 }}>·</span> : null}
+                                    <span key={p.key} style={{ fontSize: 11, color: p.color, fontWeight: 600 }}>
+                                      {p.text}{i < parts.length - 1 ? <span style={{ color: C.lineSoft, marginLeft: 6 }}>·</span> : null}
                                     </span>
                                   ))}
-                                  <span style={{ fontSize: 9, color: C.stone }}>›</span>
+                                  {parts.length === 0 && (
+                                    <span style={{ fontSize: 11, color: C.stone, textDecoration: "underline" }}>Add soil readings</span>
+                                  )}
+                                  <span style={{ fontSize: 10, color: C.stone }}>›</span>
                                 </div>
                               </button>
                             );
@@ -6507,25 +6517,25 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <button onClick={() => setLogScope({ type: "area", id: area.id, name: area.name })}
-                            style={{ height: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            style={{ height: 28, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 10px", fontSize: 11, color: C.stone, cursor: "pointer", whiteSpace: "nowrap" }}>
                             Log
                           </button>
                         <div ref={areaIdx === 0 ? tourRefs.tourRef_areaMenu : null} style={{ position: "relative" }}>
                           <button
                             onClick={() => setAreaMenuOpen(areaMenuOpen === area.id ? null : area.id)}
-                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                             ⋯
                           </button>
                           {areaMenuOpen === area.id && (
                             <>
                               <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setAreaMenuOpen(null)} />
-                              <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 120, overflow: "hidden" }}>
+                              <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 120, overflow: "hidden" }}>
                                 <button
                                   onClick={() => { setAreaMenuOpen(null); setEditingArea(area.id); setEditAreaForm({ name: area.name, type: area.type, width_m: area.width_m ?? "", length_m: area.length_m ?? "", soil_ph: area.soil_ph ?? "", soil_temperature_c: area.soil_temperature_c ?? "" }); }}
                                   style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
                                   Edit area
                                 </button>
-                                <div style={{ height: 1, background: C.border }} />
+                                <div style={{ height: 1, background: C.lineSoft }} />
                                 <button
                                   onClick={async () => {
                                     setAreaMenuOpen(null);
@@ -6538,7 +6548,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                                   style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
                                   Duplicate area
                                 </button>
-                                <div style={{ height: 1, background: C.border }} />
+                                <div style={{ height: 1, background: C.lineSoft }} />
                                 <button
                                   onClick={() => { setAreaMenuOpen(null); setConfirmArea(area.id); }}
                                   style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.dangerText, cursor: "pointer", textAlign: "left" }}>
@@ -6556,13 +6566,22 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                         {areaCrops.map(c => {
                           const isPlanned  = c.status === "planned";
                           const isIndoors  = c.status === "sown_indoors";
-                          const chipBg     = isPlanned ? "#fffbf4" : isIndoors ? "#f4f6ff" : C.offwhite;
-                          const chipBorder = isPlanned ? `${C.amber}66` : isIndoors ? "#7b9ef766" : C.border;
-                          const chipColor  = isPlanned ? C.amber  : isIndoors ? "#2d4fc0" : "#444";
+                          // Contents must read below the container. A default chip loses its
+                          // border and keeps only the inset ground, so the bed name leads.
+                          // Planned and indoors keep a same-family hairline because there the
+                          // border is carrying state, not decoration.
+                          const chipBg     = isPlanned ? TINT.attention : isIndoors ? "#f4f6ff" : C.offwhite;
+                          const chipBorder = isPlanned ? TINT_LINE.attention : isIndoors ? "#7b9ef766" : null;
+                          // C.amber failed as text (3C). Planned is an attention state, so it
+                          // takes the attention TEXT token; indoors keeps informational blue.
+                          const chipColor  = isPlanned ? C.attentionText : isIndoors ? C.infoText : C.stone;
                           const statusIcon = isPlanned ? "🗓 " : isIndoors ? "🪟 " : "";
                           return (
                             <span key={c.id} onClick={() => setTimelineCrop(c)}
-                              style={{ background: chipBg, border: `1px solid ${chipBorder}`, borderRadius: R.full, padding: "3px 9px", fontSize: 11, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
+                              /* transparent border keeps the box height identical to the
+                                 bordered variants, so dropping the default border costs
+                                 no layout change */
+                              style={{ background: chipBg, border: chipBorder ? `1px solid ${chipBorder}` : "1px solid transparent", borderRadius: R.full, padding: "3px 9px", fontSize: 11, fontWeight: 500, color: chipColor, cursor: "pointer" }}>
                               {statusIcon}{c.name}{varietyName(c.variety) ? ` · ${varietyName(c.variety)}` : ""}
                             </span>
                           );
@@ -6570,7 +6589,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                       </div>
                     )}
                     {areaCrops.length === 0 && (
-                      <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic", marginTop: 6 }}>No crops yet</div>
+                      <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>No crops yet</div>
                     )}
                     <button ref={areaIdx === 0 ? tourRefs.tourRef_suggestCrops : null} onClick={async () => {
                         // Always check server-side boost limit — paywalls permanently active
@@ -6587,7 +6606,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                           setSuggestArea(area);
                         }
                       }}
-                      style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
+                      style={{ marginTop: 10, width: "100%", padding: "8px", borderRadius: R.sm, border: `1px solid ${C.lineSoft}`, background: "transparent", color: C.stone, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
                       Boost this area
                     </button>
                   </>
