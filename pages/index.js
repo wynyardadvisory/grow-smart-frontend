@@ -7942,7 +7942,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   style={{
                     padding: "10px 12px", borderRadius: R.sm,
                     border: `2px solid ${noHarvestReason === key ? C.forest : C.border}`,
-                    background: noHarvestReason === key ? "#f0f7f4" : "#fff",
+                    background: noHarvestReason === key ? TINT.positive : "#fff",
                     color: noHarvestReason === key ? C.forest : C.ink,
                     fontSize: 13, fontWeight: noHarvestReason === key ? 700 : 500,
                     cursor: "pointer", textAlign: "left"
@@ -7968,7 +7968,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </button>
             <button
               onClick={() => { setPendingNoHarvest(null); setNoHarvestReason(null); }}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -8000,7 +8000,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </button>
             <button
               onClick={() => setPendingDormant(null)}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -8030,7 +8030,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   onClick={() => setFailReason(key)}
                   style={{
                     padding: "10px 12px", borderRadius: R.sm, border: `2px solid ${failReason === key ? C.red : C.border}`,
-                    background: failReason === key ? "#fff5f5" : "#fff",
+                    background: failReason === key ? TINT.danger : "#fff",
                     color: failReason === key ? C.dangerText : C.ink,
                     fontSize: 13, fontWeight: failReason === key ? 700 : 500, cursor: "pointer", textAlign: "left"
                   }}>
@@ -8053,7 +8053,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             </button>
             <button
               onClick={() => { setPendingFail(null); setFailReason(null); }}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
+              style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
               Cancel
             </button>
           </div>
@@ -8078,10 +8078,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       )}
       {/* Crops / Feeds toggle — shown when navEnabled (always true) */}
       {navEnabled && (
-        <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
+        <div ref={tourRefs.tourRef_cropFeedsToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
           {[["crops", "Crops"], ["feeds", "Feeds"]].map(([id, label]) => (
             <button key={id} onClick={() => setCropTab(id)}
-              style={{ ...T.control, flex: 1, padding: "9px 0", borderRadius: R.sm, border: "none", background: cropTab === id ? C.forest : "transparent", color: cropTab === id ? "#fff" : C.stone, fontSize: 13, cursor: "pointer", transition: "all 0.15s" }}>
+              /* Matches Today's Today/Log control: white fill + pine label + weight,
+                 not a solid pine block. One segmented-control grammar app-wide. */
+              style={{ ...T.control, flex: 1, padding: "9px 0", borderRadius: R.sm, border: "none", background: cropTab === id ? "#fff" : "transparent", color: cropTab === id ? C.forest : C.stone, fontWeight: cropTab === id ? 700 : 500, fontSize: 13, cursor: "pointer", transition: "all 0.15s" }}>
               {label}
             </button>
           ))}
@@ -8114,7 +8116,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         </div>
         {/* Filter/sort dropdown */}
         {showFilters && (
-          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "16px", display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Status filter */}
             <div>
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>Status</div>
@@ -8188,7 +8190,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
             {/* Clear */}
             {activeFilterCount > 0 && (
               <button onClick={() => { setFilterStatus(""); setFilterArea(""); setFilterType(""); setFilterLocation(""); }}
-                style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
+                style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "8px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 600 }}>
                 Clear filters
               </button>
             )}
@@ -8224,11 +8226,16 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         const latestHarvest = harvests[harvests.length - 1];
 
         return (
-          <div key={group.id} style={{ background: C.cardBg, border: `1px solid ${C.forest}44`, borderRadius: R.sm, marginBottom: 12, overflow: "hidden" }}>
+          /* Succession groups stay their own containing surface — they are a parent
+             crop holding nested sowings, placeholders and an add action, not a peer
+             of a standard crop row. The pine-44 outline becomes a hairline plus a
+             3px pine left stripe, the same emphasis device used on Today's focus
+             card and Watch Outs. Nested structure and all succession logic unchanged. */
+          <div key={group.id} style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${C.forest}`, borderRadius: R.sm, marginBottom: 12, overflow: "hidden" }}>
 
             {/* Confirm delete group */}
             {confirmDeleteGroup === group.id && (
-              <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "12px 14px", margin: "12px 14px 0" }}>
+              <div style={{ background: TINT.danger, border: `1px solid ${TINT_LINE.danger}`, borderRadius: R.sm, padding: "12px 14px", margin: "12px 14px 0" }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 10 }}>
                   Remove all {group.crop_name} sowings? This will remove {sowings.length} sowing{sowings.length !== 1 ? "s" : ""} and their tasks.
                 </div>
@@ -8238,7 +8245,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                     {saving ? "Removing…" : "Yes, remove all"}
                   </button>
                   <button onClick={() => setConfirmDeleteGroup(null)}
-                    style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
                     Cancel
                   </button>
                 </div>
@@ -8282,8 +8289,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 {sowings.map(sowing => {
                   const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
                   const stageKey   = sowing.stage || "seed";
-                  const stageColor = { seed: C.stone, seedling: C.leaf, vegetative: C.forest, flowering: C.amber, fruiting: C.amber, harvesting: "#e08020", finished: C.stone }[stageKey] || C.stone;
-                  const stageText  = { seed: C.stone, seedling: "#4B7743", vegetative: C.forest, flowering: "#876628", fruiting: "#876628", harvesting: "#9F5B17", finished: C.stone }[stageKey] || C.stone;
+                  const stageColor = STAGE_COLOR[stageKey] || C.stone;  // was inlined alongside stageText — both now use the component tokens
+                  const stageText  = STAGE_TEXT[stageKey] || C.stone;  // was an inlined literal — now the 3C-i token, so sowing rows cannot drift from crop rows
 
                   // Time-based progress using effective days (offset-adjusted)
                   let pct = 0;
@@ -8326,11 +8333,11 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                         </div>
                         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                           <button onClick={() => setTimelineCrop(sowing)}
-                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}44`, borderRadius: R.full, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+                            style={{ height: 28, background: "none", border: `1px solid ${C.forest}44`, borderRadius: R.sm, padding: "0 10px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
                             Timeline
                           </button>
                           <button onClick={() => setConfirm(confirm === sowing.id ? null : sowing.id)}
-                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            style={{ height: 28, width: 28, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             ⋯
                           </button>
                         </div>
@@ -8341,14 +8348,14 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                             <span style={{ fontSize: 10, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
                           </div>
-                          <div style={{ height: 5, background: C.border, borderRadius: R.full, overflow: "hidden" }}>
+                          <div style={{ height: 5, background: C.lineSoft, borderRadius: R.full, overflow: "hidden" }}>
                             <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: R.full}} />
                           </div>
                         </div>
                       )}
                       {/* Confirm delete this sowing */}
                       {confirm === sowing.id && (
-                        <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "10px 12px" }}>
+                        <div style={{ marginTop: 10, background: TINT.danger, border: `1px solid ${TINT_LINE.danger}`, borderRadius: R.sm, padding: "10px 12px" }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: C.dangerText, marginBottom: 8 }}>Remove Sow {sowing.succession_index}?</div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => deleteCrop(sowing.id)} disabled={saving}
@@ -8356,7 +8363,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                               {saving ? "Removing…" : "Yes, remove"}
                             </button>
                             <button onClick={() => setConfirm(null)}
-                              style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "7px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
+                              style={{ flex: 1, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "7px 0", color: C.stone, cursor: "pointer", fontSize: 12 }}>
                               Cancel
                             </button>
                           </div>
@@ -8409,7 +8416,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                           {saving ? "Saving…" : `Save Sow ${nextIdx}`}
                         </button>
                         <button onClick={() => setAddingSowingFor(null)}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -8430,12 +8437,17 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
         );
       })}
 
+      {/* Standard crops are homogeneous peers, so they share one surface and are
+          separated by hairlines instead of each carrying its own card chrome and a
+          12px gap. Nothing is removed — the saving is geometry: repeated borders,
+          repeated padding and one line each from name/variety and stage/%/bar. */}
+      <div style={{ display: visibleCrops.length ? "flex" : "none", flexDirection: "column", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 12 }}>
       {visibleCrops.map((crop, cropIdx) => (
-        <div key={crop.id} ref={cropIdx === 0 ? tourRefs.tourRef_firstCropCard : null} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 12 }}>
+        <div key={crop.id} ref={cropIdx === 0 ? tourRefs.tourRef_firstCropCard : null} style={{ padding: "12px 14px", borderTop: cropIdx > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
 
           {/* Confirm delete overlay */}
           {confirm === crop.id && (
-            <div style={{ background: "#fff5f5", border: `1px solid ${C.red}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12 }}>
+            <div style={{ background: TINT.danger, border: `1px solid ${TINT_LINE.danger}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.dangerText, marginBottom: 10 }}>Remove {crop.name}? This cannot be undone.</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => deleteCrop(crop.id)} disabled={saving}
@@ -8443,7 +8455,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   {saving ? "Removing…" : "Yes, remove"}
                 </button>
                 <button onClick={() => setConfirm(null)}
-                  style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
+                  style={{ flex: 1, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "9px 0", color: C.stone, cursor: "pointer", fontSize: 13 }}>
                   Cancel
                 </button>
               </div>
@@ -8536,7 +8548,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   {saving ? "Saving…" : "Save changes"}
                 </button>
                 <button onClick={() => setEditing(null)}
-                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 16px", color: C.stone, cursor: "pointer" }}>
+                  style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 16px", color: C.stone, cursor: "pointer" }}>
                   Cancel
                 </button>
               </div>
@@ -8549,7 +8561,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       Convert to succession sowing
                     </button>
                   ) : (
-                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px 14px", background: "#f0f5f3" }}>
+                    <div style={{ border: `1px solid ${C.forest}`, borderRadius: R.sm, padding: "12px 14px", background: TINT.positive }}>
                       <div style={{ ...T.bodyStrong, fontSize: 13, color: C.forest, marginBottom: 4 }}>Convert to succession</div>
                       <div style={{ fontSize: 11, color: C.stone, marginBottom: 10 }}>This crop becomes Sow 1. Its tasks and timeline are preserved.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
@@ -8572,7 +8584,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                           {saving ? "Converting…" : "Convert"}
                         </button>
                         <button onClick={() => setConvertingCrop(null)}
-                          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
+                          style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "0 14px", color: C.stone, cursor: "pointer" }}>
                           Cancel
                         </button>
                       </div>
@@ -8601,16 +8613,29 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                         style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: R.full, background: C.red, border: "2px solid #fff", flexShrink: 0 }} />
                     )}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Name and variety share one line. Variety is the only thing
+                        distinguishing duplicate crops (two Apples, two Blueberries,
+                        two Brussels Sprouts here), so sitting it beside the name at a
+                        differentiated weight reads better than burying it beneath. */}
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                       <div style={{ ...T.displayMd, fontSize: 15, color: C.ink }}>{crop.name}</div>
+                      <div style={{ fontSize: 12, color: C.stone }}>{varietyName(crop.variety) || "No variety set"}</div>
                       {crop.status === "dormant" && (
-                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.full, padding: "1px 7px" }}>Dormant</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.stone, background: C.offwhite, border: `1px solid ${C.lineSoft}`, borderRadius: R.full, padding: "1px 7px" }}>Dormant</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, color: C.stone, marginTop: 1 }}>{varietyName(crop.variety) || "No variety set"}</div>
                   </div>
-                  {/* Right: Check + Timeline stacked, overflow menu */}
+                  {/* Right: Check + Timeline stacked, overflow menu.
+                      Action vs metadata vocabulary: ACTIONS are rectangular (R.sm) —
+                      Check, Timeline, the overflow button, Add Sow. METADATA is a pill
+                      (R.full) — growth stage, Dormant, Planned, Indoors and the rest.
+                      Timeline moves from a pill to a rectangle so it stops reading as
+                      another status chip. Check keeps its filled pine weight: it is
+                      strategically important and is not demoted for being metered.
+                      The column stays stacked because a single action line does not
+                      fit at 375px — measured 340px of content against a 311px budget,
+                      which would wrap the longest crop name. */}
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       {plantCheckEnabled && (
@@ -8622,31 +8647,31 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       <div ref={cropIdx === 0 ? tourRefs.tourRef_cropMenu : null} style={{ position: "relative" }}>
                         <button
                           onClick={() => setCropMenuOpen(cropMenuOpen === crop.id ? null : crop.id)}
-                          style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                          style={{ height: 30, width: 30, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, fontSize: 14, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                           ⋯
                         </button>
                         {cropMenuOpen === crop.id && (
                           <>
                             <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setCropMenuOpen(null)} />
-                            <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 130, overflow: "hidden" }}>
+                            <div style={{ position: "absolute", right: 0, top: 34, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, boxShadow: S.raised, zIndex: 91, minWidth: 130, overflow: "hidden" }}>
                               <button
                                 onClick={() => { setCropMenuOpen(null); setDiary(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
                                 Photo diary
                               </button>
-                              <div style={{ height: 1, background: C.border }} />
+                              <div style={{ height: 1, background: C.lineSoft }} />
                               <button
                                 onClick={() => { setCropMenuOpen(null); startEdit(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
                                 Edit crop
                               </button>
-                              <div style={{ height: 1, background: C.border }} />
+                              <div style={{ height: 1, background: C.lineSoft }} />
                               <button
                                 onClick={() => { setCropMenuOpen(null); setPendingHarvest(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
                                 Log harvest
                               </button>
-                              <div style={{ height: 1, background: C.border }} />
+                              <div style={{ height: 1, background: C.lineSoft }} />
                               {crop.crop_def?.is_perennial && crop.status !== "dormant" && (
                                 <>
                                   <button
@@ -8654,13 +8679,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
                                     No harvest this year
                                   </button>
-                                  <div style={{ height: 1, background: C.border }} />
+                                  <div style={{ height: 1, background: C.lineSoft }} />
                                   <button
                                     onClick={() => { setCropMenuOpen(null); setPendingDormant(crop); }}
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.stone, cursor: "pointer", textAlign: "left" }}>
                                     Mark dormant
                                   </button>
-                                  <div style={{ height: 1, background: C.border }} />
+                                  <div style={{ height: 1, background: C.lineSoft }} />
                                 </>
                               )}
                               {crop.status === "dormant" && (
@@ -8670,7 +8695,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                     style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.forest, cursor: "pointer", textAlign: "left" }}>
                                     Reactivate
                                   </button>
-                                  <div style={{ height: 1, background: C.border }} />
+                                  <div style={{ height: 1, background: C.lineSoft }} />
                                 </>
                               )}
                               <button
@@ -8678,13 +8703,13 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.attentionText, cursor: "pointer", textAlign: "left" }}>
                                 ✕ Mark as failed
                               </button>
-                              <div style={{ height: 1, background: C.border }} />
+                              <div style={{ height: 1, background: C.lineSoft }} />
                               <button
                                 onClick={() => { setCropMenuOpen(null); setDuplicateCrop(crop); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
                                 Duplicate crop
                               </button>
-                              <div style={{ height: 1, background: C.border }} />
+                              <div style={{ height: 1, background: C.lineSoft }} />
                               <button
                                 onClick={() => { setCropMenuOpen(null); setConfirm(crop.id); }}
                                 style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.dangerText, cursor: "pointer", textAlign: "left" }}>
@@ -8696,7 +8721,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       </div>
                     </div>
                     <button onClick={() => setTimelineCrop(crop)}
-                      style={{ height: 26, background: "none", border: `1px solid ${C.forest}44`, borderRadius: R.full, padding: "0 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      style={{ height: 26, background: "none", border: `1px solid ${C.forest}44`, borderRadius: R.sm, padding: "0 12px", fontSize: 11, color: C.forest, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                       Timeline
                     </button>
                   </div>
@@ -8751,16 +8776,18 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   pct = 0;
                 }
                 return (
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: R.full, padding: "2px 8px" }}>
-                        {(() => { const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" }; return STAGE_LABEL[stageKey] || stageKey; })()}
-                      </span>
-                      <span style={{ fontSize: 11, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
-                    </div>
-                    <div style={{ height: 6, background: C.border, borderRadius: R.full, overflow: "hidden" }}>
+                  /* Compact progress: stage pill, rail and % grown on ONE line.
+                     Both the rail and the number are kept — the rail gives
+                     pre-attentive magnitude, the number gives the precise value —
+                     but they no longer cost two stacked rows plus a gap. */
+                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: R.full, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap" }}>
+                      {(() => { const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" }; return STAGE_LABEL[stageKey] || stageKey; })()}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 24, height: 6, background: C.lineSoft, borderRadius: R.full, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: R.full, transition: "width 0.5s ease" }} />
                     </div>
+                    <span style={{ fontSize: 11, color: stageText, fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{pct}% grown</span>
                   </div>
                 );
               })()}
@@ -8775,10 +8802,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                 </div>
                 {(crop.status === "planned" || crop.status === "sown_indoors" || !crop.crop_def_id || crop.lifecycle_mode === "established" || crop.lifecycle_mode === "overwintered") && (
                   <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
-                    {crop.status === "planned"      && <span style={{ background: "#fff8ed", border: `1px solid ${C.amber}55`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>Planned</span>}
+                    {crop.status === "planned"      && <span style={{ background: TINT.attention, border: `1px solid ${TINT_LINE.attention}`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.attentionText }}>Planned</span>}
                     {crop.status === "sown_indoors" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>Indoors</span>}
                     {!crop.crop_def_id && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>Being identified…</span>}
-                    {crop.lifecycle_mode === "established"  && <span style={{ background: "#f0f5f3", border: `1px solid ${C.forest}44`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.forest }}>Established</span>}
+                    {crop.lifecycle_mode === "established"  && <span style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.forest }}>Established</span>}
                     {crop.lifecycle_mode === "overwintered" && <span style={{ background: "#f0f4ff", border: `1px solid #7b9ef766`, borderRadius: R.full, fontSize: 10, padding: "1px 7px", color: C.infoText }}>Overwintered</span>}
                   </div>
                 )}
@@ -8786,7 +8813,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
 
               {/* Missed task note */}
               {crop.missed_task_note && (
-                <div style={{ marginTop: 10, background: "#fff5f5", border: `1px solid ${C.red}44`, borderRadius: R.sm, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ marginTop: 10, background: TINT.danger, border: `1px solid ${TINT_LINE.danger}`, borderRadius: R.sm, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: C.dangerText, marginBottom: 2 }}>Missed task</div>
                     <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.4 }}>{crop.missed_task_note}</div>
@@ -8794,7 +8821,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                   <button onClick={async () => {
                     await apiFetch(`/crops/${crop.id}`, { method: "PUT", body: JSON.stringify({ missed_task_note: null }) });
                     await load();
-                  }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
+                  }} style={{ background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "3px 8px", fontSize: 11, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
                     Clear
                   </button>
                 </div>
@@ -8803,6 +8830,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           )}
         </div>
       ))}
+      </div>
     </>}
     </div>
   );
