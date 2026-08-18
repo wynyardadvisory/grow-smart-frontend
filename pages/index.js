@@ -1175,7 +1175,16 @@ function ProfilePhotoGreeting({ photoUrl, onUploaded }) {
 // ── Photo Circle ─────────────────────────────────────────────────────────────
 // Tappable circular photo. Shows placeholder if no photo. Uploads on tap.
 
-function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷" }) {
+// `variant` separates the two semantic roles this component serves.
+//   "avatar" (default) — a person. Profile passes nothing, so it is unchanged.
+//   "object"           — a place: Garden locations and areas.
+// The object treatment follows the pattern Crops already established: a photo
+// defines its own edge so it carries no border, and the no-photo state uses the
+// dashed affordance that means "tap to add" everywhere else in the app.
+// Size, upload/crop/compression, click handling, the file input, the uploading
+// state, the placeholder glyph and the + badge are identical in both variants.
+function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷", variant = "avatar" }) {
+  const isObject = variant === "object";
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
 
@@ -1206,9 +1215,12 @@ function PhotoCircle({ photoUrl, size, endpoint, onUploaded, placeholder = "📷
 
   return (
     <div onClick={() => !uploading && inputRef.current?.click()}
-      style={{ width: size, height: size, borderRadius: R.full, overflow: "hidden", flexShrink: 0,
-               background: photoUrl ? "transparent" : "#e8efe9",
-               border: `2px solid ${photoUrl ? C.sage : C.border}`,
+      style={{ width: size, height: size, overflow: "hidden", flexShrink: 0,
+               borderRadius: isObject ? R.sm : R.full,
+               background: photoUrl ? "transparent" : (isObject ? C.offwhite : "#e8efe9"),
+               border: isObject
+                 ? (photoUrl ? "none" : `1px dashed ${C.border}`)
+                 : `2px solid ${photoUrl ? C.sage : C.border}`,
                display: "flex", alignItems: "center", justifyContent: "center",
                cursor: "pointer", position: "relative" }}>
       {photoUrl
@@ -6216,7 +6228,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }}
               onClick={() => setCollapsedLocs(c => ({ ...c, [loc.id]: !c[loc.id] }))}>
-              <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id}
+              <PhotoCircle photoUrl={loc.photo_url} size={44} endpoint={"/photos/location/" + loc.id} variant="object"
                 onUploaded={url => setLocations(ls => ls.map(l => l.id === loc.id ? { ...l, photo_url: url } : l))} />
               <div>
                 <div style={{ ...T.displayMd, fontSize: 16, color: C.forest }}>{loc.name}</div>
@@ -6441,7 +6453,7 @@ function GardenView({ onNavigateAdd, tourRefs = {} }) {
                             ))}
                           </div>
                         )}
-                        <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id}
+                        <PhotoCircle photoUrl={area.photo_url} size={36} endpoint={"/photos/area/" + area.id} variant="object"
                           onUploaded={url => setLocations(ls => ls.map(l => ({ ...l, growing_areas: (l.growing_areas || []).map(a => a.id === area.id ? { ...a, photo_url: url } : a) })))} />
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* The area is the container; its crops are the contents. Promoting
