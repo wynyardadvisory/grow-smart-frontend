@@ -13,7 +13,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationWillResignActive(_ application: UIApplication) {}
     func applicationDidEnterBackground(_ application: UIApplication) {}
     func applicationWillEnterForeground(_ application: UIApplication) {}
-    func applicationDidBecomeActive(_ application: UIApplication) {}
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        // Clear the app icon badge whenever the app becomes active (foreground or
+        // resume from background) — not just on cold launch, which is the only
+        // moment OneSignal's own automatic badge clearing fires by default.
+        // Confirmed bug: badge was stuck showing the last push count after
+        // open -> background -> reopen, because nothing cleared it on resume.
+        application.applicationIconBadgeNumber = 0
+    }
+
     func applicationWillTerminate(_ application: UIApplication) {}
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
