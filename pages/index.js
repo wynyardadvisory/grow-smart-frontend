@@ -26,6 +26,10 @@ import { F } from "@/lib/fonts";
 // weight and tracking a piece of text uses; the call site keeps its own fontSize,
 // colour and spacing. Replaces 172 ad-hoc font signatures across this file.
 import { T } from "@/lib/typography";
+// Product analytics. Must stay a top-level import — see lib/analytics.js for why
+// tracking lives in one module and why events queue until posthog.init resolves.
+// track() describes one user action; never call it inside a loop over records.
+import { EVENTS, track, trackOnce, trackAppOpened, identifyUser, daysSinceSignup, getPlatform } from "@/lib/analytics";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -2042,6 +2046,15 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       });
       setSaved(entry.id);
       setSavedEntry({ ...entry, photo_url: photoPreview || null });
+      // has_quantity matters: the audit found only 41% of harvest logs recorded
+      // an amount, so completion rate alone overstates the value of the data.
+      track(EVENTS.HARVEST_LOGGED, {
+        crop_name:    item.crop || null,
+        has_quantity: !!quantity,
+        has_photo:    !!photo,
+        has_notes:    !!notes.trim(),
+        is_final:     !!isFinal,
+      });
       if (photo) await uploadPhoto(entry.id);
       onSaved(item.crop_instance_id, isFinal);
       maybePromptForReview(); // Trigger: 1st harvest logged
@@ -4037,6 +4050,51 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     loadRecentHarvests();
   }, [load]);
 
+  // Today viewed — fired on RENDER, not on tab change.
+  //
+  // The old tab_viewed event fired inside setTab(), so a user who opened the app
+  // and only read Today (the default tab) fired nothing at all. Vercro's most
+  // important screen had its usage systematically undercounted to a floor.
+  //
+  // trackOnce absorbs React remounts on tab return and StrictMode's double-mount
+  // in development; the 30s window keeps rapid tab-flipping from inflating it.
+  useEffect(() => {
+    trackOnce("screen:dashboard", EVENTS.SCREEN_VIEWED, { screen: "today", view: dashboardView });
+  }, [dashboardView]);
+
+  // tasks_surfaced — the denominator that has never existed.
+  //
+  // Without it, "completion rate per surfaced task" is uncomputable, which is why
+  // the audit could not tell a task nobody wanted from a task nobody was shown.
+  //
+  // Keyed on the task-set signature so the cache-then-fresh double setData in
+  // load() emits once, and a background refresh returning identical counts does
+  // not re-fire. A genuinely changed task set does re-fire, which is correct.
+  // Counts come from data.tasks (what the server surfaced) rather than from the
+  // `grouped` memo, for two reasons: `grouped` is declared below this component's
+  // early returns, so no hook may depend on it without breaking hook order; and
+  // `grouped` folds locally-undone tasks back in, which would overstate what
+  // Vercro actually put in front of the user.
+  const tasksSurfacedKeyRef = useRef(null);
+  useEffect(() => {
+    if (loading || !data?.tasks) return;
+    const todayList   = data.tasks.today     || [];
+    const thisWeek    = data.tasks.this_week || [];
+    const comingUp    = data.tasks.coming_up || [];
+    const alerts      = data.tasks.alerts    || [];
+    const signature   = [todayList.length, thisWeek.length, comingUp.length, alerts.length].join(":");
+    if (tasksSurfacedKeyRef.current === signature) return;
+    tasksSurfacedKeyRef.current = signature;
+    track(EVENTS.TASKS_SURFACED, {
+      today_total:      todayList.length,
+      today_active:     todayList.filter(t => !completed.has(t.id)).length,
+      this_week_count:  thisWeek.length,
+      coming_up_count:  comingUp.length,
+      alert_count:      alerts.length,
+      has_tasks:        todayList.length > 0,
+    });
+  }, [loading, data]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Clear app icon badge when app loads — Option B nudge model.
   // Push sets badge to 1 as a nudge; opening the app clears it.
   useEffect(() => {
@@ -4054,7 +4112,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     } catch(e) {}
   };
 
-  const completeTask = async (task) => {
+  // opts.track — set false by the alert group handlers below, which call this in
+  // a loop. They emit ONE aggregate task_completed for the single tap instead.
+  // Capturing here unconditionally is what produced 231 events per user per
+  // minute for `protect` tasks in the pre-June data; see lib/analytics.js.
+  const completeTask = async (task, opts = {}) => {
+    const shouldTrack = opts.track !== false;
     setCompleted(prev => new Set([...prev, task.id]));
     setRecentlyDone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
     setUndone(prev => prev.filter(t => t.id !== task.id));
@@ -4063,6 +4126,18 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
+      // Fired only after the API confirms. The catch below rolls the optimistic
+      // UI back, so capturing earlier would record completions that never were.
+      if (shouldTrack) {
+        track(EVENTS.TASK_COMPLETED, {
+          task_type: task.task_type || task.action || null,
+          urgency:   task.urgency || null,
+          count:     1,
+          bulk:      false,
+          outcome:   "done",
+          surface:   "today",
+        });
+      }
       // Nudge to share after 5th task — high-emotion moment
       const newCount = (data?.tasks_completed_this_week || 0) + 1;
       const totalKey = "vercro_total_completed";
@@ -4204,12 +4279,25 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 
   // ── Observation helper ───────────────────────────────────────────────────────
-  const logObservation = async (cropId, type, symptomCode, severity = null) => {
+  // opts.track — false when called in a loop by the alert group handlers, which
+  // emit one aggregate observation_logged instead. Capturing here per crop is
+  // what produced bursts of up to 62 pest observations per user per minute.
+  const logObservation = async (cropId, type, symptomCode, severity = null, opts = {}) => {
     try {
       await apiFetch(`/crops/${cropId}/observe`, {
         method: "POST",
         body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity })
       });
+      if (opts.track !== false) {
+        track(EVENTS.OBSERVATION_LOGGED, {
+          observation_type: type,
+          symptom_code:     symptomCode || null,
+          severity:         severity || null,
+          count:            1,
+          bulk:             false,
+          surface:          "today",
+        });
+      }
       load(); // refresh dashboard after observation
     } catch(e) { console.error("[Observe]", e); }
   };
@@ -4750,25 +4838,40 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     {isPest ? (
                       <>
                         <button onClick={async () => {
-                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild") : Promise.resolve()));
-                          group.forEach(x => completeTask(x));
+                          // One tap over a whole alert group. Per-record tracking is
+                          // suppressed and a single aggregate event carries count —
+                          // this group reached 231 crops in the pre-June data.
+                          const observed = group.filter(x => x.crop_instance_id).length;
+                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild", { track: false }) : Promise.resolve()));
+                          group.forEach(x => completeTask(x, { track: false }));
+                          if (observed > 0) track(EVENTS.OBSERVATION_LOGGED, { observation_type: "pest", symptom_code: "pest_found", severity: "mild", count: observed, bulk: true, surface: "today_alert" });
+                          track(EVENTS.TASK_COMPLETED, { task_type: t.task_type || null, urgency: t.urgency || null, count: group.length, bulk: true, outcome: "issue_found", surface: "today_alert" });
                         }} style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px", fontSize: 12, cursor: "pointer" }}>
                           Found it
                         </button>
                         <button onClick={async () => {
-                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy") : Promise.resolve()));
-                          group.forEach(x => completeTask(x));
+                          const observed = group.filter(x => x.crop_instance_id).length;
+                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy", null, { track: false }) : Promise.resolve()));
+                          group.forEach(x => completeTask(x, { track: false }));
+                          if (observed > 0) track(EVENTS.OBSERVATION_LOGGED, { observation_type: "pest", symptom_code: "looks_healthy", severity: null, count: observed, bulk: true, surface: "today_alert" });
+                          track(EVENTS.TASK_COMPLETED, { task_type: t.task_type || null, urgency: t.urgency || null, count: group.length, bulk: true, outcome: "all_clear", surface: "today_alert" });
                         }} style={{ ...T.control, flex: 1, background: "none", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "8px", color: C.forest, fontSize: 12, cursor: "pointer" }}>
                           ✓ All clear
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => group.forEach(x => completeTask(x))}
+                        <button onClick={() => {
+                          group.forEach(x => completeTask(x, { track: false }));
+                          track(EVENTS.TASK_COMPLETED, { task_type: t.task_type || null, urgency: t.urgency || null, count: group.length, bulk: true, outcome: "done", surface: "today_alert" });
+                        }}
                           style={{ ...T.control, flex: 1, background: urgColour, color: "#fff", border: "none", borderRadius: R.sm, padding: "8px", fontSize: 12, cursor: "pointer" }}>
                           ✓ Done
                         </button>
-                        <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); }}
+                        {/* Dismiss hits the same /complete endpoint but is not the same
+                            intent, so it is tagged outcome:"dismissed" rather than being
+                            pooled with genuine completions. */}
+                        <button onClick={() => { group.forEach(x => { setCompleted(prev => new Set([...prev, x.id])); apiFetch(`/tasks/${x.id}/complete`, { method: "POST" }); }); track(EVENTS.TASK_COMPLETED, { task_type: t.task_type || null, urgency: t.urgency || null, count: group.length, bulk: true, outcome: "dismissed", surface: "today_alert" }); }}
                           style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "8px 14px", color: C.stone, fontSize: 12, cursor: "pointer" }}>
                           Dismiss
                         </button>
@@ -5300,6 +5403,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
           notes:            confirmed ? `Stage ${nextStage} confirmed by user` : `Stage ${nextStage} not yet reached`
         })
       });
+      track(EVENTS.OBSERVATION_LOGGED, { observation_type: "growth", symptom_code: symptomCode, count: 1, bulk: false, surface: "quick_check" });
       // Also update the stage via confirm-stage
       const result = await apiFetch(`/crops/${crop.id}/confirm-stage`, {
         method: "POST",
@@ -5426,6 +5530,7 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
                     <button onClick={async () => {
                       setDismissed(prev => new Set([...prev, crop.id + "_perennial"]));
                       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
+                      track(EVENTS.TASK_COMPLETED, { task_type: task.task_type || null, urgency: task.urgency || null, count: 1, bulk: false, outcome: "done", surface: "quick_check" });
                       if (onDismiss) onDismiss();
                     }} style={{ ...T.control, flex: 1, padding: "9px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 13, cursor: "pointer" }}>
                       ✓ Done
@@ -6876,6 +6981,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         method: "POST",
         body: JSON.stringify({ observation_type: "stage", symptom_code: stage?.symptom || null, confirmed_stage: stageKey, timeline_offset_days: timelineOffsetDays })
       });
+      track(EVENTS.OBSERVATION_LOGGED, { observation_type: "stage", confirmed_stage: stageKey || null, count: 1, bulk: false, surface: "crop_timeline" });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
       setConfirmed(true);
@@ -6894,6 +7000,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         method: "POST",
         body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: timelineOffsetDays })
       });
+      track(EVENTS.OBSERVATION_LOGGED, { observation_type: "timeline", count: 1, bulk: false, surface: "crop_timeline", source: "harvest_date" });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
       setConfirmed(true);
@@ -6912,6 +7019,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         method: "POST",
         body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: days })
       });
+      track(EVENTS.OBSERVATION_LOGGED, { observation_type: "timeline", count: 1, bulk: false, surface: "crop_timeline", source: "days_offset" });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
       setConfirmed(true);
@@ -6928,6 +7036,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         method: "POST",
         body: JSON.stringify({ observation_type: "timeline", timeline_offset_days: 0 })
       });
+      track(EVENTS.OBSERVATION_LOGGED, { observation_type: "timeline", count: 1, bulk: false, surface: "crop_timeline", source: "reset" });
       const updated = await apiFetch(`/crops/${crop.id}`);
       if (updated?.timeline) setTimeline(updated.timeline);
       setConfirmed(true);
@@ -7719,6 +7828,12 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
           notes:          notes   || null,
           lifecycle_mode: crop.lifecycle_mode || "seasonal"
         })
+      });
+      track(EVENTS.CROP_ADDED, {
+        crop_name:     cropName || null,
+        method:        "duplicate",
+        count:         1,
+        has_sown_date: !!sowDate,
       });
       onSaved();
     } catch (e) { setError(e.message); setSaving(false); }
@@ -9233,6 +9348,15 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
             first_status:    succForm.first_sown_date ? "growing" : "planned"
           })
         });
+        // A succession group is ONE user action that creates N crops. It emits a
+        // single event carrying count — emitting one per crop would repeat the
+        // bulk-fire mistake in a different place.
+        track(EVENTS.CROP_ADDED, {
+          crop_name:     cropName || null,
+          method:        "succession",
+          count:         Number(succForm.target_sowings) || 3,
+          has_sown_date: !!succForm.first_sown_date,
+        });
         try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
         setStep("done");
         setTimeout(() => {
@@ -9276,6 +9400,14 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
       });
 
       if (result.enriching) setEnriching(true);
+      track(EVENTS.CROP_ADDED, {
+        crop_name:     cropName || null,
+        method:        "single",
+        count:         1,
+        has_sown_date: !!(showSowDate && form.sown_date),
+        is_other_crop: !!isOtherCrop,
+        from_barcode:  !!form.barcode,
+      });
       try { localStorage.removeItem("vercro_crops_v1"); localStorage.removeItem("vercro_garden_v1"); localStorage.removeItem("vercro_dashboard_v1"); } catch(e) {}
       // Trigger: 5th crop added
       try {
@@ -11294,6 +11426,15 @@ function ProSubscriptionSection() {
   // (Same pattern as ProPaywallSheet.handleUpgrade — kept in sync with it.)
   const handleUpgrade = async (interval = "annual") => {
     setCheckoutLoading(true);
+    // Checkout INTENT. Trustworthy as intent; says nothing about payment.
+    // See subscription_completed below for why neither client-side signal can be
+    // treated as revenue truth.
+    track(EVENTS.SUBSCRIPTION_STARTED, {
+      interval,
+      tier:     pricing?.tier || null,
+      provider: (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) ? "revenuecat" : "stripe",
+      surface:  "profile",
+    });
     try {
       if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
@@ -11315,6 +11456,14 @@ function ProSubscriptionSection() {
 
         if (!pkg) throw new Error("No package available for " + offeringId + " / " + interval);
         await Purchases.purchasePackage({ aPackage: pkg });
+        // verified:false — purchasePackage resolving is a real RevenueCat success,
+        // but this client cannot confirm the entitlement, and it sees nothing of
+        // renewals, refunds or failed rebills. RevenueCat webhooks are the only
+        // source of truth. send_instantly because window.location.reload() below
+        // would otherwise drop the event while it sat in the batch queue.
+        track(EVENTS.SUBSCRIPTION_COMPLETED, {
+          interval, tier: pricing?.tier || null, provider: "revenuecat", verified: false, surface: "profile",
+        }, { send_instantly: true });
         await apiFetch("/subscription/status");
         window.location.reload();
       } else {
@@ -11951,6 +12100,15 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
 
       setResult(data);
       setStep("result");
+      // Fired only on a successful analysis that produced a result. Paywalled and
+      // failed attempts are deliberately excluded so this counts value delivered,
+      // not buttons pressed.
+      track(EVENTS.PLANTCHECK_USED, {
+        entry,
+        crop_name:      crop?.name || null,
+        has_diagnosis:  !!(data?.diagnosis || data?.issue || data?.stage_detected),
+        stage_detected: data?.stage_detected || null,
+      });
       // Trigger: 2nd photo diagnosis completed
       try {
         const diagCount = parseInt(localStorage.getItem("vercro_total_diagnoses") || "0") + 1;
@@ -11988,6 +12146,14 @@ function PlantCheck({ entry = "today", prefillCrop = null, onClose, onDone }) {
     await apiFetch(`/crops/${crop.id}/observe`, {
       method: "POST",
       body: JSON.stringify(payload)
+    });
+    track(EVENTS.OBSERVATION_LOGGED, {
+      observation_type: "plant_check",
+      confirmed_stage:  payload.confirmed_stage || null,
+      symptom_code:     payload.symptom_code || null,
+      count:            1,
+      bulk:             false,
+      surface:          "plant_check_result",
     });
   };
 
@@ -12182,6 +12348,17 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
     if (typeof window !== "undefined" && window.posthog) {
       window.posthog.capture("paywall_upgrade_tapped", { trigger, mode, interval });
     }
+    // paywall_upgrade_tapped is the paywall-funnel step; subscription_started is
+    // the commerce-funnel step. Kept separate so paywall conversion and checkout
+    // conversion stay independently measurable across both upgrade entry points.
+    track(EVENTS.SUBSCRIPTION_STARTED, {
+      interval,
+      tier:     pricing?.tier || null,
+      provider: (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) ? "revenuecat" : "stripe",
+      surface:  "paywall",
+      trigger,
+      mode,
+    });
     try {
       if (typeof window !== "undefined" && window.Capacitor?.isNative && Purchases) {
         // iOS / Android — pick the correct RevenueCat offering for this user's tier
@@ -12203,6 +12380,11 @@ function ProPaywallSheet({ trigger, mode = "hard", onClose, onSeeMore }) {
 
         if (!pkg) throw new Error("No package available for " + offeringId + " / " + interval);
         await Purchases.purchasePackage({ aPackage: pkg });
+        // See the note on the other subscription_completed call — unverified by
+        // design, and sent instantly so the reload cannot drop it.
+        track(EVENTS.SUBSCRIPTION_COMPLETED, {
+          interval, tier: pricing?.tier || null, provider: "revenuecat", verified: false, surface: "paywall", trigger,
+        }, { send_instantly: true });
         await apiFetch("/subscription/status");
         window.location.reload();
       } else {
@@ -18836,6 +19018,21 @@ function OnboardingScreen({ session, onComplete }) {
   const [error,         setError]        = useState(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
 
+  // Step names keep the funnel readable in PostHog — a bare index means nothing
+  // once the step order changes.
+  const STEP_NAMES = ["identity", "crops", "stage", "area", "source", "loading", "push_opt_in"];
+  const furthestStepRef = useRef(0);
+
+  // Restores the intra-onboarding funnel deleted by 660440e. Until now only the
+  // two endpoints fired, so where users abandon onboarding was unmeasurable.
+  // `revisit` marks a step re-entered via Back, so funnels can count first views.
+  useEffect(() => {
+    if (step > 4) return; // 5 = loading, 6 = push opt-in — not user-navigable steps
+    const revisit = step < furthestStepRef.current;
+    if (step > furthestStepRef.current) furthestStepRef.current = step;
+    track(EVENTS.ONBOARDING_STEP_VIEWED, { step, step_name: STEP_NAMES[step] || null, revisit });
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleCrop = (crop) => {
     setSelectedCrops(prev =>
       prev.find(c => c.name === crop.name)
@@ -18855,6 +19052,15 @@ function OnboardingScreen({ session, onComplete }) {
 
   const next = () => {
     setError(null);
+    // value_count records what the user actually supplied at this step — crops
+    // chosen is the one that matters, since 36% of gardens are created with a
+    // single crop and a one-crop garden generates almost no tasks.
+    track(EVENTS.ONBOARDING_STEP_COMPLETED, {
+      step,
+      step_name:   STEP_NAMES[step] || null,
+      value_count: step === 1 ? selectedCrops.length : null,
+      value:       step === 2 ? stage : step === 3 ? areaType : step === 4 ? (selfSource || "skipped") : null,
+    });
     if (step < 4) { setStep(s => s + 1); return; }
     // Step 4 → submit
     submit();
@@ -18917,14 +19123,20 @@ function OnboardingScreen({ session, onComplete }) {
       clearInterval(interval);
       // Small deliberate pause so loading feels intentional
       await new Promise(r => setTimeout(r, 600));
-      if (typeof window !== "undefined" && window.posthog) {
-        window.posthog.capture("onboarding_completed", {
-          signup_source: storedUtms.signup_source || "direct",
-          signup_campaign: storedUtms.signup_campaign || null,
-          crops_count: cropsPayload.length,
-          area_type: areaType
-        });
-      }
+      // trackOnce keyed on the user id: the audit found 4% of users firing
+      // onboarding_completed more than once, which quietly overstated the
+      // completion count and broke any funnel treating it as a unique step.
+      //
+      // Note crops created here are reported via crops_count and deliberately do
+      // NOT also emit crop_added — crop_added means "user chose to add a crop to
+      // an existing garden". Counting both would double-count activation.
+      trackOnce(`onboarding_completed:${session?.user?.id || "anon"}`, EVENTS.ONBOARDING_COMPLETED, {
+        signup_source:   storedUtms.signup_source || "direct",
+        signup_campaign: storedUtms.signup_campaign || null,
+        crops_count:     cropsPayload.length,
+        area_type:       areaType,
+        stage,
+      }, 60 * 60 * 1000);
       setStep(6); // Show push opt-in before entering the app
     } catch (e) {
       clearInterval(interval);
@@ -19297,6 +19509,37 @@ export default function GrowSmart() {
         if (!isNewUser && s?.user?.id && typeof window !== "undefined" && window.posthog) {
           window.posthog.identify(s.user.id, { email: s.user.email });
         }
+
+        // Restores identify + session_started, both deleted by 660440e.
+        //
+        // identifyUser runs unconditionally (it is idempotent) because the branch
+        // above only covers returning users and the new-user branch only fires
+        // inside a 60-second created_at race — between them, sign-ins were being
+        // left anonymous. The audit found people with 10+ events and no identity.
+        //
+        // trackOnce guards against Supabase emitting SIGNED_IN more than once for
+        // a single sign-in (token refresh, tab focus), which would otherwise
+        // inflate session counts.
+        //
+        // NOTE ON session_started — it is NOT the app-open metric.
+        //
+        // It fires on Supabase SIGNED_IN, i.e. authentication. An already
+        // signed-in user reopening or reloading Vercro does NOT fire it, because
+        // Supabase emits INITIAL_SESSION rather than SIGNED_IN when restoring a
+        // stored session. It therefore systematically undercounts visits, and
+        // undercounts them worst on native, where sessions persist longest.
+        //
+        // Kept firing unchanged so comparisons against the pre-June data stay
+        // valid, and deliberately not renamed. Use app_opened as the denominator
+        // for DAU/WAU/MAU, opens per user, and retention.
+        if (s?.user?.id) {
+          identifyUser(s.user);
+          trackOnce(`session_started:${s.user.id}`, EVENTS.SESSION_STARTED, {
+            days_since_signup: daysSinceSignup(s.user),
+            method:            s.user.app_metadata?.provider || "unknown",
+            is_new_user:       isNewUser,
+          }, 60000);
+        }
       }
     });
 
@@ -19346,6 +19589,39 @@ export default function GrowSmart() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // app_opened — the authoritative DAU/WAU/MAU denominator.
+  //
+  // Keyed on the user id so it re-runs only when the signed-in person changes,
+  // never on a tab change or a rerender. GrowSmart is the root component and
+  // does not remount when tabs switch; even if it did, trackAppOpened's
+  // persisted 30-minute gap would suppress the duplicate.
+  //
+  // Three foreground signals, because no single one covers every surface:
+  //   • the effect body itself — a cold load with a restored session, which is
+  //     precisely the case session_started misses
+  //   • visibilitychange     — Capacitor background→foreground, and browser tabs
+  //   • pageshow[persisted]  — iOS Safari bfcache restore, which can skip both
+  //     of the above; iOS Safari is the single largest platform in the data
+  // All three funnel through the same gap check, so overlap cannot double-count.
+  useEffect(() => {
+    const user = session?.user;
+    if (!user?.id) return;
+
+    trackAppOpened(user, "launch");
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") trackAppOpened(user, "resume");
+    };
+    const onPageShow = (e) => { if (e.persisted) trackAppOpened(user, "resume"); };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
     if (!session) { setOnboarding(null); return; }
@@ -19380,6 +19656,15 @@ export default function GrowSmart() {
     if (router.query.subscribed !== "true") return;
 
     setSubscribedToast(true);
+    // Stripe's success redirect — the ONLY client-visible signal that a web
+    // checkout finished. verified:false is not caution for its own sake: this is
+    // a URL parameter the user can type, and Stripe redirects before its webhook
+    // confirms payment, so the two can genuinely disagree. Use it to size the
+    // funnel, never to count revenue. Stripe webhooks posting server-side to
+    // PostHog (Grow Smart API, not this repo) remain the source of truth.
+    trackOnce("subscription_completed:stripe", EVENTS.SUBSCRIPTION_COMPLETED, {
+      provider: "stripe", verified: false, surface: "stripe_return",
+    }, 60000);
     try { localStorage.removeItem("vercro_is_pro"); } catch(e) {}
 
     // Remove ?subscribed=true from URL without reloading

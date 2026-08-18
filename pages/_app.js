@@ -3,6 +3,7 @@ import posthog from "posthog-js";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { display, body } from "@/lib/fonts";
+import { flushAnalytics } from "@/lib/analytics";
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -26,6 +27,16 @@ export default function App({ Component, pageProps }) {
         // and fixed in session 60 after all five new events showed zero data
         // in PostHog despite being correctly deployed.
         window.posthog = ph;
+
+        // Register the platform super property (web / ios / android) and replay
+        // anything captured before init resolved.
+        //
+        // Both matter because of React effect ordering: children's effects run
+        // before parents', so GrowSmart's mount effects — which fire
+        // session_started and the first screen_viewed — run BEFORE this
+        // callback. lib/analytics.js queues those and flushAnalytics replays
+        // them here, with platform already attached.
+        flushAnalytics(ph);
       },
     });
 
