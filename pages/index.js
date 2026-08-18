@@ -9762,11 +9762,16 @@ function FAQSection() {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ ...T.displayMd, fontSize: 15, color: C.ink, marginBottom: 12 }}>
-        Help & FAQ
+      {/* Was a serif heading — the only one of its kind on Profile, where every
+          other group uses the uppercase eyebrow. Now consistent. */}
+      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10, paddingLeft: 2 }}>
+        Help &amp; Support
       </div>
+      {/* One hairline-divided surface instead of six floating cards. Accordion
+          behaviour, openSection/openItem state and every handler are unchanged. */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, overflow: "hidden" }}>
       {FAQ_DATA.map((section, si) => (
-        <div key={si} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, marginBottom: 8, overflow: "hidden" }}>
+        <div key={si} style={{ borderTop: si > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
           {/* Section header */}
           <button onClick={() => { setOpenSection(openSection === si ? null : si); setOpenItem(null); }}
             style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -9801,6 +9806,7 @@ function FAQSection() {
           )}
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -11000,10 +11006,11 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </div>
       </div>
 
-      {/* ── 2. PRO CARD — gated, invisible to all except mark/test user ── */}
-      {<ProSubscriptionSection />}
-
-      {/* ── 3. HARVEST SUMMARY — hero card ── */}
+      {/* ── 2. HARVEST SUMMARY — hero card ──
+             Profile leads with the grower's record. The Pro surface now sits below
+             it and below Achievements: a subscriber's season is the reason to open
+             this screen, and Manage subscription is an annual errand. Pro keeps its
+             dark card and full width — only its position changed. ── */}
       {harvestStats && (
         <div style={{
           background: C.surfaceDark,
@@ -11062,7 +11069,7 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </div>
       )}
 
-      {/* ── 4. HARVEST LOG ── */}
+      {/* ── 3. HARVEST LOG ── */}
       <div ref={tourRefs.tourRef_harvestLog} style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
         <button onClick={() => setLogOpen(o => !o)}
           style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -11093,29 +11100,28 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         )}
       </div>
 
-      {/* ── 5. GARDEN SECTION ── */}
-      <div style={sectionLabel}>Garden</div>
+      {/* ── 4. ACHIEVEMENTS ──
+             Badges belong with the record, not with settings. Sitting them under
+             the harvest log reads as earned; filing them beside Notifications read
+             as configuration. ── */}
+      <div style={sectionLabel}>Achievements</div>
       <div style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
         {chevronRow("🏆", "Challenges & Badges", "Track progress and unlock garden rewards", () => onTabChange("badges"))}
       </div>
 
-      {/* ── 6. NOTIFICATIONS ROW ── */}
-      <div style={sectionLabel}>Notifications</div>
-      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, overflow: "hidden", marginBottom: 20}}>
+      {/* ── 5. PRO CARD — gated, invisible to all except mark/test user ── */}
+      {<ProSubscriptionSection />}
+
+      {/* ── 6. SETTINGS ──
+             One group for the ordinary product settings. Time away follows as its
+             own card: it is a component that renders its own surface and margin, so
+             folding it in here would mean overriding its styling from outside. ── */}
+      <div style={sectionLabel}>Settings</div>
+      <div ref={tourRefs.tourRef_notifications} style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
         {chevronRow("🔔", "Notifications", "Daily tasks, weather alerts and reminders", () => setShowNotifScreen(true))}
-      </div>
-
-      {/* ── 7. TIME AWAY ── */}
-      <div ref={tourRefs.tourRef_timeAway}>
-        <TimeAwaySection openOnMount={openTimeAway} onOpened={onTimeAwayOpened} />
-      </div>
-
-      {/* ── 8. PREFERENCES ── */}
-      <div style={sectionLabel}>Measurements & Communications</div>
-      <div style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
 
         {/* Measurements */}
-        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.lineSoft}` }}>
+        <div style={{ padding: "14px 16px", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Measurements</div>
           <div style={{ fontSize: 12, color: C.stone, marginBottom: 12 }}>How dimensions are shown for beds and areas</div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -11142,7 +11148,15 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </div>
       </div>
 
-      {/* ── 9. ACCOUNT ── */}
+      {/* ── 7. TIME AWAY — still under Settings, but its own surface.
+             TimeAwaySection renders its own card, border and marginBottom, and can
+             swap to a full screen. Internals, openOnMount, onOpened and the ref are
+             untouched; only its position moved. ── */}
+      <div ref={tourRefs.tourRef_timeAway}>
+        <TimeAwaySection openOnMount={openTimeAway} onOpened={onTimeAwayOpened} />
+      </div>
+
+      {/* ── 8. ACCOUNT ── */}
       <div style={sectionLabel}>Account</div>
       <div style={{ background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 20, overflow: "hidden"}}>
         <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.lineSoft}` }}>
@@ -11156,16 +11170,16 @@ function ProfileScreen({ session, onTabChange, openTimeAway = false, onTimeAwayO
         </button>
       </div>
 
-      {/* ── 10. HELP & FAQ ── */}
+      {/* ── 9. HELP & SUPPORT ── */}
       <FAQSection />
 
-      {/* ── 11. SIGN OUT ── */}
+      {/* ── 10. SIGN OUT ── */}
       <button onClick={() => supabase.auth.signOut()}
         style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: C.stone, marginBottom: 8, marginTop: 8 }}>
         Sign Out
       </button>
 
-      {/* ── 12. DANGER ZONE — delete ── */}
+      {/* ── 11. DANGER ZONE — delete ── */}
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid #fca5a5` }}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.dangerText, marginBottom: 10, paddingLeft: 2 }}>
           Danger Zone
