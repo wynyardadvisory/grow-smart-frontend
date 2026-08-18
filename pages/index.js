@@ -705,6 +705,17 @@ const SCORE_TEXT_ON_DARK = { good: "#C8E1C4", mid: "#EED7AB", poor: "#F0D4D4" };
 // the left border — only the label text moves.
 const URG_TEXT = { high: "#C03F32", medium: "#A35918", low: "#636D6E" };
 
+// ── Semantic tints (slice 5, Today) ──────────────────────────────────────────
+// Today carried eight pale greens for one job. The six lightest measured within
+// OKLab dE 0.014 of each other — one colour written six ways — and every one sat
+// only dE 0.022-0.035 from paper, so as tint against the page they never read at
+// all. These three replace them, and the rule that makes them work is placement:
+// a tint reads against a WHITE/raised surface (dE 0.05-0.085), not against paper.
+// Tinted blocks therefore sit on a raised surface or carry a same-family hairline
+// to define their edge. Pair each with the existing C.*Text token.
+const TINT      = { positive: "#DFEBE2", attention: "#FBEFE0", danger: "#FAE6E4" };
+const TINT_LINE = { positive: "#BFD6C6", attention: "#E8CFA9", danger: "#E7BDB6" };
+
 // ── Shape (slice 4A) ─────────────────────────────────────────────────────────
 // The app had 783 radius declarations across 23 values — nine different radii
 // visible in a single Today viewport. vercro.com uses `rounded-sm` (2px) on every
@@ -1876,7 +1887,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
           <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>{item.crop}</div>
         </div>
         {isReady
-          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: "#e8f4e8", borderRadius: R.full, padding: "2px 8px" }}>Ready now</span>
+          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: TINT.positive, borderRadius: R.full, padding: "2px 8px" }}>Ready now</span>
           : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: R.full, padding: "2px 8px" }}>{weeksLeft}w away</span>
         }
       </div>
@@ -2235,10 +2246,14 @@ function StreakCard({ streak, longestStreak, onViewBadges }) {
     return "You're a dedicated grower — impressive streak";
   };
 
-  const flameSize = streak >= 7 ? 22 : 18;
+  // Flame is one size. The 18->22px jump at 7 days was the only icon on Today
+  // that resized by state; the milestone is already carried by tint and colour.
+  const flameSize = 20;
 
   return (
-    <button onClick={onViewBadges} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: streak >= 7 ? "linear-gradient(135deg, #fff8f0 0%, #fff3e0 100%)" : C.offwhite, border: `1px solid ${streak >= 7 ? "#ffe0b2" : C.border}`, borderRadius: R.sm, padding: "11px 14px", marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
+    /* 7-day milestone now reads through the flat attention tint rather than a
+       gradient — the last gradient on Today. The escalation itself is unchanged. */
+    <button onClick={onViewBadges} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: streak >= 7 ? TINT.attention : C.offwhite, border: `1px solid ${streak >= 7 ? TINT_LINE.attention : C.border}`, borderRadius: R.sm, padding: "11px 14px", marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: flameSize, lineHeight: 1 }}>🔥</span>
         <div>
@@ -3042,7 +3057,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   // State 3 — nothing yet
   if (recentHarvests !== null && recentHarvests.length === 0) {
     return (
-      <div style={{ background: "#f5f9f5", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20 }}>
+      <div style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20 }}>
         <div style={{ ...T.displayMd, fontSize: 16, color: C.forest, marginBottom: 4 }}>No harvests yet</div>
         <div style={{ fontSize: 12, color: C.stone }}>Your first harvest is coming — keep going!</div>
       </div>
@@ -3266,9 +3281,13 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
     : `${remainingChecks} free checks`;
 
   return (
+    /* Position above Today's focus is unchanged. Border moves to the standard
+       hairline — this was the only Today card with a bespoke green edge. The 44px
+       pine icon tile stays: it is a filled container, not a nav icon, so 4B's
+       tile removal does not apply to it. */
     <div onClick={onOpen} style={{
-      background: "#fff",
-      border: `1px solid #D4E8CE`,
+      background: C.cardBg,
+      border: `1px solid ${C.lineSoft}`,
       borderRadius: R.sm,
       padding: "14px 16px",
       marginBottom: 16,
@@ -3280,7 +3299,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
       {/* Icon */}
       <div style={{
         width: 44, height: 44, borderRadius: R.sm,
-        background: isExpired ? "#f5f5f5" : C.forest,
+        background: isExpired ? C.offwhite : C.forest,
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 22, flexShrink: 0
       }}>
@@ -3314,7 +3333,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
         flexShrink: 0,
         padding: "8px 14px",
         borderRadius: R.sm,
-        background: isExpired ? "#f5f5f5" : C.forest,
+        background: isExpired ? C.offwhite : C.forest,
         color: isExpired ? C.stone : "#fff",
         fontSize: 12,
         whiteSpace: "nowrap"
@@ -4238,8 +4257,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     <div>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div ref={tourRefs.tourRef_todayHeader} style={{ background: C.surfaceDark, color: "#fff", borderRadius: R.sm, padding: "20px 20px 16px", marginBottom: 14, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: R.full, background: "rgba(255,255,255,0.06)" }} />
+      {/* Flat pine-deep header, greeting-led. The decorative 100px circle that sat
+          behind the profile photo is gone — it was the last purely ornamental
+          shape on Today and the only thing requiring overflow:hidden here. */}
+      <div ref={tourRefs.tourRef_todayHeader} style={{ background: C.surfaceDark, color: "#fff", borderRadius: R.sm, padding: "20px 20px 16px", marginBottom: 14, position: "relative" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
             <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.6, marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
@@ -4268,7 +4289,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       <div ref={tourRefs.tourRef_todayLogToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
         {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
           <button key={id} onClick={() => onDashboardViewChange(id)}
-            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: R.sm, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: F.body, boxShadow: dashboardView === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+            /* Active segment carries white fill + pine label + weight 700. The
+               fill is legitimate here — this is a segment, not a nav icon — but
+               the shadow was the last soft elevation left on Today after 4A. */
+            style={{ flex: 1, background: dashboardView === id ? "#fff" : "transparent", border: "none", borderRadius: R.sm, padding: "8px 0", fontSize: 13, fontWeight: dashboardView === id ? 700 : 500, color: dashboardView === id ? C.forest : C.stone, cursor: "pointer", fontFamily: F.body, transition: "all 0.15s" }}>
             {label}
           </button>
         ))}
@@ -4334,7 +4358,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
 
         {focusItem ? (
-          <div style={{ background: C.cardBg, border: `2px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: R.sm, padding: "16px 18px" }}>
+          /* Severity now has one vocabulary across Today: hairline border plus a
+             3px left stripe, the device Watch outs already used. The urgency
+             colour and its branching are unchanged — only the weight it is
+             expressed in. */
+          <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: R.sm, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
               <div style={{ flex: 1 }}>
@@ -4355,7 +4383,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                 <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span ref={tourRefs.tourRef_whyNowPill}
                     onClick={() => { setWhyNowTask(focusItem); }}
-                    style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.full, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
+                    style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.full, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
                     Why now?
                   </span>
                 </div>
@@ -4369,7 +4397,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             </div>
           </div>
         ) : (
-          <div style={{ background: "#f0f9f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+          /* Inline caught-up surface. Kept exactly as its own conditional branch —
+             it can and does render at the same time as the bottom empty state,
+             and neither is merged or suppressed. */
+          <div style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 28 }}>🌿</span>
             <div>
               <div style={{ ...T.displayMd, fontSize: 15, color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
@@ -4398,9 +4429,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           return (
             <div style={{ marginTop: 16 }}>
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* Homogeneous peers: one surface, groups separated by a hairline
+                  instead of 10px gaps. The task rows inside already used this
+                  device, so this just extends it one level up. Grouping logic,
+                  the succession key and the max-3 cap are untouched. */}
+              <div style={{ display: "flex", flexDirection: "column", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm }}>
                 {alsoGroups.map((group, gi) => (
-                  <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px" }}>
+                  <div key={gi} style={{ padding: "12px 14px", borderTop: gi > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
                       <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || group.crop?.name || "General"}</span>
@@ -4420,7 +4455,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                             </button>
                           )}
                           <button onClick={() => completeTask(t)}
-                            style={{ width: 28, height: 28, borderRadius: R.full, border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                            style={{ width: 28, height: 28, borderRadius: R.full, border: `1px solid ${C.lineSoft}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
                             ✓
                           </button>
                         </div>
@@ -4502,7 +4537,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                               </button>
                             )}
                             <button onClick={() => completeTask(t)}
-                              style={{ width: 28, height: 28, borderRadius: R.full, border: `2px solid ${C.border}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
+                              style={{ width: 28, height: 28, borderRadius: R.full, border: `1px solid ${C.lineSoft}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
                               ✓
                             </button>
                           </div>
@@ -4518,9 +4553,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
         {/* Recently done */}
         {recentlyDone.length > 0 && (
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-            {recentlyDone.map(t => (
-              <div key={t.id} style={{ background: "#f5faf5", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
+          /* One hairline-divided list rather than separate tinted cards. The
+             blanket opacity:0.7 is gone — it dimmed the Undo control along with
+             the completed text. De-emphasis now lives on the text alone, so the
+             one action in this block stays fully legible. */
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm }}>
+            {recentlyDone.map((t, ri) => (
+              <div key={t.id} style={{ padding: "10px 14px", borderTop: ri > 0 ? `1px solid ${TINT_LINE.positive}` : "none", display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
                 <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
                 {undoQueue[t.id] && (
@@ -4546,7 +4585,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         });
         if (upcomingCount < 5 || hasActivePeriod || timeAwayDismissed) return null;
         return (
-          <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
+          /* Entry point 1 of 2. Attention tint — deliberately NOT the same
+             surface as the persistent row below, whose trigger and urgency
+             differ. Both entry points are retained. */
+          <div style={{ background: TINT.attention, border: `1px solid ${TINT_LINE.attention}`, borderRadius: R.sm, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
             <span style={{ fontSize: 20, flexShrink: 0 }}>🗓️</span>
             <div style={{ flex: 1 }}>
               <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink, marginBottom: 2 }}>Busy week ahead</div>
@@ -4571,7 +4613,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* Persistent entry point — always visible, clears once user has added a blocked period */}
       {!timeAwayDismissed && blockedPeriods.length === 0 && (
         <div
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 12, background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, cursor: "pointer" }}
+          /* Entry point 2 of 2 — stays neutral so it never converges with the
+             attention-tinted nudge above. */
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 12, background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, cursor: "pointer" }}
           onClick={() => onTabChange("profile", { openTimeAway: true })}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>✈️</span>
@@ -4584,7 +4628,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             <span style={{ ...T.bodyStrong, fontSize: 12, color: C.forest }}>Set dates →</span>
             <button
               onClick={e => { e.stopPropagation(); setTimeAwayDismissed(true); try { localStorage.setItem("vercro_timeaway_dismissed", "1"); } catch(e) {} }}
-              style={{ background: "none", border: "none", fontSize: 16, color: C.stone, cursor: "pointer", padding: 0, lineHeight: 1 }}>×</button>
+              /* 28px hit area, matching the task complete circle. The glyph is
+                 unchanged; only the tappable region grew. */
+              style={{ background: "none", border: "none", fontSize: 16, color: C.stone, cursor: "pointer", padding: 0, lineHeight: 1, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
           </div>
         </div>
       )}
@@ -4614,7 +4660,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
               const urgColour = t.urgency === "high" ? "#e74c3c" : t.urgency === "medium" ? "#e67e22" : "#7f8c8d";
               // Border and tint keep urgColour; only the label needed to be readable.
               const urgText   = t.urgency === "high" ? URG_TEXT.high : t.urgency === "medium" ? URG_TEXT.medium : URG_TEXT.low;
-              const urgBg     = t.urgency === "high" ? "#fff5f5" : t.urgency === "medium" ? "#fff8f0" : "#f8f8f8";
+              // Semantic tint scale. These stay per-item surfaces on purpose:
+              // pooling different severities onto one list surface would flatten
+              // high and low urgency together.
+              const urgBg     = t.urgency === "high" ? TINT.danger : t.urgency === "medium" ? TINT.attention : C.offwhite;
               const isPest    = t.task_type?.includes("pest") || t.task_type?.includes("inspect") || t.task_type === "protect";
               const cropNames = [...new Set(group.map(x => x.crop?.name).filter(Boolean))];
               const groupKey  = t.rule_id || t.id;
@@ -4676,13 +4725,17 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {comingUpByCrop.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Coming up next</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {comingUpByCrop.slice(0, 5).map(({ name, emoji, tasks }) => (
-              <div key={name} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px" }}>
+          {/* Homogeneous read-only peers -> one hairline-divided surface. The
+              5-group and 3-task caps and relTime formatting are unchanged. */}
+          <div style={{ display: "flex", flexDirection: "column", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm }}>
+            {comingUpByCrop.slice(0, 5).map(({ name, emoji, tasks }, ci) => (
+              <div key={name} style={{ padding: "12px 14px", borderTop: ci > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 20 }}>{emoji}</span>
                   <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{name}</span>
-                  <span style={{ fontSize: 12, color: C.forest, fontWeight: 600, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
+                  {/* Stone, not pine: nothing in this block is tappable, and pine
+                      reads as an affordance everywhere else on Today. */}
+                  <span style={{ fontSize: 12, color: C.stone, fontWeight: 600, marginLeft: "auto" }}>{relTime(tasks[0]?.due_date)}</span>
                 </div>
                 {tasks.slice(0, 3).map((t, i) => (
                   <div key={t.id} style={{ fontSize: 13, color: C.stone, lineHeight: 1.4, paddingTop: i > 0 ? 5 : 0, borderTop: i > 0 ? `1px solid ${C.border}` : "none", marginTop: i > 0 ? 5 : 0, display: "flex", alignItems: "flex-start", gap: 6 }}>
@@ -4707,7 +4760,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* Harvest → Plant Check nudge (Mark only) */}
       {isMark && plantCheckEnabled && (
         <div onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
-          style={{ marginTop: -8, marginBottom: 20, padding: "10px 14px", background: "#f8faf6", border: `1px solid #D4E8CE`, borderRadius: "0 0 12px 12px", borderTop: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          /* Orphan radius resolved (was "0 0 12px 12px" — a conditional the 4A
+             codemod skipped by design). It was always trying to read as a row
+             welded under the harvest card; now it simply is one. */
+          style={{ marginTop: -20, marginBottom: 20, padding: "10px 14px", background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, borderTop: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14 }}>📷</span>
           <span style={{ fontSize: 12, color: C.stone }}>Not sure if it's ready? <span style={{ ...T.bodyStrong, color: C.forest }}>Check with a photo →</span></span>
         </div>
@@ -4715,8 +4771,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
       {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
+        /* The outer eyebrow said "Harvest forecast" directly above a card whose
+           own header says "Harvest forecast" with a live crop count. One block,
+           one name — the eyebrow goes and the card header stays, because the
+           count is real information the eyebrow could not carry. Section
+           position, contents and behaviour are unchanged. */
         <div style={{ marginBottom: 20 }}>
-          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Harvest forecast</div>
           <CollapsibleHarvestForecast
             items={data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id))}
             onHarvest={(h) => setPendingHarvest(h)}
@@ -4727,7 +4787,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
       {(data.missing_data || []).length > 0 && (
-        <div style={{ background: "#fff8ed", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
+        <div style={{ background: TINT.attention, border: `1px solid ${TINT_LINE.attention}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 10 }}>Make your plan more accurate</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(data.missing_data || []).slice(0, 3).map(item => (
@@ -4748,7 +4808,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       )}
 
       {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 12 }}>Garden progress</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
@@ -4757,9 +4817,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
             { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
             { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
           ].map(({ label, value, emoji, highlight }) => (
-            <div key={label} style={{ background: highlight ? "#fff8ed" : C.offwhite, border: `1px solid ${highlight ? C.amber : C.border}`, borderRadius: R.sm, padding: "10px 12px" }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
-              <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.attentionText : C.forest, lineHeight: 1 }}>{value}</div>
+            <div key={label} style={{ background: highlight ? TINT.attention : C.offwhite, border: `1px solid ${highlight ? TINT_LINE.attention : C.lineSoft}`, borderRadius: R.sm, padding: "10px 12px" }}>
+              {/* Glyphs retained — standalone icon slots, and no icon vocabulary
+                  work is in scope for this pass. Fixed line-height only, so the
+                  four tiles align optically. */}
+              <div style={{ fontSize: 20, lineHeight: 1, marginBottom: 6 }}>{emoji}</div>
+              {/* tabular-nums so the 2x2 grid stops shifting as values change width */}
+              <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.attentionText : C.forest, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{value}</div>
               <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
             </div>
           ))}
@@ -4773,16 +4837,22 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── SHARE ──────────────────────────────────────────────────────────── */}
       {showShareGarden && <ShareGardenSheet onClose={() => setShowShareGarden(false)} />}
-      <button onClick={() => setShowShareGarden(true)}
-        style={{ ...T.control, width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
-        Share my garden
-      </button>
+      {/* Two equal secondary actions in one hairline-divided group rather than two
+          floating boxes. Both keep their tier, weight, colour and order — nothing
+          is demoted to a text link. Log activity stays separate below, because it
+          is a different intent from the two sharing actions. */}
+      <div style={{ display: "flex", flexDirection: "column", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 16, overflow: "hidden" }}>
+        <button onClick={() => setShowShareGarden(true)}
+          style={{ ...T.control, width: "100%", background: "none", border: "none", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
+          Share my garden
+        </button>
 
-      {/* Invite a friend button */}
-      <button onClick={() => setShowReferral(true)}
-        style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.stone, fontWeight: 600, fontSize: 13 }}>
-        Invite a gardening friend — it's free
-      </button>
+        {/* Invite a friend button */}
+        <button onClick={() => setShowReferral(true)}
+          style={{ width: "100%", background: "none", border: "none", borderTop: `1px solid ${C.lineSoft}`, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.stone, fontWeight: 600, fontSize: 13 }}>
+          Invite a gardening friend — it's free
+        </button>
+      </div>
 
       {/* ── SHARE NUDGE MODAL ──────────────────────────────────────────────── */}
       {/* ── SESSION COMPLETE HOOK ─────────────────────────────────────────────── */}
@@ -4984,13 +5054,19 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* Standalone log activity button — always visible at bottom of Today */}
       <div ref={tourRefs.tourRef_logActivityBtn} style={{ padding: "12px 0 4px" }}>
         <button onClick={() => setShowLogActivity(true)}
-          style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "11px 16px", fontSize: 13, color: C.stone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <span style={{ fontSize: 16 }}>📋</span> Log activity
         </button>
       </div>
 
+      {/* Bottom caught-up surface. Condition unchanged, and deliberately left as
+          its own surface: it can render at the same time as the inline caught-up
+          card in Today's focus, and neither is merged or suppressed. Extra top
+          separation so the repetition reads as a closing note rather than a
+          duplicate of the card above. Stays untinted on paper, unlike the inline
+          card, so the two remain visually distinct. */}
       {allTasks.filter(t => !completed.has(t.id)).length === 0 && recentlyDone.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: C.stone }}>
+        <div style={{ textAlign: "center", padding: "64px 24px 48px", color: C.stone }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
           <div style={{ ...T.displayMd, fontSize: 16, color: C.ink, marginBottom: 6 }}>
             You're all caught up
@@ -5201,17 +5277,19 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
       {sectionLabel && (
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>{sectionLabel}</div>
       )}
+      {/* Orphan radii resolved. Header and body stop faking joined 12px corners
+          and simply share one R.sm container divided by a hairline. */}
       <div onClick={() => setOpen(v => !v)}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: open ? `${R.sm}px ${R.sm}px 0 0` : R.sm, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌱</span>
           <span style={{ ...T.bodyStrong, fontSize: 14, color: C.forest }}>Crop checks</span>
-          <span style={{ fontSize: 11, color: C.forest, background: "#d8eee6", borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
+          <span style={{ fontSize: 11, color: C.forest, background: TINT_LINE.positive, borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{allPrompts.length}</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
       </div>
       {open && (
-        <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderTop: "none", borderRadius: `0 0 ${R.sm}px ${R.sm}px`, padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
           {allPrompts.map((prompt, i) => {
             if (prompt.type === "lifecycle") {
               const { crop, nextStage } = prompt;
@@ -5381,17 +5459,19 @@ function TipsSection() {
 
   return (
     <div style={{ marginBottom: 16 }}>
+      {/* Orphan radii resolved — this was the most visible one on Today, reading
+          noticeably rounder than every neighbouring card. */}
       <div onClick={load}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: open ? "12px 12px 0 0" : 12, padding: "12px 16px", cursor: "pointer" }}>
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: open ? `${R.sm}px ${R.sm}px 0 0` : R.sm, padding: "12px 16px", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>💡</span>
-          <span style={{ ...T.bodyStrong, fontSize: 14, color: "#222" }}>Garden tips</span>
+          <span style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>Garden tips</span>
           <span style={{ fontSize: 11, color: C.stone, background: C.offwhite, borderRadius: R.full, padding: "2px 8px" }}>This week</span>
         </div>
         <span style={{ fontSize: 12, color: C.stone }}>{open ? "▲" : "▼"}</span>
       </div>
       {open && (
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
+        <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderTop: "none", borderRadius: `0 0 ${R.sm}px ${R.sm}px`, padding: "12px 16px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: "16px 0", color: C.stone, fontSize: 13 }}>Generating tips for your garden...</div>
           ) : tips.length === 0 ? (
@@ -5416,14 +5496,18 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sheet, padding: "12px 16px" }}>
+      {/* This header is the block's single name — the duplicate eyebrow above it
+          in Dashboard has been removed. It keeps the live crop count, which the
+          eyebrow could not carry. Radius was R.sheet (14px top corners, a bad
+          4A mapping of the "0 0" pattern) and the body was an orphaned 12px. */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: `${R.sm}px ${R.sm}px 0 0`, padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌾</span>
-          <span style={{ ...T.bodyStrong, fontSize: 14, color: "#222" }}>Harvest forecast</span>
-          <span style={{ fontSize: 11, color: C.forest, background: "#e8f4e8", borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
+          <span style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>Harvest forecast</span>
+          <span style={{ fontSize: 11, color: C.forest, background: TINT.positive, borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
-      <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "12px" }}>
+      <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderTop: "none", borderRadius: `0 0 ${R.sm}px ${R.sm}px`, padding: "12px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {visible.map((h, i) => (
             <HarvestForecastCard key={i} item={h} pending={!!pending && pending === h} onHarvest={() => onHarvest(h)} />
