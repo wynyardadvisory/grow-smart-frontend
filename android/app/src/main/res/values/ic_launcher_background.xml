@@ -1,4 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Approved Vercro app-icon ground. The previous value was plain white, which
+         put the dark mark on a white plate behind every adaptive launcher mask. -->
+    <color name="ic_launcher_background">#0E2A2E</color>
 </resources>

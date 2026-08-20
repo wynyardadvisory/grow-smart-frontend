@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "find public -name '.DS_Store' -delete",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "icons": "node brand/build-icons.mjs",
+    "icons:verify": "node brand/build-icons.mjs --verify",
     "test": "node --test test/**/*.test.mjs"
   },
   "dependencies": {

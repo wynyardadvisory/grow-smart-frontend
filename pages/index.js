@@ -26,6 +26,12 @@ import { F } from "@/lib/fonts";
 // weight and tracking a piece of text uses; the call site keeps its own fontSize,
 // colour and spacing. Replaces 172 ad-hoc font signatures across this file.
 import { T } from "@/lib/typography";
+// The Vercro identity. Every brand lockup in this file comes from here — see
+// components/Brand.js. Never hand-write the amber full stop at a call site.
+import {
+  VercroMark, VercroWordmark, VercroLogo,
+  BRAND, BRAND_FONT, ensureBrandFonts, drawVercroLockup,
+} from "@/components/Brand";
 // Product analytics. Must stay a top-level import — see lib/analytics.js for why
 // tracking lives in one module and why events queue until posthog.init resolves.
 // track() describes one user action; never call it inside a loop over records.
@@ -287,7 +293,7 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
           )}
           {allDoneOnComplete && (
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>
-              You know Vercro inside out 🌱
+              You know Vercro inside out
             </div>
           )}
           {!allDoneOnComplete && nextLabel && (
@@ -913,10 +919,8 @@ function VercroLoadingScreen({ message = "Loading your garden" }) {
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", minHeight: "60vh", padding: "40px 24px"
     }}>
-      <div style={{ fontSize: 48, marginBottom: 20, lineHeight: 1 }}>🌱</div>
-      <div style={{ ...T.displayLg, fontSize: 20, color: C.forest, marginBottom: 6 }}>
-        Vercro
-      </div>
+      <VercroMark size={52} tone="onLight" style={{ marginBottom: 18 }} />
+      <VercroWordmark size={20} tone="pine" style={{ marginBottom: 6 }} />
       <div style={{ fontSize: 14, color: C.stone, minWidth: 180, textAlign: "center" }}>
         {message}{dots}
       </div>
@@ -1077,7 +1081,7 @@ function AuthScreen({ onAuth }) {
 
   if (sent) return (
     <div style={{ padding: 32, textAlign: "center" }}>
-      <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
+      <VercroMark size={40} tone="onLight" style={{ margin: "0 auto 16px" }} />
       <div style={{ ...T.displayLg, fontSize: 20 }}>Check your email</div>
       <div style={{ color: C.stone, marginTop: 8, fontSize: 14 }}>
         {isForgot
@@ -1094,8 +1098,8 @@ function AuthScreen({ onAuth }) {
   return (
     <div style={{ padding: "40px 24px", maxWidth: 400, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 36 }}>🌱</div>
-        <div style={{ ...T.displayLg, fontSize: 26, color: C.forest, marginTop: 8 }}>Vercro</div>
+        <VercroMark size={54} tone="onLight" style={{ margin: "0 auto" }} />
+        <div style={{ marginTop: 10 }}><VercroWordmark size={26} tone="pine" /></div>
         <div style={{ color: C.stone, fontSize: 13, marginTop: 4 }}>{isSignUp ? "Create your account" : "Sign in to your garden"}</div>
       </div>
       {error && <ErrorMsg msg={error} />}
@@ -1647,6 +1651,24 @@ function CropToken({ name, size = 48 }) {
 // ── Share Harvest Card ────────────────────────────────────────────────────────
 // Generates a 1080x1080 canvas image for sharing to WhatsApp, Instagram etc.
 
+/**
+ * The footer that appears at the bottom of an exported share card, rendered as
+ * DOM for the on-screen preview. Mirrors drawVercroLockup(prefix: "Grown with")
+ * in components/Brand.js — the two must stay in step, because the preview is a
+ * promise about what the downloaded image will look like.
+ */
+function ShareCardFooter({ style }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: 6, opacity: 0.72, ...style }}>
+      <span style={{ ...T.body, fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Grown with</span>
+      <VercroMark size={15} tone="onDark" style={{ transform: "translateY(-1px)" }} />
+      <VercroWordmark size={11} tone="onDark" />
+      <span style={{ ...T.body, fontSize: 10, color: "rgba(255,255,255,0.55)" }}>· vercro.com</span>
+    </div>
+  );
+}
+
 function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
   const [mode,       setMode]       = useState("single"); // "single" | "season"
   const [generating, setGenerating] = useState(false);
@@ -1656,6 +1678,9 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
 
   const generateCard = async () => {
     setGenerating(true);
+    // Canvas substitutes a fallback for any face that has not finished loading,
+    // silently. This card is downloaded and posted publicly, so wait.
+    await ensureBrandFonts();
     const canvas = document.createElement("canvas");
     canvas.width  = 1080;
     canvas.height = 1080;
@@ -1682,8 +1707,8 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
 
     // Background — forest green gradient
     const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, "#2F5D50");
-    bg.addColorStop(1, "#1e3d33");
+    bg.addColorStop(0, BRAND.pine);
+    bg.addColorStop(1, BRAND.ground);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
@@ -1714,20 +1739,25 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
     const yStart   = hasPhoto ? 520 : 280;
 
     // Emoji
+    // fillStyle is declared rather than inherited: the last thing set before this
+    // was the decorative circle's rgba(255,255,255,0.03), and where the platform
+    // has no colour glyph for a crop the emoji falls back to a monochrome one and
+    // takes the current fill — which rendered it as an almost invisible ghost.
+    ctx.fillStyle = "#ffffff";
     ctx.font = hasPhoto ? "80px serif" : "120px serif";
     ctx.textAlign = "center";
     ctx.fillText(getCropEmoji(item.crop), W/2, yStart);
 
     // Crop name
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 72px Georgia, serif";
+    ctx.font = BRAND_FONT.display(72);
     ctx.textAlign = "center";
     ctx.fillText(item.crop, W/2, yStart + (hasPhoto ? 90 : 120));
 
     // Variety
     if (item.variety) {
       ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "42px Georgia, serif";
+      ctx.font = BRAND_FONT.display(42, 400);
       ctx.fillText(item.variety, W/2, yStart + (hasPhoto ? 145 : 178));
     }
 
@@ -1746,30 +1776,29 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
     ].filter(Boolean);
 
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = "38px DM Sans, sans-serif";
+    ctx.font = BRAND_FONT.body(38);
     ctx.textAlign = "center";
     const statsStr = stats.join("  ·  ");
     ctx.fillText(statsStr, W/2, statsY);
 
     // Date
     ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = "34px DM Sans, sans-serif";
+    ctx.font = BRAND_FONT.body(34);
     const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
     ctx.fillText(`Harvested ${dateStr}`, W/2, statsY + 55);
 
     // Area / location
     if (item.area_name) {
       ctx.fillStyle = "rgba(255,255,255,0.45)";
-      ctx.font = "30px DM Sans, sans-serif";
+      ctx.font = BRAND_FONT.body(30);
       ctx.fillText(item.area_name, W/2, statsY + 105);
     }
 
-    // Vercro branding
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.font = "bold 36px Georgia, serif";
-    ctx.fillText("🌱 Grown with Vercro", W/2, H - 60);
+    // Vercro branding — canonical lockup, drawn from components/Brand.js
+    drawVercroLockup(ctx, { cx: W/2, baseline: H - 62, size: 40, tone: "onDark", prefix: "Grown with" });
     ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "26px DM Sans, sans-serif";
+    ctx.font = BRAND_FONT.body(26);
+    ctx.textAlign = "center";
     ctx.fillText("vercro.com", W/2, H - 20);
   };
 
@@ -1779,8 +1808,8 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
 
     // Background
     const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, "#2F5D50");
-    bg.addColorStop(1, "#1e3d33");
+    bg.addColorStop(0, BRAND.pine);
+    bg.addColorStop(1, BRAND.ground);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
@@ -1790,12 +1819,12 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
 
     // Title
     ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = "36px DM Sans, sans-serif";
+    ctx.font = BRAND_FONT.body(36);
     ctx.textAlign = "center";
     ctx.fillText(`${year} Garden Harvest`, W/2, 100);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 80px Georgia, serif";
+    ctx.font = BRAND_FONT.display(80);
     ctx.fillText("Season Summary", W/2, 190);
 
     // Build crop totals
@@ -1823,12 +1852,12 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
       ctx.fillStyle = "#fff";
       ctx.fillText(getCropEmoji(c.name), 110, rowY + 8);
 
-      ctx.font = "bold 40px Georgia, serif";
+      ctx.font = BRAND_FONT.display(40);
       ctx.fillStyle = "#ffffff";
       ctx.fillText(c.name, 180, rowY + 8);
 
       if (c.total > 0) {
-        ctx.font = "36px DM Sans, sans-serif";
+        ctx.font = BRAND_FONT.body(36);
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.textAlign = "right";
         ctx.fillText(`${c.total}${c.unit || ""}`, W - 110, rowY + 8);
@@ -1844,16 +1873,15 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
     ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2; ctx.stroke();
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 44px Georgia, serif";
+    ctx.font = BRAND_FONT.display(44);
     ctx.textAlign = "center";
     ctx.fillText(`${allHarvests.length} total harvests this season`, W/2, totalY + 40);
 
-    // Vercro branding
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.font = "bold 36px Georgia, serif";
-    ctx.fillText("🌱 Grown with Vercro", W/2, H - 60);
+    // Vercro branding — canonical lockup, drawn from components/Brand.js
+    drawVercroLockup(ctx, { cx: W/2, baseline: H - 62, size: 40, tone: "onDark", prefix: "Grown with" });
     ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "26px DM Sans, sans-serif";
+    ctx.font = BRAND_FONT.body(26);
+    ctx.textAlign = "center";
     ctx.fillText("vercro.com", W/2, H - 20);
   };
 
@@ -1897,7 +1925,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
               <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
                 {[harvestData?.quantity_value ? `${harvestData.quantity_value}${harvestData.quantity_unit}` : null, harvestData?.yield_score ? `Yield ${harvestData.yield_score}/10` : null].filter(Boolean).join(" · ")}
               </div>
-              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 8 }}>🌱 Grown with Vercro · vercro.com</div>
+              <ShareCardFooter style={{ marginTop: 8 }} />
             </>
           ) : (
             <>
@@ -1908,7 +1936,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
                   <span>{count} harvest{count !== 1 ? "s" : ""}</span>
                 </div>
               ))}
-              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 12 }}>🌱 Grown with Vercro · vercro.com</div>
+              <ShareCardFooter style={{ marginTop: 12 }} />
             </>
           )}
         </div>
@@ -2526,15 +2554,21 @@ function ShareGardenSheet({ onClose }) {
   // 1080×1350 = Instagram 4:5 safe zone — shows in full on feed without cropping
   const drawCard = async (canvas) => {
     if (!data) return;
+    // Both the on-screen preview and the exported file come through here, so the
+    // font gate covers both and they cannot disagree. Canvas falls back silently
+    // for a face that has not loaded — no error, no retry.
+    await ensureBrandFonts();
     const W = 1080, H = 1350;
     const PAD = 54;
     const ctx = canvas.getContext("2d");
 
-    // ── Rich dark forest background ───────────────────────────────────────────
+    // ── Brand dark ground ─────────────────────────────────────────────────────
+    // Was a pre-rebrand forest gradient (#1e3d33 / #2F5D50 / #1a3528), none of
+    // which survives anywhere else in the product.
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-    bgGrad.addColorStop(0,   "#1e3d33");
-    bgGrad.addColorStop(0.5, "#2F5D50");
-    bgGrad.addColorStop(1,   "#1a3528");
+    bgGrad.addColorStop(0,   BRAND.ground);
+    bgGrad.addColorStop(0.5, BRAND.pine);
+    bgGrad.addColorStop(1,   BRAND.ground);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
@@ -2558,25 +2592,24 @@ function ShareGardenSheet({ onClose }) {
     if (ctx.roundRect) ctx.roundRect(PAD, 70, 210, 52, 26);
     else ctx.rect(PAD, 70, 210, 52);
     ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 28px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.fillText("🌱 Vercro", PAD + 105, 105);
+    drawVercroLockup(ctx, { cx: PAD + 105, baseline: 106, size: 27, tone: "onDark" });
 
     const monthName = new Date().toLocaleString("en-GB", { month: "long", year: "numeric" });
-    ctx.fillStyle = "rgba(111,175,99,0.2)";
+    // Was a legacy sap green (#7FB069 on rgba(111,175,99,0.2)). The amber is the
+    // brand signature and ties this pill to the dot in the mark opposite.
+    ctx.fillStyle = "rgba(217,164,65,0.16)";
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(W - PAD - 230, 70, 230, 52, 26);
     else ctx.rect(W - PAD - 230, 70, 230, 52);
     ctx.fill();
-    ctx.fillStyle = "#7FB069";
-    ctx.font = "600 25px sans-serif";
+    ctx.fillStyle = "#E8B75C";
+    ctx.font = BRAND_FONT.body(25, 600);
     ctx.textAlign = "center";
     ctx.fillText(monthName, W - PAD - 115, 104);
 
     // ── Title ─────────────────────────────────────────────────────────────────
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 60px Georgia, serif";
+    ctx.font = BRAND_FONT.display(60);
     ctx.textAlign = "center";
     const words = title.split(" ");
     const titleLines = [];
@@ -2678,7 +2711,7 @@ function ShareGardenSheet({ onClose }) {
       ctx.fillText("✓", PAD + 44, rowY + rowH / 2 + 8);
 
       // Task name — centred vertically in row
-      ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Georgia, serif"; ctx.textAlign = "left";
+      ctx.fillStyle = "#ffffff"; ctx.font = BRAND_FONT.display(34); ctx.textAlign = "left";
       ctx.fillText(label, PAD + 86, rowY + rowH / 2 + 12);
 
       // No subline — task label is user-editable and self-explanatory
@@ -2711,7 +2744,7 @@ function ShareGardenSheet({ onClose }) {
     statItems.forEach((s, i) => {
       const sx = PAD + i * statW + statW / 2;
       ctx.textAlign = "center";
-      ctx.fillStyle = "#ffffff"; ctx.font = "bold 52px Georgia, serif";
+      ctx.fillStyle = "#ffffff"; ctx.font = BRAND_FONT.display(52);
       ctx.fillText(String(s.num), sx, y + 72);
       ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "22px sans-serif";
       ctx.fillText(s.label, sx, y + 106);
@@ -11531,7 +11564,7 @@ function ProSubscriptionSection() {
           borderRadius: R.sm, padding: "18px 20px", color: "#fff"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <div style={{ fontSize: 22 }}>🌱</div>
+            <VercroMark size={26} tone="onDark" />
             <div>
               <div style={{ ...T.displayMd, fontSize: 16 }}>Vercro Pro</div>
               <div style={{ fontSize: 12, opacity: 0.75, marginTop: 1 }}>Early supporter · Price locked</div>
@@ -14077,8 +14110,9 @@ function ViewerAdminScreen() {
 
   return (
     <div style={{ padding: "24px 16px", maxWidth: 480, margin: "0 auto" }}>
-      <div style={{ ...T.eyebrow, fontSize: 13, color: C.forest, marginBottom: 20 }}>
-        Vercro — Overview
+      <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginBottom: 20 }}>
+        <VercroWordmark size={18} tone="pine" />
+        <span style={{ ...T.eyebrow, fontSize: 11, color: C.stone }}>Overview</span>
       </div>
       {loading && <div style={{ color: C.stone, fontSize: 14 }}>Loading…</div>}
       {error   && <div style={{ color: "#8B1A1A", fontSize: 14 }}>Error: {error}</div>}
@@ -14934,7 +14968,7 @@ function _drawBed(ctx, x, y, w, h, isSelected) {
 
   // ── Selection ring ────────────────────────────────────────────────────────
   if (isSelected) {
-    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
+    ctx.strokeStyle=C.forest; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
     ctx.beginPath();
     ctx.moveTo(x-4,    y-4);
     ctx.lineTo(x+w+4,  y-4);
@@ -14971,7 +15005,7 @@ function _drawOpenGround(ctx, x, y, w, h, isSelected) {
   ctx.restore();
 
   if (isSelected) {
-    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
+    ctx.strokeStyle=C.forest; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
     ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
@@ -15064,7 +15098,7 @@ function _drawGreenhouse(ctx, x, y, w, h, isSelected) {
   });
 
   if (isSelected) {
-    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.strokeStyle=C.forest; ctx.lineWidth=2; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
@@ -15205,7 +15239,7 @@ function _drawContainer(ctx, x, y, w, h, isSelected, cropEmojis) {
   }
 
   if(isSelected){
-    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.strokeStyle=C.forest; ctx.lineWidth=2; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
@@ -15307,7 +15341,7 @@ function _drawPolytunnel(ctx, x, y, w, h, isSelected) {
   _sketchEdge(ctx,TL[0],TL[1],TL[0]+DX,TL[1]+DY,rb,{wobble:0.9,strokesPerUnit:0.08,lineWidth:1.2,alpha:0.58,color:C.ink});
 
   if (isSelected) {
-    ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.strokeStyle=C.forest; ctx.lineWidth=2; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.rect(x-4,y-4,w+8,h+8); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.restore();
@@ -15744,7 +15778,7 @@ function GardenKonvaCanvas({ areas, crops, lockedAssignments = [], pxPerM, canva
                   <Shape
                     sceneFunc={(ctx, shape) => {
                       ctx.beginPath(); ctx.arc(0, 0, handleR, 0, Math.PI*2);
-                      ctx.fillStyle = "#2F5D50"; ctx.fill();
+                      ctx.fillStyle = C.forest; ctx.fill();
                       ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5; ctx.stroke();
                       ctx.font = `bold ${handleR}px sans-serif`;
                       ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -17996,7 +18030,7 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
         ctx.restore();
       });
       if(selected){
-        ctx.save(); ctx.strokeStyle="#2f5d50"; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
+        ctx.save(); ctx.strokeStyle=C.forest; ctx.lineWidth=2.5; ctx.setLineDash([6,4]);
         const tl=top[0],tr=top[1],br=top[2],bl=top[3];
         ctx.beginPath();ctx.moveTo(tl[0]-5,tl[1]-5);ctx.lineTo(tr[0]+5,tr[1]-5);
         ctx.lineTo(br[0]+5,br[1]+DEPTH+5);ctx.lineTo(tl[0]-DEPTH*0.55-5,bl[1]+DEPTH+5);
@@ -19172,7 +19206,7 @@ function OnboardingScreen({ session, onComplete }) {
   if (step === 5) {
     return (
       <div style={{ ...T.displayMd, minHeight: "100vh", background: C.offwhite, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
-        <div style={{ fontSize: 52, marginBottom: 24 }}>🌱</div>
+        <VercroMark size={58} tone="onLight" style={{ marginBottom: 24 }} />
         <div style={{ ...T.bodyStrong, fontSize: 22, color: C.forest, marginBottom: 12, textAlign: "center" }}>Building your garden plan...</div>
         <div style={{ fontSize: 15, color: C.stone, textAlign: "center", minHeight: 24 }}>{loadingMsg}</div>
       </div>
@@ -19437,7 +19471,7 @@ function OnboardingScreen({ session, onComplete }) {
 function IOSInstallBanner({ onDismiss }) {
   return (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 408, background: "#1a2e28", borderRadius: R.sm, padding: "16px 18px", zIndex: 200, boxShadow: S.overlay, display: "flex", gap: 14, alignItems: "flex-start" }}>
-      <div style={{ fontSize: 28, flexShrink: 0 }}>🌱</div>
+      <VercroMark size={30} tone="onDark" style={{ marginTop: 1 }} />
       <div style={{ flex: 1 }}>
         <div style={{ ...T.bodyStrong, fontSize: 13, color: "#fff", marginBottom: 4 }}>Add Vercro to your home screen</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
@@ -19766,7 +19800,7 @@ export default function GrowSmart() {
       {/* Header */}
       <div style={{ background: C.offwhite, borderBottom: `1px solid ${C.border}`, padding: "16px 20px 12px", paddingTop: "max(16px, env(safe-area-inset-top))", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ ...T.displayLg, fontSize: 20, color: C.ink }}>Vercro 🌱</div>
+          <VercroLogo size={20} tone="onLight" />
           {["dashboard","garden","plan","crops","profile"].includes(tab) && (
             <TourPill tab={tab === "dashboard" ? "today" : tab} onStart={startTour} />
           )}
@@ -19821,7 +19855,7 @@ export default function GrowSmart() {
 
       {/* Subscribed success toast — shown after Stripe redirect */}
       {subscribedToast && (
-        <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 1000, background: "#1E3D33", color: "#fff", padding: "12px 16px", borderRadius: R.sm, boxShadow: S.overlay, fontSize: 14, fontWeight: 600, maxWidth: "calc(100vw - 32px)", textAlign: "center" }}>
+        <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 1000, background: C.surfaceDark, color: "#fff", padding: "12px 16px", borderRadius: R.sm, boxShadow: S.overlay, fontSize: 14, fontWeight: 600, maxWidth: "calc(100vw - 32px)", textAlign: "center" }}>
           Pro unlocked successfully 🌱
         </div>
       )}

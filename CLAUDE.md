@@ -126,6 +126,41 @@ Capacitor ships a bundled copy of `out/`, so stale assets have caused real shipp
 [next.config.mjs](next.config.mjs) and [vercel.json](vercel.json) mark HTML `no-store` while
 allowing long-lived caching of hashed `/_next/static/` assets. Keep those in sync if you touch either.
 
+### Brand
+
+The identity is **`Vercro.`** — the name in Newsreader, followed by an **amber full stop**
+(`#D9A441`). The same amber appears as the sun/seed dot above the sprout in the mark. It is
+part of the identity and is not omitted from a visual lockup.
+
+Two places hold it, and nothing else may draw it:
+
+- [components/Brand.js](components/Brand.js) — on screen. `<VercroMark>`, `<VercroWordmark>`,
+  `<VercroLogo>`, plus canvas helpers (`drawVercroLockup`, `ensureBrandFonts`, `BRAND_FONT`)
+  for the share cards.
+- [brand/](brand/) — the SVG masters, and `build-icons.mjs`, which generates **every** favicon,
+  PWA icon, Apple touch icon, iOS/Android app icon, splash screen, push badge and OG image from
+  them. Run `npm run icons`; check with `npm run icons:verify`.
+
+Rules:
+
+- **Never hand-write the amber period.** It lives inside `VercroWordmark` as a real typographic
+  `.` with `aria-hidden`, so a screen reader reads the brand as "Vercro". A call site that
+  colours its own period will drift the moment the token moves.
+- Use `BRAND.amber`, never `C.amber`. They hold the same value today, but `C.amber` is the
+  frost/overdue attention colour and may be retuned on its own schedule.
+- The mark is **transparent** and not welded to its dark square. `tone` names the surface it
+  sits on (`onDark` / `onLight`), not the colour of the artwork. The dark square is an app-icon
+  treatment and lives only in `brand/vercro-app-icon.svg`.
+- **Prose stays "Vercro"** — no full stop. Page titles, descriptions, alt text, FAQ copy, share
+  text and accessible names are prose. Only visual lockups take the dot.
+- Sprout/leaf **emoji as brand** are gone. `🌱` is still legitimate content: `getCropEmoji()`'s
+  fallback, the Seedling stage, empty states. Never put one next to the name Vercro.
+- Don't hand-edit anything under `public/icons/`, `ios/.../Assets.xcassets/` or
+  `android/.../mipmap-*`; change a master and regenerate.
+- Canvas silently substitutes a fallback for a font that has not loaded — `await
+  ensureBrandFonts()` before the first `fillText`. This is how the share cards ended up
+  rendering in Georgia.
+
 ### Tabs and the guided tour
 
 The `TABS` constant is not what renders — `GrowSmart` builds the bottom nav inline, and

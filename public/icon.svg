@@ -1,0 +1,10 @@
+<!-- Vercro brand master — do not edit by hand. See brand/README.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" fill="#0E2A2E"/>
+  <g transform="translate(226.02,182.27) scale(2.85982)">
+  <circle cx="100" cy="36" r="34" fill="#D9A441"/>
+  <path d="M100 212 L100 146" stroke="#A8C1B5" stroke-width="16" stroke-linecap="round" fill="none"/>
+  <path d="M100 140 C 40 140 0 102 2 46 C 58 54 96 90 100 140 Z" fill="#EAF0EE"/>
+  <path d="M100 140 C 160 140 200 102 198 46 C 142 54 104 90 100 140 Z" fill="#C7D8CF"/>
+  </g>
+</svg>

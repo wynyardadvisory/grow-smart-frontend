@@ -17,7 +17,10 @@ self.addEventListener('push', (event) => {
   const options = {
     body:    data.body || '',
     icon:    '/icons/icon-192.png',
-    badge:   '/icons/icon-192.png',
+    // Android tints the badge through its alpha channel, so it has to be a white
+    // silhouette on transparent. Pointing this at the full-colour icon rendered
+    // the badge as a featureless grey blob.
+    badge:   '/icons/badge-72.png',
     tag:     data.tag || data.notification_type || 'vercro',
     renotify: false,
     data: {
