@@ -31,6 +31,7 @@ import { T } from "@/lib/typography";
 // track() describes one user action; never call it inside a loop over records.
 import { EVENTS, track, trackOnce, trackAppOpened, identifyUser, daysSinceSignup, getPlatform } from "@/lib/analytics";
 import { resolveSeverityState, severityLabel, severityEmoji } from "@/lib/plantcheck-severity.mjs";
+import { resolveStageGuidance } from "@/lib/crop-guidance.mjs";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -6923,6 +6924,8 @@ function CropGrowthDiary({ crop, onClose }) {
 
 function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
   const [timeline,      setTimeline]      = useState(null);
+  const [cropDef,       setCropDef]       = useState(null);
+  const [cropVariety,   setCropVariety]   = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [adjusting,     setAdjusting]     = useState(false);
   const [adjustMode,    setAdjustMode]    = useState("stage");
@@ -6935,7 +6938,15 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
 
   useEffect(() => {
     apiFetch(`/crops/${crop.id}`)
-      .then(d => { setTimeline(d.timeline); setLoading(false); })
+      .then(d => {
+        setTimeline(d.timeline);
+        // GET /crops/:id already returns crop_def(*) and variety(*). Both were
+        // being thrown away, which is why the guidance panel had nothing
+        // crop-specific to work from and fell back to hardcoded tomato advice.
+        setCropDef(d.crop_def || null);
+        setCropVariety(d.variety || null);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [crop.id]);
 
@@ -6948,14 +6959,9 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
     { key: "harvesting", label: "Harvest",   emoji: "🧺", symptom: "harvest_started" },
   ];
 
-  const stageActions = {
-    seed:       ["Keep at 20-25°C for germination", "Keep compost moist but not soggy", "Expect shoots in 7-14 days"],
-    seedling:   ["Pot on when first true leaves appear", "Keep on a warm sunny windowsill", "Water from below to avoid damping off"],
-    vegetative: ["Pot on to final container if needed", "Begin fortnightly balanced feed", "Ensure good light and airflow"],
-    flowering:  ["Tap stems gently to aid pollination", "Switch to high potash feed", "Remove lower leaves for airflow"],
-    fruiting:   ["Feed weekly with high potash", "Water consistently to avoid blossom end rot", "Check regularly for pests and blight"],
-    harvesting: ["Pick when fully coloured and slightly soft", "Harvest regularly to encourage more fruit", "Pick before first frost — green fruit ripens indoors"]
-  };
+  // V038 — guidance now resolves through observation -> variety -> crop ->
+  // category -> the crop's own notes -> silence. See lib/crop-guidance.mjs.
+  // The map that used to live here was tomato advice shown for all 283 crops.
 
   const calcOffsetFromHarvestDate = (targetDateStr) => {
     const rawSowDate = crop.sown_date || crop.transplanted_date;
@@ -7121,7 +7127,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
         )}
 
         {!loading && !confirmed && timeline && (() => {
-          const actions = stageActions[currentStageKey] || [];
+          const guidance = resolveStageGuidance({ cropDef, variety: cropVariety, stage: currentStageKey });
           return (
             <div style={{ padding: "16px 16px 40px" }}>
 
@@ -7276,15 +7282,21 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
                     })}
                   </div>
 
-                  {actions.length > 0 && (
+                  {/* Nothing renders when no layer resolves. An empty panel is a
+                      correct answer — the absence of that idea is what let tomato
+                      advice appear on spinach. */}
+                  {guidance.layer && (
                     <div style={{ background: "#EAF3DE", borderRadius: R.sm, padding: "13px 14px", marginBottom: 12 }}>
-                      <div style={{ ...T.eyebrow, fontSize: 10, color: C.positiveText, marginBottom: 8 }}>What to do right now</div>
-                      {actions.map((a, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < actions.length - 1 ? 6 : 0 }}>
+                      <div style={{ ...T.eyebrow, fontSize: 10, color: C.positiveText, marginBottom: 8 }}>{guidance.heading}</div>
+                      {guidance.items.map((a, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: i < guidance.items.length - 1 ? 6 : 0 }}>
                           <div style={{ width: 5, height: 5, borderRadius: R.full, background: "#3B6D11", flexShrink: 0, marginTop: 5 }} />
                           <div style={{ fontSize: 12, color: C.positiveText, lineHeight: 1.4 }}>{a}</div>
                         </div>
                       ))}
+                      {guidance.text && (
+                        <div style={{ fontSize: 12, color: C.positiveText, lineHeight: 1.5 }}>{guidance.text}</div>
+                      )}
                     </div>
                   )}
 
