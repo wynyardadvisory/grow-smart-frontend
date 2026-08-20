@@ -30,6 +30,7 @@ import { T } from "@/lib/typography";
 // tracking lives in one module and why events queue until posthog.init resolves.
 // track() describes one user action; never call it inside a loop over records.
 import { EVENTS, track, trackOnce, trackAppOpened, identifyUser, daysSinceSignup, getPlatform } from "@/lib/analytics";
+import { resolveSeverityState, severityLabel, severityEmoji } from "@/lib/plantcheck-severity.mjs";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -11768,17 +11769,25 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
     setSavingDiary(false);
   };
 
+  // V052A — the canonical state is healthy | watch | treat | urgent.
+  // resolveSeverityState prefers `severity_state` and falls back to the
+  // deprecated magnitude field, so this renders correctly against both an
+  // updated API and one deployed before V052A.
+  const severityState = resolveSeverityState(result);
+
   const severityColor = {
-    low:    "#7FB069",
-    medium: "#D9A441",
-    high:   "#C65A5A"
-  }[result.severity] || C.stone;
+    healthy: C.sage,
+    watch:   "#7FB069",
+    treat:   "#D9A441",
+    urgent:  "#C65A5A"
+  }[severityState] || C.stone;
 
   const severityBg = {
-    low:    "#f0f9eb",
-    medium: "#fdf6e3",
-    high:   "#fdf0f0"
-  }[result.severity] || "#f5f5f5";
+    healthy: "#f0f9f4",
+    watch:   "#f0f9eb",
+    treat:   "#fdf6e3",
+    urgent:  "#fdf0f0"
+  }[severityState] || "#f5f5f5";
 
   const readinessEmoji = {
     ready:     "✅",
@@ -11817,7 +11826,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
         {/* Overall summary */}
         <div style={{ background: result.looks_healthy ? "#f0f9f4" : severityBg, border: `1px solid ${result.looks_healthy ? C.sage : severityColor}`, borderRadius: R.sm, padding: "18px", marginBottom: 16 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>
-            {result.looks_healthy ? "🌿" : result.severity === "high" ? "🚨" : result.severity === "medium" ? "⚠️" : "ℹ️"}
+            {result.looks_healthy ? "🌿" : severityEmoji(severityState)}
           </div>
           <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 6 }}>
             {result.looks_healthy
@@ -11827,9 +11836,11 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
           <div style={{ fontSize: 14, color: C.stone, lineHeight: 1.6 }}>
             {result.reasoning_summary}
           </div>
-          {result.severity && !result.looks_healthy && (
+          {severityState && severityState !== "healthy" && !result.looks_healthy && (
+            /* The internal state is "treat"; the gardener reads "Action
+               recommended". Never surface the developer vocabulary. */
             <div style={{ ...T.eyebrow, display: "inline-block", marginTop: 10, background: severityColor + "22", color: severityColor, borderRadius: R.full, padding: "3px 12px", fontSize: 12 }}>
-              {result.severity} severity
+              {severityLabel(severityState)}
             </div>
           )}
         </div>
@@ -19636,6 +19647,33 @@ export default function GrowSmart() {
   const isPartnerAdmin = PARTNER_ADMIN_IDS.includes(session?.user?.id || "");
   const [isDemo, setIsDemo] = useState(false);
 
+  // ── V044 — demo tools are opt-in, not always-on ────────────────────────────
+  //
+  // The Admin tab used to render for EVERY demo account, unconditionally. The
+  // only thing behind it for a demo account is DemoAdminScreen, whose single
+  // control is "Reset this account back to the demo state" — a call that HARD
+  // DELETES that account's tasks, harvest log, crops, areas and locations.
+  //
+  //   1. App Review signs in on a demo account. A reviewer could press it.
+  //   2. It appeared in every App Store and Google Play screenshot. A consumer
+  //      gardening app cannot ship with an "Admin" tab.
+  //   3. One tap destroys the canonical Marketing Garden, which every store and
+  //      website asset is captured from.
+  //
+  // Demo tools remain fully available, deliberately: ?demo-tools=1 enables them
+  // for that browser, ?demo-tools=0 clears it. Nothing changes for real users,
+  // admins, viewers or partner admins.
+  const [demoToolsOn, setDemoToolsOn] = useState(false);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("demo-tools");
+      if (q === "1") localStorage.setItem("vercro_demo_tools", "1");
+      if (q === "0") localStorage.removeItem("vercro_demo_tools");
+      setDemoToolsOn(localStorage.getItem("vercro_demo_tools") === "1");
+    } catch (e) { setDemoToolsOn(false); }
+  }, []);
+  const showDemoAdmin = isDemo && demoToolsOn;
+
   // Fetch is_demo flag from profile
   useEffect(() => {
     if (!session) { setIsDemo(false); return; }
@@ -19733,9 +19771,9 @@ export default function GrowSmart() {
         {tab === "feeds"     && !navEnabled && <FeedsScreen />}
         {tab === "plan"      && navEnabled && <PlanScreen tourRefs={tourRefs} />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} tourRefs={tourRefs} />}
-        {tab === "admin"     && (isAdmin || isDemo) && <AdminScreen isDemo={isDemo} />}
-        {tab === "admin"     && isPartnerAdmin && !isAdmin && !isDemo && <AdminScreen metricsOnly={true} />}
-        {tab === "admin"     && isViewer && !isAdmin && !isDemo && !isPartnerAdmin && <ViewerAdminScreen />}
+        {tab === "admin"     && (isAdmin || showDemoAdmin) && <AdminScreen isDemo={isDemo} />}
+        {tab === "admin"     && isPartnerAdmin && !isAdmin && !showDemoAdmin && <AdminScreen metricsOnly={true} />}
+        {tab === "admin"     && isViewer && !isAdmin && !showDemoAdmin && !isPartnerAdmin && <ViewerAdminScreen />}
       </div>
 
       {/* iOS install banner */}
@@ -19787,7 +19825,7 @@ export default function GrowSmart() {
         { id: "profile",   label: "Profile", icon: TAB_ICONS.profile },
       ]
     : TABS
-  ), ...((isAdmin || isDemo) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...((isViewer || isPartnerAdmin) && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
+  ), ...((isAdmin || showDemoAdmin) ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : []), ...((isViewer || isPartnerAdmin) && !isAdmin ? [{ id: "admin", label: "Admin", icon: <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" fill="currentColor"/><path d="M11 2 L12.5 6 L16.5 4.5 L15 8.5 L19 10 L15 11.5 L16.5 15.5 L12.5 14 L11 18 L9.5 14 L5.5 15.5 L7 11.5 L3 10 L7 8.5 L5.5 4.5 L9.5 6 Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg> }] : [])].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ position: "relative", flex: 1, border: "none", background: "transparent", padding: "10px 4px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             {/* No filled tile behind the active icon. Pine vs stone alone measures only
                 1.14:1 (OKLab dE 0.042) — perceptually near-identical — so icon and label
