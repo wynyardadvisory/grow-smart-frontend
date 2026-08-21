@@ -26,6 +26,8 @@ import { F } from "@/lib/fonts";
 // weight and tracking a piece of text uses; the call site keeps its own fontSize,
 // colour and spacing. Replaces 172 ad-hoc font signatures across this file.
 import { T } from "@/lib/typography";
+// V015b — the Add Crop blur/selection decision, extracted so it is testable.
+import { shouldApplyFreeTextFallback, freeTextCrop } from "@/lib/crop-search.mjs";
 // The Vercro identity. Every brand lockup in this file comes from here — see
 // components/Brand.js. Never hand-write the amber full stop at a call site.
 import {
@@ -753,6 +755,58 @@ const S = {
   overlay: "0 8px 24px rgba(0,0,0,0.18)",   // FABs, toasts, banners, tour spotlight
   sheet:   "0 -4px 24px rgba(0,0,0,0.12)",  // bottom sheets — shadow points upward
 };
+
+// ── V001 — bounded startup dependencies ───────────────────────────────────────
+//
+// The app used to render behind `session === undefined`, set only by
+// supabase.auth.getSession(). That call had no timeout. A promise that never
+// settles fires neither .then nor .catch, so the gate could never clear and the
+// app sat on a bare "Loading…" indefinitely — measured at 13s, 26s, 38s and once
+// still blank at 60s, with zero API requests issued.
+//
+// A .catch() does not fix this. Only a bound does. withTimeout races any promise
+// against a deadline and resolves to `fallback`, so no startup dependency can
+// leave the application permanently waiting.
+//
+// onTimeout is reported rather than swallowed: a silent fallback would hide the
+// very failure this exists to expose.
+function withTimeout(promise, ms, fallback, label) {
+  let timer;
+  return Promise.race([
+    Promise.resolve(promise).catch(err => {
+      reportStartupIssue(label, "rejected", err);
+      return fallback;
+    }),
+    new Promise(resolve => {
+      timer = setTimeout(() => {
+        reportStartupIssue(label, "timeout", new Error(`${label} exceeded ${ms}ms`));
+        resolve(fallback);
+      }, ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+// Startup failures were previously invisible: there is no frontend error
+// reporting, which is why a total app hang was never reported by anyone. Route
+// through Sentry when present, and always leave a console breadcrumb.
+// No session, token, email or user object is ever passed here — label and
+// reason only.
+function reportStartupIssue(label, reason, err) {
+  try {
+    console.error(`[Startup] ${label} ${reason}:`, err?.message || err);
+    const S = typeof window !== "undefined" && window.Sentry;
+    if (S?.captureException) {
+      S.captureException(err instanceof Error ? err : new Error(String(err)), {
+        tags: { area: "startup", dependency: label, reason },
+      });
+    }
+  } catch { /* reporting must never itself break startup */ }
+}
+
+// How long a startup dependency may block the first render. Chosen to be well
+// inside the 4s "unacceptable" threshold while still allowing a slow-but-working
+// network to succeed normally.
+const STARTUP_TIMEOUT_MS = 5000;
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
@@ -9135,6 +9189,28 @@ function CropSearchInput({ cropDefs, value, onChange }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
 
+  // V015b — latest-value refs for the blur timeout.
+  //
+  // handleBlur defers its free-text fallback by 150ms so a dropdown mousedown
+  // can land first. That timeout closed over `query` and `value` as they were
+  // when the handler was created — i.e. BEFORE the selection.
+  //
+  // Tapping "Cabbage" therefore ran, 150ms later, with the stale pair
+  // (query "cab", value null) and executed the fallback branch, replacing the
+  // real selection with { id: "__other__", name: "cab" }. The field fell back to
+  // "cab" while a value was still set, which is why the variety field appeared
+  // but the crop name did not — and why selecting a second time worked: by then
+  // `value` was non-null, so the stale guard no longer passed.
+  //
+  // Reported twice by customers in March and April; still live in August.
+  // Kept in an effect rather than assigned during render: effects commit long
+  // before the 150ms blur timeout can fire, so the refs are always current by
+  // the time it reads them.
+  const queryRef = useRef(query);
+  const valueRef = useRef(value);
+  useEffect(() => { queryRef.current = query; }, [query]);
+  useEffect(() => { valueRef.current = value; }, [value]);
+
   const displayText = focused ? query : (value?.name || query);
 
   const filtered = (() => {
@@ -9160,7 +9236,13 @@ function CropSearchInput({ cropDefs, value, onChange }) {
   const handleBlur  = () => {
     setTimeout(() => {
       setFocused(false); setOpen(false);
-      if (query.trim() && !value) onChange({ id: "__other__", name: query.trim() });
+      // V015b — read CURRENT state, not the values captured 150ms ago. A
+      // selection made in that window has already set `value`, so the free-text
+      // fallback must not fire and overwrite it. Decision lives in
+      // lib/crop-search.mjs so it can be tested on its own.
+      const q = queryRef.current;
+      const v = valueRef.current;
+      if (shouldApplyFreeTextFallback({ query: q, value: v })) onChange(freeTextCrop(q));
     }, 150);
   };
   const handleChange = e => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); };
@@ -19539,7 +19621,17 @@ export default function GrowSmart() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    // V001 — bounded. On timeout or rejection we resolve to "no session", which
+    // renders AuthScreen. That is recoverable: onAuthStateChange still fires if
+    // the real session arrives late, and setSession promotes the user straight
+    // into the app. The previous behaviour — waiting forever — was not.
+    withTimeout(
+      supabase.auth.getSession(),
+      STARTUP_TIMEOUT_MS,
+      { data: { session: null } },
+      "auth.getSession",
+    ).then(({ data: { session } }) => setSession(session));
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
 
@@ -19682,9 +19774,18 @@ export default function GrowSmart() {
   // Once we have a session, check whether onboarding is needed
   useEffect(() => {
     if (!session) { setOnboarding(null); return; }
-    // Show onboarding if user has no locations yet
-    apiFetch("/locations")
-      .then(locs => setOnboarding(locs.length === 0))
+    // Show onboarding if user has no locations yet.
+    //
+    // V001 — bounded. The .catch() below was already here and was not enough:
+    // apiFetch itself awaits supabase.auth.getSession(), so if that hangs the
+    // promise never settles and neither .then nor .catch runs — leaving
+    // `onboarding === null` and the gate closed forever.
+    //
+    // On timeout we resolve to `false` (not onboarding), which is the same
+    // fallback the existing .catch already chose: send an established user to
+    // the app rather than trapping them, or wrongly restarting onboarding.
+    withTimeout(apiFetch("/locations"), STARTUP_TIMEOUT_MS, null, "locations")
+      .then(locs => setOnboarding(Array.isArray(locs) ? locs.length === 0 : false))
       .catch(() => setOnboarding(false));
   }, [session]);
 
@@ -19780,8 +19881,31 @@ export default function GrowSmart() {
     setShowIOSBanner(false);
   };
 
+  // V001 — startup state.
+  //
+  // Both conditions below are now bounded (see withTimeout / STARTUP_TIMEOUT_MS),
+  // so this branch is genuinely transient: within STARTUP_TIMEOUT_MS the app
+  // resolves to Today, AuthScreen or onboarding. It can no longer persist.
+  //
+  // Branded rather than the bare word "Loading…" — the first thing a returning
+  // user saw was an unstyled grey string on white, which reads as a broken page
+  // rather than a loading one.
   if (session === undefined || (session && onboarding === null)) {
-    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: C.stone, fontSize: 14 }}>Loading…</div>;
+    return (
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        height: "100vh", background: C.offwhite, gap: 14,
+      }}>
+        <VercroLogo size={22} tone="onLight" />
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ ...T.body, fontSize: 13, color: C.stone, opacity: 0.85 }}
+        >
+          Getting your garden ready…
+        </div>
+      </div>
+    );
   }
   if (!session)   return <AuthScreen onAuth={setSession} />;
   if (onboarding) return <OnboardingScreen session={session} onComplete={() => {

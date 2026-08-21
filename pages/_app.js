@@ -5,6 +5,61 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { display, body } from "@/lib/fonts";
 import { flushAnalytics } from "@/lib/analytics";
+import * as Sentry from "@sentry/browser";
+
+// ── V009 — frontend error reporting ───────────────────────────────────────────
+//
+// There was none. @sentry/node covers the API only, so a total frontend failure
+// — including the V001 startup hang, which left users on a blank screen for
+// 60s+ — produced no telemetry anywhere. That is why the most severe defect
+// found in the August audit had never been reported by anyone.
+//
+// Initialised once, before React renders, so errors thrown during the very
+// first render are captured. Gated on NEXT_PUBLIC_SENTRY_DSN: with no DSN this
+// is completely inert and costs one env lookup, so shipping it cannot break a
+// build or an environment that has not provisioned Sentry yet.
+//
+// PRIVACY — this is a consumer gardening app and telemetry must not become a
+// second copy of user data:
+//   • sendDefaultPii stays false, so IP and headers are not attached
+//   • beforeSend strips the Supabase access token from any captured URL
+//   • no email, session, postcode, garden or crop data is ever attached
+//     anywhere in this file or in reportStartupIssue()
+let sentryReady = false;
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SENTRY_DSN && !sentryReady) {
+  sentryReady = true;
+  Sentry.init({
+    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    environment: process.env.NODE_ENV,
+    release: process.env.NEXT_PUBLIC_RELEASE || undefined,
+    sendDefaultPii: false,
+    // The Sentry org currently disallows project creation at our access level,
+    // so the frontend DSN belongs to the same project as @sentry/node. Tagging
+    // every event keeps the two surfaces separable: filter `surface:frontend`
+    // in Sentry. Remove this once a dedicated frontend project exists.
+    initialScope: { tags: { surface: "frontend" } },
+    // Startup and crash reporting only. No performance tracing and no session
+    // replay — both carry a bundle and privacy cost this does not need yet.
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      try {
+        // Supabase puts the access token in the URL fragment on OAuth return.
+        const scrub = (u) => (typeof u === "string" ? u.replace(/(access_token|refresh_token)=[^&#]*/g, "$1=[redacted]") : u);
+        if (event.request?.url) event.request.url = scrub(event.request.url);
+        if (event.breadcrumbs) {
+          event.breadcrumbs = event.breadcrumbs.map(b =>
+            b?.data?.url ? { ...b, data: { ...b.data, url: scrub(b.data.url) } } : b
+          );
+        }
+        delete event.user; // never identify — PostHog already owns identity
+      } catch { /* never let scrubbing break reporting */ }
+      return event;
+    },
+  });
+  // index.js reports startup failures through window.Sentry so it does not need
+  // its own import, and stays a no-op when no DSN is configured.
+  window.Sentry = Sentry;
+}
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
