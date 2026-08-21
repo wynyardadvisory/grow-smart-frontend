@@ -5475,6 +5475,31 @@ const STAGE_SYMPTOM = {
   harvesting: "harvest_started",
 };
 
+// V063 — lifecycle phases replace "% grown".
+//
+// The percentage was false precision: it came from one catalogue integer, 924
+// crops have no maturity figure at all, and 792 crops displayed above 300% —
+// one read 845%. A percentage implies a task that completes; a carrot becomes
+// ready and stays ready. The API now derives a phase on read (never stored, so
+// it cannot go stale the way crop_instances.stage did).
+//
+// There is deliberately no "past best": days-to-maturity can prove time has
+// passed, not that a crop has spoiled. "Should be ready — worth checking" says
+// what is actually known and asks the gardener to look.
+const PHASE_LABEL = {
+  not_sown: "Not yet sown", establishing: "Establishing", growing: "Growing",
+  developing: "Developing", harvest_approaching: "Harvest approaching",
+  harvest_window: "Harvest window", check_now: "Should be ready — check",
+  dormant: "Dormant", harvested: "Harvested", failed: "Failed",
+  unknown: "Stage not known",
+};
+// Position along the crop's life, for the rail only — never shown as a number.
+const PHASE_FILL = {
+  not_sown: 0, establishing: 12, growing: 40, developing: 65,
+  harvest_approaching: 85, harvest_window: 100, check_now: 100,
+  dormant: 0, harvested: 100, failed: 0, unknown: 0,
+};
+
 const STAGE_QUESTIONS = {
   seedling:   { emoji: "🌱", q: "Have your seedlings emerged?" },
   vegetative: { emoji: "🟢", q: "Are your plants growing strongly now?" },
@@ -8763,10 +8788,12 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       {sowing.sown_date && (
                         <div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                            <span style={{ fontSize: 10, color: stageText, fontWeight: 600 }}>{pct}% grown</span>
+                            <span style={{ fontSize: 10, color: stageText, fontWeight: 600 }}>
+                              {PHASE_LABEL[sowing.lifecycle?.phase] || PHASE_LABEL.unknown}
+                            </span>
                           </div>
                           <div style={{ height: 5, background: C.lineSoft, borderRadius: R.full, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: R.full}} />
+                            <div style={{ height: "100%", width: (PHASE_FILL[sowing.lifecycle?.phase] ?? 0) + "%", background: stageColor, borderRadius: R.full}} />
                           </div>
                         </div>
                       )}
@@ -9200,12 +9227,16 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                      but they no longer cost two stacked rows plus a gap. */
                   <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: stageText, background: stageColor + "1a", border: `1px solid ${stageColor}44`, borderRadius: R.full, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap" }}>
-                      {(() => { const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" }; return STAGE_LABEL[stageKey] || stageKey; })()}
+                      {PHASE_LABEL[crop.lifecycle?.phase] || PHASE_LABEL.unknown}
                     </span>
                     <div style={{ flex: 1, minWidth: 24, height: 6, background: C.lineSoft, borderRadius: R.full, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: pct + "%", background: stageColor, borderRadius: R.full, transition: "width 0.5s ease" }} />
+                      <div style={{ height: "100%", width: (PHASE_FILL[crop.lifecycle?.phase] ?? 0) + "%", background: stageColor, borderRadius: R.full, transition: "width 0.5s ease" }} />
                     </div>
-                    <span style={{ fontSize: 11, color: stageText, fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{pct}% grown</span>
+                    {/* Provenance, not a number: the product must always be able to
+                        say whether it was told this or is estimating it. */}
+                    {crop.lifecycle?.provenance === "estimated" && (
+                      <span style={{ fontSize: 10, color: C.stone, flexShrink: 0, whiteSpace: "nowrap" }} title={crop.lifecycle?.provenance_text || ""}>est.</span>
+                    )}
                   </div>
                 );
               })()}
