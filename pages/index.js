@@ -2032,15 +2032,31 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
   const now    = Date.now();
   const start  = new Date(item.window_start).getTime();
   const end    = new Date(item.window_end).getTime();
-  // Committed optimal harvest date — 35% into the window
-  const optimalDate = new Date(start + (end - start) * 0.35);
-  const weeksLeft = Math.max(0, Math.round((optimalDate.getTime() - now) / (7*24*60*60*1000)));
-  const isReady = weeksLeft === 0;
+
+  // 3B3a. This card claimed "Ready now" for crops months past their window, and
+  // did it structurally: weeksLeft was Math.max(0, …) of a date that had already
+  // passed, so anything overdue clamped to 0 and read as ready forever. On the
+  // demo garden that produced "Ready now" beside "Aim to harvest around 31 Mar"
+  // — in August. THIS was the ready-forever bug, not the Today card.
+  //
+  // The API now labels each item's phase, so ask it rather than re-deriving.
+  const weeksLeft = Math.max(0, Math.round((start - now) / (7*24*60*60*1000)));
+  const phase   = item.phase || (now < start ? "approaching" : now <= end ? "in_window" : "past_window");
+  const isReady = phase === "in_window";
+
+  // The old line read "🎯 Aim to harvest around {date}", a point 35% into the
+  // window. That precision was invented — there is no evidence for the 35%, and
+  // presenting a derived instant as a target reads as knowledge Vercro does not
+  // have. The window it actually has is the honest thing to show.
+  const fmtD = (ms) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const timing = phase === "past_window" ? `Expected around ${fmtD(end)}`
+               : phase === "approaching" ? `Expected from ${fmtD(start)}`
+               : start === end           ? `Expected around ${fmtD(start)}`
+               :                           `Usually ${fmtD(start)} – ${fmtD(end)}`;
 
   const borderColor = C.forest;
   const bgColor     = C.cardBg;
   const barColor    = C.amber;
-  const optimalStr  = optimalDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
   // Progress bar — journey toward harvest window
   const journeyStart = start - 60 * 24 * 60 * 60 * 1000;
@@ -2050,17 +2066,22 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
     <div style={{ background: bgColor, border: `1px solid ${borderColor}44`, borderLeft: `3px solid ${borderColor}`, borderRadius: R.sm, padding: "12px 14px", transition: "all 0.3s" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop)}</span>
-          <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>{item.crop}</div>
+          {/* item.crop has never existed — /dashboard sends crop_name. Every card
+              in this grid has been rendering a blank name and the fallback emoji
+              since it was written; only the variety line made it look populated. */}
+          <span style={{ fontSize: 20 }}>{getCropEmoji(item.crop_name)}</span>
+          <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>{item.crop_name}</div>
         </div>
         {isReady
-          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: TINT.positive, borderRadius: R.full, padding: "2px 8px" }}>Ready now</span>
+          ? <span style={{ ...T.bodyStrong, fontSize: 10, color: C.forest, background: TINT.positive, borderRadius: R.full, padding: "2px 8px" }}>Should be ready</span>
+          : phase === "past_window"
+          ? <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: R.full, padding: "2px 8px" }}>Window passed</span>
           : <span style={{ fontSize: 10, color: C.stone, background: C.offwhite, borderRadius: R.full, padding: "2px 8px" }}>{weeksLeft}w away</span>
         }
       </div>
       {item.variety && <div style={{ fontSize: 11, color: C.stone, marginBottom: 4 }}>{item.variety}</div>}
       <div style={{ fontSize: 11, color: C.forest, fontWeight: 600, marginBottom: 8 }}>
-        🎯 Aim to harvest around {optimalStr}
+        {timing}
       </div>
       <div style={{ marginBottom: 10 }}>
         <div style={{ height: 5, background: C.border, borderRadius: R.full, overflow: "hidden" }}>
@@ -3292,14 +3313,18 @@ function GardenStatusCard({ data }) {
   const cropCount   = data.crop_count || 0;
   const completedThisWeek = data.tasks_completed_this_week || 0;
 
-  // Next harvest — first item in harvest forecast sorted by window_start
-  const nextHarvest = data.harvest_forecast?.length > 0
-    ? [...data.harvest_forecast].sort((a, b) => new Date(a.window_start) - new Date(b.window_start))[0]
-    : null;
-
-  const optimalDate = nextHarvest
-    ? new Date(new Date(nextHarvest.window_start).getTime() + (new Date(nextHarvest.window_end) - new Date(nextHarvest.window_start)) * 0.35)
-    : null;
+  // Next harvest — "next" has to mean still ahead of you.
+  //
+  // This sorted the whole forecast by window_start and took the first, which is
+  // the OLDEST crop, not the next one. With single-day estimates that was merely
+  // odd; with real windows it names a crop whose window closed months ago and
+  // calls it next. Prefer something in its window now, then the soonest one
+  // still to come, and say nothing when neither exists.
+  const _fc = data.harvest_forecast || [];
+  const nextHarvest =
+       _fc.filter(h => h.phase === "in_window").sort((a,b) => new Date(a.window_end) - new Date(b.window_end))[0]
+    || _fc.filter(h => h.phase === "approaching").sort((a,b) => new Date(a.window_start) - new Date(b.window_start))[0]
+    || null;
 
   return (
     <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "16px 18px", marginBottom: 12 }}>
@@ -3313,11 +3338,14 @@ function GardenStatusCard({ data }) {
           </span>
         </div>
         {/* Next harvest */}
-        {nextHarvest && optimalDate && (
+        {nextHarvest && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 20 }}>🌾</span>
             <span style={{ fontSize: 14, color: C.ink }}>
-              Next harvest: <strong style={{ color: C.forest }}>{nextHarvest.crop}</strong> — aiming for {optimalDate.toLocaleDateString("en-GB", { day: "numeric", month: "long" })}
+              Next harvest: <strong style={{ color: C.forest }}>{nextHarvest.crop_name}</strong>
+              {nextHarvest.phase === "in_window"
+                ? " — should be ready now"
+                : ` — expected from ${new Date(nextHarvest.window_start).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`}
             </span>
           </div>
         )}
