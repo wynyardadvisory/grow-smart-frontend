@@ -4532,8 +4532,29 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       return true;
     });
   };
-  const todayTasks     = dedupeByAction(grouped.today.filter(t => !completed.has(t.id)));
-  const thisWeekTasks  = dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id)));
+  // ── 3B3d — one garden truth, one card ──────────────────────────────────────
+  //
+  // Measured on the live product: Mint appeared in THREE modules at once —
+  // Today's Focus, Expected Harvest and the Harvest Forecast grid — because
+  // harvest tasks and harvest cards are separate code paths that both happen to
+  // know the same fact. Apple appeared in two.
+  //
+  // A crop already represented as a harvest opportunity does not also need to
+  // occupy Focus or Also-today. This is a PRESENTATION decision only: the task
+  // is untouched in the engine and in history, still completable everywhere
+  // else, and still counted. We are choosing not to say the same thing twice.
+  const harvestOpportunityCrops = new Set(
+    (data.harvest_forecast || [])
+      .filter(h => h.phase === "in_window" && !harvestedIds.has(h.crop_instance_id))
+      .map(h => h.crop_instance_id)
+      .filter(Boolean)
+  );
+  const dedupeHarvest = (tasks) => tasks.filter(t =>
+    !(t.task_type === "harvest" && t.crop_instance_id && harvestOpportunityCrops.has(t.crop_instance_id))
+  );
+
+  const todayTasks     = dedupeHarvest(dedupeByAction(grouped.today.filter(t => !completed.has(t.id))));
+  const thisWeekTasks  = dedupeHarvest(dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id))));
   const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
 
   // Hero focus: critical alert > high task > medium task > first check
@@ -4595,6 +4616,42 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       return { name, emoji: getCropEmoji(name), tasks: dedupedTasks };
     }).sort((a,b) => (a.tasks[0]?.due_date||"").localeCompare(b.tasks[0]?.due_date||""));
   })();
+
+  // ── 3B3d — the attention budget ────────────────────────────────────────────
+  //
+  // Today had 16 modules over 4.2 screens, and the first genuine gardening
+  // content began 669px down — below onboarding, a notifications prompt, a
+  // streak and a Plant Check advert. Five of the sixteen were promotional.
+  //
+  // The fix is not a card cap. A cap would have hidden the real defect (one
+  // truth generating four cards) and would keep a busy page busy. Instead each
+  // rule below is a SUPPRESSION triggered by having content, so the page gets
+  // quieter as Vercro knows more, rather than noisier.
+  const harvestOpportunityCount = (data.harvest_forecast || [])
+    .filter(h => h.phase === "in_window" && !harvestedIds.has(h.crop_instance_id)).length;
+
+  // At most one information-seeking question. Reconciliation outranks the
+  // generic "add a variety" ask: it resolves a crop whose outcome is genuinely
+  // unknown, and the answer changes what Vercro believes.
+  const hasReconciliationQuestion = Boolean(
+    data?.reconciliation?.[0]?.crop_id && Array.isArray(data.reconciliation[0].outcomes)
+  );
+  const showMissingDataQuestion = !hasReconciliationQuestion && (data.missing_data || []).length > 0;
+
+  // Genuine garden content: an action to take, a harvest to pick, a risk to
+  // watch, a question worth answering.
+  const gardenContentCount =
+      (focusItem ? 1 : 0)
+    + (remainingToday.length > 0 ? 1 : 0)
+    + (harvestOpportunityCount > 0 ? 1 : 0)
+    + (watchOuts.length > 0 ? 1 : 0)
+    + (hasReconciliationQuestion ? 1 : 0);
+
+  // An established gardener with real content should not be shown onboarding, a
+  // notifications ask, a Plant Check advert, "Going away?", tips and a share
+  // nudge stacked around it. Two pieces of genuine content is enough to earn a
+  // quiet page.
+  const promoSuppressed = gardenContentCount >= 2;
 
   // Garden progress counts
   const cropCount      = data.crop_count || 0;
@@ -4673,7 +4730,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {dashboardView === "today" && <>
 
       {/* ── FIRST RUN BANNER ──────────────────────────────────────────────────── */}
-      {showFirstRun && (
+      {/* 3B3d — onboarding explains a garden the user can already see working. */}
+      {showFirstRun && !promoSuppressed && (
         <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ ...T.displayMd, fontSize: 17, color: "#fff", marginBottom: 6 }}>
             Here's your garden plan for today 👇
@@ -4695,28 +4753,39 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       )}
 
       {/* ── NOTIFICATION PROMPT ────────────────────────────────────────────────── */}
-      <NotificationDashboardPrompt onTabChange={onTabChange} />
+      {!promoSuppressed && <NotificationDashboardPrompt onTabChange={onTabChange} />}
 
       {/* ── TIME AWAY BANNER ─────────────────────────────────────────────────── */}
+      {/* Not a promotion — it reports a state the user themselves set, and it
+          changes what the tasks below mean. It stays. */}
       <TimeAwayTodayBanner blockedPeriods={blockedPeriods} onTabChange={onTabChange} />
 
       {/* ── STREAK CARD ────────────────────────────────────────────────────── */}
+      {/* 3B3d — one insight, and Garden Progress is the more useful one. The ref
+          must still exist for the guided tour, so the node stays and only its
+          contents are suppressed. */}
       <div ref={tourRefs.tourRef_streakCard}>
-        <StreakCard
-          streak={data.current_streak_days}
-          longestStreak={data.longest_streak_days}
-          onViewBadges={() => onTabChange("badges")}
-        />
+        {!promoSuppressed && (
+          <StreakCard
+            streak={data.current_streak_days}
+            longestStreak={data.longest_streak_days}
+            onViewBadges={() => onTabChange("badges")}
+          />
+        )}
       </div>
 
-      {/* ── PLANT CHECK HERO — position 2, above Today's focus ───────── */}
+      {/* ── PLANT CHECK HERO ────────────────────────────────────────────────── */}
+      {/* Was deliberately placed "position 2, above Today's focus" — an advert
+          for another feature above the day's actual work. Same ref treatment. */}
       <div ref={tourRefs.tourRef_plantCheckCard}>
-        <PlantCheckHeroCard
-          isMark={isMark}
-          plantCheckEnabled={plantCheckEnabled}
-          remainingChecks={data?.diagnoses_remaining ?? null}
-          onOpen={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
-        />
+        {!promoSuppressed && (
+          <PlantCheckHeroCard
+            isMark={isMark}
+            plantCheckEnabled={plantCheckEnabled}
+            remainingChecks={data?.diagnoses_remaining ?? null}
+            onOpen={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
+          />
+        )}
       </div>
 
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
@@ -4940,10 +5009,37 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         )}
       </div>
 
+      {/* ── HARVEST OPPORTUNITY — 3B3d ──────────────────────────────────────
+          Promoted to sit directly beneath the focus. Picking something ready is
+          the most rewarding thing Vercro can offer, and it used to sit below
+          watch-outs, coming-up-next and a travel prompt. Crops shown here are
+          suppressed from Focus/Also-today by dedupeHarvest above, so one crop
+          produces one card. */}
+      {/* ── HARVEST CARD ────────────────────────────────────────────────────── */}
+      <TodayHarvestCard
+        recentHarvests={recentHarvests}
+        harvestForecast={data.harvest_forecast}
+        harvestedIds={harvestedIds}
+        onLogHarvest={(h) => setPendingHarvest(h)}
+        onViewAll={() => onTabChange("profile")}
+      />
+      {/* Harvest → Plant Check nudge (Mark only) */}
+      {isMark && plantCheckEnabled && (
+        <div onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
+          /* Orphan radius resolved (was "0 0 12px 12px" — a conditional the 4A
+             codemod skipped by design). It was always trying to read as a row
+             welded under the harvest card; now it simply is one. */
+          style={{ marginTop: -20, marginBottom: 20, padding: "10px 14px", background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, borderTop: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14 }}>📷</span>
+          <span style={{ fontSize: 12, color: C.stone }}>Not sure if it's ready? <span style={{ ...T.bodyStrong, color: C.forest }}>Check with a photo →</span></span>
+        </div>
+      )}
+
       {/* ── TIME AWAY ENTRY POINTS ──────────────────────────────────────────── */}
 
       {/* Dense tasks nudge — shown when 5+ tasks due this week and no active blocked period */}
-      {(() => {
+      {/* 3B3d — a prompt to configure a future absence is not today's gardening. */}
+      {!promoSuppressed && (() => {
         const upcomingCount = [...thisWeekTasks, ...todayTasks].length;
         const hasActivePeriod = blockedPeriods.some(p => {
           const t = new Date().toISOString().split("T")[0];
@@ -5189,44 +5285,17 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         </div>
       )}
 
-      {/* ── HARVEST CARD ────────────────────────────────────────────────────── */}
-      <TodayHarvestCard
-        recentHarvests={recentHarvests}
-        harvestForecast={data.harvest_forecast}
-        harvestedIds={harvestedIds}
-        onLogHarvest={(h) => setPendingHarvest(h)}
-        onViewAll={() => onTabChange("profile")}
-      />
-      {/* Harvest → Plant Check nudge (Mark only) */}
-      {isMark && plantCheckEnabled && (
-        <div onClick={() => { setPlantCheckPrefill(null); setShowPlantCheck(true); }}
-          /* Orphan radius resolved (was "0 0 12px 12px" — a conditional the 4A
-             codemod skipped by design). It was always trying to read as a row
-             welded under the harvest card; now it simply is one. */
-          style={{ marginTop: -20, marginBottom: 20, padding: "10px 14px", background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, borderTop: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>📷</span>
-          <span style={{ fontSize: 12, color: C.stone }}>Not sure if it's ready? <span style={{ ...T.bodyStrong, color: C.forest }}>Check with a photo →</span></span>
-        </div>
-      )}
-
-      {/* ── 6. HARVEST FORECAST ────────────────────────────────────────────── */}
-      {data.harvest_forecast?.filter(h => !harvestedIds.has(h.crop_instance_id)).length > 0 && (
-        /* The outer eyebrow said "Harvest forecast" directly above a card whose
-           own header says "Harvest forecast" with a live crop count. One block,
-           one name — the eyebrow goes and the card header stays, because the
-           count is real information the eyebrow could not carry. Section
-           position, contents and behaviour are unchanged. */
-        <div style={{ marginBottom: 20 }}>
-          <CollapsibleHarvestForecast
-            items={data.harvest_forecast.filter(h => !harvestedIds.has(h.crop_instance_id))}
-            onHarvest={(h) => setPendingHarvest(h)}
-            pending={pendingHarvest}
-          />
-        </div>
-      )}
+      {/* ── HARVEST FORECAST — moved to Crops (3B3d) ────────────────────────
+          A 478px, 14-crop season overview answering "how is my growing year
+          going". That is not a question about today, and on Today it restated
+          crops the harvest card had already raised — Mint appeared in both.
+          It now lives on Crops, where the rest of the multi-crop view is. */}
 
       {/* ── 7. HELP ME IMPROVE YOUR PLAN ───────────────────────────────────── */}
-      {(data.missing_data || []).length > 0 && (
+      {/* 3B3d — at most one question on Today. Reconciliation wins: it resolves a
+          crop whose outcome is genuinely unknown and its answer changes what
+          Vercro believes, where this only enriches a record. */}
+      {showMissingDataQuestion && (
         <div style={{ background: TINT.attention, border: `1px solid ${TINT_LINE.attention}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 10 }}>Make your plan more accurate</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -5271,7 +5340,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       </div>
 
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
-      <TipsSection />
+      {/* 3B3d — general tips are the lowest-value thing on the page when the
+          garden itself has something to say. */}
+      {!promoSuppressed && <TipsSection />}
 
       {/* Plant Check hero card now rendered above Today's focus — removed from here */}
 
@@ -8772,6 +8843,40 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           </div>
         )}
       </div>
+      {/* ── HARVEST FORECAST — rehomed from Today (3B3d) ────────────────────
+          A 14-crop, 478px season overview answering "how is my growing year
+          going". On Today it restated crops the harvest card had already raised
+          (Mint appeared in both) and pushed real work below the fold. Here it
+          sits with the rest of the multi-crop view, built from /crops —
+          harvest_window now travels with the crop, so no extra request and both
+          surfaces read the same field. */}
+      {(() => {
+        const items = (crops || [])
+          .filter(c => c.harvest_window?.start && c.harvest_window?.phase !== "unknown"
+                       && !c.harvested_at && c.status !== "harvested")
+          .map(c => ({
+            crop_name:        c.name,
+            variety:          c.variety?.name || c.variety || null,
+            crop_instance_id: c.id,
+            window_start:     c.harvest_window.start,
+            window_end:       c.harvest_window.end,
+            phase:            c.harvest_window.phase,
+          }));
+        if (items.length === 0) return null;
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <CollapsibleHarvestForecast
+              items={items}
+              onHarvest={(h) => {
+                const crop = crops.find(c => c.id === h.crop_instance_id);
+                if (crop) setPendingHarvest(crop);
+              }}
+              pending={pendingHarvest}
+            />
+          </div>
+        );
+      })()}
+
       {crops.length === 0 && successionGroups.length === 0 && (
         <div style={{ textAlign: "center", padding: "32px 20px", color: C.stone, fontSize: 14 }}>No crops yet. Add your first crop.</div>
       )}
