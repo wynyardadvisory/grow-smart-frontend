@@ -19900,23 +19900,22 @@ export default function GrowSmart() {
   const isPartnerAdmin = PARTNER_ADMIN_IDS.includes(session?.user?.id || "");
   const [isDemo, setIsDemo] = useState(false);
 
-  // ── Demo tools: opt-in, not always-on ──────────────────────────────────────
+  // ── V044 — demo tools are opt-in, not always-on ────────────────────────────
   //
   // The Admin tab used to render for EVERY demo account, unconditionally. The
   // only thing behind it for a demo account is DemoAdminScreen, whose single
   // control is "Reset this account back to the demo state" — a call that HARD
   // DELETES that account's tasks, harvest log, crops, areas and locations.
   //
-  // Three consequences, all bad:
   //   1. App Review signs in on a demo account. A reviewer could press it.
   //   2. It appeared in every App Store and Google Play screenshot. A consumer
-  //      gardening app with an "Admin" tab is not shippable.
+  //      gardening app cannot ship with an "Admin" tab.
   //   3. One tap destroys the canonical Marketing Garden, which every store and
   //      website asset is captured from.
   //
-  // Demo tools are still available — deliberately. Visit ?demo-tools=1 once and
-  // the tab appears for that browser; ?demo-tools=0 removes it again. Nothing
-  // changes for real users, admins, viewers or partner admins.
+  // Demo tools remain fully available, deliberately: ?demo-tools=1 enables them
+  // for that browser, ?demo-tools=0 clears it. Nothing changes for real users,
+  // admins, viewers or partner admins.
   const [demoToolsOn, setDemoToolsOn] = useState(false);
   useEffect(() => {
     try {
