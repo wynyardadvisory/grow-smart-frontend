@@ -5073,7 +5073,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       })()}
 
       {/* Persistent entry point — always visible, clears once user has added a blocked period */}
-      {!timeAwayDismissed && blockedPeriods.length === 0 && (
+      {/* 3B3d — "entry point 2 of 2" for a feature the user has not asked for.
+          It is a promotion, and the first pass gated only its sibling nudge. */}
+      {!timeAwayDismissed && blockedPeriods.length === 0 && !promoSuppressed && (
         <div
           /* Entry point 2 of 2 — stays neutral so it never converges with the
              attention-tinted nudge above. */
