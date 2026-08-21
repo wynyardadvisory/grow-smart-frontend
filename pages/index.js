@@ -200,34 +200,41 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
     tourRef_whyNowPill: { title: "Why now? 💡",   body: "Each task card has a Why Now button that explains exactly why Vercro is recommending it today. Free users get 3 uses — Pro users get unlimited." }
   };
 
+  // V014 — this used to be a while-loop that walked forward through the steps on
+  // its own. When an element could not be measured it did `s++; setStep(s)` and
+  // tried the next one, and when it ran out it called `onSkip()`. So a tour
+  // could advance through steps the user never saw, or close itself outright,
+  // with no interaction at all — and because `setStep` is this effect's own
+  // dependency, each hop started a second measure loop racing the first.
+  //
+  // It is in the shared overlay, so it was never a Feeds problem: all five
+  // tours had it. A step that cannot be spotlighted now degrades to a centred
+  // tooltip and waits for the user, which is the same fallback two Today steps
+  // already used. Only the user advances a tour, and only the user ends one.
   React.useEffect(() => {
     let cancelled = false;
+    const current = steps[step];
+    if (!current) return;
+
+    const showUnanchored = () =>
+      setRect({ left: 0, top: -1000, right: 0, bottom: -1000, width: 0, height: 0, isFallback: true });
+
     const measure = async () => {
-      let s = step;
-      while (s < steps.length) {
-        let r = await measureRef(steps[s].ref);
+      let r = await measureRef(current.ref);
+      if (cancelled) return;
+      if (!r) {
+        // One retry — the element may still be mounting or scrolling into view.
+        await new Promise(res => setTimeout(res, 800));
         if (cancelled) return;
-        if (!r) {
-          // If this step has a no-content fallback, show tooltip centred with no spotlight
-          if (NO_TASK_FALLBACK[steps[s].ref]) {
-            setRect({ left: 0, top: -1000, right: 0, bottom: -1000, width: 0, height: 0, isFallback: true });
-            return;
-          }
-          // Otherwise retry once after 800ms
-          await new Promise(res => setTimeout(res, 800));
-          if (cancelled) return;
-          r = await measureRef(steps[s].ref);
-          if (cancelled) return;
-        }
-        if (r) { setRect(r); return; }
-        s++;
-        setStep(s);
+        r = await measureRef(current.ref);
+        if (cancelled) return;
       }
-      onSkip();
+      if (r) setRect(r);
+      else showUnanchored();
     };
     measure();
     return () => { cancelled = true; };
-  }, [step]);
+  }, [step, steps, measureRef]);
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -345,7 +352,18 @@ function WalkthroughOverlay({ tab, refs, onComplete, onSkip }) {
   const currentStep = steps[step];
   const fallback = NO_TASK_FALLBACK[currentStep?.ref];
   const displayTitle = fallback ? fallback.title : currentStep?.title;
-  const displayBody  = fallback ? fallback.body  : currentStep?.body;
+  // A step that could not be anchored shows centred with nothing highlighted.
+  // Several steps use deictic copy — "Tap here", "shows here" — which reads as
+  // nonsense when there is no highlight to point at. The two steps with bespoke
+  // fallback copy already avoid it; the rest get one short line of context
+  // rather than a rewrite, so the tour stays honest without becoming a copy
+  // project. It is only appended when the anchor is genuinely missing.
+  const unanchored = rect?.isFallback && !fallback;
+  const displayBody  = fallback
+    ? fallback.body
+    : (unanchored
+        ? `${currentStep?.body || ""} (This isn't on your screen right now.)`
+        : currentStep?.body);
 
   return (
     <div
@@ -4205,6 +4223,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // a loop. They emit ONE aggregate task_completed for the single tap instead.
   // Capturing here unconditionally is what produced 231 events per user per
   // minute for `protect` tasks in the pre-June data; see lib/analytics.js.
+  // Completion requests still in flight, keyed by task id, each resolving to
+  // whether the write succeeded. Undo consults this before calling the server.
+  const inFlightCompletions = useRef({});
+
   const completeTask = async (task, opts = {}) => {
     const shouldTrack = opts.track !== false;
     setCompleted(prev => new Set([...prev, task.id]));
@@ -4213,8 +4235,33 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     // Increment local week count immediately
     setData(prev => prev ? { ...prev, tasks_completed_this_week: (prev.tasks_completed_this_week || 0) + 1 } : prev);
 
+    // V011/V053 — the Undo window used to open only AFTER the network call
+    // resolved. The card left Today instantly but stayed unreversible for as
+    // long as the request took, so the exact moment a user notices they tapped
+    // the wrong row was the one moment they could not take it back. Undo is a
+    // UI affordance over local state; it does not need the server's permission.
+    // The catch below still rolls everything back if the write genuinely fails.
+    // A second tap on the same row must not leave the first timer running — it
+    // would fire early and close the window the second tap just opened.
+    if (undoQueue[task.id]) clearTimeout(undoQueue[task.id]);
+    const undoTimeout = setTimeout(() => {
+      setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
+      delete inFlightCompletions.current[task.id];
+    }, 10000);
+    setUndoQueue(prev => ({ ...prev, [task.id]: undoTimeout }));
+
+    // Publish the in-flight write so undoComplete can wait for it. Opening the
+    // Undo window before the response created a race that could not happen
+    // before: Undo would POST /uncomplete while the task was still incomplete
+    // server-side, the idempotency guard there would no-op, and the completion
+    // would then land — leaving the server complete and the UI active, with the
+    // user's Undo silently discarded.
+    let settleCompletion;
+    inFlightCompletions.current[task.id] = new Promise(r => { settleCompletion = r; });
+
     try {
       await apiFetch(`/tasks/${task.id}/complete`, { method: "POST" });
+      settleCompletion(true);
       // Fired only after the API confirms. The catch below rolls the optimistic
       // UI back, so capturing earlier would record completions that never were.
       if (shouldTrack) {
@@ -4276,17 +4323,17 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         }, 600);
       }
     } catch {
+      // The write failed, so there is nothing left to undo — close the window
+      // opened above before rolling the card back into Today.
+      settleCompletion(false);
+      clearTimeout(undoTimeout);
+      setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
       setCompleted(prev => { const s = new Set(prev); s.delete(task.id); return s; });
       setRecentlyDone(prev => prev.filter(t => t.id !== task.id));
       setData(prev => prev ? { ...prev, tasks_completed_this_week: Math.max(0, (prev.tasks_completed_this_week || 1) - 1) } : prev);
       return;
     }
 
-    // Undo window — 10 seconds
-    const timeout = setTimeout(() => {
-      setUndoQueue(prev => { const q = { ...prev }; delete q[task.id]; return q; });
-    }, 10000);
-    setUndoQueue(prev => ({ ...prev, [task.id]: timeout }));
   };
 
   const undoComplete = async (task) => {
@@ -4301,6 +4348,15 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     setUndone(prev => [task, ...prev.filter(t => t.id !== task.id)]);
 
     try {
+      // Wait for any in-flight completion to land first, so /uncomplete is never
+      // sent to a server that has not yet recorded the completion. If that write
+      // failed there is nothing to undo, and sending it anyway would be noise.
+      const pending = inFlightCompletions.current[task.id];
+      if (pending) {
+        const completed = await pending;
+        delete inFlightCompletions.current[task.id];
+        if (!completed) return;
+      }
       await apiFetch(`/tasks/${task.id}/uncomplete`, { method: "POST" });
     } catch {
       // Revert — mark as completed again
@@ -5408,6 +5464,17 @@ function predictNextStage(crop) {
   return null;
 }
 
+// Canonical stage → symptom-code vocabulary. Must match stage-truth.js on the
+// API; POST /crops/:id/observe keys its stage updates off exactly these values.
+const STAGE_SYMPTOM = {
+  seed:       null,
+  seedling:   "seedling_emerged",
+  vegetative: "vegetative_confirmed",
+  flowering:  "flowering_confirmed",
+  fruiting:   "fruit_set_confirmed",
+  harvesting: "harvest_started",
+};
+
 const STAGE_QUESTIONS = {
   seedling:   { emoji: "🌱", q: "Have your seedlings emerged?" },
   vegetative: { emoji: "🟢", q: "Are your plants growing strongly now?" },
@@ -5480,9 +5547,14 @@ function QuickCropCheck({ crops, allTasks = [], missingItems, onDismiss, onNavig
     setActioning(crop.id);
     setDismissed(prev => new Set([...prev, crop.id + "_lifecycle"]));
     try {
-      // Log observation — feeds back into engine
+      // Log observation — feeds back into engine.
+      // V006: this built its own codes as `${stage}_confirmed`, which agrees
+      // with the API's vocabulary for only two of the five stages. Production
+      // holds 1,774 observations under STAGE_SYMPTOM and zero under the
+      // improvised variant, so this path had never once round-tripped. One
+      // table now serves both this prompt and the crop detail sheet.
       const symptomCode = confirmed
-        ? `${nextStage}_confirmed`
+        ? (STAGE_SYMPTOM[nextStage] || null)
         : `${nextStage}_not_yet`;
       await apiFetch(`/crops/${crop.id}/observe`, {
         method: "POST",
