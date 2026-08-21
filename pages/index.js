@@ -2104,8 +2104,24 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
 // ── Harvest Modal ─────────────────────────────────────────────────────────────
 
 function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
-  const [yieldScore,   setYieldScore]   = useState(5);
-  const [qualScore,    setQualScore]    = useState(5);
+  // 3B3c — unset, not 5.
+  //
+  // These started at 5 and were always visible, so a slider nobody touched
+  // recorded a considered "5". 39.1% of yield scores and 37.5% of quality
+  // scores sit on exactly that value, and a default 5 is indistinguishable from
+  // a deliberate one — the same defect as stage_confidence='exact' (V063) and
+  // the 7,440 rows it contaminated. Null means the gardener did not say.
+  const [yieldScore,   setYieldScore]   = useState(null);
+  const [qualScore,    setQualScore]    = useState(null);
+  const [showDetail,   setShowDetail]   = useState(false);
+  // The denominator we have never had: how many gardeners were even shown the
+  // photo option, against how many took it.
+  // Mount only: this is the denominator, so it must fire exactly once per sheet.
+  // `item` is fixed for the lifetime of the modal — the sheet is remounted per
+  // harvest — so adding it to deps would change nothing except the risk of a
+  // double count if that ever stops being true.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { track(EVENTS.HARVEST_PHOTO_OFFERED, { crop_name: item?.crop || null }); }, []);
   const [quantity,     setQuantity]     = useState("");
   const [unit,         setUnit]         = useState("kg");
   const [notes,        setNotes]        = useState("");
@@ -2137,6 +2153,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
     const reader = new FileReader();
     reader.onload = () => setPhotoPreview(reader.result);
     reader.readAsDataURL(file);
+    track(EVENTS.HARVEST_PHOTO_SELECTED, { crop_name: item?.crop || null, size_kb: Math.round((file.size || 0) / 1024) });
   };
 
   // The caller awaited this, but there was nothing to await: the upload happened
@@ -2189,16 +2206,26 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         has_photo:    !!photo,
         has_notes:    !!notes.trim(),
         is_final:     !!isFinal,
+        // Distinguishes "rated it" from "left it alone" — impossible while both
+        // sliders started at 5 and every harvest looked rated.
+        has_yield_score:   yieldScore != null,
+        has_quality_score: qualScore  != null,
+        enrichment_opened: showDetail,
       });
       // The harvest is already recorded. A photo that fails to attach must never
       // undo it or block the confirmation — it is enrichment, and the gardener
       // has done the part that matters.
       if (photo) {
+        const t0 = Date.now();
+        track(EVENTS.HARVEST_PHOTO_UPLOAD_START, { crop_name: item?.crop || null });
         try {
           const url = await uploadPhoto(entry.id);
           if (url) setSavedEntry(prev => ({ ...prev, photo_url: url }));
+          track(EVENTS.HARVEST_PHOTO_UPLOADED, { crop_name: item?.crop || null, ms: Date.now() - t0, linked: !!url });
         } catch (e) {
           console.error("[Harvest photo]", e);
+          // The failure that went unreported for four months now reports itself.
+          track(EVENTS.HARVEST_PHOTO_FAILED, { crop_name: item?.crop || null, ms: Date.now() - t0, reason: String(e?.message || e).slice(0, 120) });
           setPhotoError("Your harvest is saved, but the photo didn't upload.");
         }
       }
@@ -2308,16 +2335,32 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
                 : "Crop stays active — you can log more harvests later."}
             </div>
 
-            {/* Yield score */}
+            {/* ── Everything below is optional ────────────────────────────────
+                The screen used to open on two scored sliders, which made a
+                harvest look like a form with fields waiting to be completed.
+                The gardener has already done the part that matters by saying a
+                harvest happened; the rest is enrichment and now reads that way. */}
+            <button onClick={() => { if (!showDetail) track(EVENTS.HARVEST_ENRICHMENT_OPENED, { crop_name: item?.crop || null }); setShowDetail(v => !v); }}
+              style={{ width: "100%", background: "none", border: "none", padding: "4px 0 14px", cursor: "pointer",
+                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                       fontSize: 12, color: C.stone, fontWeight: 600 }}>
+              {showDetail ? "Hide extra detail" : "Add weight, notes or a rating"}
+              <span style={{ fontSize: 10 }}>{showDetail ? "▲" : "▼"}</span>
+            </button>
+
+            {showDetail && (<>
+            {/* Yield score — unset until the gardener actually says something */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <label style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>Yield Volume</label>
-                <span style={{ fontSize: 18, fontWeight: 800, color: trafficColor(yieldScore) }}>{yieldScore}</span>
+                <span style={{ fontSize: 18, fontWeight: 800, color: yieldScore == null ? C.stone : trafficColor(yieldScore) }}>
+                  {yieldScore == null ? "—" : yieldScore}
+                </span>
               </div>
-              <input type="range" min="1" max="10" value={yieldScore} onChange={e => setYieldScore(Number(e.target.value))}
-                style={{ width: "100%", accentColor: trafficColor(yieldScore) }} />
+              <input type="range" min="1" max="10" value={yieldScore ?? 5} onChange={e => setYieldScore(Number(e.target.value))}
+                style={{ width: "100%", accentColor: yieldScore == null ? C.border : trafficColor(yieldScore), opacity: yieldScore == null ? 0.55 : 1 }} />
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.stone, marginTop: 2 }}>
-                <span>Poor</span><span>Excellent</span>
+                <span>{yieldScore == null ? "Not rated — drag to rate" : "Poor"}</span><span>Excellent</span>
               </div>
             </div>
 
@@ -2325,12 +2368,14 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <label style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>Quality</label>
-                <span style={{ fontSize: 18, fontWeight: 800, color: trafficColor(qualScore) }}>{qualScore}</span>
+                <span style={{ fontSize: 18, fontWeight: 800, color: qualScore == null ? C.stone : trafficColor(qualScore) }}>
+                  {qualScore == null ? "—" : qualScore}
+                </span>
               </div>
-              <input type="range" min="1" max="10" value={qualScore} onChange={e => setQualScore(Number(e.target.value))}
-                style={{ width: "100%", accentColor: trafficColor(qualScore) }} />
+              <input type="range" min="1" max="10" value={qualScore ?? 5} onChange={e => setQualScore(Number(e.target.value))}
+                style={{ width: "100%", accentColor: qualScore == null ? C.border : trafficColor(qualScore), opacity: qualScore == null ? 0.55 : 1 }} />
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.stone, marginTop: 2 }}>
-                <span>Poor</span><span>Excellent</span>
+                <span>{qualScore == null ? "Not rated — drag to rate" : "Poor"}</span><span>Excellent</span>
               </div>
             </div>
 
@@ -2358,18 +2403,27 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
                 style={{ ...inputStyle, height: 64, resize: "none" }} placeholder="Any notes about this harvest…" />
             </div>
 
-            {/* Photo */}
+            </>)}
+
+            {/* ── Photo — the one enrichment worth asking for ─────────────────
+                Deliberately OUTSIDE the disclosure above. A photograph is the
+                only harvest evidence that is objective, effortless and useful
+                later: it is what a future assessment can read, and what a
+                journal or a season's history is actually made of. Weight and
+                ratings are self-reported; a photo is not.
+                Never required — the harvest saves without it. */}
             <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Photo (optional)</label>
               {photoPreview ? (
                 <div style={{ position: "relative" }}>
-                  <img src={photoPreview} alt="preview" style={{ width: "100%", borderRadius: R.sm, maxHeight: 160, objectFit: "cover" }} />
+                  <img src={photoPreview} alt="Your harvest" style={{ width: "100%", borderRadius: R.sm, maxHeight: 200, objectFit: "cover" }} />
                   <button onClick={() => { setPhoto(null); setPhotoPreview(null); }}
                     style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.5)", border: "none", borderRadius: R.full, color: "#fff", width: 24, height: 24, cursor: "pointer", fontSize: 14 }}>×</button>
                 </div>
               ) : (
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px dashed ${C.border}`, borderRadius: R.sm, padding: "14px", cursor: "pointer", color: C.stone, fontSize: 13 }}>
-                  Add a photo
+                <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, border: `1px dashed ${C.sage}`, background: TINT.positive, borderRadius: R.sm, padding: "18px 14px", cursor: "pointer" }}>
+                  <span style={{ fontSize: 22 }}>📷</span>
+                  <span style={{ ...T.bodyStrong, fontSize: 14, color: C.forest }}>Show Vercro your harvest</span>
+                  <span style={{ fontSize: 11, color: C.stone }}>Optional — but it&apos;s how your season gets a record worth keeping</span>
                   <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                 </label>
               )}
@@ -2383,8 +2437,8 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
               <button onClick={save} disabled={saving}
-                style={{ ...T.control, flex: 2, padding: "12px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-                {saving ? "Saving…" : "Save Harvest"}
+                style={{ ...T.control, flex: 2, padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+                {saving ? "Saving…" : "Save harvest"}
               </button>
             </div>
           </>
