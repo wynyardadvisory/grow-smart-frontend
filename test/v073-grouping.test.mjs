@@ -83,7 +83,9 @@ test("a one-word overlap is not a heading", () => {
 test("degenerate inputs never throw", () => {
   assert.equal(commonActionLabel([]), "");
   assert.equal(commonActionLabel(null), "");
-  assert.equal(commonActionLabel(["Only one"]), "Only one");
+  // A single action shares nothing — returning it printed the heading and its
+  // only row identically in production.
+  assert.equal(commonActionLabel(["Only one"]), null);
   assert.equal(commonActionLabel([undefined, undefined]), null);
 });
 

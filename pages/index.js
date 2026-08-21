@@ -4883,10 +4883,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           const alsoGroups = Object.values(alsoGrouped).map(g => {
             const shared = commonActionLabel(g.tasks.map(t => t.action));
             const type   = (g.tasks[0]?.task_type || "").replace(/_/g, " ").trim();
+            const typeLabel = type ? type[0].toUpperCase() + type.slice(1) : null;
             return {
               ...g,
               sharedLabel: shared,
-              displayName: shared || (type ? type[0].toUpperCase() + type.slice(1) : "Also today"),
+              // Crop name before task type: a lone Apple task reads better as
+              // "Apple" than as "Harvest", and that is what Today did before.
+              displayName: shared || g.tasks[0]?.crop?.name || typeLabel || "Also today",
               crop: g.tasks[0]?.crop,
               isSuccession: false,
             };
@@ -4923,8 +4926,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                       )}
                       {/* "All" is deliberately secondary and deliberately last: one
                           tap here can fire up to 27 domain mutations, so the normal
-                          interaction remains the tick on an individual row. */}
-                      {group.tasks.length > 1 && (
+                          interaction remains the tick on an individual row.
+                          It appears only where the server says group completion is
+                          semantically valid — a weeding or feeding round, which is
+                          one real sweep recording a reversible timestamp. Never for
+                          lifecycle transitions (27 succession sowings on one day) or
+                          acknowledgements (asserting 22 slug inspections happened). */}
+                      {group.tasks.length > 1 && group.tasks.every(x => x.bulk_completable) && (
                         <button onClick={() => group.tasks.forEach(x => completeTask(x))}
                           style={{ marginLeft: "auto", fontSize: 11, color: C.stone, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.full, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" }}>
                           All
@@ -10312,7 +10320,10 @@ function todayISO() { return new Date().toISOString().split("T")[0]; }
 // whole first action when the group shares nothing.
 function commonActionLabel(actions) {
   if (!actions?.length) return "";
-  if (actions.length === 1) return actions[0];
+  // A single action has nothing to share with. Returning it made the group
+  // heading and its only row print the same sentence twice, which is what
+  // production showed for "Check for weeds in Raised bed 2".
+  if (actions.length === 1) return null;
   const split = actions.map(a => (a || "").trim().split(/\s+/));
   const out = [];
   for (let i = 0; i < split[0].length; i++) {
