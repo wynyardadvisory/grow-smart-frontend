@@ -4449,8 +4449,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
   // ── Derived data for new dashboard layout ────────────────────────────────────
 
-  const [reconBusy, setReconBusy] = useState(null);
-
   // Today's focus — single most important item
   const alerts         = (data.tasks?.alerts || []).filter(t => !completed.has(t.id));
   // Deduplicate tasks with identical action text — handles users with multiple instances
@@ -4946,61 +4944,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         }}
       />
 
-      {/* ── 3b. UNRESOLVED CROP ────────────────────────────────────────────── */}
-      {/* Correcting the lifecycle model exposed thousands of crops whose expected
-          harvest passed months ago with no record of what happened. A task would
-          instruct about a season that has ended; this asks instead, and unlike a
-          task the answer teaches Vercro something. At most one per load, and it
-          DISPLACES the share/invite group below rather than adding to Today. */}
-      {data?.reconciliation?.[0] && (() => {
-        const r = data.reconciliation[0];
-        const label = {
-          still_growing: "Still growing",
-          harvested:     "I harvested it",
-          removed:       "Cleared it",
-          failed:        "It didn't work out",
-          not_sure:      "Not sure",
-        };
-        const answer = async (outcome) => {
-          setReconBusy(outcome);
-          try {
-            await apiFetch(`/crops/${r.crop_id}/reconcile`, {
-              method: "POST", body: JSON.stringify({ outcome }),
-            });
-            track(EVENTS.OBSERVATION_LOGGED, { observation_type: "reconciliation", symptom_code: outcome, count: 1, bulk: false, surface: "today" });
-            await load(true);
-          } catch (e) { console.error(e); }
-          setReconBusy(null);
-        };
-        return (
-          <div style={{ marginBottom: 20, border: `1px solid ${C.border}`, borderRadius: R.md, padding: 16, background: C.paper }}>
-            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>One quick question</div>
-            <div style={{ ...T.displayMd, fontSize: 17, color: C.ink, marginBottom: 4 }}>
-              How did your {r.name.toLowerCase()}{r.variety ? ` (${r.variety})` : ""} get on?
-            </div>
-            {/* The value exchange, stated plainly: this is why answering is worth
-                a tap, and what Vercro does with it. */}
-            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.45, marginBottom: 12 }}>
-              Sown {new Date(r.sown_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} — I expected these to be ready
-              around {r.expected_around ? new Date(r.expected_around).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "now"}.
-              Tell me what happened and I'll keep your garden up to date.
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {r.outcomes.map(o => (
-                <button key={o} onClick={() => answer(o)} disabled={!!reconBusy}
-                  style={{ ...T.control, background: o === "harvested" ? C.forest : "none",
-                           color: o === "harvested" ? "#fff" : C.ink,
-                           border: o === "harvested" ? "none" : `1px solid ${C.border}`,
-                           borderRadius: R.sm, padding: "8px 14px", fontSize: 13,
-                           cursor: reconBusy ? "default" : "pointer", opacity: reconBusy && reconBusy !== o ? 0.5 : 1 }}>
-                  {reconBusy === o ? "Saving…" : label[o] || o}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
       {/* ── 3. WATCH OUTS ──────────────────────────────────────────────────── */}
       {watchOuts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -5207,10 +5150,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           floating boxes. Both keep their tier, weight, colour and order — nothing
           is demoted to a text link. Log activity stays separate below, because it
           is a different intent from the two sharing actions. */}
-      {/* Displaced while an unresolved-crop question is on screen. A specific
-          question about the user's own garden outranks a generic ask, and Today's
-          card count must not grow (V065). */}
-      {!data?.reconciliation?.[0] && (
       <div style={{ display: "flex", flexDirection: "column", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, marginBottom: 16, overflow: "hidden" }}>
         <button onClick={() => setShowShareGarden(true)}
           style={{ ...T.control, width: "100%", background: "none", border: "none", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: C.forest, fontSize: 13 }}>
@@ -5223,7 +5162,6 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           Invite a gardening friend — it's free
         </button>
       </div>
-      )}
 
       {/* ── SHARE NUDGE MODAL ──────────────────────────────────────────────── */}
       {/* ── SESSION COMPLETE HOOK ─────────────────────────────────────────────── */}
