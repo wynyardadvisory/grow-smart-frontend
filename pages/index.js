@@ -4913,7 +4913,12 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   const rowLabel = (t) => {
                     const a = (t.action || "").trim();
                     if (group.tasks.length < 2 || !group.sharedLabel) return a;
-                    const rest = a.slice(group.sharedLabel.length).replace(/^\s*(in|on|for|to|around|at)\s+/i, "").trim();
+                    let rest = a.slice(group.sharedLabel.length).replace(/^\s*(in|on|for|to|around|at)\s+/i, "").trim();
+                    // 27 Radish sowings differ only by "(Sow 4)", and a row reading
+                    // "(Sow 4)" names nothing a gardener recognises. The brackets
+                    // are punctuation left over from the sentence, not part of the
+                    // name — drop them so the row reads "Sow 4".
+                    rest = rest.replace(/^\((.*)\)$/, "$1").trim();
                     return rest || a;
                   };
                   return (
