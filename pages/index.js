@@ -2096,7 +2096,9 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [undone,       setUndone]       = useState(false);
   const [showShare,    setShowShare]    = useState(false);
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
-  const [isFinal,      setIsFinal]      = useState(true); // true = final harvest, false = partial
+  // Defaults to final, but the Today card can preset it: a gardener who tapped
+  // "Picked some" has already answered this question and must not be asked twice.
+  const [isFinal,      setIsFinal]      = useState(item?.presetFinal ?? true); // true = final, false = partial
 
   // Text-only helper (2 uses) — the returned value is never a border or fill, so
   // it can simply move to the readable scale.
@@ -3164,11 +3166,16 @@ What's on your list this month?
 function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLogHarvest, onViewAll }) {
   const scoreText = (v) => v >= 7 ? SCORE_TEXT.good : v >= 4 ? SCORE_TEXT.mid : SCORE_TEXT.poor;
 
-  // Crops ready to harvest right now
+  // Crops EXPECTED to be ready — Vercro has never seen these plants.
+  //
+  // 3B3a. The API now returns a genuine window (sow + days_to_maturity_min..max)
+  // instead of a single day, and labels its phase. Prefer that label; fall back
+  // to the date comparison so a response cached from the previous deploy still
+  // renders correctly rather than emptying the card.
   const today = todayISO();
   const readyNow = (harvestForecast || []).filter(h =>
     !harvestedIds.has(h.crop_instance_id) &&
-    h.window_start <= today && h.window_end >= today
+    (h.phase ? h.phase === "in_window" : (h.window_start <= today && h.window_end >= today))
   );
 
   // Most recent harvest logged
@@ -3179,17 +3186,47 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
   if (readyNow.length > 0) {
     return (
       <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "16px 18px", marginBottom: 20, color: "#fff" }}>
-        <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Ready to harvest</div>
+        {/* 3B3a — this card used to read "🥕 Carrot is ready".
+            Vercro has never seen the carrot. It knows a sowing date and a
+            catalogue range, and from those it can say what it EXPECTS — which
+            is what a gardener can act on, because they are the one who will
+            look. Asserting readiness as fact is the same defect as V063's
+            "100% grown" and V002's fabricated rainfall, and it is the one a
+            gardener can personally disprove by walking outside. */}
+        <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Expected harvest</div>
         <div style={{ ...T.displayMd, fontSize: 18, marginBottom: 4 }}>
-          🥕 {readyNow.length === 1 ? `${readyNow[0].crop_name} is ready` : `${readyNow.length} crops ready to harvest`}
+          🥕 {readyNow.length === 1
+                ? `${readyNow[0].crop_name} should be ready`
+                : `${readyNow.length} crops should be ready`}
         </div>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 14 }}>
-          {readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}{readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}
+          {readyNow.length === 1 && readyNow[0].window_start !== readyNow[0].window_end
+            ? `Usually ready ${fmtWindow(readyNow[0].window_start)} – ${fmtWindow(readyNow[0].window_end)} · have a look`
+            : `${readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}${readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}`}
         </div>
-        <button onClick={() => onLogHarvest(readyNow[0])}
-          style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: R.sm, padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>
-          Log harvest
-        </button>
+        {/* Partial vs final is the question the gardener can actually answer,
+            and the model already supports it — 41.5% of logged harvests are
+            partial. A single "Log harvest" button hid that behind a toggle
+            inside the modal; asking it on the card makes the common case one
+            decision instead of two. */}
+        {/* Both buttons act on readyNow[0], as "Log harvest" always did. With one
+            crop that is obvious; with several the headline says "3 crops" and the
+            buttons would silently pick one. Name it. */}
+        {readyNow.length > 1 && (
+          <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>
+            Start with {readyNow[0].crop_name}:
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => onLogHarvest({ ...readyNow[0], presetFinal: false })}
+            style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: R.sm, padding: "10px 18px", fontSize: 13, cursor: "pointer" }}>
+            Picked some
+          </button>
+          <button onClick={() => onLogHarvest({ ...readyNow[0], presetFinal: true })}
+            style={{ ...T.control, background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.5)", borderRadius: R.sm, padding: "10px 18px", fontSize: 13, cursor: "pointer" }}>
+            Finished harvesting
+          </button>
+        </div>
       </div>
     );
   }
@@ -4535,7 +4572,9 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const cropCount      = data.crop_count || 0;
   const harvestCount   = (data.harvest_forecast || []).filter(h => {
     const today2 = todayISO();
-    return h.window_start <= today2 && h.window_end >= today2;
+    // Same rule as TodayHarvestCard — two counts of "ready" that disagree is
+    // worse than either number alone.
+    return h.phase ? h.phase === "in_window" : (h.window_start <= today2 && h.window_end >= today2);
   }).length;
   const needsInput     = (data.missing_data || []).length;
   const completedWeek  = data.tasks_completed_this_week || 0;
@@ -10066,6 +10105,14 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
 
 // ── Helper date functions ─────────────────────────────────────────────────────
 function todayISO() { return new Date().toISOString().split("T")[0]; }
+
+// A harvest window is a range, so it has to render as one. Short form — the card
+// is already dense and the year is almost always the current one.
+function fmtWindow(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 function weekEndISO() { return new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]; }
 
 // ── FAQ Section ──────────────────────────────────────────────────────────────
@@ -19974,22 +20021,23 @@ export default function GrowSmart() {
   const isPartnerAdmin = PARTNER_ADMIN_IDS.includes(session?.user?.id || "");
   const [isDemo, setIsDemo] = useState(false);
 
-  // ── V044 — demo tools are opt-in, not always-on ────────────────────────────
+  // ── Demo tools: opt-in, not always-on ──────────────────────────────────────
   //
   // The Admin tab used to render for EVERY demo account, unconditionally. The
   // only thing behind it for a demo account is DemoAdminScreen, whose single
   // control is "Reset this account back to the demo state" — a call that HARD
   // DELETES that account's tasks, harvest log, crops, areas and locations.
   //
+  // Three consequences, all bad:
   //   1. App Review signs in on a demo account. A reviewer could press it.
   //   2. It appeared in every App Store and Google Play screenshot. A consumer
-  //      gardening app cannot ship with an "Admin" tab.
+  //      gardening app with an "Admin" tab is not shippable.
   //   3. One tap destroys the canonical Marketing Garden, which every store and
   //      website asset is captured from.
   //
-  // Demo tools remain fully available, deliberately: ?demo-tools=1 enables them
-  // for that browser, ?demo-tools=0 clears it. Nothing changes for real users,
-  // admins, viewers or partner admins.
+  // Demo tools are still available — deliberately. Visit ?demo-tools=1 once and
+  // the tab appears for that browser; ?demo-tools=0 removes it again. Nothing
+  // changes for real users, admins, viewers or partner admins.
   const [demoToolsOn, setDemoToolsOn] = useState(false);
   useEffect(() => {
     try {
