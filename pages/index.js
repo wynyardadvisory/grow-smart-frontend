@@ -4118,6 +4118,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const [recentlyDone,        setRecentlyDone]        = useState([]);
   const [undone,              setUndone]              = useState([]);
   const [harvestedIds,        setHarvestedIds]        = useState(new Set());
+  // V073 — which action groups the user has expanded. Declared here with the
+  // other Dashboard state, far above every early return: a hook added lower
+  // down is what caused the React #310 outage.
+  const [expandedActionGroups, setExpandedActionGroups] = useState(() => new Set());
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [recentHarvests,      setRecentHarvests]      = useState(null); // null = not loaded yet
@@ -4465,13 +4469,29 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const allTasks   = [...serverTasks, ...extraTasks];
 
   const URGENCY_RANK = { high: 3, medium: 2, low: 1 };
+  // ── V073 — identity is the entity, never the entity's NAME ─────────────────
+  //
+  // The key was `t.crop?.name || t.rule_id || t.id`, which meant two unrelated
+  // things collapsed into one whenever they shared a name or, for anything
+  // without a crop, whenever they shared a rule. Weeding is per AREA, so every
+  // area's weeding task after the first silently vanished; three sowings of
+  // Carrot collapsed to one because they are all called "Carrot".
+  //
+  // Measured on production: 439 open tasks invisible to 65 users, 275 distinct
+  // areas, the oldest due 18 April. One user had 61 hidden.
+  //
+  // A task is genuinely redundant only when it asks for the same action on the
+  // same thing. Anything else is separate work and must survive to be shown.
   const dedupByCrop = (items) => {
     const seen = new Map();
     for (const t of [...items].sort((a,b) => {
       const uDiff = (URGENCY_RANK[b.urgency]||0) - (URGENCY_RANK[a.urgency]||0);
       return uDiff !== 0 ? uDiff : (a.due_date||"").localeCompare(b.due_date||"");
     })) {
-      const key = t.crop?.name || t.rule_id || t.id;
+      const entity = t.crop_instance_id ? `crop:${t.crop_instance_id}`
+                   : t.area_id          ? `area:${t.area_id}`
+                   : `task:${t.id}`;
+      const key = `${t.rule_id || "?"}|${entity}`;
       if (!seen.has(key)) seen.set(key, t);
     }
     return [...seen.values()].sort((a,b) => {
@@ -4846,21 +4866,31 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           </div>
         )}
 
-        {/* Also today — grouped by crop/succession group, max 3 groups */}
+        {/* Also today — V073: grouped by the ACTION, listing the things it applies to.
+            Grouping by crop gave 15 users ten or more cards and one user 31,
+            because a gardener with many beds has many separate-but-identical
+            jobs. Grouping by rule gives 1.7 cards on average and a worst case of
+            6, while hiding nothing: every underlying task still gets its own row
+            and its own tick. The cap that silently dropped everything after the
+            third group is gone — that was hiding on top of hiding. */}
         {remainingToday.length > 0 && (() => {
           const alsoGrouped = {};
           for (const t of remainingToday) {
-            const isSuccession = !!t.crop?.succession_group_id;
-            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            if (!alsoGrouped[key]) alsoGrouped[key] = {
-              crop: t.crop,
-              isSuccession,
-              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
-              tasks: []
-            };
+            const key = t.rule_id || t.task_type || t.id;
+            if (!alsoGrouped[key]) alsoGrouped[key] = { tasks: [] };
             alsoGrouped[key].tasks.push(t);
           }
-          const alsoGroups = Object.values(alsoGrouped).slice(0, 3);
+          const alsoGroups = Object.values(alsoGrouped).map(g => {
+            const shared = commonActionLabel(g.tasks.map(t => t.action));
+            const type   = (g.tasks[0]?.task_type || "").replace(/_/g, " ").trim();
+            return {
+              ...g,
+              sharedLabel: shared,
+              displayName: shared || (type ? type[0].toUpperCase() + type.slice(1) : "Also today"),
+              crop: g.tasks[0]?.crop,
+              isSuccession: false,
+            };
+          });
           return (
             <div style={{ marginTop: 16 }}>
               <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
@@ -4869,19 +4899,42 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                   device, so this just extends it one level up. Grouping logic,
                   the succession key and the max-3 cap are untouched. */}
               <div style={{ display: "flex", flexDirection: "column", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm }}>
-                {alsoGroups.map((group, gi) => (
+                {alsoGroups.map((group, gi) => {
+                  const gid = group.tasks[0]?.rule_id || gi;
+                  const expanded = expandedActionGroups.has(gid);
+                  const rows = expanded ? group.tasks : group.tasks.slice(0, 6);
+                  const hiddenCount = group.tasks.length - rows.length;
+                  // Strip the shared heading off each row so it reads as the thing
+                  // acted on — "Fruit corner" under "Check for weeds" — rather than
+                  // repeating the whole sentence once per bed.
+                  const rowLabel = (t) => {
+                    const a = (t.action || "").trim();
+                    if (group.tasks.length < 2 || !group.sharedLabel) return a;
+                    const rest = a.slice(group.sharedLabel.length).replace(/^\s*(in|on|for|to|around|at)\s+/i, "").trim();
+                    return rest || a;
+                  };
+                  return (
                   <div key={gi} style={{ padding: "12px 14px", borderTop: gi > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
-                      <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || group.crop?.name || "General"}</span>
-                      {group.isSuccession && (
-                        <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: R.full, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
+                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || group.displayName || "")}</span>
+                      <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || "General"}</span>
+                      {group.tasks.length > 1 && (
+                        <span style={{ fontSize: 11, color: C.stone, fontWeight: 600 }}>{group.tasks.length}</span>
+                      )}
+                      {/* "All" is deliberately secondary and deliberately last: one
+                          tap here can fire up to 27 domain mutations, so the normal
+                          interaction remains the tick on an individual row. */}
+                      {group.tasks.length > 1 && (
+                        <button onClick={() => group.tasks.forEach(x => completeTask(x))}
+                          style={{ marginLeft: "auto", fontSize: 11, color: C.stone, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.full, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                          All
+                        </button>
                       )}
                     </div>
-                    {group.tasks.map((t, ti) => (
+                    {rows.map((t, ti) => (
                       <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
                         <span style={{ color: C.stone, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
-                        <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{t.action}</span>
+                        <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{rowLabel(t)}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 1 }}>
                           {t.crop_instance_id && (
                             <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
@@ -4896,8 +4949,15 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                         </div>
                       </div>
                     ))}
+                    {hiddenCount > 0 && (
+                      <button onClick={() => setExpandedActionGroups(prev => new Set(prev).add(gid))}
+                        style={{ marginTop: 8, fontSize: 12, color: C.forest, background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600 }}>
+                        + {hiddenCount} more
+                      </button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -10243,6 +10303,38 @@ function todayISO() { return new Date().toISOString().split("T")[0]; }
 
 // A harvest window is a range, so it has to render as one. Short form — the card
 // is already dense and the year is almost always the current one.
+// V073 — name a group of equivalent actions without a hand-maintained label map.
+//
+// "Check for weeds in Fruit corner" + "Check for weeds in Raised bed 2" share
+// the words "Check for weeds", which is exactly the heading a gardener would
+// write. Deriving it from the actions means a new rule needs no registry entry
+// and a reworded rule cannot leave a stale label behind. Falls back to the
+// whole first action when the group shares nothing.
+function commonActionLabel(actions) {
+  if (!actions?.length) return "";
+  if (actions.length === 1) return actions[0];
+  const split = actions.map(a => (a || "").trim().split(/\s+/));
+  const out = [];
+  for (let i = 0; i < split[0].length; i++) {
+    const w = split[0][i];
+    if (split.every(p => p[i] === w)) out.push(w); else break;
+  }
+  const label = out.join(" ")
+    // 27 Radish sowings share "… Window: Mar–Aug (Sow" before the number, so the
+    // shared prefix ends mid-bracket. Drop any unclosed bracket fragment, then
+    // a dangling preposition, then trailing punctuation.
+    .replace(/\s*[([][^)\]]*$/, "")
+    .replace(/\s+(in|on|for|to|around|at)$/i, "")
+    .replace(/[\s:—–-]+$/, "")
+    .trim();
+  // Real production data: "Check whether Bed 5 needs watering…" sits in the same
+  // rule as "Water Greenhouse…", and "Cherry should be ready…" beside "Echinacea
+  // should be entering…". Those share nothing useful, and returning the first
+  // action would put a whole sentence in the heading. Say nothing instead, and
+  // let the caller fall back to the task type with full text in the rows.
+  return label.split(/\s+/).length >= 2 && label.length >= 8 ? label : null;
+}
+
 function fmtWindow(iso) {
   if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
