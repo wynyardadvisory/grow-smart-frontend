@@ -8773,7 +8773,16 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                      sat beside a date two months past. */}
                               {PHASE_LABEL[sowing.lifecycle?.phase] || PHASE_LABEL.unknown}
                             </span>
-                            {harvestStr && <span style={{ fontSize: 11, color: C.stone }}>harvest ~{harvestStr}</span>}
+                            {/* V063: once the expected date has passed, "harvest ~21 Jun"
+                                in August reads as a broken promise. The date is still
+                                useful as the ESTIMATE it always was, so it is relabelled
+                                rather than hidden — the phase beside it already says the
+                                crop should be ready. */}
+                            {harvestStr && (
+                              <span style={{ fontSize: 11, color: C.stone }}>
+                                {sowing.lifecycle?.phase === "check_now" ? "expected ~" : "harvest ~"}{harvestStr}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -8790,11 +8799,8 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                       {/* Per-sowing progress bar */}
                       {sowing.sown_date && (
                         <div>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                            <span style={{ fontSize: 10, color: stageText, fontWeight: 600 }}>
-                              {PHASE_LABEL[sowing.lifecycle?.phase] || PHASE_LABEL.unknown}
-                            </span>
-                          </div>
+                          {/* The pill above already names the phase — repeating it
+                              under the rail was duplication introduced with V063. */}
                           <div style={{ height: 5, background: C.lineSoft, borderRadius: R.full, overflow: "hidden" }}>
                             <div style={{ height: "100%", width: (PHASE_FILL[sowing.lifecycle?.phase] ?? 0) + "%", background: stageColor, borderRadius: R.full}} />
                           </div>
