@@ -2114,6 +2114,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(null); // harvest log entry id
   const [saveError,    setSaveError]    = useState(null);
+  const [photoError,   setPhotoError]   = useState(null);
   const [undone,       setUndone]       = useState(false);
   const [showShare,    setShowShare]    = useState(false);
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
@@ -2138,17 +2139,26 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
     reader.readAsDataURL(file);
   };
 
-  const uploadPhoto = async (entryId) => {
-    if (!photo) return;
+  // The caller awaited this, but there was nothing to await: the upload happened
+  // inside reader.onload, which fires long after the function has resolved. So
+  // `await uploadPhoto(...)` returned immediately, onSaved() ran, and the POST
+  // raced the modal closing — with no catch anywhere, a failure was invisible.
+  // Wrapping the read in a promise makes the await mean what it says.
+  const readAsBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(photo);
-    reader.onload = async () => {
-      const base64 = reader.result.split(",")[1];
-      await apiFetch(`/harvest-log/${entryId}/photo`, {
-        method: "POST",
-        body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type })
-      });
-    };
+    reader.onload  = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(reader.error || new Error("Could not read the photo"));
+    reader.readAsDataURL(file);   // assigned BEFORE the read starts
+  });
+
+  const uploadPhoto = async (entryId) => {
+    if (!photo) return null;
+    const base64 = await readAsBase64(photo);
+    const res = await apiFetch(`/harvest-log/${entryId}/photo`, {
+      method: "POST",
+      body: JSON.stringify({ base64, filename: photo.name, mime_type: photo.type })
+    });
+    return res?.photo_url || null;
   };
 
   const save = async () => {
@@ -2180,7 +2190,18 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         has_notes:    !!notes.trim(),
         is_final:     !!isFinal,
       });
-      if (photo) await uploadPhoto(entry.id);
+      // The harvest is already recorded. A photo that fails to attach must never
+      // undo it or block the confirmation — it is enrichment, and the gardener
+      // has done the part that matters.
+      if (photo) {
+        try {
+          const url = await uploadPhoto(entry.id);
+          if (url) setSavedEntry(prev => ({ ...prev, photo_url: url }));
+        } catch (e) {
+          console.error("[Harvest photo]", e);
+          setPhotoError("Your harvest is saved, but the photo didn't upload.");
+        }
+      }
       onSaved(item.crop_instance_id, isFinal);
       maybePromptForReview(); // Trigger: 1st harvest logged
     } catch (e) {
@@ -2225,6 +2246,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               {isFinal ? "Harvest logged!" : "Partial harvest logged!"}
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            {/* The harvest is saved either way — say what happened to the photo
+                rather than letting it fail in silence, which is how 21 uploads
+                went unlinked for four months. */}
+            {photoError && (
+              <div style={{ fontSize: 12, color: C.attentionText, marginBottom: 10 }}>{photoError}</div>
+            )}
             {!isFinal && (
               <div style={{ fontSize: 12, color: C.positiveText, marginBottom: 16, fontWeight: 600 }}>
                 ✓ Crop stays active — more harvests to come
