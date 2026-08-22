@@ -2233,6 +2233,28 @@ function PlantingStoryCard({ story, onClose, onSeeBed, onAddDetail }) {
  * worth knowing, and each answer establishes one axis — so the follow-up asks
  * the other, or nothing at all.
  */
+/**
+ * One option in the ending sheet.
+ *
+ * At module scope deliberately. Defined inside PlantingEndingSheet it was a new
+ * component TYPE on every render, so React unmounted and remounted every option
+ * button each time any state changed — and in the production build a tap that
+ * both set state and started a save left the sheet permanently disabled with no
+ * request ever sent. Dev never showed it. This is what eslint's
+ * react-hooks/static-components rule was reporting all along.
+ */
+function EndingOption({ label, onClick, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{ display: "block", width: "100%", textAlign: "left", padding: "14px 16px",
+               marginBottom: 8, borderRadius: R.sm, border: `1px solid ${C.border}`,
+               background: "#fff", color: C.ink, fontSize: 14,
+               cursor: disabled ? "default" : "pointer" }}>
+      {label}
+    </button>
+  );
+}
+
 function PlantingEndingSheet({ crop, onClose, onEnded }) {
   const [step,     setStep]     = useState("mechanism");
   const [pending,  setPending]  = useState({});
@@ -2254,33 +2276,34 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
   }, [crop.id]);
 
   const submit = async (patch) => {
+    if (saving) return;
     setSaving(true); setError(null);
     try {
       const story = await apiFetch(`/plantings/${crop.id}/ending`, {
         method: "POST",
+        // `patch` carries the whole answer when there is only one question, so
+        // this does not depend on a `pending` update having been committed.
         body: JSON.stringify({ ...pending, ...patch, ended_at: endDate,
                                source: "gardener_crop_card" }),
       });
       onEnded(story);
-    } catch (e) { setError(e.message || "Couldn't save that. Please try again."); }
-    setSaving(false);
+    } catch (e) {
+      setError(e.message || "Couldn't save that. Please try again.");
+    } finally {
+      // In a finally, so a throw can never leave the sheet disabled with no
+      // error shown — which is exactly how the frozen state presented.
+      setSaving(false);
+    }
   };
 
   const choose = (opt) => {
     const next = { ...pending, ...opt.sets };
-    setPending(next);
-    if (opt.then) setStep(opt.then);
+    // `pending` is only needed when a second question follows. Setting it on
+    // the way to an immediate save was a state update racing the save in the
+    // same handler, and it is the shape that froze the sheet in production.
+    if (opt.then) { setPending(next); setStep(opt.then); }
     else submit(next);
   };
-
-  const Option = ({ label, onClick }) => (
-    <button onClick={onClick} disabled={saving}
-      style={{ display: "block", width: "100%", textAlign: "left", padding: "14px 16px",
-               marginBottom: 8, borderRadius: R.sm, border: `1px solid ${C.border}`,
-               background: "#fff", color: C.ink, fontSize: 14, cursor: saving ? "default" : "pointer" }}>
-      {label}
-    </button>
-  );
 
   const prompt = step === "mechanism"   ? `How did the ${crop.name} finish?`
                : step === "verdict"     ? "Did it give you anything?"
@@ -2300,13 +2323,13 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
         </div>
 
         {step === "mechanism" && MECHANISM_OPTIONS.map(o => (
-          <Option key={o.key} label={o.label} onClick={() => choose(o)} />
+          <EndingOption key={o.key} label={o.label} disabled={saving} onClick={() => choose(o)} />
         ))}
         {step === "verdict" && VERDICT_OPTIONS.map(o => (
-          <Option key={o.key} label={o.label} onClick={() => submit({ outcome: o.key })} />
+          <EndingOption key={o.key} label={o.label} disabled={saving} onClick={() => submit({ outcome: o.key })} />
         ))}
         {step === "loss_reason" && LOSS_OPTIONS.map(o => (
-          <Option key={o.key} label={o.label} onClick={() => submit({ end_reason: o.key })} />
+          <EndingOption key={o.key} label={o.label} disabled={saving} onClick={() => submit({ end_reason: o.key })} />
         ))}
 
         {/* The effective date is shown before saving, with the basis of any
