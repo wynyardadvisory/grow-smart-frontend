@@ -16894,6 +16894,110 @@ function useKonva() {
 //   lockedAssignment — area_plan_assignments row | null
 //   isMark          — only render for Mark account
 //   onPlanNextSeason — callback when "Plan next season" tapped
+/**
+ * A bed's biography — Garden Memory P2.
+ *
+ * Competitors model plants. This models GROUND: everything grown here, in
+ * order, and how each ended. It is the surface the whole memory programme
+ * exists to make possible, and the first place a gardener sees their own
+ * history compound.
+ *
+ * It replaces `/crops/history`, which filtered to status='harvested' and then
+ * kept only the MOST RECENT crop per area (A-V076). A bed that grew
+ * garlic → courgette → brassicas returned one crop, and every failure was
+ * invisible — so the one view of a bed's past could not show the losses, which
+ * are the most informative thing in it.
+ *
+ * Reads `GET /areas/:id/occupancy`: chronology rather than the `active` flag,
+ * sequence preserved because garlic→brassicas and brassicas→garlic are
+ * different rotations, and no calendar-year assumption anywhere.
+ */
+function BedBiography({ areaId, areaName }) {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // No synchronous setState in the effect body — the component is keyed on the
+  // area at its call site, so switching beds remounts it and `loading` starts
+  // true again naturally. Resetting it here instead would be a cascading render
+  // for no benefit.
+  useEffect(() => {
+    let live = true;
+    apiFetch(`/areas/${areaId}/occupancy`)
+      .then(d => { if (live) { setData(d); setLoading(false); } })
+      .catch(() => { if (live) { setData(null); setLoading(false); } });
+    return () => { live = false; };
+  }, [areaId]);
+
+  if (loading) return null;
+  const rows = data?.plantings || [];
+  if (!rows.length) return null;
+
+  const sum = data.summary || {};
+  const past = rows.filter(r => r.phase === "past");
+
+  // A verdict shown here is one the gardener actually gave. An ending with no
+  // verdict says so rather than being dressed up as a neutral success.
+  const verdictTone = (v) =>
+    v === OUTCOME.GOOD ? C.forest : v === OUTCOME.NOTHING ? C.stone : C.ink;
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.lineSoft}` }}>
+      <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>
+        WHAT HAS GROWN HERE
+      </div>
+
+      {rows.slice(0, 8).map(r => (
+        <div key={r.planting_id}
+          style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0",
+                   borderBottom: `1px solid ${C.lineSoft}` }}>
+          <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: C.stone }}>
+            {r.started_at ? String(r.started_at).slice(0, 4) : "—"}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>
+              {r.crop_name}{r.variety ? ` · ${r.variety}` : ""}
+            </div>
+            <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>
+              {r.phase === "present" ? "Growing now"
+                : r.phase === "future" ? "Planned"
+                : r.end_state === "ended_unrecorded" || r.end_state === "ended_undated"
+                  /* Neither open nor closed. Saying so is the honest state, and
+                     it is also the most inviting prompt in the product. */
+                  ? "Ended — not recorded"
+                  : endingSummary({ verdict: r.verdict, reason: r.reason })}
+              {r.harvest_display ? ` · ${r.harvest_display}` : ""}
+            </div>
+          </div>
+          {r.phase === "past" && r.verdict && r.verdict !== OUTCOME.UNKNOWN && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: verdictTone(r.verdict), flexShrink: 0 }}>
+              {r.verdict === OUTCOME.GOOD ? "Good" : r.verdict === OUTCOME.SOME ? "Some" : "Not much"}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {rows.length > 8 && (
+        <div style={{ fontSize: 11, color: C.stone, paddingTop: 8 }}>
+          + {rows.length - 8} more
+        </div>
+      )}
+
+      {/* A count is only worth showing once there is something to count, and a
+          claim about the ground needs more than one planting behind it. */}
+      {past.length >= 2 && (
+        <div style={{ fontSize: 11, color: C.stone, paddingTop: 10, lineHeight: 1.5 }}>
+          {past.length} finished{sum.seasons > 1 ? ` across ${sum.seasons} seasons` : ""}
+          {sum.with_verdict > 0 && (
+            <> · {[sum.good && `${sum.good} good`, sum.some && `${sum.some} some`,
+                   sum.nothing && `${sum.nothing} didn't work`].filter(Boolean).join(", ")}</>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function AreaTimelineBlock({ lastCrop, currentCrops, lockedAssignment, isMark, onPlanNextSeason }) {
   if (!isMark) return null;
 
@@ -17220,14 +17324,18 @@ function AreaDetailSheet({ area, crops, lockedAssignment, lastCrop = null, isMar
               </div>
             </div>
           ))}
-          {/* Bed timeline — Last / Now / Next (Mark only) */}
+          {/* Bed timeline — Now / Next (Mark only). `lastCrop` is retired: the
+              biography below shows the full past, not one crop. */}
           <AreaTimelineBlock
-            lastCrop={lastCrop}
+            lastCrop={null}
             currentCrops={crops}
             lockedAssignment={lockedAssignment}
             isMark={isMark}
             onPlanNextSeason={onPlanNextSeason}
           />
+
+          {/* Garden Memory P2 — everything grown here, in order, losses included. */}
+          <BedBiography key={area.id} areaId={area.id} areaName={area.name} />
 
           {lockedAssignment && (
             <div style={{ marginTop:16, padding:"12px 14px", background:"#f0f8f2", border:`1.5px solid ${C.forest}40`, borderRadius:R.sm}}>
@@ -19301,7 +19409,6 @@ function PlanScreen({ tourRefs = {} }) {
   const [selectedLoc,  setSelectedLoc]  = useState(_savedView?.selectedLoc || null);
   const [areas,        setAreas]        = useState([]);
   const [lockedAssignments, setLockedAssignments] = useState([]);
-  const [lastCropByArea,    setLastCropByArea]    = useState({}); // { area_id: { name, harvested_at } }
   const [activeBlock,  setActiveBlock]  = useState(null);
   const [detailArea,   setDetailArea]   = useState(null);
   const [savedToast,   setSavedToast]   = useState(false);
@@ -19434,21 +19541,11 @@ function PlanScreen({ tourRefs = {} }) {
       .then(d => setLockedAssignments(d||[]))
       .catch(() => setLockedAssignments([]));
 
-    // Fetch last harvested crop per area (Mark only — for AreaTimelineBlock)
-    if (isMark) {
-      apiFetch(`/crops/history?location_id=${loc.id}`)
-        .then(d => {
-          // d = [{ area_id, name, harvested_at, ... }] — most recent per area
-          const byArea = {};
-          for (const c of (d||[])) {
-            if (!byArea[c.area_id] || c.harvested_at > byArea[c.area_id].harvested_at) {
-              byArea[c.area_id] = c;
-            }
-          }
-          setLastCropByArea(byArea);
-        })
-        .catch(() => setLastCropByArea({}));
-    }
+    // A-V076 — /crops/history is retired here rather than patched. It filtered
+    // to status='harvested' and kept only the most recent crop per area, so a
+    // bed that grew garlic → courgette → brassicas returned one crop and every
+    // failure was invisible. BedBiography reads the occupancy projection
+    // instead, per area, on demand.
   }, [selectedLoc]);
 
   useEffect(()=>{
@@ -19929,7 +20026,6 @@ function PlanScreen({ tourRefs = {} }) {
           area={selectedAreaObj}
           crops={selectedAreaCrops}
           lockedAssignment={lockedAssignments.find(a => a.area_id === selectedAreaObj.id) || null}
-          lastCrop={lastCropByArea[selectedAreaObj.id] || null}
           isMark={isMark}
           onPlanNextSeason={() => {
               setDetailArea(null); setActiveBlock(null);
