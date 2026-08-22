@@ -48,6 +48,11 @@ import { toHarvestItem, harvestItemLabel, formatHarvestQuantity, formatHarvestTo
 import { OUTCOME, END_REASON, VERDICT_OPTIONS, MECHANISM_OPTIONS, LOSS_OPTIONS,
          OUTCOME_LABEL, REASON_LABEL, endingSummary, formatDay, formatSpan }
   from "@/lib/planting-ending.mjs";
+// One concept, one phrase. The audit of 22 August found eleven live phrasings of
+// "ready" and `Failed` on the crop rail; every gardener-facing word now comes
+// from here. See lib/vocabulary.mjs for why.
+import { PHASE as V_PHASE, READY as V_READY, PICKING as V_PICKING,
+         ENDING as V_ENDING, CHECKING as V_CHECKING } from "@/lib/vocabulary.mjs";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -2131,7 +2136,7 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
       </div>
       <button onClick={() => !pending && onHarvest()}
         style={{ ...T.bodyStrong, width: "100%", padding: "8px", borderRadius: R.sm, border: "none", background: pending ? "#e0a070" : borderColor, color: "#fff", fontSize: 12, cursor: pending ? "default" : "pointer", transition: "all 0.3s", opacity: pending ? 0.8 : 1 }}>
-        {pending ? "Logging…" : "Harvest Now"}
+        {pending ? "Logging…" : V_PICKING.action}
       </button>
     </div>
   );
@@ -2208,7 +2213,7 @@ function PlantingStoryCard({ story, onClose, onSeeBed, onAddDetail }) {
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 6 }}>
             {/* A perennial's season ends; the plant does not. The copy must not
                 imply the plant is gone. */}
-            {isSeason ? "Season closed" : "Added to your garden history"}
+            {isSeason ? V_ENDING.season_closed : "Added to your garden history"}
           </div>
           <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
             {isSeason
@@ -2621,7 +2626,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
           <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>{isFinal === true ? "🎉" : "🌾"}</div>
             <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>
-              {isFinal ? "Harvest logged!" : "Partial harvest logged!"}
+              {isFinal ? V_PICKING.last_saved : V_PICKING.some_saved}
             </div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{harvestItemLabel(item)}</div>
             {/* The harvest is saved either way — say what happened to the photo
@@ -2722,7 +2727,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
               <button
                 onClick={() => setIsFinal(true)}
                 style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: isFinal === true ? "#fff" : "transparent", color: isFinal === true ? C.ink : C.stone, fontWeight: isFinal === true ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal === true ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
-                Final harvest
+                {V_PICKING.last}
               </button>
               <button
                 onClick={() => setIsFinal(false)}
@@ -3724,7 +3729,7 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
             look. Asserting readiness as fact is the same defect as V063's
             "100% grown" and V002's fabricated rainfall, and it is the one a
             gardener can personally disprove by walking outside. */}
-        <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Expected harvest</div>
+        <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>{V_READY.forecast}</div>
         {/* crop_name is `${name} (Sow n)` — a presentation string built by the
             API. "Mint (Sow 1) should be ready" is engine notation read aloud,
             so headlines use the bare name. The succession label is kept and
@@ -4037,7 +4042,7 @@ function PlantCheckHeroCard({ plantCheckEnabled, isMark, remainingChecks, onOpen
   const title    = isExpired ? "Plant Check Pro" : "Plant Check";
   const subtitle = isExpired
     ? "Unlimited diagnosis and harvest-readiness checks."
-    : "Take a photo to spot issues, check growth stage, or see if it's ready to harvest.";
+    : "Take a photo to spot issues, check growth stage, or see if it's ready to pick.";
   const meta = isUnlimited ? null
     : isExpired ? "No checks remaining"
     : remainingChecks === 1 ? "1 free check left"
@@ -5928,7 +5933,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── 3. WATCH OUTS ──────────────────────────────────────────────────── */}
       {watchOuts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Watch outs</div>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>{V_CHECKING.heading}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {watchOuts.map(group => {
               const t = group[0]; // representative task for shared fields
@@ -5951,7 +5956,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                         <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink }}>
-                          {cropNames.length > 0 ? cropNames.join(", ") : "Watch out"}
+                          {cropNames.length > 0 ? cropNames.join(", ") : V_CHECKING.one}
                         </div>
                         <span style={{ ...T.eyebrow, fontSize: 10, color: urgText, background: urgColour + "22", borderRadius: R.full, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>
                           {t.urgency === "high" ? "Act now" : t.urgency === "medium" ? "Inspect" : "Watch"}
@@ -6082,8 +6087,8 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 12 }}>Garden progress</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { label: "Active crops",       value: cropCount,      emoji: "🌱" },
-            { label: "In harvest window",  value: harvestCount,   emoji: "🌾" },
+            { label: V_ENDING.in_the_garden, value: cropCount,    emoji: "🌱" },
+            { label: V_READY.ready,          value: harvestCount, emoji: "🌾" },
             { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
             { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
           ].map(({ label, value, emoji, highlight }) => (
@@ -6518,13 +6523,9 @@ const STAGE_SYMPTOM = {
 // There is deliberately no "past best": days-to-maturity can prove time has
 // passed, not that a crop has spoiled. "Should be ready — worth checking" says
 // what is actually known and asks the gardener to look.
-const PHASE_LABEL = {
-  not_sown: "Not yet sown", establishing: "Establishing", growing: "Growing",
-  developing: "Developing", harvest_approaching: "Harvest approaching",
-  harvest_window: "Harvest window", check_now: "Should be ready — check",
-  dormant: "Dormant", harvested: "Harvested", failed: "Failed",
-  unknown: "Stage not known",
-};
+// The single rail vocabulary. It previously held four of the eleven live
+// phrasings of "ready", and rendered "Failed" for a crop lost to slugs.
+const PHASE_LABEL = V_PHASE;
 // Position along the crop's life, for the rail only — never shown as a number.
 const PHASE_FILL = {
   not_sown: 0, establishing: 12, growing: 40, developing: 65,
@@ -6887,7 +6888,7 @@ function CollapsibleHarvestForecast({ items, onHarvest, pending }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: `${R.sm}px ${R.sm}px 0 0`, padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌾</span>
-          <span style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>Harvest forecast</span>
+          <span style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>{V_READY.forecast}</span>
           <span style={{ fontSize: 11, color: C.forest, background: TINT.positive, borderRadius: R.full, padding: "2px 8px", fontWeight: 600 }}>{items.length} crop{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
@@ -8331,7 +8332,7 @@ function CropTimelineSheet({ crop, onClose, onCropUpdated }) {
             <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: harvestNode ? 16 : 24 }}>Your task plan and harvest forecast have been updated.</div>
             {harvestNode?.formatted_date && (
               <div style={{ background: "#EAF3DE", borderRadius: R.sm, padding: "12px 16px", marginBottom: 24 }}>
-                <div style={{ ...T.eyebrow, fontSize: 11, color: C.positiveText, marginBottom: 4 }}>Harvest now expected</div>
+                <div style={{ ...T.eyebrow, fontSize: 11, color: C.positiveText, marginBottom: 4 }}>{V_READY.forecast}</div>
                 <div style={{ ...T.displayMd, fontSize: 18, color: C.positiveText }}>{harvestNode.formatted_date}</div>
               </div>
             )}
@@ -9171,8 +9172,6 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, onSeeBed
   const [duplicateCrop, setDuplicateCrop] = useState(null); // crop to duplicate
   const [pendingHarvest, setPendingHarvest] = useState(null); // crop being harvested from crop card
   const [pendingDormant, setPendingDormant] = useState(null); // crop being marked dormant
-  const [pendingFail,    setPendingFail]    = useState(null); // crop being marked failed
-  const [failReason,     setFailReason]     = useState(null); // selected failure reason
   const [pendingNoHarvest, setPendingNoHarvest] = useState(null); // perennial recording a barren season
   const [noHarvestReason,  setNoHarvestReason]  = useState(null); // selected no-harvest reason
   const [cropPhotos,    setCropPhotos]    = useState({});    // cropId → latest photo_url
@@ -9504,58 +9503,16 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, onSeeBed
         </div>
       )}
 
-      {/* ── Mark as failed reason picker sheet ────────────────────────────── */}
-      {pendingFail && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-          onClick={e => { if (e.target === e.currentTarget) { setPendingFail(null); setFailReason(null); } }}>
-          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 48px", width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
-            <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd", margin: "0 auto 20px" }} />
-            <div style={{ ...T.displayLg, fontSize: 20, color: C.ink, marginBottom: 8 }}>
-              What happened to {pendingFail.name}?
-            </div>
-            <div style={{ fontSize: 14, color: C.stone, marginBottom: 20 }}>Select a reason to help Vercro learn from failures.</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
-              {[
-                { key: "frost",       label: "Frost damage" },
-                { key: "disease",     label: "Disease" },
-                { key: "pest_damage", label: "Pest damage" },
-                { key: "drought",     label: "Drought" },
-                { key: "neglect",     label: "Neglect" },
-                { key: "other",       label: "Other" },
-              ].map(({ key, label }) => (
-                <button key={key}
-                  onClick={() => setFailReason(key)}
-                  style={{
-                    padding: "10px 12px", borderRadius: R.sm, border: `2px solid ${failReason === key ? C.red : C.border}`,
-                    background: failReason === key ? TINT.danger : "#fff",
-                    color: failReason === key ? C.dangerText : C.ink,
-                    fontSize: 13, fontWeight: failReason === key ? 700 : 500, cursor: "pointer", textAlign: "left"
-                  }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <button
-              disabled={!failReason}
-              onClick={async () => {
-                try {
-                  await apiFetch(`/crops/${pendingFail.id}/fail`, { method: "PATCH", body: JSON.stringify({ reason: failReason }) });
-                  setPendingFail(null);
-                  setFailReason(null);
-                  load();
-                } catch(e) { alert(e.message); }
-              }}
-              style={{ ...T.displayMd, width: "100%", background: failReason ? C.red : "#ccc", color: "#fff", border: "none", borderRadius: R.sm, padding: "14px", fontSize: 15, cursor: failReason ? "pointer" : "not-allowed", marginBottom: 10 }}>
-              Mark as failed
-            </button>
-            <button
-              onClick={() => { setPendingFail(null); setFailReason(null); }}
-              style={{ width: "100%", background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px", fontWeight: 600, fontSize: 15, cursor: "pointer", color: C.stone }}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {/* The "Mark as failed" reason picker lived here. It offered Frost damage,
+          Disease, Pest damage, Drought, **Neglect** and Other, wrote through the
+          legacy PATCH /crops/:id/fail, and told the gardener it existed "to help
+          Vercro learn from failures".
+
+          It had already been unreachable since Garden Memory P1a replaced it with
+          "This one's finished" — `setPendingFail` was only ever called to close
+          it — but it still shipped in the bundle, and the P1a language tests
+          asserted against lib/planting-ending.mjs, so nothing saw it. A guarantee
+          that only holds where it is measured is not a guarantee. A-V090. */}
 
       {duplicateCrop && (
         <DuplicateCropSheet
@@ -9820,7 +9777,10 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, onSeeBed
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 16px 14px" }}>
                 {sowings.map(sowing => {
-                  const STAGE_LABEL = { seed: "Germinating", seedling: "Seedling", vegetative: "Vegetative", flowering: "Flowering", fruiting: "Fruiting", harvesting: "Ready to harvest", finished: "Finished" };
+                  // STAGE_LABEL was a second, parallel vocabulary for the same
+                  // plant — declared here, never read, carrying its own wording
+                  // for "ready" and "finished". Deleted; the rail below renders
+                  // the derived phase from the shared vocabulary.
                   const stageKey   = sowing.stage || "seed";
                   const stageColor = STAGE_COLOR[stageKey] || C.stone;  // was inlined alongside stageText — both now use the component tokens
                   const stageText  = STAGE_TEXT[stageKey] || C.stone;  // was an inlined literal — now the 3C-i token, so sowing rows cannot drift from crop rows
@@ -10867,7 +10827,7 @@ function AddCrop({ prefill, onPrefillConsumed, onCancel }) {
           )}
           {cropProfile.common_issues && (
             <div style={{ marginTop: 10, background: "#fff", borderRadius: R.sm, padding: "10px 12px" }}>
-              <div style={{ ...T.eyebrow, fontSize: 10, color: C.attentionText, marginBottom: 2 }}>Watch out for</div>
+              <div style={{ ...T.eyebrow, fontSize: 10, color: C.attentionText, marginBottom: 2 }}>{V_CHECKING.one}</div>
               <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>{cropProfile.common_issues}</div>
             </div>
           )}
@@ -11285,7 +11245,7 @@ const FAQ_DATA = [
       },
       {
         q: "What does the % grown bar mean?",
-        a: "For crops with a sow date, the bar shows how far through the crop's typical growing period you are — based on days since sowing divided by days to maturity. For perennial plants like fruit trees, it shows seasonal progress toward their harvest window. Planned crops that haven't been sown yet show 0%."
+        a: "For crops with a sow date, the bar shows how far through the crop's typical growing period you are — based on days since sowing divided by days to maturity. For perennial plants like fruit trees, it shows seasonal progress toward the picking season. Planned crops that haven't been sown yet show 0%."
       },
       {
         q: "What does the harvest estimate mean and how accurate is it?",
@@ -13342,7 +13302,7 @@ function PlantCheckResult({ result, crop, photo, onClose, onConfirmUpdate, onDon
               <span style={{ fontSize: 22 }}>{readinessEmoji}</span>
               <div>
                 <div style={{ ...T.bodyStrong, fontSize: 15, color: C.ink, textTransform: "capitalize" }}>
-                  {result.harvest_readiness === "not_ready" ? "Not ready yet" : result.harvest_readiness === "soon" ? "Ready soon" : "Ready to harvest"}
+                  {result.harvest_readiness === "not_ready" ? V_READY.not_yet : result.harvest_readiness === "soon" ? V_READY.forecast : V_READY.observed}
                 </div>
                 {result.harvest_readiness_detail && (
                   <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{result.harvest_readiness_detail}</div>
@@ -20612,7 +20572,7 @@ const STAGES = [
   { id: "not_sown",    label: "Not sown yet",     desc: "I'm planning to grow this" },
   { id: "just_sown",   label: "Just sown",         desc: "Sown in the last week or so" },
   { id: "growing",     label: "Growing already",   desc: "Seedlings or plants are up" },
-  { id: "near_harvest",label: "Near harvest",      desc: "Almost ready to pick" },
+  { id: "near_harvest",label: V_READY.nearly,      desc: "Almost ready to pick" },
 ];
 
 const AREA_TYPES = [
@@ -20794,7 +20754,7 @@ function OnboardingScreen({ session, onComplete }) {
           Your garden plan is ready
         </div>
         <div style={{ fontSize: 15, color: C.stone, textAlign: "center", lineHeight: 1.6, marginBottom: 32, maxWidth: 320 }}>
-          Turn on notifications so Vercro can remind you what to do — frost alerts, feeding reminders, harvest windows — exactly when they matter.
+          Turn on notifications so Vercro can remind you what to do — frost alerts, feeding reminders, picking times — exactly when they matter.
         </div>
         <div style={{ width: "100%", maxWidth: 360 }}>
           <NotificationPermissionCard

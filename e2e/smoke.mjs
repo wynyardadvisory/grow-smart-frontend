@@ -29,6 +29,7 @@
 import { chromium } from "playwright";
 import { loadSession, saveSession, injectSession, readAuthEntriesFrom,
          sessionStatus, REAUTH_MESSAGE } from "./session.mjs";
+import { BANNED } from "../lib/vocabulary.mjs";
 
 const BASE = process.argv[2] || process.env.VERCRO_BASE_URL || "http://localhost:3100";
 const TABS = ["Today", "Garden", "Plan", "Crops", "Profile"];
@@ -41,6 +42,10 @@ const status = sessionStatus(session);
 if (!status.ok) { console.error(REAUTH_MESSAGE); process.exit(2); }
 
 // Pre-existing console noise. Anything not listed here is treated as a regression.
+// Serving `next build` output locally (A-V085) means Vercel's own injected
+// /_vercel/insights/script.js 404s to the SPA fallback and the browser throws
+// parsing HTML as JS. It cannot happen on Vercel, where the route exists.
+const LOCAL_ONLY_EXCEPTIONS = [/Unexpected token '<'/];
 const IGNORE = [
   /Download the React DevTools/i, /\[Fast Refresh\]/i, /\[HMR\]/i,
   /PostHog/i, /validateDOMNesting/i,
@@ -49,6 +54,7 @@ const IGNORE = [
 ];
 
 const results = [];
+const rendered = [];   // [tab, innerText] — what a browser actually painted
 const record = (name, ok, detail = "") => {
   results.push({ name, ok, detail });
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
@@ -144,6 +150,40 @@ async function main() {
       if (broken(t) || t.length > 400) break;
     }
     record(`${tab} renders`, !broken(t) && t.length > 80, broken(t) ? "error boundary" : `${t.length} chars`);
+    rendered.push([tab, t]);
+  }
+
+  // ── 5a · the words actually on the screen ─────────────────────────────────
+  //
+  // The source scan in test/vocabulary.test.mjs cannot prove what a browser
+  // paints. This can. `Failed` sat on the crop rail for months while a test
+  // asserted it could not exist, because the test read a module the UI bypassed.
+  //
+  // Task copy is MATERIALISED into rows, so changing a phrase changes new rows
+  // only; already-open rows carry the old wording until they expire. Measured on
+  // 22 August: 146 open rows across 56 users, all expiring by 5 September. Those
+  // are listed here with a date so the exception clears itself — if the wording
+  // is still on screen after it, the gate fails again and someone looks.
+  const DRAINING = [
+    { term: "Ready to harvest", until: "2026-09-06",
+      why: "146 rows materialised before the terminology pass; expire by 5 Sep" },
+    { term: "harvest window", until: "2026-09-06",
+      why: "same materialisation" },
+  ];
+  const stillDraining = (term) => DRAINING.some(d =>
+    d.term.toLowerCase() === term.toLowerCase() && new Date() < new Date(d.until));
+  {
+    const found = [], draining = [];
+    for (const [tab, text] of rendered) {
+      for (const { term, instead } of BANNED) {
+        if (!new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)) continue;
+        (stillDraining(term) ? draining : found).push(`${tab}: "${term}" — say "${instead}"`);
+      }
+    }
+    record("no retired wording is on screen", found.length === 0, found.join(" · "));
+    if (draining.length) {
+      console.log(`  note  ${draining.length} retired phrase(s) still in materialised rows, draining: ${[...new Set(draining)].join(" · ")}`);
+    }
   }
 
   // ── 5b · and back to Today ────────────────────────────────────────────────
@@ -166,7 +206,14 @@ async function main() {
   }
 
   // ── 6 · nothing threw ─────────────────────────────────────────────────────
-  record("no uncaught page exceptions", pageErrors.length === 0, pageErrors.slice(0, 2).join(" | "));
+  // Filtered, not ignored: the excluded error is named and can only occur off
+  // Vercel, and anything else still fails.
+  const localOnly = pageErrors.filter(e => LOCAL_ONLY_EXCEPTIONS.some(r => r.test(e)));
+  const realErrors = pageErrors.filter(e => !LOCAL_ONLY_EXCEPTIONS.some(r => r.test(e)));
+  record("no uncaught page exceptions", realErrors.length === 0, realErrors.slice(0, 2).join(" | "));
+  if (localOnly.length && !/^https?:\/\/app\.vercro\.com/.test(BASE)) {
+    console.log(`  note  ${localOnly.length} local-only exception ignored (Vercel-injected asset absent when serving the build locally)`);
+  }
   record("no unexpected console errors", consoleErrors.length === 0, consoleErrors.slice(0, 2).join(" | "));
 
   // Supabase rotates refresh tokens, so store the refreshed session. Left alone
