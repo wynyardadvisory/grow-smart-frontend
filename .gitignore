@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright authenticated session for the QA identity — never commit
+.auth/
+
+# Acceptance run records — contain API payloads from a real account.
+.acceptance/

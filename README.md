@@ -1,41 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Vercro — app front end
 
-## Getting Started
+The Vercro app (internally "Grow Smart"), shipped as three surfaces from one codebase: a
+Next.js **Pages Router** web app, an installable PWA, and native iOS/Android apps via
+**Capacitor**. The backend is a separate service, the Grow Smart API.
 
-First, run the development server:
+See [CLAUDE.md](CLAUDE.md) for architecture, conventions and the production change rules.
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`NEXT_PUBLIC_API_URL` points at the Grow Smart API (falls back to `http://localhost:3001`).
+Auth is Supabase; domain data lives behind the API.
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+## Commands
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server on :3000 |
+| `npm run build` | `next build` → static export into `out/` |
+| `npm run lint` | ESLint (flat config, `next/core-web-vitals`) |
+| `npm run icons` | Regenerate every platform icon from `brand/` |
+| `npm run icons:verify` | Check the generated assets without rebuilding them |
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+There is no test suite and no test tooling installed. Verify by running the app.
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Native builds
 
-## Learn More
+`out/` is Capacitor's `webDir`, so build first:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npx cap sync ios
+npx cap sync android
+npx cap open ios
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+Version numbers are bumped by hand — `versionCode`/`versionName` in
+[android/app/build.gradle](android/app/build.gradle), `MARKETING_VERSION`/
+`CURRENT_PROJECT_VERSION` in the Xcode project.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Brand
 
-## Deploy on Vercel
+The identity lives in [brand/](brand/README.md) (SVG masters + the icon generator) and
+[components/Brand.js](components/Brand.js) (on-screen components). Nothing else draws a Vercro
+lockup, and nothing else writes the amber full stop. See the Brand section of
+[CLAUDE.md](CLAUDE.md) before touching any of it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploys
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
-# staging
+Vercel. `.claude/settings.json` denies `git push`, `vercel deploy` and other
+publishing/destructive commands — ask Mark to run those.
