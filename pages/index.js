@@ -16986,7 +16986,10 @@ function BedBiography({ areaId, areaName }) {
           claim about the ground needs more than one planting behind it. */}
       {past.length >= 2 && (
         <div style={{ fontSize: 11, color: C.stone, paddingTop: 10, lineHeight: 1.5 }}>
-          {past.length} finished{sum.seasons > 1 ? ` across ${sum.seasons} seasons` : ""}
+          {/* `past_seasons`, not `seasons`: this sentence is about the FINISHED
+              plantings, and a bed with two 2024 closures and a 2025 crop still
+              growing was reading "2 finished across 2 seasons". */}
+          {past.length} finished{sum.past_seasons > 1 ? ` across ${sum.past_seasons} seasons` : ""}
           {sum.with_verdict > 0 && (
             <> · {[sum.good && `${sum.good} good`, sum.some && `${sum.some} some`,
                    sum.nothing && `${sum.nothing} didn't work`].filter(Boolean).join(", ")}</>
