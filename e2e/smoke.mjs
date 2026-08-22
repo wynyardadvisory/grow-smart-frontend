@@ -133,8 +133,16 @@ async function main() {
       b.click(); return true;
     }, tab);
     if (!clicked) { record(`${tab} renders`, false, "nav button not found"); continue; }
-    await page.waitForTimeout(3000);
-    const t = await bodyText();
+    // Wait for the tab to SETTLE, not a fixed 3s. Against production the API is
+    // slower than a local one and Crops/Plan were still on their loading screen
+    // at 3s — reported as two failures on a perfectly healthy app. A gate that
+    // cries wolf gets ignored; that lesson is one commit old.
+    let t = "";
+    for (let i = 0; i < 20; i++) {
+      await page.waitForTimeout(1000);
+      t = await bodyText();
+      if (broken(t) || t.length > 400) break;
+    }
     record(`${tab} renders`, !broken(t) && t.length > 80, broken(t) ? "error boundary" : `${t.length} chars`);
   }
 
