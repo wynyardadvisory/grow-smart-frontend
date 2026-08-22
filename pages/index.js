@@ -2202,7 +2202,8 @@ function PlantingStoryCard({ story, onClose, onSeeBed, onAddDetail }) {
             </button>
           )}
           {!thin && planting.area && onSeeBed && (
-            <button onClick={() => onSeeBed(planting.area.id)}
+            <button onClick={() => onSeeBed({ areaId: planting.area.id,
+                                              locationId: planting.location?.id || null })}
               style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`,
                        background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               See the bed
@@ -4552,6 +4553,292 @@ function GardenLog({ onLogActivity }) {
   );
 }
 
+/**
+ * Garden Memory P2b — the season.
+ *
+ * The answer to "why open Vercro in November". A living page from the first
+ * sowing rather than a year-end artefact, which is why it has to be truthful
+ * for a garden of one planting and a garden of two hundred, on any day.
+ *
+ * The rule that shapes every line here: ABSENT IS NOT ZERO. A season with no
+ * recorded endings says so; it never renders "0 didn't work", which reads as a
+ * claim that nothing failed. Losses appear in the same sentence as successes,
+ * in the same weight, because a record that hides them is the thing this
+ * programme exists to replace.
+ */
+function SeasonView({ onOpenGaps, reloadToken = 0 }) {
+  const [s,       setS]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [failed,  setFailed]  = useState(false);
+
+  // Refetched whenever a closure has happened, because the programme's rule is
+  // that every capture returns something immediately: the counters move, the
+  // gap shrinks. A page that still says "1 not recorded" after the gardener
+  // just recorded it is the payoff failing at the last step.
+  useEffect(() => {
+    let live = true;
+    apiFetch("/season")
+      .then(d => { if (live) { setS(d); setLoading(false); } })
+      .catch(() => { if (live) { setFailed(true); setLoading(false); } });
+    return () => { live = false; };
+  }, [reloadToken]);
+
+  if (loading) return null;
+  if (failed) return (
+    <div style={{ fontSize: 13, color: C.stone, padding: "24px 0" }}>
+      Couldn&apos;t load your season just now.
+    </div>
+  );
+
+  const p = s?.plantings || {};
+  const h = s?.harvests  || {};
+
+  // A garden with nothing in it is told what would fill this page, rather than
+  // being shown an empty frame with zeroes in it.
+  if (!p.total) return (
+    <div style={{ padding: "28px 0" }}>
+      <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 6 }}>
+        Your season starts with the first thing you sow
+      </div>
+      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
+        This page fills itself in as you go — what you grew, what you picked,
+        and how each planting finished.
+      </div>
+    </div>
+  );
+
+  // Plain style objects rather than inline components: a component defined
+  // during render is a new type every render, which resets anything it holds.
+  const line  = { fontSize: 14, color: C.ink, lineHeight: 1.7 };
+  const quiet = { color: C.stone };
+
+  // Only the counts that exist are spoken. `with_verdict === 0` removes the
+  // clause entirely rather than printing zeroes for good/some/nothing.
+  const verdicts = [
+    p.good    && `${p.good} good`,
+    p.some    && `${p.some} gave some`,
+    p.nothing && `${p.nothing} didn't work`,
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <div style={{ paddingBottom: 12 }}>
+      <div style={{ ...T.displayLg, fontSize: 22, color: C.ink, marginBottom: 12 }}>
+        Your {s.year} season
+      </div>
+
+      <div style={line}>
+        {p.total} planting{p.total === 1 ? "" : "s"}
+        {p.growing  > 0 && <> · {p.growing} still going</>}
+        {p.finished > 0 && <> · {p.finished} finished</>}
+      </div>
+
+      {p.with_verdict > 0 && <div style={line}>{verdicts}</div>}
+
+      {h.count > 0 && (
+        <div style={line}>
+          {h.count} harvest{h.count === 1 ? "" : "s"} from {h.crops} crop{h.crops === 1 ? "" : "s"}
+        </div>
+      )}
+
+      {h.first && (
+        <div style={line}>
+          <span style={quiet}>First pick</span> {formatDay(h.first.date)} ({h.first.crop})
+          {h.latest && h.latest.date !== h.first.date && (
+            <> · <span style={quiet}>latest</span> {formatDay(h.latest.date)} ({h.latest.crop})</>
+          )}
+        </div>
+      )}
+
+      {/* A claim about ground, and it carries its own denominator so "2 good"
+          can never be read as "2 of 2". */}
+      {s.best_bed && (
+        <div style={line}>
+          <span style={quiet}>Best bed</span> {s.best_bed.name} — {s.best_bed.good} good
+          {" "}from {s.best_bed.of}
+        </div>
+      )}
+
+      {s.still_to_come?.length > 0 && (
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.lineSoft}` }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 6 }}>
+            STILL TO COME
+          </div>
+          <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.6 }}>
+            {s.still_to_come.join(", ")}
+          </div>
+        </div>
+      )}
+
+      {/* The closure engine: a visible, honest gap in something the gardener
+          now cares about. Pull, never push — it is a line on a page they chose
+          to open, not a notification. Both numbers are shown when they differ,
+          because "1 not recorded" opening a list of twelve would be telling
+          the truth twice and misleading once. */}
+      {s.gaps_total > 0 && (
+        <button onClick={onOpenGaps}
+          style={{ display: "block", width: "100%", textAlign: "left", marginTop: 16,
+                   padding: "14px 16px", borderRadius: R.sm, border: `1px solid ${C.border}`,
+                   background: C.offwhite, cursor: "pointer", fontFamily: F.body }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 4 }}>
+            NOT YET RECORDED
+          </div>
+          <div style={{ fontSize: 14, color: C.ink }}>
+            {s.gaps > 0
+              ? `${s.gaps} planting${s.gaps === 1 ? "" : "s"} from this season ended without an outcome`
+              : `${s.gaps_total} earlier planting${s.gaps_total === 1 ? "" : "s"} ended without an outcome`}
+            {s.gaps > 0 && s.gaps_total > s.gaps && (
+              <span style={{ color: C.stone }}> · {s.gaps_total} in all</span>
+            )}
+            <span style={{ color: C.forest, fontWeight: 600 }}> →</span>
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The gap list — every planting whose ending was never recorded.
+ *
+ * Ordered LEAST overdue first, which is deliberate and is the opposite of what
+ * a backlog screen usually does. The planting that finished last month can
+ * still be answered honestly; the one from two seasons ago will be guessed at,
+ * and a guess entered as a fact is worse than a gap left open.
+ *
+ * Nothing here is pre-filled and nothing is required. Closing a gap uses the
+ * same sheet as every other ending, so there is one ending flow in the product
+ * and not a special batch-entry dialect.
+ */
+function GapListSheet({ onClose }) {
+  const [gaps,   setGaps]   = useState(null);
+  const [ending, setEnding] = useState(null);
+  // planting_id -> the ending just recorded. The row stays where it is and
+  // shows the answer rather than vanishing: the gardener sees the record they
+  // just made, which is the return for having made it, and the list still
+  // visibly shortens because answered rows stop asking anything.
+  const [done,   setDone]   = useState({});
+  const swipe = useSwipeToDismiss(onClose);
+
+  useEffect(() => {
+    let live = true;
+    apiFetch("/plantings/gaps")
+      .then(d => { if (live) setGaps(d?.gaps || []); })
+      .catch(() => { if (live) setGaps([]); });
+    return () => { live = false; };
+  }, []);
+
+  const rows      = gaps || [];
+  const answered  = Object.keys(done).length;
+  const remaining = rows.filter(g => !done[g.planting_id]);
+
+  return (
+    <>
+    <div style={{ position: "fixed", inset: 0, zIndex: 950, background: "rgba(0,0,0,0.45)",
+                  display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+         onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} {...swipe}
+        style={{ background: "#fff", borderRadius: R.sheet, width: "100%", maxWidth: 480,
+                 maxHeight: "86vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+          <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd" }} />
+        </div>
+
+        <div style={{ padding: "16px 20px 8px" }}>
+          <div style={{ ...T.displayMd, fontSize: 18, color: C.ink }}>Not yet recorded</div>
+          <div style={{ fontSize: 12, color: C.stone, marginTop: 4, lineHeight: 1.5 }}>
+            These finished without an outcome. Newest first — those are the ones
+            you can still answer properly.
+          </div>
+        </div>
+
+        <div style={{ overflowY: "auto", padding: "4px 20px 28px" }}>
+          {gaps === null && (
+            <div style={{ fontSize: 13, color: C.stone, padding: "16px 0" }}>Loading…</div>
+          )}
+
+          {answered > 0 && (
+            <div style={{ fontSize: 12, color: C.forest, fontWeight: 600, padding: "8px 0 4px" }}>
+              {answered} recorded{remaining.length > 0 ? ` · ${remaining.length} to go` : ""}
+            </div>
+          )}
+
+          {gaps !== null && rows.length > 0 && remaining.length === 0 && (
+            <div style={{ padding: "16px 0" }}>
+              <div style={{ ...T.bodyStrong, fontSize: 15, color: C.ink, marginBottom: 4 }}>
+                That&apos;s all of them.
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
+                Every finished planting in your garden now says how it went.
+              </div>
+            </div>
+          )}
+
+          {gaps !== null && rows.length === 0 && (
+            <div style={{ padding: "20px 0" }}>
+              <div style={{ ...T.bodyStrong, fontSize: 15, color: C.ink, marginBottom: 4 }}>
+                Nothing left unrecorded.
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>
+                Every finished planting in your garden says how it went.
+              </div>
+            </div>
+          )}
+
+          {rows.map(g => done[g.planting_id] ? (
+            <div key={g.planting_id}
+              style={{ padding: "12px 0", borderBottom: `1px solid ${C.lineSoft}`, opacity: 0.75 }}>
+              <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>
+                {g.crop_name}{g.variety ? ` \u00b7 ${g.variety}` : ""}
+              </div>
+              <div style={{ fontSize: 11, color: C.forest, marginTop: 2, fontWeight: 600 }}>
+                {endingSummary({ verdict: done[g.planting_id].verdict,
+                                 reason:  done[g.planting_id].reason })}
+              </div>
+            </div>
+          ) : (
+            <button key={g.planting_id} onClick={() => setEnding({ id: g.planting_id, name: g.crop_name })}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 0",
+                       borderBottom: `1px solid ${C.lineSoft}`, background: "none",
+                       border: "none", borderBottomStyle: "solid", cursor: "pointer",
+                       fontFamily: F.body }}>
+              <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink }}>
+                {g.crop_name}{g.variety ? ` · ${g.variety}` : ""}
+              </div>
+              <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+                {g.area?.name ? `${g.area.name} · ` : ""}
+                {g.started_at ? `sown ${formatDay(g.started_at)}` : "sowing date not recorded"}
+                {/* What is already known is shown, never asked for again. The
+                    count is true even when the quantity is not: 194 legacy rows
+                    hold a number in an unrecorded unit, so those total to
+                    nothing displayable while the picks themselves are certain.
+                    Saying "4 picks" is honest; inventing a weight is not. */}
+                {g.harvest_display ? ` · ${g.harvest_display} picked`
+                  : g.harvest_count > 0 ? ` · ${g.harvest_count} pick${g.harvest_count === 1 ? "" : "s"}`
+                  : ""}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {ending && (
+      <PlantingEndingSheet
+        crop={ending}
+        onClose={() => setEnding(null)}
+        onEnded={(story) => {
+          // Banked in place, without refetching: a reload here would throw away
+          // the gardener's position in a list they are working down.
+          setDone(d => ({ ...d, [ending.id]: {
+            verdict: story?.outcome?.verdict, reason: story?.outcome?.reason } }));
+          setEnding(null);
+        }}
+      />
+    )}
+    </>
+  );
+}
+
 function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDashboardViewChange, externalShowLogActivity = false, onExternalLogActivityConsumed, tourRefs = {} }) {
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
@@ -4600,6 +4887,14 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const [showAllToday,       setShowAllToday]       = useState(false);
   const [showLogForCrop,     setShowLogForCrop]     = useState(null);
   const [showLogActivity,    setShowLogActivity]    = useState(false);
+  // Garden Memory P2c — the gap list, opened from the Season view. Declared
+  // here with the other Dashboard state, above every early return: a hook
+  // added below one is what caused the React #310 outage.
+  const [showGaps,           setShowGaps]           = useState(false);
+  // Bumped when the gap sheet closes, so the Season view refetches and its
+  // counters actually move — the programme's rule that every capture returns
+  // something immediately.
+  const [seasonToken,        setSeasonToken]        = useState(0);
 
   useEffect(() => {
     if (externalShowLogActivity) {
@@ -5244,7 +5539,7 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
       {/* ── SEGMENTED CONTROL — Today / Log ───────────────────────────────── */}
       <div ref={tourRefs.tourRef_todayLogToggle} style={{ display: "flex", background: C.offwhite, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 4, marginBottom: 16 }}>
-        {[["today", "Today"], ["log", "Log"]].map(([id, label]) => (
+        {[["today", "Today"], ["log", "Log"], ["season", "Season"]].map(([id, label]) => (
           <button key={id} onClick={() => onDashboardViewChange(id)}
             /* Active segment carries white fill + pine label + weight 700. The
                fill is legitimate here — this is a segment, not a nav icon — but
@@ -5258,6 +5553,14 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* ── LOG VIEW ──────────────────────────────────────────────────────── */}
       {dashboardView === "log" && (
         <GardenLog onLogActivity={() => setShowLogActivity(true)} />
+      )}
+
+      {/* ── SEASON VIEW ───────────────────────────────────────────────────── */}
+      {/* Garden Memory P2b. It lives beside Today because Today is where a
+          gardener already goes, and because in November there is nothing on
+          Today — which is exactly when the season is worth reading. */}
+      {dashboardView === "season" && (
+        <SeasonView onOpenGaps={() => setShowGaps(true)} reloadToken={seasonToken} />
       )}
 
       {/* ── TODAY VIEW ────────────────────────────────────────────────────── */}
@@ -6051,6 +6354,13 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           onClose={() => setShowLogActivity(false)}
           onLogged={() => { setShowLogActivity(false); load(true); }}
         />
+      )}
+
+      {/* Closing a gap ends a planting, which changes what Today has to say —
+          so the dashboard reloads on the way out rather than showing tasks for
+          a crop the gardener has just finished. */}
+      {showGaps && (
+        <GapListSheet onClose={() => { setShowGaps(false); setSeasonToken(t => t + 1); load(true); }} />
       )}
 
       {/* ── PLANT CHECK MODAL ─────────────────────────────────────────────── */}
@@ -8742,7 +9052,7 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
   );
 }
 
-function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false, tourRefs = {} }) {
+function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, onSeeBed, isDemo = false, navEnabled = false, tourRefs = {} }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
   // Garden Memory P1a — ending a planting, and the story it produces.
@@ -9002,14 +9312,15 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
           onEnded={(story) => { setPendingEnding(null); setEndedStory(story); load(); }}
         />
       )}
-      {/* onSeeBed is deliberately not passed: the Bed Biography lands in P2b and
-          offering a button that goes nowhere is worse than not offering it. The
-          card handles its absence. */}
+      {/* The Bed Biography now exists, so "See the bed" goes somewhere: it
+          closes the loop from the ending just recorded to the ground it was
+          recorded against, which is the whole argument for P2 following P1. */}
       {endedStory && (
         <PlantingStoryCard
           story={endedStory}
           onClose={() => setEndedStory(null)}
           onAddDetail={() => setEndedStory(null)}
+          onSeeBed={onSeeBed ? (bed) => { setEndedStory(null); onSeeBed(bed); } : undefined}
         />
       )}
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
@@ -19401,7 +19712,7 @@ function GardenSketchCanvas({ areas, crops, activeBlock, onTap, width, height })
   );
 }
 
-function PlanScreen({ tourRefs = {} }) {
+function PlanScreen({ tourRefs = {}, openBed = null, onBedOpened }) {
   const PLAN_VIEW_CACHE = "vercro_plan_view_v1";
   const _savedView = (() => { try { const v = localStorage.getItem(PLAN_VIEW_CACHE); return v ? JSON.parse(v) : null; } catch(e) { return null; } })();
 
@@ -19574,6 +19885,24 @@ function PlanScreen({ tourRefs = {} }) {
     if(hasStale) areas.forEach(a=>apiFetch(`/areas/${a.id}`,{method:"PUT",body:JSON.stringify({layout_x:null,layout_y:null})}).catch(()=>{}));
   },[areas.length,selectedLoc]);
 
+
+  // A bed can be opened from outside the Plan screen — "See the bed" on the
+  // story card, once an ending has been recorded. The location must be selected
+  // first and its areas loaded before the sheet can find the area, so this
+  // waits for the area to actually be present rather than firing on mount.
+  // `onBedOpened` clears the request so re-entering the tab later does not
+  // silently reopen a sheet the gardener already closed.
+  useEffect(() => {
+    if (!openBed?.areaId) return;
+    if (openBed.locationId && selectedLoc !== openBed.locationId) {
+      setSelectedLoc(openBed.locationId);
+      return;
+    }
+    if (!areas.some(a => a.id === openBed.areaId)) return;
+    setActiveBlock(openBed.areaId);
+    setDetailArea(openBed.areaId);
+    onBedOpened?.();
+  }, [openBed, selectedLoc, areas]);
 
   // Canvas geometry — exclude indoors areas from bounds calculation
   const _staticAreas = (initialAreasRef.current || areas).filter(a => a.type !== "indoors");
@@ -20649,6 +20978,11 @@ export default function GrowSmart() {
   const [addPrefill,  setAddPrefill]  = useState(null);
   const [prevTab,     setPrevTab]     = useState("dashboard");
   const [editCropFocus, setEditCropFocus] = useState(null);
+  // Which bed to open when the Plan tab mounts. Declared HERE, in the component
+  // that owns the tab, because the request crosses tabs — Crops asks, Plan
+  // answers. State declared in one tab's component and read in another is what
+  // took the Crops tab down on 21 August.
+  const [openBed,       setOpenBed]       = useState(null);
   const [openTimeAway,  setOpenTimeAway]  = useState(false);
   const [dashboardView, setDashboardView] = useState("today");
   const [showLogActivityGlobal, setShowLogActivityGlobal] = useState(false);
@@ -21011,11 +21345,11 @@ export default function GrowSmart() {
       <div style={{ padding: "20px 20px 110px" }}>
         {tab === "dashboard" && <Dashboard isDemo={isDemo} onTabChange={(newTab, payload) => { if (payload?.editCropId) setEditCropFocus({ cropId: payload.editCropId, editCropField: payload.editCropField }); if (payload?.openTimeAway) setOpenTimeAway(true); setTab(newTab); }} dashboardView={dashboardView} onDashboardViewChange={setDashboardView} externalShowLogActivity={showLogActivityGlobal} onExternalLogActivityConsumed={() => setShowLogActivityGlobal(false)} tourRefs={tourRefs} />}
         {tab === "garden"    && <GardenView onNavigateAdd={(prefill) => { setPrevTab("garden"); setAddPrefill(prefill); setTab("add"); }} tourRefs={tourRefs} />}
-        {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} tourRefs={tourRefs} />}
+        {tab === "crops"     && <CropList isDemo={isDemo} navEnabled={navEnabled} onSeeBed={(bed) => { setOpenBed(bed); setTab("plan"); }} onAddCrop={() => { setPrevTab("crops"); setTab("add"); }} editCropId={editCropFocus?.cropId} editCropField={editCropFocus?.field} onEditOpened={() => setEditCropFocus(null)} tourRefs={tourRefs} />}
         {tab === "add"       && <AddCrop prefill={addPrefill} onPrefillConsumed={() => setAddPrefill(null)} onCancel={() => { setAddPrefill(null); setTab(prevTab); }} />}
         {tab === "badges"    && <BadgesPage />}
         {tab === "feeds"     && !navEnabled && <FeedsScreen />}
-        {tab === "plan"      && navEnabled && <PlanScreen tourRefs={tourRefs} />}
+        {tab === "plan"      && navEnabled && <PlanScreen tourRefs={tourRefs} openBed={openBed} onBedOpened={() => setOpenBed(null)} />}
         {tab === "profile"   && <ProfileScreen session={session} onTabChange={setTab} openTimeAway={openTimeAway} onTimeAwayOpened={() => setOpenTimeAway(false)} tourRefs={tourRefs} />}
         {tab === "admin"     && (isAdmin || showDemoAdmin) && <AdminScreen isDemo={isDemo} />}
         {tab === "admin"     && isPartnerAdmin && !isAdmin && !showDemoAdmin && <AdminScreen metricsOnly={true} />}
