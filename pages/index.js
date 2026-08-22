@@ -2262,6 +2262,13 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
   const [dateHint, setDateHint] = useState(null);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState(null);
+  // Has the suggested date arrived? Until it has, the sheet does not know what
+  // date it would be claiming, and the design is that the gardener SEES the
+  // effective date before saving — so accepting a tap first would save a date
+  // they were never shown. It also closes a real race: a tap landing while the
+  // fetch was resolving was silently lost in production, with the sheet simply
+  // not responding.
+  const [ready,    setReady]    = useState(false);
 
   // The suggested effective date, and what it was derived from. Shown before
   // saving; saving adopts it as the gardener's statement.
@@ -2270,13 +2277,16 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
     apiFetch(`/plantings/${crop.id}/ending/question?action=remove`)
       .then(d => { if (!live) return;
         setEndDate(d?.suggested_end_date?.date || null);
-        setDateHint(d?.suggested_end_date?.label || null); })
-      .catch(() => {});
+        setDateHint(d?.suggested_end_date?.label || null);
+        setReady(true); })
+      // A failed suggestion must not block the ending. Without a date the
+      // server dates it, which is what every path did before P1a.
+      .catch(() => { if (live) setReady(true); });
     return () => { live = false; };
   }, [crop.id]);
 
   const submit = async (patch) => {
-    if (saving) return;
+    if (saving || !ready) return;
     setSaving(true); setError(null);
     try {
       const story = await apiFetch(`/plantings/${crop.id}/ending`, {
@@ -2297,6 +2307,7 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
   };
 
   const choose = (opt) => {
+    if (!ready) return;
     const next = { ...pending, ...opt.sets };
     // `pending` is only needed when a second question follows. Setting it on
     // the way to an immediate save was a state update racing the save in the
@@ -2323,13 +2334,13 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
         </div>
 
         {step === "mechanism" && MECHANISM_OPTIONS.map(o => (
-          <EndingOption key={o.key} label={o.label} disabled={saving} onClick={() => choose(o)} />
+          <EndingOption key={o.key} label={o.label} disabled={saving || !ready} onClick={() => choose(o)} />
         ))}
         {step === "verdict" && VERDICT_OPTIONS.map(o => (
-          <EndingOption key={o.key} label={o.label} disabled={saving} onClick={() => submit({ outcome: o.key })} />
+          <EndingOption key={o.key} label={o.label} disabled={saving || !ready} onClick={() => submit({ outcome: o.key })} />
         ))}
         {step === "loss_reason" && LOSS_OPTIONS.map(o => (
-          <EndingOption key={o.key} label={o.label} disabled={saving} onClick={() => submit({ end_reason: o.key })} />
+          <EndingOption key={o.key} label={o.label} disabled={saving || !ready} onClick={() => submit({ end_reason: o.key })} />
         ))}
 
         {/* The effective date is shown before saving, with the basis of any
@@ -2338,8 +2349,13 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                       marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.lineSoft}` }}>
           <div style={{ fontSize: 12, color: C.stone }}>
-            Ended <span style={{ color: C.ink, fontWeight: 600 }}>{formatDay(endDate) || "today"}</span>
-            {dateHint ? <span style={{ color: C.stone }}> — {dateHint}</span> : ""}
+            {ready
+              ? <>Ended <span style={{ color: C.ink, fontWeight: 600 }}>{formatDay(endDate) || "today"}</span>
+                  {dateHint ? <span style={{ color: C.stone }}> — {dateHint}</span> : ""}</>
+              /* Not "today". Until the suggestion arrives the sheet does not
+                 know the date, and guessing on screen is the same untruth as
+                 guessing in the database. */
+              : "Working out the date…"}
           </div>
           <label style={{ fontSize: 12, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
             Change
@@ -2358,7 +2374,7 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
           {step !== "mechanism" && (
             /* Skipping is a real answer, not a lesser one. Forcing a verdict
                would put worse data in than the gap it fills. */
-            <button onClick={() => submit({})} disabled={saving}
+            <button onClick={() => submit({})} disabled={saving || !ready}
               style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`,
                        background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               Not sure
