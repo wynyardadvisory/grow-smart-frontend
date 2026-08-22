@@ -4598,11 +4598,19 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // opts.track — false when called in a loop by the alert group handlers, which
   // emit one aggregate observation_logged instead. Capturing here per crop is
   // what produced bursts of up to 62 pest observations per user per minute.
+  // opts.concernCode — WHAT was observed, as distinct from what happened.
+  // Without it every finding looked identical to the risk engine, so tapping
+  // "Found it" on aphids escalated red spider mite, mildew and botrytis too.
   const logObservation = async (cropId, type, symptomCode, severity = null, opts = {}) => {
     try {
       await apiFetch(`/crops/${cropId}/observe`, {
         method: "POST",
-        body: JSON.stringify({ observation_type: type, symptom_code: symptomCode, severity })
+        body: JSON.stringify({
+          observation_type: type, symptom_code: symptomCode, severity,
+          concern_code: opts.concernCode || null,
+          source:       opts.source      || null,
+          source_ref_id: opts.sourceRefId || null,
+        })
       });
       if (opts.track !== false) {
         track(EVENTS.OBSERVATION_LOGGED, {
@@ -5370,7 +5378,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                           // suppressed and a single aggregate event carries count —
                           // this group reached 231 crops in the pre-June data.
                           const observed = group.filter(x => x.crop_instance_id).length;
-                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild", { track: false }) : Promise.resolve()));
+                          // The card already knows which risk it is asking about —
+                          // rule_id is "pest_<code>". That identity was being thrown
+                          // away, leaving the engine unable to tell an aphid sighting
+                          // from powdery mildew.
+                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "pest_found", "mild", { track: false, concernCode: concernCodeOf(x), source: "watch_out", sourceRefId: x.id }) : Promise.resolve()));
                           group.forEach(x => completeTask(x, { track: false }));
                           if (observed > 0) track(EVENTS.OBSERVATION_LOGGED, { observation_type: "pest", symptom_code: "pest_found", severity: "mild", count: observed, bulk: true, surface: "today_alert" });
                           track(EVENTS.TASK_COMPLETED, { task_type: t.task_type || null, urgency: t.urgency || null, count: group.length, bulk: true, outcome: "issue_found", surface: "today_alert" });
@@ -5379,7 +5391,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
                         </button>
                         <button onClick={async () => {
                           const observed = group.filter(x => x.crop_instance_id).length;
-                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy", null, { track: false }) : Promise.resolve()));
+                          // All-clear records WHICH concern was checked clear. It
+                          // boosts nothing today, but "you checked this yesterday
+                          // and it was fine" is evidence worth keeping.
+                          await Promise.all(group.map(x => x.crop_instance_id ? logObservation(x.crop_instance_id, "pest", "looks_healthy", null, { track: false, concernCode: concernCodeOf(x), source: "watch_out", sourceRefId: x.id }) : Promise.resolve()));
                           group.forEach(x => completeTask(x, { track: false }));
                           if (observed > 0) track(EVENTS.OBSERVATION_LOGGED, { observation_type: "pest", symptom_code: "looks_healthy", severity: null, count: observed, bulk: true, surface: "today_alert" });
                           track(EVENTS.TASK_COMPLETED, { task_type: t.task_type || null, urgency: t.urgency || null, count: group.length, bulk: true, outcome: "all_clear", surface: "today_alert" });
@@ -10430,6 +10445,14 @@ function commonActionLabel(actions) {
   // action would put a whole sentence in the heading. Say nothing instead, and
   // let the caller fall back to the task type with full text in the rows.
   return label.split(/\s+/).length >= 2 && label.length >= 8 ? label : null;
+}
+
+// A pest task's rule_id is "pest_<code>", which is the concern identity the
+// observation needs. Exact prefix strip — no fuzzy matching, and anything that
+// is not a pest rule yields null rather than a guess.
+function concernCodeOf(task) {
+  const id = task?.rule_id || "";
+  return id.startsWith("pest_") ? id.slice(5) : null;
 }
 
 function fmtWindow(iso) {
