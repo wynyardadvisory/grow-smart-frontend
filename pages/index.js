@@ -2359,13 +2359,23 @@ function PlantingEndingSheet({ crop, onClose, onEnded }) {
           {crop.area_name ? `${crop.area_name} · ` : ""}{formatDay(crop.sown_date) ? `sown ${formatDay(crop.sown_date)}` : ""}
         </div>
 
-        {step === "mechanism" && MECHANISM_OPTIONS.map(o => (
+        {/* Recording an ending takes ~5s against production (A-V086), and for
+            those five seconds disabled buttons alone are indistinguishable from
+            a dead screen — they fooled the engineer who built this. Say what is
+            happening instead. */}
+        {saving && (
+          <div style={{ padding: "18px 0 6px", fontSize: 14, color: C.stone }}>
+            Recording how the {crop.name} finished…
+          </div>
+        )}
+
+        {!saving && step === "mechanism" && MECHANISM_OPTIONS.map(o => (
           <EndingOption key={o.key} label={o.label} disabled={saving || !ready} onClick={() => choose(o)} />
         ))}
-        {step === "verdict" && VERDICT_OPTIONS.map(o => (
+        {!saving && step === "verdict" && VERDICT_OPTIONS.map(o => (
           <EndingOption key={o.key} label={o.label} disabled={saving || !ready} onClick={() => submit({ outcome: o.key })} />
         ))}
-        {step === "loss_reason" && LOSS_OPTIONS.map(o => (
+        {!saving && step === "loss_reason" && LOSS_OPTIONS.map(o => (
           <EndingOption key={o.key} label={o.label} disabled={saving || !ready} onClick={() => submit({ end_reason: o.key })} />
         ))}
 
