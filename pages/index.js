@@ -5460,7 +5460,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         done: rows.length > 0 && open.length === 0,
       };
     })
-    .filter(c => c.rows.length > 0);
+    // Stage 3: a harvest action carries no task rows — its completion units are
+    // plantings. Filtering on rows alone silently dropped it from the screen
+    // while the server counted it as committed, which is the A-V087 failure in
+    // reverse: the commitment saying one thing and Today showing another.
+    .filter(c => c.rows.length > 0 || (c.entityIds || []).length > 0);
 
   const openConcerns  = commitmentConcerns.filter(c => !c.done);
   const focusConcern  = openConcerns[0] || null;
@@ -5743,18 +5747,22 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
         {focusConcern && (<>
           <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
-          <ConcernCard concern={focusConcern} primary
-            onComplete={completeTask} onStruggling={setStrugglingCrop} onWhyNow={setWhyNowTask} />
+          {focusConcern.source === "harvest"
+            ? <HarvestActionCard action={focusConcern} primary forecast={data.harvest_forecast}
+                onPick={(c) => setPendingHarvest(c)} />
+            : <ConcernCard concern={focusConcern} primary
+                onComplete={completeTask} onStruggling={setStrugglingCrop} onWhyNow={setWhyNowTask} />}
         </>)}
 
         {alsoConcerns.length > 0 && (
           <div style={{ marginTop: focusConcern ? 16 : 0 }}>
             <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {alsoConcerns.map(c => (
-                <ConcernCard key={c.key} concern={c}
-                  onComplete={completeTask} onStruggling={setStrugglingCrop} onWhyNow={setWhyNowTask} />
-              ))}
+              {alsoConcerns.map(c => c.source === "harvest"
+                ? <HarvestActionCard key={c.key} action={c} forecast={data.harvest_forecast}
+                    onPick={(x) => setPendingHarvest(x)} />
+                : <ConcernCard key={c.key} concern={c}
+                    onComplete={completeTask} onStruggling={setStrugglingCrop} onWhyNow={setWhyNowTask} />)}
             </div>
           </div>
         )}
@@ -5762,6 +5770,15 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         {!focusConcern && alsoConcerns.length === 0 && !commitment?.caught_up && (
           <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "18px", textAlign: "center", fontSize: 13, color: C.stone }}>
             Nothing needs your attention today.
+          </div>
+        )}
+
+        {/* Calm must never mean concealing workload. Vercro made a
+            prioritisation decision and says so — quietly, once, in the unit the
+            gardener experiences, and only when the statement is actually true. */}
+        {commitment?.deferred_actions > 0 && (openConcerns.length > 0) && (
+          <div style={{ fontSize: 12, color: C.stone, marginTop: 12 }}>
+            {commitment.deferred_actions} more can wait
           </div>
         )}
       </div>
@@ -5772,7 +5789,19 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
           watch-outs, coming-up-next and a travel prompt. Crops shown here are
           suppressed from Focus/Also-today by dedupeHarvest above, so one crop
           produces one card. */}
-      {/* ── HARVEST CARD ────────────────────────────────────────────────────── */}
+      {/* ── HARVEST ─────────────────────────────────────────────────────────
+          Moved OUT of the commitment area, 22 August.
+
+          A crop being "ready" here rests on a catalogue maturity estimate — the
+          payload has always labelled it `certainty: "predicted"`. Measured
+          across production, letting that compete filled 78% of every commitment
+          with speculation: 4,161 plantings sat in `check_now`, which means the
+          estimate elapsed and nobody looked.
+
+          So prediction informs and does not ask. A harvest reaches the
+          commitment above only once THIS plant provides evidence — you picked
+          from it recently, or something looked at it. The rest is here, quiet,
+          for a gardener who wants it. */}
       <TodayHarvestCard
         recentHarvests={recentHarvests}
         harvestForecast={data.harvest_forecast}
@@ -6061,49 +6090,31 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       {/* 3B3d — at most one question on Today. Reconciliation wins: it resolves a
           crop whose outcome is genuinely unknown and its answer changes what
           Vercro believes, where this only enriches a record. */}
-      {showMissingDataQuestion && (
-        <div style={{ background: TINT.attention, border: `1px solid ${TINT_LINE.attention}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
-          <div style={{ ...T.eyebrow, fontSize: 11, color: C.attentionText, marginBottom: 10 }}>Make your plan more accurate</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {(data.missing_data || []).slice(0, 3).map(item => (
-              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 16 }}>{getCropEmoji(item.name)}</span>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13, color: C.ink }}>{item.name}</span>
-                  <div style={{ fontSize: 12, color: C.stone }}>Add {item.missing.join(" and ")} for more accurate tasks</div>
-                </div>
-                <button onClick={() => { if (onTabChange) onTabChange("crops", { editCropId: item.id, editCropField: item.missing[0]?.includes("variety") ? "variety" : "sow_date" }); }}
-                  style={{ ...T.control, fontSize: 12, color: C.attentionText, background: "none", border: `1px solid ${C.amber}`, borderRadius: R.sm, padding: "4px 10px", cursor: "pointer" }}>
-                  Add details →
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* "Make your plan more accurate" — prompts to add a missing variety —
+          stood here.
 
-      {/* ── 5. GARDEN PROGRESS ─────────────────────────────────────────────── */}
-      <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "14px 16px", marginBottom: 20 }}>
-        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 12 }}>Garden progress</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { label: V_ENDING.in_the_garden, value: cropCount,    emoji: "🌱" },
-            { label: V_READY.ready,          value: harvestCount, emoji: "🌾" },
-            { label: "Needs your input",   value: needsInput,     emoji: "📝", highlight: needsInput > 0 },
-            { label: "Tasks done this week", value: completedWeek, emoji: "✅" },
-          ].map(({ label, value, emoji, highlight }) => (
-            <div key={label} style={{ background: highlight ? TINT.attention : C.offwhite, border: `1px solid ${highlight ? TINT_LINE.attention : C.lineSoft}`, borderRadius: R.sm, padding: "10px 12px" }}>
-              {/* Glyphs retained — standalone icon slots, and no icon vocabulary
-                  work is in scope for this pass. Fixed line-height only, so the
-                  four tiles align optically. */}
-              <div style={{ fontSize: 20, lineHeight: 1, marginBottom: 6 }}>{emoji}</div>
-              {/* tabular-nums so the 2x2 grid stops shifting as values change width */}
-              <div style={{ ...T.displayLg, fontSize: 20, color: highlight ? C.attentionText : C.forest, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{value}</div>
-              <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.3 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+          Removed 22 August. It was one of the streams that made Today's
+          commitment untrue (A-V087): the engine chose a handful of things and
+          this asked for more underneath them, having passed through no ranking
+          at all. It is `on_demand` in the lane contract — pull, never push —
+          because it improves VERCRO's model rather than the gardener's garden,
+          and nothing that improves our model may spend their attention.
+
+          The same crops still carry an edit path in Crops, which is where a
+          question about a crop belongs. */}
+
+      {/* The four-metric "Garden progress" card stood here: crops in the garden,
+          crops ready, needs your input, tasks done this week.
+
+          Removed 22 August. It answered no gardener question — the test this
+          product applies to any component — and half of it was already
+          condemned by R-V051. It was the last of the engagement-metrics era on
+          a screen the attention engine exists to keep quiet.
+
+          Deliberately NOT replaced. Recollection belongs in the Journal and the
+          Season; Today's job is the decision. If anything ever returns to this
+          space it is one earned sentence that is absent most days, never a
+          grid of tiles. */}
 
       {/* ── TIPS ───────────────────────────────────────────────────────────── */}
       {/* 3B3d — general tips are the lowest-value thing on the page when the
@@ -11099,6 +11110,53 @@ function commonActionLabel(actions) {
 function concernCodeOf(task) {
   const id = task?.rule_id || "";
   return id.startsWith("pest_") ? id.slice(5) : null;
+}
+
+/**
+ * A picking action on Today.
+ *
+ * Reaches this screen only when THIS plant provided the evidence — you picked
+ * from it recently, or something looked at it. A crop that is merely due by the
+ * catalogue lives in the quiet harvest card further down and never takes one of
+ * the few things asked of someone today.
+ *
+ * One trip to the bed, and one truthful tick per crop: picking is a lifecycle
+ * event, so six crops means six records of what actually came off which plant.
+ * At module scope, like every other component here — one defined during render
+ * froze the ending sheet in production on 22 August.
+ */
+function HarvestActionCard({ action, forecast = [], primary = false, onPick }) {
+  if (!action) return null;
+  const byId = new Map((forecast || []).map(f => [f.crop_instance_id, f]));
+  const crops = (action.entityIds || []).map(id => byId.get(id)).filter(Boolean);
+  if (!crops.length) return null;
+  const where = action.partition?.name;
+
+  return (
+    <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${C.forest}`,
+                  borderRadius: R.sm, padding: primary ? "16px 18px" : "13px 15px" }}>
+      <div style={{ ...(primary ? T.displayMd : T.bodyStrong), fontSize: primary ? 16 : 14, color: C.ink, lineHeight: 1.35 }}>
+        {crops.length === 1
+          ? `Pick the ${crops[0].name || crops[0].crop_name}${where ? ` in ${where}` : ""}`
+          : `Pick from ${where || "the garden"}`}
+      </div>
+
+      {/* Why this one is being asked for, in the gardener's own evidence. */}
+      {action.reason && (
+        <div style={{ fontSize: 12, color: C.stone, marginTop: 5 }}>{action.reason}</div>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+        {crops.map(c => (
+          <button key={c.crop_instance_id} onClick={() => onPick && onPick(c)}
+            style={{ ...T.control, background: "#fff", color: C.forest, border: `1px solid ${C.forest}`,
+                     borderRadius: R.sm, padding: "8px 13px", fontSize: 13, cursor: "pointer" }}>
+            {c.name || c.crop_name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ── Concern card ────────────────────────────────────────────────────────────
