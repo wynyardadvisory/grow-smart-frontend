@@ -835,8 +835,34 @@ function reportStartupIssue(label, reason, err) {
 const STARTUP_TIMEOUT_MS = 5000;
 
 // ── API helper ────────────────────────────────────────────────────────────────
+/**
+ * Every request in the app goes through here, and every one of them begins by
+ * awaiting the Supabase session.
+ *
+ * On 22 August that await was observed never resolving in production: a tap on
+ * the ending sheet set `saving`, issued no HTTP request at all, and never
+ * settled — so the sheet sat permanently disabled with nothing shown and no way
+ * back except reloading. Intermittent, environment-dependent, and invisible
+ * locally. Not a lock deadlock (navigator.locks was empty) and not the network
+ * (a plain fetch to the API returned 200 from the same page at the same moment).
+ * The root cause is NOT yet identified — A-V084.
+ *
+ * What is not in doubt is that a promise the whole app waits on must not be
+ * able to hang forever. The session lookup is now bounded: if it does not
+ * resolve, the request fails loudly and the caller's own error handling runs,
+ * turning a permanent silent freeze into a visible, retryable failure. The
+ * happy path is untouched — this only decides how long "never" is allowed to
+ * last.
+ */
+const SESSION_LOOKUP_TIMEOUT_MS = 8000;
+
 async function apiFetch(path, options = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await Promise.race([
+    supabase.auth.getSession().then(r => r?.data?.session ?? null),
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error("Couldn't reach your account just now. Please try again.")),
+      SESSION_LOOKUP_TIMEOUT_MS)),
+  ]);
   const token = session?.access_token;
   const res = await fetch(`${API}${path}`, {
     ...options,
