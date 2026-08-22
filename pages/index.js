@@ -4203,6 +4203,10 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   // other Dashboard state, far above every early return: a hook added lower
   // down is what caused the React #310 outage.
   const [expandedActionGroups, setExpandedActionGroups] = useState(() => new Set());
+  // Phase B — the optional worklist. Declared here with the other Dashboard
+  // state, ~320 lines above the first early return: a hook added below one is
+  // what caused the React #310 outage.
+  const [showWorklist, setShowWorklist] = useState(false);
   const [pendingHarvest,      setPendingHarvest]      = useState(null);
   const [allHarvestsForShare, setAllHarvestsForShare] = useState([]);
   const [recentHarvests,      setRecentHarvests]      = useState(null); // null = not loaded yet
@@ -4294,7 +4298,11 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     // Always fetch fresh in background
     try {
       const [d, bp] = await Promise.all([
-        apiFetch("/dashboard"),
+        // The gardener's timezone decides when their day rolls over. The device
+        // knows it exactly; a stored column would need syncing and could go stale.
+        apiFetch(`/dashboard?tz=${encodeURIComponent(
+          (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })()
+        )}`),
         apiFetch("/blocked-periods").catch(() => []),
       ]);
       setData(d);
@@ -4662,7 +4670,22 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
     !(t.task_type === "harvest" && t.crop_instance_id && harvestOpportunityCrops.has(t.crop_instance_id))
   );
 
-  const todayTasks     = dedupeHarvest(dedupeByAction(grouped.today.filter(t => !completed.has(t.id))));
+  // ── Phase B — Today shows the commitment, not the workload ────────────────
+  //
+  // The engine may know thirty things; Vercro chose a few this morning and that
+  // choice is fixed for the day. Everything else stays valid and reachable
+  // through the worklist — it simply is not what Vercro is asking for today.
+  //
+  // Falls back to the full set when no commitment exists (older cached response,
+  // or the plan could not be built) so Today can never render empty because a
+  // table was unavailable.
+  const commitment      = data.today_commitment || null;
+  const committedTaskIds = commitment
+    ? new Set((commitment.items || []).flatMap(i => i.taskIds || []))
+    : null;
+  const inCommitment = (t) => !committedTaskIds || committedTaskIds.has(t.id);
+
+  const todayTasks     = dedupeHarvest(dedupeByAction(grouped.today.filter(t => !completed.has(t.id)).filter(inCommitment)));
   const thisWeekTasks  = dedupeHarvest(dedupeByAction(grouped.this_week.filter(t => !completed.has(t.id))));
   const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
 
@@ -4897,8 +4920,36 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         )}
       </div>
 
+      {/* ── CAUGHT UP ───────────────────────────────────────────────────────
+          Everything Vercro asked for today is done. This does NOT claim no
+          useful garden work exists — plenty does, and it is one tap away. But
+          the number is deliberately absent: "done, but there are 26 more" turns
+          finishing into a reminder of not finishing, and a quiet completed
+          Today is the feature, not wasted space.
+
+          No confetti, no streak, no nudge to carry on. */}
+      {commitment?.caught_up && (
+        <div style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, padding: "26px 20px", marginBottom: 20, textAlign: "center" }}>
+          <div style={{ fontSize: 26, marginBottom: 10 }}>🌿</div>
+          <div style={{ ...T.displayMd, fontSize: 19, color: C.forest, marginBottom: 6 }}>
+            You&apos;re all caught up for today.
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+            Your garden is in good shape — enjoy it.
+          </div>
+          {commitment.more_available > 0 && (
+            <button onClick={() => setShowWorklist(true)}
+              style={{ marginTop: 18, background: "none", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "9px 18px", color: C.forest, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Want to do more?
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
-      <div ref={tourRefs.tourRef_todayFocus} style={{ marginBottom: 20 }}>
+      {/* The ref stays mounted for the guided tour even when the day is done. */}
+      <div ref={tourRefs.tourRef_todayFocus} style={{ marginBottom: commitment?.caught_up ? 0 : 20 }}
+           hidden={!!commitment?.caught_up}>
         <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
 
         {focusItem ? (
@@ -5764,6 +5815,64 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
       )}
 
       </> /* end Today view */}
+
+      {/* ── WORKLIST — everything Vercro did NOT ask for today ───────────────
+          A separate surface, reached only on request. Deliberately not a
+          section beneath Today: Today is what Vercro recommends, this is what
+          else is available, and collapsing the two would make the commitment
+          meaningless.
+
+          Completing something here does not touch the daily commitment and does
+          not remove the caught-up state — the gardener chose to do extra, which
+          is different from Vercro having asked. */}
+      {showWorklist && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowWorklist(false); }}>
+          <div style={{ background: "#fff", borderRadius: R.sheet, padding: "24px 20px 40px", width: "100%", maxWidth: 480, maxHeight: "80vh", overflowY: "auto", boxSizing: "border-box" }}>
+            <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd", margin: "0 auto 18px" }} />
+            <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>More you can do</div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 18, lineHeight: 1.5 }}>
+              Nothing here is needed today — it&apos;s just what else is available if you fancy it.
+            </div>
+            {(() => {
+              const rest = (data.tasks?.tasks || [])
+                .filter(t => !completed.has(t.id) && !t.completed_at)
+                .filter(t => !committedTaskIds || !committedTaskIds.has(t.id));
+              if (rest.length === 0) {
+                return <div style={{ fontSize: 13, color: C.stone }}>Nothing else waiting.</div>;
+              }
+              const groups = {};
+              for (const t of rest) {
+                const k = t.rule_id || t.task_type || t.id;
+                (groups[k] = groups[k] || []).push(t);
+              }
+              return Object.values(groups).map((g, gi) => {
+                const label = commonActionLabel(g.map(x => x.action));
+                return (
+                  <div key={gi} style={{ paddingTop: gi > 0 ? 12 : 0, marginTop: gi > 0 ? 12 : 0, borderTop: gi > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
+                    {label && g.length > 1 && (
+                      <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink, marginBottom: 6 }}>{label}</div>
+                    )}
+                    {g.map(t => (
+                      <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0" }}>
+                        <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>
+                          {label && g.length > 1 ? (t.action.slice(label.length).replace(/^\s*(in|on|for|to|around|at)\s+/i, "").replace(/^\((.*)\)$/, "$1").trim() || t.action) : t.action}
+                        </span>
+                        <button onClick={() => completeTask(t)}
+                          style={{ width: 28, height: 28, borderRadius: R.full, border: `1px solid ${C.lineSoft}`, background: "transparent", cursor: "pointer", flexShrink: 0, fontSize: 14, color: C.stone }}>✓</button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              });
+            })()}
+            <button onClick={() => setShowWorklist(false)}
+              style={{ width: "100%", marginTop: 22, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── MODALS — rendered outside Today/Log views so they work from both ── */}
       {showLogForCrop && (
