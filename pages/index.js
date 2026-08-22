@@ -4690,18 +4690,47 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   const comingUpTasks  = dedupeByAction((grouped.coming_up || []).filter(t => !completed.has(t.id)));
 
   // Hero focus: critical alert > high task > medium task > first check
-  const focusItem = (() => {
-    const crit = alerts.find(a => a.urgency === "high" || a.urgency === "critical");
-    if (crit) return { ...crit, _source: "alert" };
-    const highTask = todayTasks.find(t => t.urgency === "high");
-    if (highTask) return { ...highTask, _source: "task" };
-    const medTask = todayTasks[0];
-    if (medTask) return { ...medTask, _source: "task" };
-    return null;
-  })();
+  // ── Today's commitment, as concerns ───────────────────────────────────────
+  //
+  // Today used to render two parallel systems: tasks became Focus and Also
+  // today, alerts became Watch Outs, and focusItem read `alerts` FIRST — a
+  // second path that promoted a record into Focus with no reference to what
+  // Vercro had actually committed to.
+  //
+  // The gardener should never meet that distinction. On 22 August one slug
+  // event produced a task for two crops and an alert for three, so the same
+  // situation appeared twice under two headings. record_type is an
+  // implementation detail; the concern is the thing.
+  //
+  // Every selected concern now renders here, whatever its rows were made of,
+  // and its underlying records stay attached for completion.
+  const allById = new Map((data.tasks?.tasks || []).map(t => [t.id, t]));
+  const commitmentConcerns = (commitment?.items || [])
+    .map(item => {
+      const rows = (item.taskIds || []).map(id => allById.get(id)).filter(Boolean);
+      const open = rows.filter(t => !t.completed_at && !completed.has(t.id));
+      const crops = [...new Set(rows.map(t => t.crop?.name).filter(Boolean))];
+      const areas = [...new Set(rows.map(t => t.area?.name).filter(Boolean))];
+      return {
+        ...item,
+        rows, open,
+        headline: open[0]?.action || rows[0]?.action || "",
+        crops, areas,
+        // V073 stands: group completion only where the server says it is
+        // semantically safe. A concern made of lifecycle transitions or
+        // observations is completed one row at a time.
+        groupCompletable: open.length > 1 && open.every(t => t.bulk_completable),
+        done: rows.length > 0 && open.length === 0,
+      };
+    })
+    .filter(c => c.rows.length > 0);
 
-  // Remaining today tasks (exclude focus item)
-  const remainingToday = todayTasks.filter(t => t.id !== focusItem?.id);
+  const openConcerns  = commitmentConcerns.filter(c => !c.done);
+  const focusConcern  = openConcerns[0] || null;
+  const alsoConcerns  = openConcerns.slice(1);
+
+  // Deliberately removed: focusItem and remainingToday were the old parallel
+  // path into Focus. Nothing may promote a row into Today except the commitment.
 
   // Crop checks — lifecycle prompts (non-alert, non-regular-task)
   const cropCheckTasks = allTasks.filter(t => {
@@ -4714,10 +4743,16 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
   });
 
   // Watch outs — group alerts by rule_id so same pest/issue across multiple crops shows as one card
+  // Watch Outs is now awareness ONLY — the low-priority things Vercro knows but
+  // did not ask for today. Anything selected renders as a concern above; leaving
+  // it here too would put half the day's work under a second heading and make
+  // caught-up unreachable by the obvious route.
+  const selectedKeys = new Set(commitmentConcerns.map(c => c.key));
   const watchOuts = (() => {
     const groups = new Map();
     for (const t of alerts) {
       const key = t.rule_id || t.id;
+      if (selectedKeys.has(key)) continue;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(t);
     }
@@ -4772,9 +4807,14 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
 
   // Genuine garden content: an action to take, a harvest to pick, a risk to
   // watch, a question worth answering.
+  // Counted from the commitment now that concerns are the unit. Reading the old
+  // focusItem/remainingToday here would score zero and let the promotions 3B3d
+  // suppressed — onboarding, notifications, Plant Check, "Going away?", tips —
+  // walk straight back onto a busy Today.
   const gardenContentCount =
-      (focusItem ? 1 : 0)
-    + (remainingToday.length > 0 ? 1 : 0)
+      (focusConcern ? 1 : 0)
+    + (alsoConcerns.length > 0 ? 1 : 0)
+    + (commitment?.caught_up ? 1 : 0)
     + (harvestOpportunityCount > 0 ? 1 : 0)
     + (watchOuts.length > 0 ? 1 : 0)
     + (hasReconciliationQuestion ? 1 : 0);
@@ -4946,278 +4986,37 @@ function Dashboard({ onTabChange, isDemo = false, dashboardView = "today", onDas
         </div>
       )}
 
-      {/* ── 1. TODAY'S FOCUS ───────────────────────────────────────────────── */}
-      {/* The ref stays mounted for the guided tour even when the day is done. */}
+      {/* ── TODAY'S COMMITMENT ──────────────────────────────────────────────
+          What Vercro decided this morning deserves attention, rendered as the
+          gardening situations they are. Previously this was two systems — tasks
+          became Focus and Also today, alerts became Watch Outs — so one slug
+          event on 22 August appeared under two headings and the gardener had no
+          way to know it was one problem. record_type does not reach the screen
+          any more. */}
       <div ref={tourRefs.tourRef_todayFocus} style={{ marginBottom: commitment?.caught_up ? 0 : 20 }}
            hidden={!!commitment?.caught_up}>
-        <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
 
-        {focusItem ? (
-          /* Severity now has one vocabulary across Today: hairline border plus a
-             3px left stripe, the device Watch outs already used. The urgency
-             colour and its branching are unchanged — only the weight it is
-             expressed in. */
-          <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${focusItem.urgency === "high" ? C.red : focusItem._source === "alert" ? "#f39c12" : C.forest}`, borderRadius: R.sm, padding: "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ fontSize: 28, flexShrink: 0, marginTop: 2 }}>{focusItem._source === "alert" ? "⚠️" : getCropEmoji(focusItem.crop?.name || "")}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ ...T.displayMd, fontSize: 16, color: C.ink, marginBottom: 4 }}>
-                  {focusItem.crop?.name || "Garden task"}
-                </div>
-                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>{focusItem.action}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => completeTask(focusItem)}
-                    style={{ ...T.control, flex: 1, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm, padding: "10px", fontSize: 13, cursor: "pointer" }}>
-                    ✓ Mark done
-                  </button>
-                  <button onClick={() => apiFetch(`/tasks/${focusItem.id}/snooze`, { method: "POST", body: JSON.stringify({ days: 1 }) }).then(load)}
-                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 14px", color: C.stone, fontSize: 13, cursor: "pointer" }}>
-                    Later
-                  </button>
-                </div>
-                <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <span ref={tourRefs.tourRef_whyNowPill}
-                    onClick={() => { setWhyNowTask(focusItem); }}
-                    style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.full, fontSize: 11, padding: "3px 10px", color: C.forest, cursor: "pointer", fontWeight: 600 }}>
-                    Why now?
-                  </span>
-                </div>
-                {focusItem.crop_instance_id && (
-                  <button onClick={() => setShowLogForCrop({ id: focusItem.crop_instance_id, name: focusItem.crop?.name || "crop", task_type: focusItem.task_type })}
-                    style={{ marginTop: 8, background: "none", border: "none", padding: 0, fontSize: 11, color: C.stone, cursor: "pointer", textDecoration: "underline" }}>
-                    Did something different? Log it
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Inline caught-up surface. Kept exactly as its own conditional branch —
-             it can and does render at the same time as the bottom empty state,
-             and neither is merged or suppressed. */
-          <div style={{ background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 28 }}>🌿</span>
-            <div>
-              <div style={{ ...T.displayMd, fontSize: 15, color: C.forest, marginBottom: 2 }}>You&apos;re all caught up</div>
-              <div style={{ fontSize: 12, color: C.stone }}>
-                {thisWeekTasks.length > 0 ? `${thisWeekTasks.length} thing${thisWeekTasks.length !== 1 ? "s" : ""} coming up this week` : comingUpTasks.length > 0 ? `${comingUpTasks.length} task${comingUpTasks.length !== 1 ? "s" : ""} planned ahead` : "Nothing urgent — enjoy your garden"}
-              </div>
+        {focusConcern && (<>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 10 }}>Today&apos;s focus</div>
+          <ConcernCard concern={focusConcern} primary
+            onComplete={completeTask} onStruggling={setStrugglingCrop} onWhyNow={setWhyNowTask} />
+        </>)}
+
+        {alsoConcerns.length > 0 && (
+          <div style={{ marginTop: focusConcern ? 16 : 0 }}>
+            <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {alsoConcerns.map(c => (
+                <ConcernCard key={c.key} concern={c}
+                  onComplete={completeTask} onStruggling={setStrugglingCrop} onWhyNow={setWhyNowTask} />
+              ))}
             </div>
           </div>
         )}
 
-        {/* Also today — V073: grouped by the ACTION, listing the things it applies to.
-            Grouping by crop gave 15 users ten or more cards and one user 31,
-            because a gardener with many beds has many separate-but-identical
-            jobs. Grouping by rule gives 1.7 cards on average and a worst case of
-            6, while hiding nothing: every underlying task still gets its own row
-            and its own tick. The cap that silently dropped everything after the
-            third group is gone — that was hiding on top of hiding. */}
-        {remainingToday.length > 0 && (() => {
-          const alsoGrouped = {};
-          for (const t of remainingToday) {
-            const key = t.rule_id || t.task_type || t.id;
-            if (!alsoGrouped[key]) alsoGrouped[key] = { tasks: [] };
-            alsoGrouped[key].tasks.push(t);
-          }
-          const alsoGroups = Object.values(alsoGrouped).map(g => {
-            const shared = commonActionLabel(g.tasks.map(t => t.action));
-            const type   = (g.tasks[0]?.task_type || "").replace(/_/g, " ").trim();
-            const typeLabel = type ? type[0].toUpperCase() + type.slice(1) : null;
-            return {
-              ...g,
-              sharedLabel: shared,
-              // Crop name before task type: a lone Apple task reads better as
-              // "Apple" than as "Harvest", and that is what Today did before.
-              displayName: shared || g.tasks[0]?.crop?.name || typeLabel || "Also today",
-              crop: g.tasks[0]?.crop,
-              isSuccession: false,
-            };
-          });
-          return (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ ...T.eyebrow, fontSize: 11, color: C.stone, marginBottom: 8 }}>Also today</div>
-              {/* Homogeneous peers: one surface, groups separated by a hairline
-                  instead of 10px gaps. The task rows inside already used this
-                  device, so this just extends it one level up. Grouping logic,
-                  the succession key and the max-3 cap are untouched. */}
-              <div style={{ display: "flex", flexDirection: "column", background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm }}>
-                {alsoGroups.map((group, gi) => {
-                  const gid = group.tasks[0]?.rule_id || gi;
-                  const expanded = expandedActionGroups.has(gid);
-                  const rows = expanded ? group.tasks : group.tasks.slice(0, 6);
-                  const hiddenCount = group.tasks.length - rows.length;
-                  // Strip the shared heading off each row so it reads as the thing
-                  // acted on — "Fruit corner" under "Check for weeds" — rather than
-                  // repeating the whole sentence once per bed.
-                  const rowLabel = (t) => {
-                    const a = (t.action || "").trim();
-                    if (group.tasks.length < 2 || !group.sharedLabel) return a;
-                    let rest = a.slice(group.sharedLabel.length).replace(/^\s*(in|on|for|to|around|at)\s+/i, "").trim();
-                    // 27 Radish sowings differ only by "(Sow 4)", and a row reading
-                    // "(Sow 4)" names nothing a gardener recognises. The brackets
-                    // are punctuation left over from the sentence, not part of the
-                    // name — drop them so the row reads "Sow 4".
-                    rest = rest.replace(/^\((.*)\)$/, "$1").trim();
-                    return rest || a;
-                  };
-                  return (
-                  <div key={gi} style={{ padding: "12px 14px", borderTop: gi > 0 ? `1px solid ${C.lineSoft}` : "none" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 20 }}>{getCropEmoji(group.crop?.name || group.displayName || "")}</span>
-                      <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || "General"}</span>
-                      {group.tasks.length > 1 && (
-                        <span style={{ fontSize: 11, color: C.stone, fontWeight: 600 }}>{group.tasks.length}</span>
-                      )}
-                      {/* "All" is deliberately secondary and deliberately last: one
-                          tap here can fire up to 27 domain mutations, so the normal
-                          interaction remains the tick on an individual row.
-                          It appears only where the server says group completion is
-                          semantically valid — a weeding or feeding round, which is
-                          one real sweep recording a reversible timestamp. Never for
-                          lifecycle transitions (27 succession sowings on one day) or
-                          acknowledgements (asserting 22 slug inspections happened). */}
-                      {group.tasks.length > 1 && group.tasks.every(x => x.bulk_completable) && (
-                        <button onClick={() => group.tasks.forEach(x => completeTask(x))}
-                          style={{ marginLeft: "auto", fontSize: 11, color: C.stone, background: "none", border: `1px solid ${C.lineSoft}`, borderRadius: R.full, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" }}>
-                          All
-                        </button>
-                      )}
-                    </div>
-                    {rows.map((t, ti) => (
-                      <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
-                        <span style={{ color: C.stone, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
-                        <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{rowLabel(t)}</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 1 }}>
-                          {t.crop_instance_id && (
-                            <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
-                              style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", whiteSpace: "nowrap" }}>
-                              Having problems?
-                            </button>
-                          )}
-                          <button onClick={() => completeTask(t)}
-                            style={{ width: 28, height: 28, borderRadius: R.full, border: `1px solid ${C.lineSoft}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
-                            ✓
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {hiddenCount > 0 && (
-                      <button onClick={() => setExpandedActionGroups(prev => new Set(prev).add(gid))}
-                        style={{ marginTop: 8, fontSize: 12, color: C.forest, background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600 }}>
-                        + {hiddenCount} more
-                      </button>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* See all — expandable full due task list grouped by crop/succession */}
-        {(() => {
-          // Get keys already shown in Also Today — use same succession key logic
-          const shownKeys = new Set();
-          const tempGrouped = {};
-          for (const t of remainingToday) {
-            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            if (!tempGrouped[key]) tempGrouped[key] = true;
-          }
-          Object.keys(tempGrouped).slice(0, 3).forEach(k => shownKeys.add(k));
-
-          // Overflow = tasks whose group key isn't in Also Today
-          const todayOverflow = remainingToday.filter(t => {
-            const key = t.crop?.succession_group_id ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            return !shownKeys.has(key) && !completed.has(t.id);
-          });
-          const allItems = [...todayOverflow];
-          if (allItems.length === 0) return null;
-
-          // Group by succession_group_id or crop name
-          const grouped = {};
-          for (const t of allItems) {
-            const isSuccession = !!t.crop?.succession_group_id;
-            const key = isSuccession ? `sg:${t.crop.succession_group_id}` : (t.crop?.name || "General");
-            if (!grouped[key]) grouped[key] = {
-              crop: t.crop,
-              isSuccession,
-              displayName: isSuccession ? (t.crop?.name || "").replace(/\s*\(Sow \d+\)\s*$/, "").trim() : (t.crop?.name || "General"),
-              tasks: []
-            };
-            grouped[key].tasks.push(t);
-          }
-          const cropGroups = Object.values(grouped);
-          const totalCount = allItems.length;
-          if (totalCount === 0) return null;
-
-          return (
-            <div style={{ marginTop: 12 }}>
-              <button onClick={() => setShowAllToday(p => !p)}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "10px 14px", cursor: "pointer", color: C.forest }}>
-                <span style={{ ...T.eyebrow, fontSize: 12 }}>
-                  See all ({totalCount})
-                </span>
-                <span style={{ fontSize: 16, transition: "transform 0.2s", display: "inline-block", transform: showAllToday ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
-              </button>
-
-                            {showAllToday && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-                  {cropGroups.map((group, gi) => (
-                    <div key={gi} style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "12px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontSize: 20 }}>{getCropEmoji(group.displayName || group.crop?.name || "")}</span>
-                        <span style={{ ...T.displayMd, fontSize: 16, color: C.ink }}>{group.displayName || group.crop?.name || "General"}</span>
-                        {group.isSuccession && (
-                          <span style={{ fontSize: 10, background: C.forest + "18", color: C.forest, borderRadius: R.full, padding: "2px 7px", fontWeight: 600 }}>Succession</span>
-                        )}
-                      </div>
-                      {group.tasks.map((t, ti) => (
-                        <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingTop: ti > 0 ? 7 : 0, borderTop: ti > 0 ? `1px solid ${C.border}` : "none", marginTop: ti > 0 ? 7 : 0 }}>
-                          <span style={{ color: C.stone, flexShrink: 0, marginTop: 2, fontSize: 14 }}>›</span>
-                          <span style={{ flex: 1, fontSize: 13, color: C.stone, lineHeight: 1.4 }}>{t.action}</span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 1 }}>
-                            {t.crop_instance_id && (
-                              <button onClick={() => setStrugglingCrop({ id: t.crop_instance_id, name: t.crop?.name })}
-                                style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", whiteSpace: "nowrap" }}>
-                                Having problems?
-                              </button>
-                            )}
-                            <button onClick={() => completeTask(t)}
-                              style={{ width: 28, height: 28, borderRadius: R.full, border: `1px solid ${C.lineSoft}`, background: "transparent", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.stone }}>
-                              ✓
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Recently done */}
-        {recentlyDone.length > 0 && (
-          /* One hairline-divided list rather than separate tinted cards. The
-             blanket opacity:0.7 is gone — it dimmed the Undo control along with
-             the completed text. De-emphasis now lives on the text alone, so the
-             one action in this block stays fully legible. */
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", background: TINT.positive, border: `1px solid ${TINT_LINE.positive}`, borderRadius: R.sm }}>
-            {recentlyDone.map((t, ri) => (
-              <div key={t.id} style={{ padding: "10px 14px", borderTop: ri > 0 ? `1px solid ${TINT_LINE.positive}` : "none", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
-                <div style={{ flex: 1, fontSize: 12, color: C.stone, textDecoration: "line-through" }}>{t.crop?.name ? `${t.crop.name} — ` : ""}{t.action}</div>
-                {undoQueue[t.id] && (
-                  <button onClick={() => undoComplete(t)}
-                    style={{ ...T.control, fontSize: 11, color: C.forest, background: "none", border: "none", cursor: "pointer" }}>
-                    Undo
-                  </button>
-                )}
-              </div>
-            ))}
+        {!focusConcern && alsoConcerns.length === 0 && !commitment?.caught_up && (
+          <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderRadius: R.sm, padding: "18px", textAlign: "center", fontSize: 13, color: C.stone }}>
+            Nothing needs your attention today.
           </div>
         )}
       </div>
@@ -10562,6 +10361,93 @@ function commonActionLabel(actions) {
 function concernCodeOf(task) {
   const id = task?.rule_id || "";
   return id.startsWith("pest_") ? id.slice(5) : null;
+}
+
+// ── Concern card ────────────────────────────────────────────────────────────
+//
+// One real gardening situation, however many rows the engine produced for it.
+// A wet week that raises slug risk across five crops is ONE thing to think
+// about and one trip round the beds after dark — not five cards, and not a task
+// for two crops plus a Watch Out for three, which is what Today showed on
+// 22 August.
+//
+// The underlying rows stay attached and individually completable, because they
+// are the authoritative record. This only decides what counts as one thing.
+function ConcernCard({ concern, primary = false, onComplete, onStruggling, onWhyNow }) {
+  const [expanded, setExpanded] = React.useState(false);
+  if (!concern) return null;
+
+  const { open = [], crops = [], areas = [], headline, urgency, groupCompletable } = concern;
+  if (open.length === 0) return null;
+
+  const stripe = urgency === "high" ? C.red : urgency === "medium" ? "#f39c12" : C.forest;
+  const affected = crops.length ? crops : areas;
+  const first = open[0];
+
+  return (
+    <div style={{ background: C.cardBg, border: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${stripe}`,
+                  borderRadius: R.sm, padding: primary ? "16px 18px" : "13px 15px" }}>
+      <div style={{ ...(primary ? T.displayMd : T.bodyStrong), fontSize: primary ? 16 : 14, color: C.ink, lineHeight: 1.35 }}>
+        {headline}
+      </div>
+
+      {/* What else this same situation touches. One line, not one card each. */}
+      {affected.length > 1 && (
+        <div style={{ fontSize: 12, color: C.stone, marginTop: 5 }}>
+          Also affects {affected.slice(1, 4).join(", ")}{affected.length > 4 ? ` and ${affected.length - 4} more` : ""}
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        {/* Completing the whole concern is offered only where the server says it
+            is semantically safe — a weeding round is one real sweep; sowing and
+            observations are not (V073). */}
+        <button onClick={() => (groupCompletable ? open.forEach(t => onComplete(t)) : onComplete(first))}
+          style={{ ...T.control, background: C.forest, color: "#fff", border: "none", borderRadius: R.sm,
+                   padding: primary ? "10px 18px" : "8px 14px", fontSize: primary ? 14 : 13, cursor: "pointer" }}>
+          {groupCompletable ? `Mark all ${open.length} done` : "Mark done"}
+        </button>
+
+        {open.length > 1 && (
+          <button onClick={() => setExpanded(v => !v)}
+            style={{ background: "none", border: "none", color: C.forest, fontWeight: 600, fontSize: 12, cursor: "pointer", padding: "6px 4px" }}>
+            {expanded ? "Hide" : `${open.length} to do`}
+          </button>
+        )}
+
+        {primary && first?.id && onWhyNow && (
+          <button onClick={() => onWhyNow(first)}
+            style={{ fontSize: 11, color: C.stone, background: TINT.positive, border: "none",
+                     borderRadius: R.full, padding: "5px 11px", cursor: "pointer" }}>
+            Why now?
+          </button>
+        )}
+      </div>
+
+      {/* The individual rows. Always reachable, so a gardener who has done three
+          of five crops can say so exactly. */}
+      {expanded && (
+        <div style={{ marginTop: 12, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 10 }}>
+          {open.map(t => (
+            <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "5px 0" }}>
+              <span style={{ flex: 1, fontSize: 12, color: C.stone, lineHeight: 1.4 }}>
+                {t.crop?.name || t.area?.name || t.action}
+              </span>
+              {t.crop_instance_id && onStruggling && (
+                <button onClick={() => onStruggling({ id: t.crop_instance_id, name: t.crop?.name })}
+                  style={{ fontSize: 11, color: C.stone, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", whiteSpace: "nowrap" }}>
+                  Having problems?
+                </button>
+              )}
+              <button onClick={() => onComplete(t)}
+                style={{ width: 26, height: 26, borderRadius: R.full, border: `1px solid ${C.lineSoft}`,
+                         background: "transparent", cursor: "pointer", flexShrink: 0, fontSize: 13, color: C.stone }}>✓</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function fmtWindow(iso) {
