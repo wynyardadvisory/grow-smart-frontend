@@ -40,6 +40,10 @@ import {
 import { EVENTS, track, trackOnce, trackAppOpened, identifyUser, daysSinceSignup, getPlatform } from "@/lib/analytics";
 import { resolveSeverityState, severityLabel, severityEmoji } from "@/lib/plantcheck-severity.mjs";
 import { resolveStageGuidance } from "@/lib/crop-guidance.mjs";
+// 3B3c — one harvest-item shape and one quantity formatter. Today and Crops
+// used to hand HarvestModal two different objects; see lib/harvest-item.mjs.
+import { toHarvestItem, harvestItemLabel, formatHarvestQuantity, formatHarvestTotal,
+         HARVEST_UNITS } from "@/lib/harvest-item.mjs";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -1741,6 +1745,9 @@ function ShareCardFooter({ style }) {
   );
 }
 
+/** `item` is a harvest item from lib/harvest-item.mjs — the same contract
+ *  HarvestModal consumes, which is why the share card stopped rendering a blank
+ *  crop name and the fallback emoji on everything opened from Today. */
 function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
   const [mode,       setMode]       = useState("single"); // "single" | "season"
   const [generating, setGenerating] = useState(false);
@@ -1767,7 +1774,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
     // Download
     const link = document.createElement("a");
     link.download = mode === "single"
-      ? `vercro-harvest-${item.crop.toLowerCase().replace(/\s+/g,"-")}.png`
+      ? `vercro-harvest-${(item.displayName || "harvest").toLowerCase().replace(/\s+/g,"-")}.png`
       : `vercro-season-${new Date().getFullYear()}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
@@ -1818,13 +1825,13 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
     ctx.fillStyle = "#ffffff";
     ctx.font = hasPhoto ? "80px serif" : "120px serif";
     ctx.textAlign = "center";
-    ctx.fillText(getCropEmoji(item.crop), W/2, yStart);
+    ctx.fillText(getCropEmoji(item.displayName), W/2, yStart);
 
     // Crop name
     ctx.fillStyle = "#ffffff";
     ctx.font = BRAND_FONT.display(72);
     ctx.textAlign = "center";
-    ctx.fillText(item.crop, W/2, yStart + (hasPhoto ? 90 : 120));
+    ctx.fillText(item.displayName || "", W/2, yStart + (hasPhoto ? 90 : 120));
 
     // Variety
     if (item.variety) {
@@ -1977,7 +1984,7 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         {/* Mode toggle */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {[
-            { id: "single", label: `${getCropEmoji(item.crop)} This harvest` },
+            { id: "single", label: `${getCropEmoji(item.displayName)} This harvest` },
             { id: "season", label: "Season summary" },
           ].map(m => (
             <button key={m.id} onClick={() => setMode(m.id)}
@@ -1991,8 +1998,8 @@ function ShareHarvestSheet({ item, harvestData, allHarvests, onClose }) {
         <div style={{ background: C.surfaceDark, borderRadius: R.sm, padding: "24px 20px", marginBottom: 20, color: "#fff", textAlign: "center" }}>
           {mode === "single" ? (
             <>
-              <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.crop)}</div>
-              <div style={{ ...T.displayLg, fontSize: 20, marginBottom: 4 }}>{item.crop}</div>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>{getCropEmoji(item.displayName)}</div>
+              <div style={{ ...T.displayLg, fontSize: 20, marginBottom: 4 }}>{item.displayName}</div>
               {item.variety && <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{item.variety}</div>}
               <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
                 {[harvestData?.quantity_value ? `${harvestData.quantity_value}${harvestData.quantity_unit}` : null, harvestData?.yield_score ? `Yield ${harvestData.yield_score}/10` : null].filter(Boolean).join(" · ")}
@@ -2121,7 +2128,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   // harvest — so adding it to deps would change nothing except the risk of a
   // double count if that ever stops being true.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { track(EVENTS.HARVEST_PHOTO_OFFERED, { crop_name: item?.crop || null }); }, []);
+  useEffect(() => { track(EVENTS.HARVEST_PHOTO_OFFERED, { crop_name: item?.analyticsName || null }); }, []);
   const [quantity,     setQuantity]     = useState("");
   const [unit,         setUnit]         = useState("kg");
   const [notes,        setNotes]        = useState("");
@@ -2134,9 +2141,15 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [undone,       setUndone]       = useState(false);
   const [showShare,    setShowShare]    = useState(false);
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
-  // Defaults to final, but the Today card can preset it: a gardener who tapped
-  // "Picked some" has already answered this question and must not be asked twice.
-  const [isFinal,      setIsFinal]      = useState(item?.presetFinal ?? true); // true = final, false = partial
+  // Finality is NOT enrichment — it decides whether the crop closes — so it is
+  // the one thing the modal will not answer on the gardener's behalf.
+  //
+  // Today presets it: a gardener who tapped "Picked some" or "Finished
+  // harvesting" has already answered and must not be asked twice. The Crops tab
+  // never set it, and this used to read `?? true`, silently pre-selecting
+  // "Final harvest" — the destructive option — for every harvest opened there.
+  // null now means unresolved, and Save waits for one tap rather than guessing.
+  const [isFinal,      setIsFinal]      = useState(item?.presetFinal ?? null); // true = final, false = partial, null = ask
 
   // Text-only helper (2 uses) — the returned value is never a border or fill, so
   // it can simply move to the readable scale.
@@ -2153,7 +2166,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
     const reader = new FileReader();
     reader.onload = () => setPhotoPreview(reader.result);
     reader.readAsDataURL(file);
-    track(EVENTS.HARVEST_PHOTO_SELECTED, { crop_name: item?.crop || null, size_kb: Math.round((file.size || 0) / 1024) });
+    track(EVENTS.HARVEST_PHOTO_SELECTED, { crop_name: item?.analyticsName || null, size_kb: Math.round((file.size || 0) / 1024) });
   };
 
   // The caller awaited this, but there was nothing to await: the upload happened
@@ -2185,12 +2198,16 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       const entry = await apiFetch("/harvest-log", {
         method: "POST",
         body: JSON.stringify({
-          crop_instance_id: item.crop_instance_id || null,
-          crop_name:        item.crop,
+          crop_instance_id: item.cropInstanceId || null,
+          crop_name:        item.analyticsName,
           variety:          item.variety || null,
           yield_score:      yieldScore,
           quality_score:    qualScore,
-          quantity_value:   quantity ? parseFloat(quantity) : null,
+          // The STRING as typed, not parseFloat. String(0.1) is "0.1" but the
+          // double behind it is not, and harvest-quantity.js does exact decimal
+          // arithmetic — handing it a float would put the one thing this change
+          // exists to remove straight back at the boundary.
+          quantity_value:   quantity ? String(quantity).trim() : null,
           quantity_unit:    quantity ? unit : null,
           notes:            notes.trim() || null,
           partial:          !isFinal
@@ -2201,7 +2218,12 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       // has_quantity matters: the audit found only 41% of harvest logs recorded
       // an amount, so completion rate alone overstates the value of the data.
       track(EVENTS.HARVEST_LOGGED, {
-        crop_name:    item.crop || null,
+        crop_name:    item.analyticsName || null,
+        // Kept beside the bare name rather than folded into it: one Mint in the
+        // analytics series, and still knowable which sowing it was.
+        succession_index: item.successionIndex ?? null,
+        variety:          item.variety || null,
+        crop_instance_id: item.cropInstanceId || null,
         has_quantity: !!quantity,
         has_photo:    !!photo,
         has_notes:    !!notes.trim(),
@@ -2217,19 +2239,19 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
       // has done the part that matters.
       if (photo) {
         const t0 = Date.now();
-        track(EVENTS.HARVEST_PHOTO_UPLOAD_START, { crop_name: item?.crop || null });
+        track(EVENTS.HARVEST_PHOTO_UPLOAD_START, { crop_name: item?.analyticsName || null });
         try {
           const url = await uploadPhoto(entry.id);
           if (url) setSavedEntry(prev => ({ ...prev, photo_url: url }));
-          track(EVENTS.HARVEST_PHOTO_UPLOADED, { crop_name: item?.crop || null, ms: Date.now() - t0, linked: !!url });
+          track(EVENTS.HARVEST_PHOTO_UPLOADED, { crop_name: item?.analyticsName || null, ms: Date.now() - t0, linked: !!url });
         } catch (e) {
           console.error("[Harvest photo]", e);
           // The failure that went unreported for four months now reports itself.
-          track(EVENTS.HARVEST_PHOTO_FAILED, { crop_name: item?.crop || null, ms: Date.now() - t0, reason: String(e?.message || e).slice(0, 120) });
+          track(EVENTS.HARVEST_PHOTO_FAILED, { crop_name: item?.analyticsName || null, ms: Date.now() - t0, reason: String(e?.message || e).slice(0, 120) });
           setPhotoError("Your harvest is saved, but the photo didn't upload.");
         }
       }
-      onSaved(item.crop_instance_id, isFinal);
+      onSaved(item.cropInstanceId, isFinal);
       maybePromptForReview(); // Trigger: 1st harvest logged
     } catch (e) {
       console.error(e);
@@ -2268,11 +2290,11 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
           </div>
         ) : saved ? (
           <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>{isFinal ? "🎉" : "🌾"}</div>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>{isFinal === true ? "🎉" : "🌾"}</div>
             <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>
               {isFinal ? "Harvest logged!" : "Partial harvest logged!"}
             </div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 4 }}>{harvestItemLabel(item)}</div>
             {/* The harvest is saved either way — say what happened to the photo
                 rather than letting it fail in silence, which is how 21 uploads
                 went unlinked for four months. */}
@@ -2314,25 +2336,37 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
         ) : (
           <>
             <div style={{ ...T.displayMd, fontSize: 18, color: C.ink, marginBottom: 4 }}>Log Harvest</div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{item.crop}{item.variety ? ` — ${item.variety}` : ""}</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{harvestItemLabel(item)}</div>
 
             {/* Final vs Partial toggle */}
             <div style={{ background: "#f5f5f0", borderRadius: R.sm, padding: 4, display: "flex", marginBottom: 20, gap: 4 }}>
               <button
                 onClick={() => setIsFinal(true)}
-                style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: isFinal ? "#fff" : "transparent", color: isFinal ? C.ink : C.stone, fontWeight: isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+                style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: isFinal === true ? "#fff" : "transparent", color: isFinal === true ? C.ink : C.stone, fontWeight: isFinal === true ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal === true ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
                 Final harvest
               </button>
               <button
                 onClick={() => setIsFinal(false)}
-                style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: !isFinal ? "#fff" : "transparent", color: !isFinal ? C.ink : C.stone, fontWeight: !isFinal ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: !isFinal ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+                style={{ flex: 1, padding: "10px 8px", borderRadius: R.sm, border: "none", background: isFinal === false ? "#fff" : "transparent", color: isFinal === false ? C.ink : C.stone, fontWeight: isFinal === false ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: isFinal === false ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
                 More to come
               </button>
             </div>
+            {/* The copy used to hedge both ways in one sentence — "Closes this
+                season's harvests. Perennials stay in your garden…" — because the
+                modal had never been told which plant it was talking to.
+                isPerennial now travels with the item, so it can say one true
+                thing. null still hedges, because unknown is not a licence to
+                assert. */}
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 20, textAlign: "center" }}>
-              {isFinal
-                ? "Closes this season's harvests. Perennials stay in your garden and keep their care tasks."
-                : "Crop stays active — you can log more harvests later."}
+              {isFinal === null
+                ? "Did you pick everything, or is there more to come?"
+                : isFinal
+                  ? (item.isPerennial === true
+                      ? `Ends this season's harvests. ${item.displayName || "The plant"} stays in your garden and keeps its care tasks.`
+                      : item.isPerennial === false
+                        ? "Closes this crop — it's finished for the year."
+                        : "Closes this season's harvests. Perennials stay in your garden and keep their care tasks.")
+                  : "Crop stays active — you can log more harvests later."}
             </div>
 
             {/* ── Everything below is optional ────────────────────────────────
@@ -2340,7 +2374,7 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
                 harvest look like a form with fields waiting to be completed.
                 The gardener has already done the part that matters by saying a
                 harvest happened; the rest is enrichment and now reads that way. */}
-            <button onClick={() => { if (!showDetail) track(EVENTS.HARVEST_ENRICHMENT_OPENED, { crop_name: item?.crop || null }); setShowDetail(v => !v); }}
+            <button onClick={() => { if (!showDetail) track(EVENTS.HARVEST_ENRICHMENT_OPENED, { crop_name: item?.analyticsName || null }); setShowDetail(v => !v); }}
               style={{ width: "100%", background: "none", border: "none", padding: "4px 0 14px", cursor: "pointer",
                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                        fontSize: 12, color: C.stone, fontWeight: 600 }}>
@@ -2380,18 +2414,24 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             </div>
 
             {/* Quantity */}
+            {/* The placeholder has always said "e.g. 2.5" and the column has
+                always been INTEGER, so a weight in kg did not save a wrong
+                number — it failed the whole harvest with a raw Postgres string
+                on screen. V027a stores canonical grams, so 2.5 is now true.
+                step follows the unit: a mobile keyboard should offer a decimal
+                point only where one means something. */}
             <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
               <div style={{ flex: 2 }}>
                 <label style={labelStyle}>Quantity (optional)</label>
-                <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} style={inputStyle} placeholder="e.g. 2.5" />
+                <input type="number" inputMode="decimal" min="0"
+                  step={HARVEST_UNITS.find(u => u.value === unit)?.step || "0.01"}
+                  value={quantity} onChange={e => setQuantity(e.target.value)}
+                  style={inputStyle} placeholder={unit === "kg" ? "e.g. 2.5" : unit === "g" ? "e.g. 500" : "e.g. 6"} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Unit</label>
                 <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="number">number</option>
-                  <option value="bunch">bunch</option>
+                  {HARVEST_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
                 </select>
               </div>
             </div>
@@ -2436,9 +2476,13 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
             )}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`, background: "none", color: C.stone, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
-              <button onClick={save} disabled={saving}
-                style={{ ...T.control, flex: 2, padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-                {saving ? "Saving…" : "Save harvest"}
+              {/* Save stays dominant and nothing else is required — but it will
+                  not guess at finality, because guessing wrong closes a crop.
+                  Today presets the answer, so the two-tap capture there is
+                  unchanged; only a harvest opened from Crops asks. */}
+              <button onClick={save} disabled={saving || isFinal === null}
+                style={{ ...T.control, flex: 2, padding: "14px", borderRadius: R.sm, border: "none", background: C.forest, color: "#fff", fontSize: 15, cursor: (saving || isFinal === null) ? "default" : "pointer", opacity: (saving || isFinal === null) ? 0.5 : 1 }}>
+                {saving ? "Saving…" : isFinal === null ? "Pick one above to save" : "Save harvest"}
               </button>
             </div>
           </>
@@ -3280,6 +3324,12 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
     (h.phase ? h.phase === "in_window" : (h.window_start <= today && h.window_end >= today))
   );
 
+  // Normalised once, so the headline, the succession label and the two buttons
+  // all read the same object rather than each re-deriving a name from a
+  // presentation string.
+  const readyItems = readyNow.map(h => toHarvestItem(h));
+  const firstItem  = readyItems[0] || null;
+
   // Most recent harvest logged
   const lastHarvest = recentHarvests?.length > 0 ? recentHarvests[0] : null;
   const lastEntry   = lastHarvest?.entries?.[0] || null;
@@ -3296,15 +3346,20 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
             "100% grown" and V002's fabricated rainfall, and it is the one a
             gardener can personally disprove by walking outside. */}
         <div style={{ ...T.eyebrow, fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Expected harvest</div>
+        {/* crop_name is `${name} (Sow n)` — a presentation string built by the
+            API. "Mint (Sow 1) should be ready" is engine notation read aloud,
+            so headlines use the bare name. The succession label is kept and
+            shown below, where several sowings are actually in play and the
+            gardener needs to know WHICH carrot. */}
         <div style={{ ...T.displayMd, fontSize: 18, marginBottom: 4 }}>
           🥕 {readyNow.length === 1
-                ? `${readyNow[0].crop_name} should be ready`
+                ? `${firstItem.displayName} should be ready`
                 : `${readyNow.length} crops should be ready`}
         </div>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 14 }}>
           {readyNow.length === 1 && readyNow[0].window_start !== readyNow[0].window_end
-            ? `Usually ready ${fmtWindow(readyNow[0].window_start)} – ${fmtWindow(readyNow[0].window_end)} · have a look`
-            : `${readyNow.slice(0, 3).map(h => h.crop_name).join(", ")}${readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}`}
+            ? `${firstItem.successionLabel ? firstItem.successionLabel + " · " : ""}Usually ready ${fmtWindow(readyNow[0].window_start)} – ${fmtWindow(readyNow[0].window_end)} · have a look`
+            : `${readyItems.slice(0, 3).map(h => h.successionLabel ? `${h.displayName} (${h.successionLabel})` : h.displayName).join(", ")}${readyNow.length > 3 ? ` + ${readyNow.length - 3} more` : ""}`}
         </div>
         {/* Partial vs final is the question the gardener can actually answer,
             and the model already supports it — 41.5% of logged harvests are
@@ -3316,15 +3371,17 @@ function TodayHarvestCard({ recentHarvests, harvestForecast, harvestedIds, onLog
             buttons would silently pick one. Name it. */}
         {readyNow.length > 1 && (
           <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>
-            Start with {readyNow[0].crop_name}:
+            Start with {firstItem.successionLabel
+              ? `${firstItem.displayName} (${firstItem.successionLabel})`
+              : firstItem.displayName}:
           </div>
         )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => onLogHarvest({ ...readyNow[0], presetFinal: false })}
+          <button onClick={() => onLogHarvest({ ...firstItem, presetFinal: false })}
             style={{ ...T.control, background: "#fff", color: C.forest, border: "none", borderRadius: R.sm, padding: "10px 18px", fontSize: 13, cursor: "pointer" }}>
             Picked some
           </button>
-          <button onClick={() => onLogHarvest({ ...readyNow[0], presetFinal: true })}
+          <button onClick={() => onLogHarvest({ ...firstItem, presetFinal: true })}
             style={{ ...T.control, background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.5)", borderRadius: R.sm, padding: "10px 18px", fontSize: 13, cursor: "pointer" }}>
             Finished harvesting
           </button>
@@ -3791,11 +3848,13 @@ function ActivityDetailSheet({ item, onClose, onDeleted, onUpdated }) {
           {formatFull(item.occurred_at)}
         </div>
 
-        {/* Quantity */}
-        {item.quantity_g > 0 && (
+        {/* Quantity. This read `{quantity_g}g{units}` and printed "650g · g" —
+            the number and the unit rendered independently, which is the whole
+            defect in one line. One formatter now decides what the number means. */}
+        {formatHarvestQuantity(item) && (
           <div style={{ fontSize: 13, color: C.ink, fontFamily: F.body, marginBottom: 12 }}>
             <span style={{ fontWeight: 600 }}>Quantity: </span>
-            {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
+            {formatHarvestQuantity(item)}
           </div>
         )}
 
@@ -4120,9 +4179,9 @@ function GardenLog({ onLogActivity }) {
                           {item.note}
                         </div>
                       )}
-                      {item.quantity_g > 0 && (
+                      {formatHarvestQuantity(item) && (
                         <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontFamily: F.body }}>
-                          {item.quantity_g}g{item.quantity_units ? ` · ${item.quantity_units}` : ""}
+                          {formatHarvestQuantity(item)}
                         </div>
                       )}
                     </div>
@@ -8629,7 +8688,7 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
       {pendingHarvest && (
         <HarvestModal
-          item={{ crop: pendingHarvest.name, variety: pendingHarvest.variety || null, crop_instance_id: pendingHarvest.id }}
+          item={toHarvestItem(pendingHarvest)}
           onClose={() => setPendingHarvest(null)}
           onSaved={(cropInstanceId, isFinal) => {
             setPendingHarvest(null);
@@ -11224,8 +11283,13 @@ function HarvestSummaryCard({ crop }) {
   const [expanded, setExpanded] = useState(false);
   const scoreText = (v) => v >= 7 ? SCORE_TEXT.good : v >= 4 ? SCORE_TEXT.mid : SCORE_TEXT.poor;
 
-  const totalQty = crop.total_quantity_g;
-  const qtyDisplay = totalQty ? (totalQty >= 1000 ? (totalQty / 1000).toFixed(1) + "kg" : totalQty + "g") : null;
+  // total_quantity_g used to sum quantity_g across every entry regardless of
+  // unit, so 14 garlic bulbs and 900 g of strawberries displayed as "914g".
+  // Mass and count are separate questions and are answered separately; a row
+  // whose unit was never recorded is a harvest that happened and no evidence
+  // at all about weight, so it is counted and excluded from the total.
+  const qtyDisplay = formatHarvestTotal(crop);
+  const unknownUnitRows = crop.rows_unknown_unit || 0;
 
   return (
     <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 14, marginBottom: 14 }}>
@@ -11240,6 +11304,16 @@ function HarvestSummaryCard({ crop }) {
             {qtyDisplay ? ` · ${qtyDisplay} total` : ""}
             {crop.harvest_count > 1 ? " · season averages shown" : ""}
           </div>
+          {/* Said plainly rather than quietly dropped. The harvest count is
+              trustworthy; the mass total is incomplete, and the gardener should
+              be able to see which of their records the total is missing. */}
+          {unknownUnitRows > 0 && (
+            <div style={{ fontSize: 10, color: C.stone, marginTop: 2, fontStyle: "italic" }}>
+              {unknownUnitRows === 1
+                ? "1 earlier harvest recorded an amount without a unit, so it isn't in the total"
+                : `${unknownUnitRows} earlier harvests recorded an amount without a unit, so they aren't in the total`}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {crop.avg_yield_score && (
@@ -11274,9 +11348,9 @@ function HarvestSummaryCard({ crop }) {
                 {new Date(e.harvested_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 {e.partial ? <span style={{ marginLeft: 6, color: C.attentionText, fontWeight: 600 }}>· partial</span> : ""}
               </div>
-              {e.quantity_g && (
+              {formatHarvestQuantity(e) && (
                 <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
-                  {e.quantity_g >= 1000 ? (e.quantity_g / 1000).toFixed(1) + "kg" : e.quantity_g + "g"}
+                  {formatHarvestQuantity(e)}
                 </div>
               )}
               {e.notes && <div style={{ fontSize: 11, color: C.stone, marginTop: 2, fontStyle: "italic" }}>{e.notes}</div>}
