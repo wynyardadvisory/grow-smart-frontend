@@ -44,6 +44,10 @@ import { resolveStageGuidance } from "@/lib/crop-guidance.mjs";
 // used to hand HarvestModal two different objects; see lib/harvest-item.mjs.
 import { toHarvestItem, harvestItemLabel, formatHarvestQuantity, formatHarvestTotal,
          HARVEST_UNITS } from "@/lib/harvest-item.mjs";
+// Garden Memory P1a — how a planting ends, and the record it builds.
+import { OUTCOME, END_REASON, VERDICT_OPTIONS, MECHANISM_OPTIONS, LOSS_OPTIONS,
+         OUTCOME_LABEL, REASON_LABEL, endingSummary, formatDay, formatSpan }
+  from "@/lib/planting-ending.mjs";
 
 // ── Capacitor Push Notifications ─────────────────────────────────────────────
 // Only initialised when running inside a native Capacitor shell (iOS/Android).
@@ -2108,6 +2112,246 @@ function HarvestForecastCard({ item, onHarvest, pending }) {
 }
 
 
+// ── Garden Memory: the ending, and what it builds ────────────────────────────
+
+/**
+ * The payoff.
+ *
+ * P1 cannot behave like the reconciliation path, where answering makes the crop
+ * disappear. A gardener who has just told Vercro how something finished gets the
+ * finished story back, immediately, assembled from what they already recorded.
+ *
+ * The hardest case is the one with almost nothing in it — 4,344 real plantings
+ * have only a sowing date. That screen must not pretend. It says plainly there
+ * is little to show, then names the one thing genuinely gained: the bed now
+ * knows what was in it and when, which is what rotation reads.
+ */
+function PlantingStoryCard({ story, onClose, onSeeBed, onAddDetail }) {
+  if (!story) return null;
+  const { planting, occupancy, outcome, harvest, problems, evidence, care, completeness } = story;
+  const isSeason = planting.capability?.is_perennial;
+  const thin = harvest.count === 0 && evidence.photo_count === 0 && !Object.keys(care || {}).length;
+
+  const line = (label) => (
+    <div style={{ fontSize: 13, color: C.ink, marginBottom: 4 }}>{label}</div>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100,
+                  display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+         onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 40px",
+                    width: "100%", maxWidth: 480, boxSizing: "border-box", textAlign: "center" }}>
+
+        <div style={{ ...T.displayLg, fontSize: 20, color: C.ink }}>
+          {planting.crop_name}{planting.succession_index ? ` · Sow ${planting.succession_index}` : ""}
+        </div>
+        {planting.variety && (
+          <div style={{ fontSize: 13, color: C.stone, marginBottom: 10 }}>{planting.variety}</div>
+        )}
+
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>
+          {formatSpan(occupancy.started_at, occupancy.ended_at)}
+          {occupancy.days != null ? ` · ${occupancy.days} days` : ""}
+        </div>
+
+        {/* Photos are the emotional core and cost the gardener nothing extra —
+            they already took them. */}
+        {evidence.photo_count > 0 && (
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 16, flexWrap: "wrap" }}>
+            {evidence.photos.slice(0, 4).map((ph, i) => (
+              <img key={i} src={ph.url} alt="" style={{ width: 62, height: 62, objectFit: "cover", borderRadius: R.sm }} />
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginBottom: 16 }}>
+          {harvest.count > 0 && line(
+            `${harvest.count === 1 ? "Picked once" : `Picked ${harvest.count} times`}${harvest.display ? ` · ${harvest.display}` : ""}`)}
+          {problems?.length > 0 && line(
+            `${problems.length === 1 ? "Problem noted" : `${problems.length} problems noted`}`)}
+          {/* Care is aggregated. Never one line per completed task. */}
+          {Object.keys(care || {}).length > 0 && line(
+            Object.entries(care).map(([k, n]) => `${k} ${n}×`).join(", "))}
+          <div style={{ ...T.bodyStrong, fontSize: 14, color: C.ink, marginTop: 8 }}>
+            {endingSummary({ verdict: outcome.verdict, reason: outcome.reason })}
+          </div>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 14, marginBottom: 14 }}>
+          <div style={{ ...T.eyebrow, fontSize: 11, color: C.forest, marginBottom: 6 }}>
+            {/* A perennial's season ends; the plant does not. The copy must not
+                imply the plant is gone. */}
+            {isSeason ? "Season closed" : "Added to your garden history"}
+          </div>
+          <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>
+            {isSeason
+              ? `The plant stays. Vercro will pick this up again next season.`
+              : thin
+                ? `Not much to show for this one — but ${planting.area?.name || "this bed"} now knows what was here and when, which is what matters when you plan next year.`
+                : `${planting.area?.name || "This bed"} has a history now.`}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {thin && completeness?.missing?.length > 0 && onAddDetail && (
+            <button onClick={onAddDetail}
+              style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`,
+                       background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Add a detail
+            </button>
+          )}
+          {!thin && planting.area && onSeeBed && (
+            <button onClick={() => onSeeBed(planting.area.id)}
+              style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`,
+                       background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              See the bed
+            </button>
+          )}
+          <button onClick={onClose}
+            style={{ ...T.control, flex: 1, padding: "12px", borderRadius: R.sm, border: "none",
+                     background: C.forest, color: "#fff", fontSize: 14, cursor: "pointer" }}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "This one's finished" — replaces "✕ Mark as failed".
+ *
+ * The old sheet was a destructive admin action with a delete glyph, and its copy
+ * said the reason was wanted "to help Vercro learn from failures" — which is the
+ * product asking for data rather than offering anything. It also had no way to
+ * say a crop didn't come up, bolted, or made way for something else: 15% of real
+ * answers were "other".
+ *
+ * ONE QUESTION. The mechanism is asked first because it determines what else is
+ * worth knowing, and each answer establishes one axis — so the follow-up asks
+ * the other, or nothing at all.
+ */
+function PlantingEndingSheet({ crop, onClose, onEnded }) {
+  const [step,     setStep]     = useState("mechanism");
+  const [pending,  setPending]  = useState({});
+  const [endDate,  setEndDate]  = useState(null);
+  const [dateHint, setDateHint] = useState(null);
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState(null);
+
+  // The suggested effective date, and what it was derived from. Shown before
+  // saving; saving adopts it as the gardener's statement.
+  useEffect(() => {
+    let live = true;
+    apiFetch(`/plantings/${crop.id}/ending/question?action=remove`)
+      .then(d => { if (!live) return;
+        setEndDate(d?.suggested_end_date?.date || null);
+        setDateHint(d?.suggested_end_date?.label || null); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [crop.id]);
+
+  const submit = async (patch) => {
+    setSaving(true); setError(null);
+    try {
+      const story = await apiFetch(`/plantings/${crop.id}/ending`, {
+        method: "POST",
+        body: JSON.stringify({ ...pending, ...patch, ended_at: endDate,
+                               source: "gardener_crop_card" }),
+      });
+      onEnded(story);
+    } catch (e) { setError(e.message || "Couldn't save that. Please try again."); }
+    setSaving(false);
+  };
+
+  const choose = (opt) => {
+    const next = { ...pending, ...opt.sets };
+    setPending(next);
+    if (opt.then) setStep(opt.then);
+    else submit(next);
+  };
+
+  const Option = ({ label, onClick }) => (
+    <button onClick={onClick} disabled={saving}
+      style={{ display: "block", width: "100%", textAlign: "left", padding: "14px 16px",
+               marginBottom: 8, borderRadius: R.sm, border: `1px solid ${C.border}`,
+               background: "#fff", color: C.ink, fontSize: 14, cursor: saving ? "default" : "pointer" }}>
+      {label}
+    </button>
+  );
+
+  const prompt = step === "mechanism"   ? `How did the ${crop.name} finish?`
+               : step === "verdict"     ? "Did it give you anything?"
+               : "What got it?";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+                  display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+         onClick={e => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: R.sheet, padding: "28px 24px 40px",
+                    width: "100%", maxWidth: 480, boxSizing: "border-box" }}>
+        <div style={{ width: 36, height: 4, borderRadius: R.sm, background: "#ddd", margin: "0 auto 20px" }} />
+
+        <div style={{ ...T.displayLg, fontSize: 19, color: C.ink, marginBottom: 4 }}>{prompt}</div>
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 18 }}>
+          {crop.area_name ? `${crop.area_name} · ` : ""}{formatDay(crop.sown_date) ? `sown ${formatDay(crop.sown_date)}` : ""}
+        </div>
+
+        {step === "mechanism" && MECHANISM_OPTIONS.map(o => (
+          <Option key={o.key} label={o.label} onClick={() => choose(o)} />
+        ))}
+        {step === "verdict" && VERDICT_OPTIONS.map(o => (
+          <Option key={o.key} label={o.label} onClick={() => submit({ outcome: o.key })} />
+        ))}
+        {step === "loss_reason" && LOSS_OPTIONS.map(o => (
+          <Option key={o.key} label={o.label} onClick={() => submit({ end_reason: o.key })} />
+        ))}
+
+        {/* The effective date is shown before saving, with the basis of any
+            suggestion. A last-harvest date is the best guess at an ending, never
+            a claim that the crop ended then. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                      marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.lineSoft}` }}>
+          <div style={{ fontSize: 12, color: C.stone }}>
+            Ended <span style={{ color: C.ink, fontWeight: 600 }}>{formatDay(endDate) || "today"}</span>
+            {dateHint ? <span style={{ color: C.stone }}> — {dateHint}</span> : ""}
+          </div>
+          <label style={{ fontSize: 12, color: C.forest, fontWeight: 600, cursor: "pointer" }}>
+            Change
+            <input type="date" value={endDate || ""} max={todayISO()}
+              onChange={e => { setEndDate(e.target.value); setDateHint(null); }}
+              style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+          </label>
+        </div>
+
+        {error && (
+          <div style={{ background: "#fff0f0", border: "1px solid #fca5a5", borderRadius: R.sm,
+                        padding: "10px 14px", marginTop: 12, fontSize: 13, color: C.dangerText }}>{error}</div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          {step !== "mechanism" && (
+            /* Skipping is a real answer, not a lesser one. Forcing a verdict
+               would put worse data in than the gap it fills. */
+            <button onClick={() => submit({})} disabled={saving}
+              style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`,
+                       background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Not sure
+            </button>
+          )}
+          <button onClick={onClose} disabled={saving}
+            style={{ flex: 1, padding: "12px", borderRadius: R.sm, border: `1px solid ${C.border}`,
+                     background: "none", color: C.stone, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ── Harvest Modal ─────────────────────────────────────────────────────────────
 
 function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
@@ -2140,6 +2384,10 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
   const [photoError,   setPhotoError]   = useState(null);
   const [undone,       setUndone]       = useState(false);
   const [showShare,    setShowShare]    = useState(false);
+  // Garden Memory P1a — the verdict, asked once and only once.
+  const [verdict,      setVerdict]      = useState(null);
+  const [story,        setStory]        = useState(null);
+  const [verdictBusy,  setVerdictBusy]  = useState(false);
   const [savedEntry,   setSavedEntry]   = useState(null); // full entry data for share card
   // Finality is NOT enrichment — it decides whether the crop closes — so it is
   // the one thing the modal will not answer on the gardener's behalf.
@@ -2271,6 +2519,11 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
 
   return (
     <>
+    {/* The payoff. A gardener who has just said how it finished gets the
+        finished story back, rather than watching the crop disappear. */}
+    {story && (
+      <PlantingStoryCard story={story} onClose={() => { setStory(null); onClose(); }} />
+    )}
     {showShare && (
       <ShareHarvestSheet
         item={item}
@@ -2306,6 +2559,56 @@ function HarvestModal({ item, onClose, onSaved, allHarvests = [] }) {
                 ✓ Crop stays active — more harvests to come
               </div>
             )}
+            {/* ── The verdict ────────────────────────────────────────────
+                ONE extra tap, and only on a final harvest. "Finished
+                harvesting" has already established the MECHANISM, so asking why
+                it ended would be asking the gardener to repeat themselves.
+                Skipping records `unknown` and is not a lesser answer — the
+                harvest POST has already written the ending; this completes it.
+                Save stayed dominant and nothing became mandatory. */}
+            {isFinal === true && !verdict && item.cropInstanceId && (
+              <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 14, marginBottom: 16, textAlign: "left" }}>
+                <div style={{ ...T.bodyStrong, fontSize: 13, color: C.ink, marginBottom: 8 }}>How did it go?</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {VERDICT_OPTIONS.map(o => (
+                    <button key={o.key} disabled={verdictBusy}
+                      onClick={async () => {
+                        setVerdictBusy(true);
+                        try {
+                          const s = await apiFetch(`/plantings/${item.cropInstanceId}/ending`, {
+                            method: "POST",
+                            body: JSON.stringify({ outcome: o.key, end_reason: END_REASON.HARVESTED_OUT,
+                                                   source: "gardener_harvest_flow" }),
+                          });
+                          setVerdict(o.key); setStory(s);
+                          track(EVENTS.PLANTING_ENDED, {
+                            crop_name: item.analyticsName || null, outcome: o.key,
+                            end_reason: END_REASON.HARVESTED_OUT, source: "gardener_harvest_flow",
+                          });
+                        } catch (e) {
+                          console.error("[Planting ending]", e);
+                          // The harvest is saved and the ending is already
+                          // recorded; only the verdict failed. Never lose the
+                          // harvest over an enrichment.
+                          setVerdict(o.key);
+                        }
+                        setVerdictBusy(false);
+                      }}
+                      style={{ flex: 1, padding: "10px 6px", borderRadius: R.sm, border: `1px solid ${C.border}`,
+                               background: "#fff", color: C.ink, fontSize: 12, fontWeight: 600,
+                               cursor: verdictBusy ? "default" : "pointer", opacity: verdictBusy ? 0.6 : 1 }}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setVerdict(OUTCOME.UNKNOWN)}
+                  style={{ background: "none", border: "none", padding: "8px 0 0", fontSize: 12,
+                           color: C.stone, cursor: "pointer" }}>
+                  Skip
+                </button>
+              </div>
+            )}
+
             {/* Share prompt — only for final harvests */}
             {isFinal && (
               <div style={{ background: "#f0f7f4", border: `1px solid ${C.sage}`, borderRadius: R.sm, padding: "14px", marginBottom: 16, textAlign: "left" }}>
@@ -8442,6 +8745,13 @@ function DuplicateCropSheet({ crop, areas, onClose, onSaved }) {
 function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo = false, navEnabled = false, tourRefs = {} }) {
   const CROPS_CACHE = "vercro_crops_v1";
   const _cachedCrops = (() => { try { const c = localStorage.getItem(CROPS_CACHE); if (c) { const { cropsData, areasData, ts } = JSON.parse(c); if (Date.now() - ts < 5 * 60 * 1000) return { cropsData, areasData }; } } catch(e) {} return null; })();
+  // Garden Memory P1a — ending a planting, and the story it produces.
+  // Declared HERE, in CropList, because that is where the sheets render and
+  // where the crop menu triggers them. The first attempt put them in
+  // GardenView and took the Crops tab down with
+  // "ReferenceError: pendingEnding is not defined".
+  const [pendingEnding,  setPendingEnding]  = useState(null);
+  const [endedStory,     setEndedStory]     = useState(null);
   const [crops,    setCrops]   = useState(_cachedCrops?.cropsData || []);
   const [loading,  setLoading] = useState(!_cachedCrops);
   const [error,    setError]   = useState(null);
@@ -8685,6 +8995,23 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
   return (
     <div>
       {diary && <CropGrowthDiary crop={diary} onClose={() => { setDiary(null); load(); }} />}
+      {pendingEnding && (
+        <PlantingEndingSheet
+          crop={pendingEnding}
+          onClose={() => setPendingEnding(null)}
+          onEnded={(story) => { setPendingEnding(null); setEndedStory(story); load(); }}
+        />
+      )}
+      {/* onSeeBed is deliberately not passed: the Bed Biography lands in P2b and
+          offering a button that goes nowhere is worse than not offering it. The
+          card handles its absence. */}
+      {endedStory && (
+        <PlantingStoryCard
+          story={endedStory}
+          onClose={() => setEndedStory(null)}
+          onAddDetail={() => setEndedStory(null)}
+        />
+      )}
       {timelineCrop && <CropTimelineSheet crop={timelineCrop} onClose={() => { setTimelineCrop(null); load(); }} onCropUpdated={async () => { await load(); }} />}
       {pendingHarvest && (
         <HarvestModal
@@ -9530,10 +9857,16 @@ function CropList({ onAddCrop, editCropId, editCropField, onEditOpened, isDemo =
                                   <div style={{ height: 1, background: C.lineSoft }} />
                                 </>
                               )}
+                              {/* Was "✕ Mark as failed" — a destructive admin
+                                  action with a delete glyph, whose own copy said
+                                  the reason was wanted "to help Vercro learn from
+                                  failures". Ending a planting is recording
+                                  history, not deleting a row, and it is the same
+                                  door whether the crop did well or badly. */}
                               <button
-                                onClick={() => { setCropMenuOpen(null); setFailReason(null); setPendingFail(crop); }}
-                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.attentionText, cursor: "pointer", textAlign: "left" }}>
-                                ✕ Mark as failed
+                                onClick={() => { setCropMenuOpen(null); setPendingEnding(crop); }}
+                                style={{ display: "block", width: "100%", background: "none", border: "none", padding: "10px 14px", fontSize: 13, color: C.ink, cursor: "pointer", textAlign: "left" }}>
+                                This one&apos;s finished
                               </button>
                               <div style={{ height: 1, background: C.lineSoft }} />
                               <button

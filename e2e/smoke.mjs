@@ -138,6 +138,25 @@ async function main() {
     record(`${tab} renders`, !broken(t) && t.length > 80, broken(t) ? "error boundary" : `${t.length} chars`);
   }
 
+  // ── 5b · and back to Today ────────────────────────────────────────────────
+  // Leaving a tab and returning is where state that was never scoped to its own
+  // component shows up. The tab loop alone would miss it.
+  {
+    const back = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")]
+        .filter(x => x.innerText.trim().replace(/\s+/g, " ").endsWith("Today")).pop();
+      if (!b) return false;
+      b.click(); return true;
+    });
+    if (!back) record("returns to Today", false, "nav button not found");
+    else {
+      await page.waitForTimeout(3000);
+      const t = await bodyText();
+      record("returns to Today", !broken(t) && /Good (morning|afternoon|evening)/i.test(t),
+        broken(t) ? "error boundary" : `${t.length} chars`);
+    }
+  }
+
   // ── 6 · nothing threw ─────────────────────────────────────────────────────
   record("no uncaught page exceptions", pageErrors.length === 0, pageErrors.slice(0, 2).join(" | "));
   record("no unexpected console errors", consoleErrors.length === 0, consoleErrors.slice(0, 2).join(" | "));
